@@ -1,13 +1,13 @@
 export const palette = {
-  paper: '#F3FAFE',
+  paper: '#F6F8FA',
   white: '#FFFFFF',
-  whiteSoft: '#EAF7FD',
-  ink: '#153B4A',
-  inkMuted: '#5C7380',
-  line: '#CBE8F4',
-  red: '#1F9FD1',
-  gold: '#F4B942',
-  goldSoft: '#DDF4FC',
-  green: '#2E8C72',
-  blueDeep: '#0E6E9F'
+  whiteSoft: '#EEF4F8',
+  ink: '#172B3A',
+  inkMuted: '#64717D',
+  line: '#D9E2EA',
+  red: '#2D8FC3',
+  gold: '#E7B84A',
+  goldSoft: '#E8F3F9',
+  green: '#2FA172',
+  blueDeep: '#164B68'
 };

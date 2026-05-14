@@ -28,6 +28,16 @@ type AdminRequest = {
   resolvedBy?: string;
 };
 
+type PageEditorProps = {
+  tabKey: TabKey;
+  title: string;
+  content?: AppContentBlock;
+  tab?: AppTabDisplay;
+  isAdmin: boolean;
+  onContentChanged: () => Promise<void>;
+  onTabsChanged: () => Promise<void>;
+};
+
 const defaultTabs: Array<{ key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
   { key: 'inicio', label: 'Inicio', icon: 'home-outline' },
   { key: 'notilestra', label: 'Notilestra', icon: 'newspaper-outline' },
@@ -169,6 +179,15 @@ export default function App() {
   }, [resolvedTabs, session?.role]);
 
   const tabLabel = (key: TabKey) => resolvedTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
+  const pageEditorProps = (key: TabKey): PageEditorProps => ({
+    tabKey: key,
+    title: tabLabel(key),
+    content: appContent.find((item) => item.tab_key === key),
+    tab: resolvedTabs.find((tab) => tab.key === key),
+    isAdmin: session?.role === 'administrador',
+    onContentChanged: refreshPublishedContent,
+    onTabsChanged: reloadTabSettings
+  });
 
   async function reloadTabSettings() {
     const items = await fetchAppTabs();
@@ -221,25 +240,25 @@ export default function App() {
 
   const screen = useMemo(() => {
     if (activeTab === 'inicio') {
-      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} />;
+      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} />;
     }
     if (activeTab === 'notilestra') {
-      return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} />;
+      return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} editor={pageEditorProps('notilestra')} />;
     }
     if (activeTab === 'materiales') {
-      return <MaterialsScreen session={session} title={tabLabel('materiales')} content={appContent.find((item) => item.tab_key === 'materiales')} />;
+      return <MaterialsScreen session={session} title={tabLabel('materiales')} content={appContent.find((item) => item.tab_key === 'materiales')} editor={pageEditorProps('materiales')} />;
     }
     if (activeTab === 'comunidades') {
-      return <CommunitiesScreen title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} />;
+      return <CommunitiesScreen title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} editor={pageEditorProps('comunidades')} />;
     }
     if (activeTab === 'historia') {
-      return <HistoryScreen title={tabLabel('historia')} content={appContent.find((item) => item.tab_key === 'historia')} />;
+      return <HistoryScreen title={tabLabel('historia')} content={appContent.find((item) => item.tab_key === 'historia')} editor={pageEditorProps('historia')} />;
     }
     if (activeTab === 'contacto') {
-      return <ContactScreen title={tabLabel('contacto')} content={appContent.find((item) => item.tab_key === 'contacto')} />;
+      return <ContactScreen title={tabLabel('contacto')} content={appContent.find((item) => item.tab_key === 'contacto')} editor={pageEditorProps('contacto')} />;
     }
     if (activeTab !== 'perfil') {
-      return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} />;
+      return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
     }
     return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} />;
   }, [activeTab, session, resolvedTabs, appContent, contentVersion]);
@@ -258,9 +277,15 @@ export default function App() {
         {tapEffect ? <View pointerEvents="none" style={[styles.tapCircle, { left: tapEffect.x - 24, top: tapEffect.y - 24 }]} /> : null}
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>Palestra</Text>
-            <Text style={styles.subtitle}>Movimiento Catolico</Text>
+          <View style={styles.brandBlock}>
+            <View style={styles.brandLogo}>
+              <View style={styles.brandTriangle} />
+              <Text style={styles.brandLogoText}>P</Text>
+            </View>
+            <View>
+              <Text style={styles.brand}>Palestra</Text>
+              <Text style={styles.subtitle}>Movimiento Catolico</Text>
+            </View>
           </View>
           <View style={styles.sessionBadge}>
             <Text style={styles.sessionBadgeText}>{session ? roleLabel(session.role) : 'Invitado'}</Text>
@@ -285,36 +310,235 @@ export default function App() {
   );
 }
 
-function EditableIntro({ content }: { content?: AppContentBlock }) {
-  if (!content) {
-    return null;
+function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?: PageEditorProps }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftLabel, setDraftLabel] = useState(editor?.title ?? '');
+  const [draftTitle, setDraftTitle] = useState(content?.title ?? editor?.title ?? '');
+  const [draftBody, setDraftBody] = useState(content?.body ?? '');
+  const [draftBlocks, setDraftBlocks] = useState<ContentEditorBlock[]>([]);
+  const [editorMessage, setEditorMessage] = useState('');
+
+  useEffect(() => {
+    setDraftLabel(editor?.title ?? '');
+    setDraftTitle(content?.title ?? editor?.title ?? '');
+    setDraftBody(content?.body ?? '');
+    setDraftBlocks(content?.blocks?.length ? content.blocks : [
+      { id: 'inline-title', type: 'titulo', value: content?.title ?? editor?.title ?? '' },
+      { id: 'inline-body', type: 'texto', value: content?.body ?? '' }
+    ]);
+  }, [content, editor?.title, editor?.tabKey]);
+
+  async function uploadInlineImage() {
+    if (!editor) {
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setEditorMessage('Necesito permiso para acceder a tus fotos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.75
+    });
+
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+
+    try {
+      setEditorMessage('Subiendo imagen...');
+      const asset = result.assets[0];
+      const response = await fetch(asset.uri);
+      const bytes = await response.arrayBuffer();
+      const extension = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+      const path = `${editor.tabKey}/content-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('content-images')
+        .upload(path, bytes, {
+          contentType: asset.mimeType ?? 'image/jpeg',
+          upsert: true
+        });
+
+      if (uploadError) {
+        setEditorMessage(uploadError.message);
+        return;
+      }
+
+      const { data: publicUrl } = supabase.storage.from('content-images').getPublicUrl(path);
+      setDraftBlocks((current) => [...current, { id: `imagen-${Date.now()}`, type: 'imagen', value: publicUrl.publicUrl }]);
+      setEditorMessage('Imagen cargada al editor.');
+    } catch (error) {
+      setEditorMessage(error instanceof Error ? error.message : 'No pude subir la imagen.');
+    }
   }
 
-  if (content.blocks && content.blocks.length > 0) {
+  async function saveInlinePage() {
+    if (!editor) {
+      return;
+    }
+
+    if (!draftTitle.trim()) {
+      setEditorMessage('La pagina necesita un titulo.');
+      return;
+    }
+
+    setEditorMessage('Guardando pagina...');
+    if (draftLabel.trim() && draftLabel.trim() !== editor.title) {
+      const { error: tabError } = await updateAppTab(
+        editor.tabKey,
+        draftLabel.trim(),
+        editor.tab?.visible ?? true,
+        editor.tab?.visibleRoles ?? null
+      );
+      if (tabError) {
+        setEditorMessage(tabError.message);
+        return;
+      }
+      await editor.onTabsChanged();
+    }
+
+    const normalizedBlocks = draftBlocks
+      .map((block) => ({ ...block, value: block.value.trim() }))
+      .filter((block) => block.value.length > 0);
+    const { error } = await updateAppContent(editor.tabKey, draftTitle.trim(), draftBody.trim(), normalizedBlocks);
+    if (error) {
+      setEditorMessage(error.message);
+      return;
+    }
+    await editor.onContentChanged();
+    setEditorMessage('Pagina actualizada.');
+    setIsEditing(false);
+  }
+
+  function addInlineBlock(type: ContentEditorBlock['type']) {
+    setDraftBlocks((current) => [
+      ...current,
+      { id: `${type}-${Date.now()}`, type, value: type === 'imagen' ? 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png' : '' }
+    ]);
+  }
+
+  function moveInlineBlock(index: number, direction: -1 | 1) {
+    setDraftBlocks((current) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= current.length) {
+        return current;
+      }
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      next.splice(nextIndex, 0, item);
+      return next;
+    });
+  }
+
+  function updateInlineBlock(id: string, value: string) {
+    setDraftBlocks((current) => current.map((block) => block.id === id ? { ...block, value } : block));
+  }
+
+  const renderedContent = (() => {
+    if (!content) {
+      return null;
+    }
+
+    if (content.blocks && content.blocks.length > 0) {
+      return (
+        <View style={styles.contentIntro}>
+          {content.blocks.map((block) => {
+            if (block.type === 'titulo') {
+              return <Text key={block.id} style={styles.cardTitle}>{block.value}</Text>;
+            }
+            if (block.type === 'imagen') {
+              return <Image key={block.id} source={{ uri: block.value }} style={styles.cardImage} />;
+            }
+            return <Text key={block.id} style={styles.cardText}>{block.value}</Text>;
+          })}
+        </View>
+      );
+    }
+
     return (
       <View style={styles.contentIntro}>
-        {content.blocks.map((block) => {
-          if (block.type === 'titulo') {
-            return <Text key={block.id} style={styles.cardTitle}>{block.value}</Text>;
-          }
-          if (block.type === 'imagen') {
-            return <Image key={block.id} source={{ uri: block.value }} style={styles.cardImage} />;
-          }
-          return <Text key={block.id} style={styles.cardText}>{block.value}</Text>;
-        })}
+        <Text style={styles.cardTitle}>{content.title}</Text>
+        <Text style={styles.cardText}>{content.body}</Text>
+      </View>
+    );
+  })();
+
+  if (editor?.isAdmin) {
+    return (
+      <View style={styles.stackTight}>
+        <TouchableOpacity style={styles.inlineEditButton} onPress={() => setIsEditing(!isEditing)}>
+          <Ionicons name={isEditing ? 'close-outline' : 'create-outline'} size={18} color={palette.red} />
+          <Text style={styles.inlineEditButtonText}>{isEditing ? 'Cerrar editor' : 'Editar pagina'}</Text>
+        </TouchableOpacity>
+        {isEditing ? (
+          <View style={styles.inlineEditorPanel}>
+            <Text style={styles.cardEyebrow}>Edicion directa</Text>
+            <TextInput style={styles.input} placeholder="Nombre de la pestana" value={draftLabel} onChangeText={setDraftLabel} />
+            <TextInput style={styles.input} placeholder="Titulo interno" value={draftTitle} onChangeText={setDraftTitle} />
+            <TextInput style={[styles.input, styles.textArea]} placeholder="Resumen o texto base" value={draftBody} onChangeText={setDraftBody} multiline />
+            <View style={styles.inlineActions}>
+              <TouchableOpacity style={styles.smallActionButton} onPress={() => addInlineBlock('titulo')}>
+                <Ionicons name="text-outline" size={16} color={palette.red} />
+                <Text style={styles.smallActionText}>Titulo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.smallActionButton} onPress={() => addInlineBlock('texto')}>
+                <Ionicons name="document-text-outline" size={16} color={palette.red} />
+                <Text style={styles.smallActionText}>Texto</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.smallActionButton} onPress={uploadInlineImage}>
+                <Ionicons name="image-outline" size={16} color={palette.red} />
+                <Text style={styles.smallActionText}>Imagen</Text>
+              </TouchableOpacity>
+            </View>
+            {draftBlocks.map((block, index) => (
+              <View key={block.id} style={styles.inlineBlockEditor}>
+                <View style={styles.inlineBlockHeader}>
+                  <Text style={styles.cardEyebrow}>{block.type}</Text>
+                  <View style={styles.inlineIconActions}>
+                    <TouchableOpacity style={styles.iconButtonGhost} onPress={() => moveInlineBlock(index, -1)}>
+                      <Ionicons name="arrow-up-outline" size={16} color={palette.inkMuted} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.iconButtonGhost} onPress={() => moveInlineBlock(index, 1)}>
+                      <Ionicons name="arrow-down-outline" size={16} color={palette.inkMuted} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.iconButtonGhost} onPress={() => setDraftBlocks((current) => current.filter((item) => item.id !== block.id))}>
+                      <Ionicons name="trash-outline" size={16} color={palette.red} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <TextInput
+                  style={[styles.input, block.type === 'texto' && styles.textArea]}
+                  placeholder={block.type === 'imagen' ? 'URL de imagen' : 'Contenido'}
+                  value={block.value}
+                  onChangeText={(value) => updateInlineBlock(block.id, value)}
+                  multiline={block.type !== 'titulo'}
+                />
+                {block.type === 'imagen' && block.value ? <Image source={{ uri: block.value }} style={styles.cardImage} /> : null}
+              </View>
+            ))}
+            <TouchableOpacity style={styles.primaryButton} onPress={saveInlinePage}>
+              <Text style={styles.primaryButtonText}>Guardar pagina</Text>
+            </TouchableOpacity>
+            {editorMessage ? <Text style={styles.cardText}>{editorMessage}</Text> : null}
+          </View>
+        ) : null}
+        {renderedContent}
       </View>
     );
   }
 
-  return (
-    <View style={styles.contentIntro}>
-      <Text style={styles.cardTitle}>{content.title}</Text>
-      <Text style={styles.cardText}>{content.body}</Text>
-    </View>
-  );
+  if (!content) {
+    return null;
+  }
+
+  return renderedContent;
 }
 
-function HomeScreen({ session, title, content, refreshKey }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number }) {
+function HomeScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
   const [homeNews, setHomeNews] = useState(news);
 
@@ -339,7 +563,7 @@ function HomeScreen({ session, title, content, refreshKey }: { session: Session 
         <Text style={styles.heroText}>Noticias, agenda, materiales y comunicacion interna para las comunidades de Palestra.</Text>
       </View>
 
-      <EditableIntro content={content} />
+      <EditableIntro content={content} editor={editor} />
       <SectionTitle title="Avisos" />
       {homeNews.map((item) => (
         <TouchableOpacity key={item.title} style={styles.card} activeOpacity={0.86} onPress={() => setExpandedNews(expandedNews === item.title ? null : item.title)}>
@@ -366,7 +590,7 @@ function HomeScreen({ session, title, content, refreshKey }: { session: Session 
   );
 }
 
-function NotilestraScreen({ session, title, content, refreshKey }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number }) {
+function NotilestraScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<(typeof calendarActivities)[number] | null>(null);
   const [favorite, setFavorite] = useState<string | null>(null);
@@ -405,7 +629,7 @@ function NotilestraScreen({ session, title, content, refreshKey }: { session: Se
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
-      <EditableIntro content={content} />
+      <EditableIntro content={content} editor={editor} />
       <View style={styles.filterRow}>
         {[
           { key: 'noticias', label: 'Noticias' },
@@ -472,11 +696,11 @@ function NotilestraScreen({ session, title, content, refreshKey }: { session: Se
   );
 }
 
-function MaterialsScreen({ session, title, content }: { session: Session | null; title: string; content?: AppContentBlock }) {
+function MaterialsScreen({ session, title, content, editor }: { session: Session | null; title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
-      <EditableIntro content={content} />
+      <EditableIntro content={content} editor={editor} />
       {materials.map((material) => {
         const locked = material.permission && !hasPermission(session, material.permission);
         return (
@@ -491,7 +715,7 @@ function MaterialsScreen({ session, title, content }: { session: Session | null;
   );
 }
 
-function CommunitiesScreen({ title, content, refreshKey }: { title: string; content?: AppContentBlock; refreshKey: number }) {
+function CommunitiesScreen({ title, content, refreshKey, editor }: { title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const [communityData, setCommunityData] = useState<AppCommunity[]>(communities);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
@@ -576,7 +800,7 @@ function CommunitiesScreen({ title, content, refreshKey }: { title: string; cont
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
-      <EditableIntro content={content} />
+      <EditableIntro content={content} editor={editor} />
       {communityData.map((community) => (
         <TouchableOpacity key={community.province} style={styles.card} onPress={() => setSelectedProvince(community.province)} activeOpacity={0.85}>
           <Text style={styles.cardEyebrow}>{community.region}</Text>
@@ -596,12 +820,12 @@ function CommunitiesScreen({ title, content, refreshKey }: { title: string; cont
   );
 }
 
-function HistoryScreen({ title, content }: { title: string; content?: AppContentBlock }) {
+function HistoryScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
   const [subtab, setSubtab] = useState<'historia' | 'faq'>('historia');
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
-      <EditableIntro content={content} />
+      <EditableIntro content={content} editor={editor} />
       <View style={styles.filterRow}>
         <TouchableOpacity style={[styles.filterChip, subtab === 'historia' && styles.filterChipActive]} onPress={() => setSubtab('historia')}>
           <Text style={[styles.filterChipText, subtab === 'historia' && styles.filterChipTextActive]}>Historia</Text>
@@ -625,11 +849,11 @@ function HistoryScreen({ title, content }: { title: string; content?: AppContent
   );
 }
 
-function ContactScreen({ title, content }: { title: string; content?: AppContentBlock }) {
+function ContactScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
-      <EditableIntro content={content} />
+      <EditableIntro content={content} editor={editor} />
       <View style={styles.heroMini}>
         <Text style={styles.cardTitle}>Encontrar una comunidad</Text>
         <Text style={styles.cardText}>{contactInfo.helpText}</Text>
@@ -648,11 +872,11 @@ function ContactScreen({ title, content }: { title: string; content?: AppContent
   );
 }
 
-function GenericPageScreen({ title, content }: { title: string; content?: AppContentBlock }) {
+function GenericPageScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
-      <EditableIntro content={content} />
+      <EditableIntro content={content} editor={editor} />
       {!content ? (
         <View style={styles.card}>
           <Text style={styles.cardText}>Esta pagina todavia no tiene contenido cargado.</Text>
@@ -1365,7 +1589,7 @@ function ProfileScreen({
     <View style={styles.stack}>
       <SectionTitle title={`${tabLabel('perfil')} y acceso`} />
       {session ? (
-        <View style={styles.card}>
+        <View style={styles.profileShell}>
           <View style={styles.profileTopRow}>
             <View />
             <TouchableOpacity style={styles.iconButton} onPress={() => setShowAccountMenu(!showAccountMenu)}>
@@ -1374,8 +1598,29 @@ function ProfileScreen({
           </View>
           {showAccountMenu ? (
             <View style={styles.accountMenu}>
-              <TouchableOpacity style={styles.secondaryButton} onPress={signOutReal}>
-                <Text style={styles.secondaryButtonText}>Cerrar sesion</Text>
+              <View style={styles.accountMenuHeader}>
+                <View style={styles.accountMenuAvatar}>
+                  {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.accountMenuAvatarImage} /> : <Ionicons name="person-outline" size={18} color={palette.red} />}
+                </View>
+                <View style={styles.adminUserHeaderText}>
+                  <Text style={styles.accountMenuName}>{session.fullName}</Text>
+                  <Text style={styles.accountMenuSub}>{roleLabel(session.role)}</Text>
+                </View>
+              </View>
+              {[
+                { icon: 'person-outline', label: 'Mi perfil', action: () => setProfilePanel('vista') },
+                { icon: 'create-outline', label: 'Editar perfil', action: () => setProfilePanel('editar') },
+                { icon: 'people-outline', label: 'Mi comunidad', action: () => setShowCommunity(true) },
+                { icon: 'refresh-outline', label: 'Actualizar estado', action: refreshRealProfile }
+              ].map((item) => (
+                <TouchableOpacity key={item.label} style={styles.accountMenuItem} onPress={() => { item.action(); setShowAccountMenu(false); }}>
+                  <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={18} color={palette.inkMuted} />
+                  <Text style={styles.accountMenuItemText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={styles.accountMenuItem} onPress={signOutReal}>
+                <Ionicons name="log-out-outline" size={18} color={palette.red} />
+                <Text style={[styles.accountMenuItemText, styles.accountMenuDanger]}>Cerrar sesion</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -2108,17 +2353,48 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.75)'
   },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: palette.line,
     backgroundColor: palette.white,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
+  },
+  brandBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1
+  },
+  brandLogo: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 2,
+    borderColor: palette.red,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
+  brandTriangle: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderLeftWidth: 12,
+    borderRightWidth: 12,
+    borderBottomWidth: 22,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: palette.goldSoft,
+    top: 8
+  },
+  brandLogoText: {
+    color: palette.red,
+    fontSize: 20,
+    fontWeight: '900'
   },
   brand: {
     color: palette.ink,
@@ -2131,10 +2407,10 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   sessionBadge: {
-    backgroundColor: palette.goldSoft,
+    backgroundColor: palette.whiteSoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8
+    borderRadius: 18
   },
   sessionBadgeText: {
     color: palette.ink,
@@ -2148,9 +2424,12 @@ const styles = StyleSheet.create({
   stack: {
     gap: 14
   },
+  stackTight: {
+    gap: 10
+  },
   hero: {
-    backgroundColor: palette.blueDeep,
-    borderRadius: 8,
+    backgroundColor: '#EAF1F6',
+    borderRadius: 10,
     padding: 22,
     overflow: 'hidden'
   },
@@ -2165,19 +2444,19 @@ const styles = StyleSheet.create({
     top: -48
   },
   kicker: {
-    color: palette.gold,
+    color: palette.red,
     fontSize: 13,
     fontWeight: '800',
     textTransform: 'uppercase'
   },
   heroTitle: {
-    color: palette.white,
+    color: palette.ink,
     fontSize: 30,
     fontWeight: '900',
     marginTop: 8
   },
   heroText: {
-    color: palette.whiteSoft,
+    color: palette.inkMuted,
     fontSize: 15,
     lineHeight: 22,
     marginTop: 10
@@ -2191,12 +2470,9 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: palette.white,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
-    padding: 16,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.06,
-    shadowRadius: 10
+    borderColor: 'rgba(217, 226, 234, 0.62)',
+    borderRadius: 10,
+    padding: 15
   },
   lockedCard: {
     opacity: 0.72
@@ -2295,11 +2571,9 @@ const styles = StyleSheet.create({
   },
   contentIntro: {
     backgroundColor: palette.white,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.red,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
+    borderColor: 'rgba(217, 226, 234, 0.62)',
+    borderRadius: 10,
     padding: 14,
     gap: 6
   },
@@ -2408,12 +2682,67 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   accountMenu: {
-    backgroundColor: palette.whiteSoft,
+    position: 'absolute',
+    top: 48,
+    right: 0,
+    zIndex: 8,
+    width: 238,
+    backgroundColor: palette.white,
     borderWidth: 1,
     borderColor: palette.line,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10
+    borderRadius: 12,
+    padding: 8,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.12,
+    shadowRadius: 16
+  },
+  accountMenuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.line,
+    marginBottom: 4
+  },
+  accountMenuAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: palette.whiteSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
+  accountMenuAvatarImage: {
+    width: '100%',
+    height: '100%'
+  },
+  accountMenuName: {
+    color: palette.ink,
+    fontWeight: '900',
+    fontSize: 13
+  },
+  accountMenuSub: {
+    color: palette.inkMuted,
+    fontSize: 12,
+    marginTop: 2
+  },
+  accountMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 38,
+    paddingHorizontal: 8,
+    borderRadius: 8
+  },
+  accountMenuItemText: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  accountMenuDanger: {
+    color: palette.red
   },
   primaryButton: {
     backgroundColor: palette.red,
@@ -2486,18 +2815,26 @@ const styles = StyleSheet.create({
   },
   profileCommunityPanel: {
     backgroundColor: palette.whiteSoft,
-    borderColor: palette.line,
+    borderColor: 'rgba(217, 226, 234, 0.7)',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 12,
     marginTop: 12,
     gap: 10
   },
+  profileShell: {
+    position: 'relative',
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 226, 234, 0.62)',
+    borderRadius: 10,
+    padding: 15
+  },
   innerNewsCard: {
     backgroundColor: palette.white,
-    borderColor: palette.line,
+    borderColor: 'rgba(217, 226, 234, 0.62)',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 12
   },
   adminUserHeader: {
@@ -2525,7 +2862,72 @@ const styles = StyleSheet.create({
   },
   inlineActions: {
     flexDirection: 'row',
-    gap: 14
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  inlineEditButton: {
+    alignSelf: 'flex-start',
+    minHeight: 38,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: palette.white
+  },
+  inlineEditButtonText: {
+    color: palette.red,
+    fontSize: 13,
+    fontWeight: '900'
+  },
+  inlineEditorPanel: {
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8
+  },
+  smallActionButton: {
+    minHeight: 38,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: palette.whiteSoft
+  },
+  smallActionText: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  inlineBlockEditor: {
+    backgroundColor: palette.whiteSoft,
+    borderRadius: 10,
+    padding: 10,
+    gap: 6
+  },
+  inlineBlockHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  inlineIconActions: {
+    flexDirection: 'row',
+    gap: 6
+  },
+  iconButtonGhost: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.white
   },
   filterRow: {
     flexDirection: 'row',
@@ -2691,10 +3093,10 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   adminPanel: {
-    backgroundColor: '#102A3A',
-    borderColor: palette.red,
+    backgroundColor: '#E9F1F6',
+    borderColor: palette.line,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 14,
     gap: 10,
     marginTop: 12
@@ -2708,9 +3110,9 @@ const styles = StyleSheet.create({
     width: '31.5%',
     minHeight: 66,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 8,
+    borderColor: palette.line,
+    backgroundColor: palette.white,
+    borderRadius: 10,
     padding: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2721,7 +3123,7 @@ const styles = StyleSheet.create({
     borderColor: palette.red
   },
   adminModuleText: {
-    color: palette.white,
+    color: palette.ink,
     fontSize: 11,
     fontWeight: '900',
     textAlign: 'center'
@@ -2731,9 +3133,9 @@ const styles = StyleSheet.create({
   },
   adminWorkspace: {
     backgroundColor: palette.white,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(217, 226, 234, 0.62)',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 12,
     gap: 10
   },
