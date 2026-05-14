@@ -1,0 +1,1121 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Palestra</title>
+    <style>
+      :root {
+        --paper: #f3fafe;
+        --white: #ffffff;
+        --ink: #153b4a;
+        --muted: #5c7380;
+        --line: #cbe8f4;
+        --red: #1f9fd1;
+        --blue-deep: #0e6e9f;
+        --gold: #f2c14e;
+        --gold-soft: #ddf4fc;
+        --green: #2e8c72;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 20% 0%, rgba(31, 159, 209, 0.22), transparent 26%),
+          radial-gradient(circle at 95% 12%, rgba(244, 185, 66, 0.22), transparent 22%),
+          var(--paper);
+        color: var(--ink);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      .app {
+        width: min(430px, 100%);
+        min-height: 100vh;
+        margin: 0 auto;
+        background: var(--paper);
+        border-left: 1px solid var(--line);
+        border-right: 1px solid var(--line);
+        position: relative;
+        padding-bottom: 86px;
+        box-shadow: 0 18px 50px rgba(14, 110, 159, 0.14);
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--white);
+        border-bottom: 1px solid var(--line);
+        box-shadow: 0 10px 24px rgba(14, 110, 159, 0.08);
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .brand {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 800;
+      }
+
+      .subtitle {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .badge {
+        border: 0;
+        background: var(--gold-soft);
+        color: var(--ink);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      main {
+        padding: 20px;
+      }
+
+      .stack {
+        display: grid;
+        gap: 14px;
+      }
+
+      .hero {
+        background: var(--blue-deep);
+        border-radius: 8px;
+        padding: 22px;
+        color: var(--white);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        right: -42px;
+        top: -52px;
+        border-radius: 50%;
+        background: rgba(31, 159, 209, 0.42);
+      }
+
+      .kicker {
+        margin: 0;
+        color: var(--gold);
+        font-size: 13px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .hero h2 {
+        margin: 8px 0 0;
+        font-size: 30px;
+        line-height: 1.05;
+      }
+
+      .hero p {
+        margin: 10px 0 0;
+        color: #fff7ed;
+        font-size: 15px;
+        line-height: 1.45;
+      }
+
+      h3 {
+        margin: 4px 0 0;
+        font-size: 20px;
+      }
+
+      .card,
+      .notice {
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 10px 24px rgba(14, 110, 159, 0.08);
+      }
+
+      .eyebrow {
+        margin: 0 0 6px;
+        color: var(--red);
+        font-size: 12px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .card h4 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+
+      .card p,
+      .notice p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.45;
+      }
+
+      .card img,
+      .detail img {
+        width: 100%;
+        height: 170px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-top: 12px;
+        border: 1px solid var(--line);
+      }
+
+      .hint {
+        margin-top: 10px;
+        color: var(--red);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .locked {
+        opacity: 0.7;
+      }
+
+      .notice {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .notice strong {
+        color: var(--green);
+      }
+
+      .button-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .brand-mark {
+        width: 42px;
+        height: 42px;
+        border: 3px solid var(--red);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--white);
+        flex: 0 0 auto;
+      }
+
+      .brand-mark::before {
+        content: "";
+        width: 22px;
+        height: 22px;
+        border-left: 3px solid var(--red);
+        border-top: 3px solid var(--red);
+        transform: rotate(45deg) translate(2px, 2px);
+      }
+
+      .brand-lockup {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .back {
+        width: auto;
+        min-height: 40px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        background: var(--white);
+        color: var(--red);
+        border-radius: 8px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .calendar {
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px;
+      }
+
+      .calendar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+
+      .calendar-head button {
+        width: 34px;
+        height: 34px;
+        border: 1px solid var(--line);
+        background: var(--white);
+        color: var(--red);
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .calendar-title {
+        font-weight: 900;
+        text-transform: capitalize;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+      }
+
+      .weekday,
+      .day {
+        min-height: 36px;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+      }
+
+      .weekday {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .day.event {
+        background: var(--gold-soft);
+        color: var(--red);
+        border-radius: 8px;
+      }
+
+      .day.activity {
+        background: var(--red);
+        color: var(--white);
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      .detail {
+        background: var(--gold-soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px;
+      }
+
+      .modal {
+        background: var(--white);
+        border: 1px solid var(--red);
+        border-radius: 8px;
+        padding: 14px;
+        box-shadow: 0 18px 34px rgba(14, 110, 159, 0.16);
+      }
+
+      .group-note {
+        background: var(--gold-soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        font-weight: 800;
+      }
+
+      button.action {
+        width: 100%;
+        min-height: 46px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--red);
+        color: var(--white);
+        font-size: 15px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      button.outline {
+        background: var(--white);
+        color: var(--red);
+        border: 1px solid var(--red);
+      }
+
+      nav {
+        position: fixed;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: min(430px, 100%);
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        background: var(--white);
+        border-top: 1px solid var(--line);
+        padding: 8px 4px 10px;
+      }
+
+      nav button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        display: grid;
+        gap: 3px;
+        justify-items: center;
+        font-size: 10px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      nav button.active {
+        color: var(--red);
+      }
+
+      .icon {
+        width: 32px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+        line-height: 1;
+        border: 1px solid var(--line);
+        border-radius: 12px 6px 13px 7px;
+        background: var(--gold-soft);
+      }
+
+      nav button.active .icon {
+        background: var(--red);
+        color: var(--white);
+        border-color: var(--red);
+      }
+
+      .tap-circle {
+        position: fixed;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        pointer-events: none;
+        background: rgba(31, 159, 209, 0.24);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        transform: translate(-50%, -50%);
+        animation: tapfade 420ms ease-out forwards;
+        z-index: 999;
+      }
+
+      @keyframes tapfade {
+        from {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(0.6);
+        }
+
+        to {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(1.45);
+        }
+      }
+
+      .day.private {
+        background: #7b4fe0;
+        color: var(--white);
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      .profile-panel {
+        background: var(--gold-soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .input {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 12px;
+        color: var(--ink);
+        background: var(--white);
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        border: 1px solid var(--line);
+        background: var(--white);
+        color: var(--ink);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .chip.active {
+        background: var(--red);
+        color: var(--white);
+        border-color: var(--red);
+      }
+
+      .avatar {
+        width: 104px;
+        height: 104px;
+        border-radius: 24px 12px 28px 14px;
+        border: 2px solid var(--red);
+        object-fit: cover;
+        background: var(--gold-soft);
+      }
+
+      .admin-panel {
+        background: #102a3a;
+        color: var(--white);
+        border: 1px solid var(--red);
+        border-radius: 8px;
+        padding: 14px;
+        display: grid;
+        gap: 10px;
+        box-shadow: 0 18px 40px rgba(16, 42, 58, 0.24);
+      }
+
+      .admin-panel p,
+      .admin-panel h4 {
+        color: var(--white);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <h1 class="brand">Palestra</h1>
+            <p class="subtitle">Movimiento Catolico</p>
+          </div>
+        </div>
+        <div class="badge" id="roleBadge">Publico</div>
+      </header>
+
+      <main id="screen"></main>
+
+      <nav>
+        <button class="active" data-tab="inicio"><span class="icon">⌂</span><span>Inicio</span></button>
+        <button data-tab="notilestra"><span class="icon">□</span><span>Notilestra</span></button>
+        <button data-tab="materiales"><span class="icon">▤</span><span>Materiales</span></button>
+        <button data-tab="comunidades"><span class="icon">◎</span><span>Comunidades</span></button>
+        <button data-tab="historia"><span class="icon">◇</span><span>Historia</span></button>
+        <button data-tab="contacto"><span class="icon">✉</span><span>Contacto</span></button>
+        <button data-tab="perfil"><span class="icon">○</span><span>Perfil</span></button>
+      </nav>
+    </div>
+
+    <script>
+      const sessions = {
+        invitado: {
+          fullName: 'Visitante Demo',
+          province: 'Salta',
+          role: 'Invitado',
+          contact: '+54 387 400-0001',
+          communityOfOrigin: 'Sin comunidad asignada',
+          status: 'Aprobado',
+          permissions: ['ver_inicio', 'ver_noticias', 'ver_comunidades', 'ver_historia', 'ver_contacto']
+        },
+        palestrista: {
+          fullName: 'Camila Torres',
+          province: 'Tucuman',
+          role: 'Palestrista',
+          contact: '+54 381 400-0002',
+          communityOfOrigin: 'Comunidad Tucuman 1',
+          status: 'Aprobado',
+          permissions: ['ver_noticias_comunidad', 'descargar_archivos']
+        },
+        sedimentador: {
+          fullName: 'Mateo Herrera',
+          province: 'Catamarca',
+          role: 'Sedimentador',
+          contact: '+54 383 400-0003',
+          communityOfOrigin: 'Comunidad Catamarca 2',
+          status: 'Aprobado',
+          permissions: ['ver_noticias_comunidad', 'descargar_archivos', 'descargar_archivos_exclusivos', 'ver_fechas_privadas']
+        },
+        coordinador: {
+          fullName: 'Lucia Rios',
+          province: 'Cordoba',
+          role: 'Coordinador de comunidad',
+          contact: '+54 351 400-0004',
+          communityOfOrigin: 'Comunidad Cordoba 1',
+          status: 'Aprobado',
+          permissions: ['ver_noticias_comunidad', 'descargar_archivos', 'descargar_archivos_exclusivos', 'ver_fechas_privadas', 'subir_noticias_comunidad', 'gestionar_comunidad']
+        },
+        nacional: {
+          fullName: 'Equipo Nacional Demo',
+          province: 'Argentina',
+          role: 'Coordinador Nacional',
+          contact: '+54 9 11 2456-7890',
+          communityOfOrigin: 'Equipo Nacional',
+          status: 'Aprobado',
+          permissions: ['ver_noticias_comunidad', 'descargar_archivos', 'descargar_archivos_exclusivos', 'ver_fechas_privadas', 'gestionar_permisos']
+        },
+        administrador: {
+          fullName: 'Administrador Tecnico',
+          province: 'Sistema',
+          role: 'Administrador',
+          contact: 'admin@palestra.org.ar',
+          communityOfOrigin: 'Administracion global',
+          status: 'Aprobado',
+          permissions: ['ver_noticias_comunidad', 'descargar_archivos', 'descargar_archivos_exclusivos', 'ver_fechas_privadas', 'gestionar_permisos', 'gestionar_sistema', 'gestionar_roles_globales', 'gestionar_pestanas', 'gestionar_comunidades_global']
+        }
+      };
+
+      const state = {
+        tab: 'inicio',
+        session: null,
+        selectedProvince: null,
+        selectedCommunity: null,
+        selectedActivity: null,
+        showProfileCommunity: false,
+        expandedNotice: null,
+        expandedNotilestra: null,
+        monthOffset: 0,
+        search: '',
+        provinceFilter: 'Todas',
+        favorites: [],
+        reminders: [],
+        avatarUrl: '',
+        notilestraTab: 'noticias',
+        historyTab: 'historia',
+        selectedRequest: null
+      };
+
+      const imageUrl = 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png';
+
+      const notices = [
+        {
+          scope: 'Nacional',
+          title: 'Aviso corto de prueba',
+          body: 'Nos estamos preparando para una nueva etapa de comunicacion.'
+        },
+        {
+          scope: 'Formacion',
+          title: 'Aviso mediano para comunidades',
+          body: 'Este aviso tiene un texto intermedio para probar como se adapta la tarjeta cuando el contenido ocupa varias lineas. La idea es que se pueda leer comodo sin hacer pesada la pantalla principal.'
+        },
+        {
+          scope: 'Servicio',
+          title: 'Aviso largo de convocatoria nacional',
+          body: 'Este es un aviso largo de prueba. La idea es validar como se comporta la app cuando el equipo nacional, provincial o local necesita publicar un comunicado con bastante informacion. En una version real podria incluir indicaciones pastorales, horarios, responsables, datos de inscripcion, materiales previos y una breve motivacion para que los jovenes puedan prepararse. Tambien nos permite revisar si el texto se lee bien, si la imagen acompana sin ocupar demasiado espacio y si la experiencia de expandir o contraer resulta comoda en celulares de distintos tamanos.'
+        }
+      ];
+
+      const notilestra = [
+        {
+          scope: 'Noticia',
+          date: '2026-05-18',
+          title: 'Palestra prepara su agenda nacional',
+          body: 'Equipos de distintas provincias comienzan a ordenar encuentros, reuniones y actividades para fortalecer la comunicacion nacional.'
+        },
+        {
+          scope: 'Novedad',
+          date: '2026-05-22',
+          title: 'Nuevo espacio de materiales internos',
+          body: 'La app incorporara recursos para miembros aprobados, coordinadores, asesores y equipo nacional. Esta noticia de prueba ayuda a validar el comportamiento expandible del sector Notilestra.'
+        },
+        {
+          scope: 'Agenda',
+          date: '2026-05-28',
+          title: 'Lanzamiento de prueba',
+          body: 'Fecha objetivo para presentar una primera version instalable por APK y comenzar pruebas con comunidades de distintas provincias.'
+        }
+      ];
+
+      const activities = [
+        { date: '2026-05-16', title: 'Encuentro joven regional', type: 'image-text', body: 'Jornada ficticia de encuentro, oracion y actividades por grupos para comunidades cercanas.', imageUrl },
+        { date: '2026-05-21', title: 'Reunion de coordinadores', type: 'text', body: 'Actividad ficticia reservada para ordenar agenda, materiales y acompanamiento comunitario.' },
+        { date: '2026-05-25', title: 'Celebracion patria comunitaria', type: 'image', imageUrl },
+        { date: '2026-06-04', title: 'Taller de formacion', type: 'image-text', body: 'Espacio ficticio de formacion para nuevos servidores y referentes locales.', imageUrl },
+        { date: '2026-06-13', title: 'Mision comunitaria', type: 'text', body: 'Salida ficticia de servicio y visita comunitaria.' },
+        { date: '2026-06-20', title: 'Fecha privada de sedimentadores', type: 'text', body: 'Actividad ficticia visible solo para sedimentadores y rangos dirigenciales.', requiredPermission: 'ver_fechas_privadas' }
+      ];
+
+      const roleDefinitions = [
+        ['Invitado', 'Solo puede ver noticias, comunidades, historia, contacto y el inicio.'],
+        ['Palestrista', 'Iniciador dentro del movimiento. Puede descargar archivos y ver noticias de su comunidad.'],
+        ['Sedimentador', 'Hizo el PM. Puede descargar archivos exclusivos y ver fechas no publicas.'],
+        ['Coordinador de comunidad', 'Puede subir noticias, gestionar horarios, fechas especiales y mensajes de su comunidad.'],
+        ['Animador de comunidad', 'Gestiona y envia mensajes a iniciadores de su comunidad.'],
+        ['Vocal', 'Controla publicaciones, aprueba sedimentadores y otorga roles provinciales.'],
+        ['Coordinador Diocesano', 'Hace todo lo del Vocal y otorga roles como Vocal o Asesor.'],
+        ['Asesor', 'Cargo honorifico con seccion exclusiva y atribuciones de coordinador de comunidad.'],
+        ['Vocal Nacional', 'Puede modificar todo en todas las provincias.'],
+        ['Coordinador Nacional', 'Gestiona permisos de todos los roles y otorga Vocal Nacional.'],
+        ['Administrador', 'Perfil tecnico de maxima confianza. Gestiona estructura, roles, permisos, pestanas, comunidades y configuracion global.']
+      ];
+
+      const communityNews = [
+        { community: 'Comunidad Tucuman 1', title: 'Reunion semanal de la comunidad', body: 'Noticia ficticia interna para Comunidad Tucuman 1.' },
+        { community: 'Comunidad Tucuman 1', title: 'Servicio comunitario del mes', body: 'Actividad ficticia organizada por la comunidad de origen del perfil demo.' },
+        { community: 'Comunidad Cordoba 1', title: 'Planificacion de animadores', body: 'Noticia ficticia para coordinadores y animadores de Cordoba.' }
+      ];
+
+      const contact = {
+        email: 'contacto@palestra.org.ar',
+        phone: '+54 9 11 2456-7890',
+        instagram: '@palestra.argentina',
+        helpText: 'Si estas buscando una comunidad, queres acercarte por primera vez o necesitas hablar con alguien del movimiento, escribinos y te orientamos segun tu provincia.',
+        donationText: 'Si queres colaborar con materiales, traslados o actividades comunitarias, contactanos y te contamos las formas disponibles.'
+      };
+
+      const requests = ['Solicitar cambio de comunidad', 'Pedir aprobacion como Palestrista', 'Pedir aprobacion como Sedimentador', 'Necesito contactar un dirigente'];
+      const faqs = [
+        ['Quiero sumarme, que hago?', 'Escribi por contacto y te orientamos hacia una comunidad cercana segun tu provincia.'],
+        ['Puedo cambiar mi comunidad de origen?', 'Si. En la app quedara una solicitud para que un dirigente revise el cambio.'],
+        ['Como se aprueba un rango?', 'Los rangos se aprueban segun la estructura del movimiento y los permisos de cada dirigente.']
+      ];
+      const pendingUsers = [
+        ['Sofia Mercado', 'Tucuman', 'Sedimentador', 'Pendiente'],
+        ['Juan Pereyra', 'Catamarca', 'Palestrista', 'Observado']
+      ];
+      const audit = ['Lucia Rios publico una noticia en Comunidad Cordoba 1.', 'Vocal Demo aprobo un usuario sedimentador.', 'Coordinacion Nacional actualizo permisos de prueba.'];
+
+      const historyParagraphs = [
+        'Palestra nacio como una respuesta joven al deseo de vivir la fe de una manera cercana, comunitaria y comprometida. Desde sus primeros pasos, el movimiento busco que cada persona pudiera descubrir que Cristo camina con ella en la vida concreta, en la amistad, en el servicio, en la alegria compartida y tambien en las preguntas profundas que aparecen al crecer.',
+        'Con el tiempo, distintas comunidades fueron tomando forma en parroquias, colegios, barrios y espacios pastorales. Cada una desarrollo su propio modo de reunirse, cantar, rezar, acompanar y servir, pero todas conservaron una misma intuicion: nadie camina solo cuando encuentra una comunidad que lo recibe y lo ayuda a mirar la vida con esperanza.',
+        'En Argentina, Palestra fue extendiendose por provincias donde muchos jovenes encontraron un lugar para formarse, asumir responsabilidades y descubrir una vocacion de servicio. Salta, Jujuy, Tucuman, Catamarca, Cordoba y San Luis sostienen hoy una red viva de comunidades con historias distintas, marcadas por encuentros, jornadas, misiones, retiros, reuniones semanales y gestos silenciosos de acompanamiento.',
+        'Esta aplicacion busca continuar esa historia en clave digital. No reemplaza la vida comunitaria ni el encuentro cara a cara, sino que intenta ordenar la comunicacion, acercar materiales, visibilizar comunidades y cuidar los espacios internos del movimiento. Es una herramienta sencilla para que Palestra pueda seguir caminando con unidad, memoria y creatividad.'
+      ];
+
+      const provinces = [
+        { province: 'Salta', region: 'NOA', count: 29 },
+        { province: 'Jujuy', region: 'NOA', count: 25 },
+        { province: 'Tucuman', region: 'NOA', count: 19 },
+        { province: 'Catamarca', region: 'NOA', count: 20 },
+        { province: 'Cordoba', region: 'Centro', count: 2 },
+        { province: 'San Luis', region: 'Cuyo', count: 3 }
+      ].map((item) => ({
+        ...item,
+        communities: Array.from({ length: item.count }, (_, index) => {
+          const isAdultProvince = item.province === 'Tucuman' || item.province === 'Catamarca';
+          const adultStart = item.province === 'Tucuman' ? 16 : item.province === 'Catamarca' ? 17 : 999;
+          const adult = isAdultProvince && index >= adultStart;
+          return {
+          name: `Comunidad ${item.province} ${index + 1}`,
+          address: `Direccion ficticia ${index + 1}, ${item.province}`,
+          phone: `+54 000 400-${String(index + 1).padStart(4, '0')}`,
+          meetingDay: index % 2 === 0 ? 'Sabado' : 'Domingo',
+          meetingTime: index % 2 === 0 ? '18:00' : '20:00',
+          description: `Presentacion ficticia de Comunidad ${item.province} ${index + 1}. Esta comunidad conserva una historia de encuentros, amistad, oracion y servicio en su zona.`,
+          group: adult ? 'adultos' : 'jovenes'
+        };
+        })
+      }));
+
+      function approved() {
+        return state.session && state.session.status === 'Aprobado';
+      }
+
+      function hasPermission(permission) {
+        return state.session && state.session.permissions.includes(permission);
+      }
+
+      function card(eyebrow, title, body, locked = false) {
+        return `<article class="card ${locked ? 'locked' : ''}">
+          <p class="eyebrow">${eyebrow}</p>
+          <h4>${title}</h4>
+          <p>${body}</p>
+        </article>`;
+      }
+
+      function expandableCard(collection, item, expandedKey, setter) {
+        const expanded = state[expandedKey] === item.title;
+        const text = expanded ? item.body : `${item.body.slice(0, 105)}${item.body.length > 105 ? '...' : ''}`;
+        return `<article class="card" role="button" tabindex="0" onclick="${setter}('${item.title.replaceAll("'", "\\'")}')">
+          <p class="eyebrow">${item.scope}${item.date ? ` - ${item.date}` : ''}</p>
+          <h4>${item.title}</h4>
+          <p>${text}</p>
+          ${collection === 'notices' && expanded ? `<img src="${imageUrl}" alt="">` : ''}
+          <div class="hint">${expanded ? 'Tocar para contraer' : 'Tocar para leer mas'}</div>
+        </article>`;
+      }
+
+      function renderInicio() {
+        return `<section class="stack">
+          <div class="hero">
+            <p class="kicker">Argentina</p>
+            <h2>Una app para caminar juntos.</h2>
+            <p>Noticias, agenda, materiales y comunicacion interna para las comunidades de Palestra.</p>
+          </div>
+          <h3>Avisos</h3>
+          ${notices.map((item) => expandableCard('notices', item, 'expandedNotice', 'toggleNotice')).join('')}
+          <div class="notice"><strong>${approved() ? 'Acceso activo' : 'Acceso privado'}</strong><p>${approved() ? 'Tu usuario esta aprobado. Ya podes ver contenido interno segun tus permisos.' : 'Algunas secciones requieren registro y aprobacion de un coordinador.'}</p></div>
+        </section>`;
+      }
+
+      function renderNotilestra() {
+        const base = new Date(2026, 4 + state.monthOffset, 1);
+        const monthName = base.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+        const daysInMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+        const firstDay = new Date(base.getFullYear(), base.getMonth(), 1).getDay();
+        const eventDays = notilestra
+          .filter((item) => {
+            const date = new Date(`${item.date}T00:00:00`);
+            return date.getFullYear() === base.getFullYear() && date.getMonth() === base.getMonth();
+          })
+          .map((item) => new Date(`${item.date}T00:00:00`).getDate());
+        const monthActivities = activities.filter((item) => {
+          const date = new Date(`${item.date}T00:00:00`);
+          const canSee = !item.requiredPermission || hasPermission(item.requiredPermission);
+          return canSee && date.getFullYear() === base.getFullYear() && date.getMonth() === base.getMonth();
+        });
+
+        return `<section class="stack">
+          <h3>Notilestra</h3>
+          <div class="chips">
+            ${['noticias', 'favoritos', 'recordatorios'].map((item) => `<button class="chip ${state.notilestraTab === item ? 'active' : ''}" onclick="setNotilestraTab('${item}')">${item[0].toUpperCase() + item.slice(1)}</button>`).join('')}
+          </div>
+          <input class="input" placeholder="Buscar noticias o actividades" value="${state.search}" oninput="setSearch(this.value)">
+          <div class="calendar">
+            <div class="calendar-head">
+              <button onclick="moveMonth(-1)">‹</button>
+              <div class="calendar-title">${monthName}</div>
+              <button onclick="moveMonth(1)">›</button>
+            </div>
+            <div class="calendar-grid">
+              ${['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day) => `<div class="weekday">${day}</div>`).join('')}
+              ${Array.from({ length: firstDay }).map(() => '<div></div>').join('')}
+              ${Array.from({ length: daysInMonth }).map((_, index) => {
+                const day = index + 1;
+                const activity = monthActivities.find((item) => new Date(`${item.date}T00:00:00`).getDate() === day);
+                return `<div class="day ${activity?.requiredPermission ? 'private' : activity ? 'activity' : eventDays.includes(day) ? 'event' : ''}" ${activity ? `onclick="setActivity('${activity.title.replaceAll("'", "\\'")}')"` : ''}>${day}</div>`;
+              }).join('')}
+            </div>
+          </div>
+          ${state.selectedActivity ? renderActivityModal() : ''}
+          ${state.notilestraTab === 'noticias' ? notilestra.filter((item) => `${item.title} ${item.body}`.toLowerCase().includes(state.search.toLowerCase())).map((item) => `${expandableCard('notilestra', item, 'expandedNotilestra', 'toggleNotilestra')}<div class="chips"><button class="chip" onclick="addFavorite('${item.title.replaceAll("'", "\\'")}')">Favorito</button><button class="chip" onclick="addReminder('${item.title.replaceAll("'", "\\'")}')">Recordar</button></div>`).join('') : ''}
+          ${state.notilestraTab === 'favoritos' ? card('Favoritos', 'Guardados', state.favorites.length ? state.favorites.join('<br>') : 'Todavia no marcaste favoritos.') : ''}
+          ${state.notilestraTab === 'recordatorios' ? card('Recordatorios', 'Marcados', state.reminders.length ? state.reminders.join('<br>') : 'Todavia no marcaste recordatorios.') : ''}
+        </section>`;
+      }
+
+      function renderActivityModal() {
+        const activity = activities.find((item) => item.title === state.selectedActivity);
+        return `<div class="modal">
+          <button class="back" onclick="setActivity(null)">Cerrar actividad</button>
+          <p class="eyebrow">${activity.date}</p>
+          <h4>${activity.title}</h4>
+          ${activity.imageUrl ? `<img src="${activity.imageUrl}" alt="">` : ''}
+          ${activity.body ? `<p>${activity.body}</p>` : ''}
+        </div>`;
+      }
+
+      function renderMateriales() {
+        return `<section class="stack">
+          <h3>Materiales</h3>
+          ${card('Publico', 'Oracion inicial', 'Recurso abierto para acompanar encuentros y reuniones.')}
+          ${card('Interno', 'Guia para reuniones', hasPermission('ver_materiales_internos') ? 'Documento reservado para miembros aprobados.' : 'Material restringido por rango o permiso.', !hasPermission('ver_materiales_internos'))}
+          ${card('Reservado', 'Documento de coordinacion nacional', hasPermission('ver_documentos_confidenciales') ? 'Material de trabajo para equipo nacional y roles autorizados.' : 'Material restringido por rango o permiso.', !hasPermission('ver_documentos_confidenciales'))}
+        </section>`;
+      }
+
+      function renderComunidades() {
+        if (state.selectedProvince) {
+          const province = provinces.find((item) => item.province === state.selectedProvince);
+          const community = state.selectedCommunity ? province.communities.find((item) => item.name === state.selectedCommunity) : null;
+          const hasGroups = province.province === 'Tucuman' || province.province === 'Catamarca';
+          const renderCommunity = (community) => `<article class="card" role="button" tabindex="0" onclick="setCommunity('${community.name.replaceAll("'", "\\'")}')">
+            <p class="eyebrow">${community.group === 'adultos' ? 'Adultos' : 'Jovenes'}</p>
+            <h4>${community.name}</h4>
+            <p>${community.address}</p>
+            <p>Contacto: ${community.phone}</p>
+            <p>Reunion: ${community.meetingDay} - ${community.meetingTime}</p>
+            <div class="hint">Tocar para ver presentacion</div>
+          </article>`;
+          return `<section class="stack">
+            <button class="back" onclick="setProvince(null)">‹ Provincias</button>
+            <h3>${province.province}</h3>
+            ${card(province.region, `${province.count} comunidades`, 'Datos ficticios editables luego desde el panel administrador.')}
+            ${hasGroups ? '<div class="group-note">Esta provincia distingue comunidades de jovenes y comunidades de adultos.</div>' : ''}
+            ${community ? `<div class="detail">
+              <button class="back" onclick="setCommunity(null)">Cerrar comunidad</button>
+              <img src="${imageUrl}" alt="">
+              <h4>${community.name}</h4>
+              <p>${community.description}</p>
+              <button class="action outline" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(community.address)}', '_blank')">Abrir direccion en Maps</button>
+            </div>` : ''}
+            ${hasGroups ? `<h3>Comunidades de jovenes</h3>${province.communities.filter((item) => item.group !== 'adultos').map(renderCommunity).join('')}<h3>Comunidades de adultos</h3>${province.communities.filter((item) => item.group === 'adultos').map(renderCommunity).join('')}` : province.communities.map(renderCommunity).join('')}
+          </section>`;
+        }
+
+        return `<section class="stack">
+          <h3>Comunidades</h3>
+          <input class="input" placeholder="Buscar provincia" value="${state.search}" oninput="setSearch(this.value)">
+          <div class="chips">${['Todas', 'Salta', 'Tucuman', 'Catamarca', 'Cordoba', 'San Luis'].map((item) => `<button class="chip ${state.provinceFilter === item ? 'active' : ''}" onclick="setProvinceFilter('${item}')">${item}</button>`).join('')}</div>
+          ${provinces.filter((item) => state.provinceFilter === 'Todas' || item.province === state.provinceFilter).filter((item) => item.province.toLowerCase().includes(state.search.toLowerCase())).map((item) => `<article class="card" role="button" tabindex="0" onclick="setProvince('${item.province}')">
+            <p class="eyebrow">${item.region}</p>
+            <h4>${item.province}</h4>
+            <p>${item.count} comunidades activas. Toca para ver ubicaciones.</p>
+          </article>`).join('')}
+        </section>`;
+      }
+
+      function setProvince(province) {
+        state.selectedProvince = province;
+        state.selectedCommunity = null;
+        state.search = '';
+        render();
+      }
+
+      function setProvinceFilter(filter) {
+        state.provinceFilter = filter;
+        render();
+      }
+
+      function setCommunity(community) {
+        state.selectedCommunity = community;
+        render();
+      }
+
+      function toggleNotice(title) {
+        state.expandedNotice = state.expandedNotice === title ? null : title;
+        render();
+      }
+
+      function toggleNotilestra(title) {
+        state.expandedNotilestra = state.expandedNotilestra === title ? null : title;
+        render();
+      }
+
+      function moveMonth(offset) {
+        state.monthOffset += offset;
+        state.selectedActivity = null;
+        render();
+      }
+
+      function setSearch(value) {
+        state.search = value;
+        render();
+      }
+
+      function addFavorite(title) {
+        if (!state.favorites.includes(title)) state.favorites.push(title);
+        render();
+      }
+
+      function addReminder(title) {
+        if (!state.reminders.includes(title)) state.reminders.push(title);
+        render();
+      }
+
+      function setNotilestraTab(tab) {
+        state.notilestraTab = tab;
+        render();
+      }
+
+      function setHistoryTab(tab) {
+        state.historyTab = tab;
+        render();
+      }
+
+      function setActivity(title) {
+        state.selectedActivity = title;
+        render();
+      }
+
+      function renderHistoria() {
+        return `<section class="stack">
+          <h3>Historia</h3>
+          <div class="chips">
+            <button class="chip ${state.historyTab === 'historia' ? 'active' : ''}" onclick="setHistoryTab('historia')">Historia</button>
+            <button class="chip ${state.historyTab === 'faq' ? 'active' : ''}" onclick="setHistoryTab('faq')">Preguntas frecuentes</button>
+          </div>
+          ${state.historyTab === 'historia' ? historyParagraphs.map((paragraph, index) => card(`Capitulo ${index + 1}`, 'Historia del movimiento', paragraph)).join('') : faqs.map(([q, a]) => card('FAQ', q, a)).join('')}
+        </section>`;
+      }
+
+      function renderContacto() {
+        return `<section class="stack">
+          <h3>Contacto</h3>
+          ${card('Ayuda', 'Encontrar una comunidad', contact.helpText)}
+          ${card('Canales', 'Escribinos', `Mail: ${contact.email}<br>Celular: ${contact.phone}<br>Instagram: ${contact.instagram}`)}
+          ${card('Donaciones', 'Colaborar con Palestra', contact.donationText)}
+        </section>`;
+      }
+
+      function renderPerfil() {
+        if (state.session) {
+          const news = communityNews.filter((item) => item.community === state.session.communityOfOrigin);
+          if (state.session.role === 'Invitado') {
+            return `<section class="stack">
+              <h3>Perfil Invitado</h3>
+              ${card('Invitado', 'Perfil Invitado', 'Podes conocer Palestra, ver noticias publicas, comunidades, historia y contacto.')}
+              <button class="action">Queres ser parte de Palestra?</button>
+              <button class="action outline">Registro demo</button>
+              <h3>Solicitudes</h3>
+              ${requests.map((item) => `<article class="card" role="button" tabindex="0" onclick="setRequest('${item.replaceAll("'", "\\'")}')"><h4>${item}</h4><div class="hint">Abrir solicitud</div></article>`).join('')}
+              ${renderRequestPanel()}
+              <button class="action outline" onclick="setSession(null)">Cerrar sesion demo</button>
+              <h3>Rangos</h3>
+              ${roleDefinitions.map(([role, description]) => card('Rango', role, description)).join('')}
+            </section>`;
+          }
+          return `<section class="stack">
+            <h3>Perfil y acceso</h3>
+            <div class="card">
+              ${state.avatarUrl ? `<img class="avatar" src="${state.avatarUrl}" alt="">` : '<div class="avatar"></div>'}
+              <p class="hint">Foto de credencial</p>
+              <input type="file" accept="image/*" onchange="loadAvatar(this)">
+            </div>
+            ${card(state.session.status, state.session.fullName, `Provincia: ${state.session.province}<br>Rango: ${state.session.role}<br>Contacto: ${state.session.contact}<br>Comunidad de origen: ${state.session.communityOfOrigin}`)}
+            ${card('Credencial digital', state.session.fullName, `${state.session.role}<br>${state.session.province}<br>${state.session.communityOfOrigin}`)}
+            <button class="action" onclick="toggleProfileCommunity()">${state.showProfileCommunity ? 'Ocultar mi comunidad' : 'Entrar a mi comunidad'}</button>
+            ${state.showProfileCommunity ? `<div class="profile-panel">
+              <p class="eyebrow">${state.session.communityOfOrigin}</p>
+              ${hasPermission('ver_noticias_comunidad') ? (news.length ? news.map((item) => card('Comunidad', item.title, item.body)).join('') : '<p>Todavia no hay noticias cargadas para esta comunidad.</p>') : '<p>Tu rango actual no permite ver noticias internas de comunidad.</p>'}
+            </div>` : ''}
+            <h3>Solicitudes</h3>
+            ${requests.map((item) => `<article class="card" role="button" tabindex="0" onclick="setRequest('${item.replaceAll("'", "\\'")}')"><h4>${item}</h4><div class="hint">Abrir solicitud</div></article>`).join('')}
+            ${renderRequestPanel()}
+            <button class="action outline" onclick="setSession(null)">Cerrar sesion demo</button>
+            ${renderGestionar()}
+            <h3>Rangos</h3>
+            ${roleDefinitions.map(([role, description]) => card('Rango', role, description)).join('')}
+          </section>`;
+        }
+
+        return `<section class="stack">
+          <h3>Perfil y acceso</h3>
+          <article class="card">
+            <h4>Acceso demo</h4>
+            <p>Estos botones simulan usuarios reales hasta conectar Supabase.</p>
+            <div class="button-list">
+              <button class="action" onclick="setSession('invitado')">Entrar como invitado</button>
+              <button class="action" onclick="setSession('palestrista')">Entrar como palestrista</button>
+              <button class="action" onclick="setSession('sedimentador')">Entrar como sedimentador</button>
+              <button class="action" onclick="setSession('coordinador')">Entrar como coordinador</button>
+              <button class="action" onclick="setSession('nacional')">Entrar como coordinador nacional</button>
+              <button class="action" onclick="setSession('administrador')">Entrar como administrador</button>
+            </div>
+          </article>
+          <h3>Rangos</h3>
+          ${roleDefinitions.map(([role, description]) => card('Rango', role, description)).join('')}
+        </section>`;
+      }
+
+      function setSession(kind) {
+        state.session = kind ? sessions[kind] : null;
+        state.tab = 'perfil';
+        state.showProfileCommunity = false;
+        state.selectedRequest = null;
+        render();
+      }
+
+      function renderGestionar() {
+        if (!state.session || !['Coordinador de comunidad', 'Vocal', 'Coordinador Diocesano', 'Asesor', 'Vocal Nacional', 'Coordinador Nacional', 'Administrador'].includes(state.session.role)) {
+          return '';
+        }
+
+        const adminTools = state.session.role === 'Administrador' ? `<div class="admin-panel">
+          <p class="eyebrow">Administrador</p>
+          <h4>Panel tecnico global</h4>
+          <p>Gestionar roles, permisos, pestanas, secciones, comunidades, provincias, usuarios, contenido y configuracion general.</p>
+          ${['Crear nuevo rol', 'Editar permisos por rango', 'Agregar pestana', 'Ocultar pestana', 'Modificar secciones', 'Borrar comunidad', 'Restaurar contenido', 'Ver auditoria completa'].map((item) => `<button class="action">${item}</button>`).join('')}
+        </div>` : '';
+
+        return `<h3>Gestionar</h3>
+          ${card('Modo dirigente', 'Herramientas disponibles', 'Publicar noticias, gestionar horarios, cargar fechas especiales, enviar mensajes y revisar solicitudes segun el rango.')}
+          ${pendingUsers.map(([name, province, role, status]) => card('Aprobacion', name, `${province}<br>Solicita: ${role}<br>Estado: ${status}`)).join('')}
+          ${card('Bitacora', 'Actividad reciente', audit.join('<br>'))}
+          ${adminTools}`;
+      }
+
+      function loadAvatar(input) {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          state.avatarUrl = String(reader.result);
+          render();
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function setRequest(request) {
+        state.selectedRequest = request;
+        render();
+      }
+
+      function renderRequestPanel() {
+        if (!state.selectedRequest || !state.session) return '';
+        return `<div class="profile-panel">
+          <button class="back" onclick="setRequest(null)">Cerrar solicitud</button>
+          <p class="eyebrow">Solicitud</p>
+          <h4>${state.selectedRequest}</h4>
+          <p>Nombre: ${state.session.fullName}</p>
+          <p>Provincia: ${state.session.province}</p>
+          <p>Rango actual: ${state.session.role}</p>
+          <p>Estado: borrador demo. Al conectar Supabase se enviara al responsable correspondiente.</p>
+        </div>`;
+      }
+
+      function toggleProfileCommunity() {
+        state.showProfileCommunity = !state.showProfileCommunity;
+        render();
+      }
+
+      function render() {
+        const renderers = {
+          inicio: renderInicio,
+          notilestra: renderNotilestra,
+          materiales: renderMateriales,
+          comunidades: renderComunidades,
+          historia: renderHistoria,
+          contacto: renderContacto,
+          perfil: renderPerfil
+        };
+        document.querySelector('#screen').innerHTML = renderers[state.tab]();
+        document.querySelector('#roleBadge').textContent = state.session ? state.session.role : 'Publico';
+        document.querySelectorAll('nav button').forEach((button) => {
+          button.classList.toggle('active', button.dataset.tab === state.tab);
+        });
+      }
+
+      document.querySelectorAll('nav button').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.tab = button.dataset.tab;
+          state.selectedProvince = null;
+          state.selectedCommunity = null;
+          state.selectedActivity = null;
+          render();
+        });
+      });
+
+      document.addEventListener('pointerdown', (event) => {
+        const circle = document.createElement('div');
+        circle.className = 'tap-circle';
+        circle.style.left = `${event.clientX}px`;
+        circle.style.top = `${event.clientY}px`;
+        document.body.appendChild(circle);
+        window.setTimeout(() => circle.remove(), 430);
+      });
+
+      window.setSearch = setSearch;
+      window.setProvinceFilter = setProvinceFilter;
+      window.addFavorite = addFavorite;
+      window.addReminder = addReminder;
+      window.loadAvatar = loadAvatar;
+      window.setNotilestraTab = setNotilestraTab;
+      window.setHistoryTab = setHistoryTab;
+      window.setRequest = setRequest;
+
+      render();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Palestra",
+    "slug": "palestra-argentina",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "palestra",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "org.palestra.argentina",
+      "versionCode": 1
+    },
+    "ios": {
+      "bundleIdentifier": "org.palestra.argentina"
+    },
+    "extra": {
+      "supabaseUrl": "https://lqnwdoehandtzxfzeghc.supabase.co",
+      "supabaseAnonKey": "sb_publishable_VC-GuhM65eDiZxHSwmRF9w_tLK_xqdr"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
