@@ -955,6 +955,7 @@ function ProfileScreen({
   onContentChanged: () => Promise<void>;
 }) {
   const [showCommunity, setShowCommunity] = useState(false);
+  const [showProfilePhoto, setShowProfilePhoto] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [userRequestText, setUserRequestText] = useState('');
   const [selectedSentRequestId, setSelectedSentRequestId] = useState('');
@@ -1067,7 +1068,10 @@ function ProfileScreen({
   const roleInfo = session ? roleDefinitions.find((item) => item.role === session.role) : null;
   const isCommunityLeader = Boolean(session && ['animador_comunidad', 'coordinador_comunidad'].includes(session.role));
   const canReviewLeadershipRequests = Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
-  const selectableCommunityMembers = communityMembers;
+  const selectableCommunityMembers = communityMembers.filter((member) => (
+    member.email !== session?.email
+    && member.full_name !== session?.fullName
+  ));
   const pendingAdminRequests = adminRequests.filter((item) => item.status === 'pendiente').sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
   const resolvedAdminRequests = adminRequests.filter((item) => item.status !== 'pendiente').sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   const filteredAdminUsers = adminUsers.filter((user) => {
@@ -1785,32 +1789,42 @@ function ProfileScreen({
               </TouchableOpacity>
             </View>
           ) : null}
-          <TouchableOpacity style={styles.avatarPlaceholder} onPress={uploadProfilePhoto} activeOpacity={0.85}>
-            {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.avatarImage} /> : <Ionicons name="camera-outline" size={30} color={palette.red} />}
-            <Text style={styles.cardText}>{session.avatarUrl ? 'Cambiar foto' : 'Subir foto'}</Text>
-          </TouchableOpacity>
-          <View style={styles.profileNameRow}>
-            <Text style={styles.cardTitle}>{session.fullName}</Text>
-            <View style={styles.verifiedRow}>
-              <Ionicons name={session.status === 'aprobado' ? 'checkmark-circle' : 'time-outline'} size={22} color={session.status === 'aprobado' ? palette.green : palette.gold} />
-              <Text style={styles.verifiedText}>{statusLabel(session.status)}</Text>
+          <View style={styles.profileHero}>
+            <TouchableOpacity style={styles.avatarFrameLarge} onPress={() => session.avatarUrl ? setShowProfilePhoto(true) : uploadProfilePhoto()} activeOpacity={0.88}>
+              {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.avatarImageLarge} /> : <Ionicons name="camera-outline" size={42} color={palette.red} />}
+            </TouchableOpacity>
+            <View style={styles.profileHeroInfo}>
+              <View style={styles.profileNameRow}>
+                <Text style={styles.profileName}>{session.fullName}</Text>
+                <View style={styles.verifiedRow}>
+                  <Ionicons name={session.status === 'aprobado' ? 'checkmark-circle' : 'time-outline'} size={22} color={session.status === 'aprobado' ? palette.green : palette.gold} />
+                  <Text style={styles.verifiedText}>{statusLabel(session.status)}</Text>
+                </View>
+              </View>
+              {session.email ? <Text style={styles.cardText}>{session.email}</Text> : null}
+              <Text style={styles.cardText}>{roleLabel(session.role)}</Text>
+              <TouchableOpacity style={styles.photoChangeButton} onPress={uploadProfilePhoto}>
+                <Ionicons name="camera-outline" size={16} color={palette.red} />
+                <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
+              </TouchableOpacity>
             </View>
           </View>
-          {session.email ? <Text style={styles.cardText}>Email: {session.email}</Text> : null}
+          {session.avatarUrl ? (
+            <Modal visible={showProfilePhoto} transparent animationType="fade" onRequestClose={() => setShowProfilePhoto(false)}>
+              <View style={styles.photoModalBackdrop}>
+                <TouchableOpacity style={styles.photoModalClose} onPress={() => setShowProfilePhoto(false)}>
+                  <Ionicons name="close" size={22} color={palette.white} />
+                </TouchableOpacity>
+                <Image source={{ uri: session.avatarUrl }} style={styles.photoModalImage} />
+              </View>
+            </Modal>
+          ) : null}
           <Text style={styles.cardText}>Provincia: {session.province}</Text>
           <Text style={styles.cardText}>Rango: {roleLabel(session.role)}</Text>
           <Text style={styles.cardText}>Contacto: {session.contact}</Text>
           <Text style={styles.cardText}>Comunidad de origen: {session.communityOfOrigin}</Text>
           <Text style={styles.cardText}>Estado: {statusLabel(session.status)}</Text>
           {roleInfo ? <Text style={styles.cardText}>{roleInfo.description}</Text> : null}
-          <View style={styles.filterRow}>
-            <TouchableOpacity style={[styles.filterChip, profilePanel === 'vista' && styles.filterChipActive]} onPress={() => setProfilePanel('vista')}>
-              <Text style={[styles.filterChipText, profilePanel === 'vista' && styles.filterChipTextActive]}>Mi perfil</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.filterChip, profilePanel === 'editar' && styles.filterChipActive]} onPress={() => setProfilePanel('editar')}>
-              <Text style={[styles.filterChipText, profilePanel === 'editar' && styles.filterChipTextActive]}>Editar perfil</Text>
-            </TouchableOpacity>
-          </View>
           {profilePanel === 'editar' ? <View style={styles.profileCommunityPanel}>
             <Text style={styles.cardEyebrow}>Editar perfil</Text>
             <Text style={styles.cardText}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
@@ -1861,9 +1875,6 @@ function ProfileScreen({
             </TouchableOpacity>
             {authMessage ? <Text style={styles.cardText}>{authMessage}</Text> : null}
           </View> : null}
-          <TouchableOpacity style={styles.primaryButton} onPress={() => setShowCommunity(!showCommunity)}>
-            <Text style={styles.primaryButtonText}>{showCommunity ? 'Ocultar mi comunidad' : 'Entrar a mi comunidad'}</Text>
-          </TouchableOpacity>
           {showCommunity ? (
             <View style={styles.profileCommunityPanel}>
               <Text style={styles.cardEyebrow}>{session.communityOfOrigin}</Text>
@@ -2964,6 +2975,80 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 8
   },
+  profileHero: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'flex-start',
+    marginBottom: 18
+  },
+  profileHeroInfo: {
+    flex: 1,
+    paddingTop: 6
+  },
+  profileName: {
+    color: palette.ink,
+    fontSize: 22,
+    fontWeight: '900',
+    flex: 1
+  },
+  avatarFrameLarge: {
+    width: 132,
+    height: 132,
+    borderRadius: 66,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.whiteSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
+  avatarImageLarge: {
+    width: '100%',
+    height: '100%'
+  },
+  photoChangeButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.white,
+    borderRadius: 8,
+    minHeight: 38,
+    paddingHorizontal: 10,
+    marginTop: 12
+  },
+  photoChangeText: {
+    color: palette.red,
+    fontSize: 13,
+    fontWeight: '900'
+  },
+  photoModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 20, 28, 0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24
+  },
+  photoModalImage: {
+    width: '100%',
+    maxWidth: 360,
+    aspectRatio: 1,
+    borderRadius: 16,
+    backgroundColor: palette.white
+  },
+  photoModalClose: {
+    position: 'absolute',
+    top: 44,
+    right: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   accountMenu: {
     position: 'absolute',
     top: 48,
@@ -3297,20 +3382,18 @@ const styles = StyleSheet.create({
     color: palette.white
   },
   avatarPlaceholder: {
-    height: 104,
+    height: 132,
     borderWidth: 1,
     borderColor: palette.line,
-    borderRadius: 8,
+    borderRadius: 66,
     backgroundColor: palette.whiteSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12
   },
   avatarImage: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    marginBottom: 6
+    width: '100%',
+    height: '100%'
   },
   communityChoiceList: {
     maxHeight: 220,
