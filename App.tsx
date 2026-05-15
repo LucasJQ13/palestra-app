@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Animated, Easing, Image, Modal, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, BackHandler, Easing, Image, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
@@ -14,6 +14,7 @@ import { getMyProfileSession } from './src/lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvince, canSeeAllProvinces, visibleHierarchyFor } from './src/lib/roles';
 
 const palestraLogo = require('./assets/logo-palestra.png');
+const demoVersionLabel = 'DEMO 0.1.0';
 
 type TabKey = string;
 type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general';
@@ -311,12 +312,17 @@ function AppLoadingScreen() {
 export default function App() {
   const [isBooting, setIsBooting] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('inicio');
+  const [tabHistory, setTabHistory] = useState<TabKey[]>(['inicio']);
   const [session, setSession] = useState<Session | null>(null);
   const [tapEffect, setTapEffect] = useState<{ x: number; y: number; id: number } | null>(null);
   const [tabSettings, setTabSettings] = useState<AppTabSetting[]>([]);
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
   const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
   const [contentVersion, setContentVersion] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [appMessage, setAppMessage] = useState('');
+  const lastBackPressRef = useRef(0);
+  const screenOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const timer = setTimeout(() => setIsBooting(false), 2200);
@@ -352,7 +358,14 @@ export default function App() {
 
   const visibleTabs = useMemo(() => {
     const currentRole = session?.role ?? 'invitado';
-    return resolvedTabs.filter((tab) => tab.visible && (!tab.visibleRoles || tab.visibleRoles.includes(currentRole)));
+    const seen = new Set<string>();
+    return resolvedTabs.filter((tab) => {
+      if (!tab.visible || (tab.visibleRoles && !tab.visibleRoles.includes(currentRole)) || seen.has(tab.key)) {
+        return false;
+      }
+      seen.add(tab.key);
+      return true;
+    });
   }, [resolvedTabs, session?.role]);
 
   const tabLabel = (key: TabKey) => resolvedTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
@@ -388,22 +401,83 @@ export default function App() {
     setContentVersion((current) => current + 1);
   }
 
-  useEffect(() => {
-    let alive = true;
-
-    async function hydrateSession() {
-      const { data } = await supabase.auth.getUser();
-      if (!alive || !data.user) {
-        return;
-      }
-
-      const result = await getMyProfileSession(data.user.email ?? 'Usuario');
-      if (result.session) {
-        setSession(result.session);
-      }
+  async function hydrateRealSession() {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      return;
     }
 
-    hydrateSession();
+    const result = await getMyProfileSession(data.user.email ?? 'Usuario');
+    if (result.session) {
+      setSession(result.session);
+    }
+  }
+
+  async function refreshAppContent(source = 'manual') {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    setAppMessage(source === 'manual' ? 'Actualizando contenido...' : '');
+    try {
+      await Promise.all([
+        reloadTabSettings(),
+        reloadAppContent(),
+        reloadAdminConfig(),
+        hydrateRealSession()
+      ]);
+      setContentVersion((current) => current + 1);
+      setAppMessage('Contenido actualizado.');
+      setTimeout(() => setAppMessage(''), 1800);
+    } catch (error) {
+      console.error('refreshAppContent', error);
+      setAppMessage(error instanceof Error ? error.message : 'No pude actualizar. Revisa la conexion.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
+  function navigateToTab(nextTab: TabKey) {
+    if (nextTab === activeTab) {
+      return;
+    }
+    setTabHistory((current) => [...current.filter((item, index) => index === current.length - 1 || item !== nextTab), nextTab]);
+    setActiveTab(nextTab);
+  }
+
+  function goBackInApp() {
+    if (tabHistory.length > 1) {
+      const nextHistory = tabHistory.slice(0, -1);
+      const previousTab = nextHistory[nextHistory.length - 1] ?? 'inicio';
+      setTabHistory(nextHistory);
+      setActiveTab(previousTab);
+      return true;
+    }
+
+    if (activeTab !== 'inicio') {
+      setTabHistory(['inicio']);
+      setActiveTab('inicio');
+      return true;
+    }
+
+    const now = Date.now();
+    if (now - lastBackPressRef.current < 1800) {
+      return false;
+    }
+
+    lastBackPressRef.current = now;
+    const message = 'Presiona nuevamente para salir';
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+    }
+    setAppMessage(message);
+    setTimeout(() => setAppMessage(''), 1800);
+    return true;
+  }
+
+  useEffect(() => {
+    hydrateRealSession();
     reloadTabSettings();
     reloadAppContent();
     reloadAdminConfig();
@@ -413,25 +487,43 @@ export default function App() {
         setSession(null);
       }
       if (authSession?.user) {
-        hydrateSession();
+        hydrateRealSession();
       }
     });
 
     return () => {
-      alive = false;
       listener.subscription.unsubscribe();
     };
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return undefined;
+    }
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', goBackInApp);
+    return () => subscription.remove();
+  }, [activeTab, tabHistory]);
+
+  useEffect(() => {
+    screenOpacity.setValue(0.88);
+    Animated.timing(screenOpacity, {
+      toValue: 1,
+      duration: 180,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true
+    }).start();
+  }, [activeTab, screenOpacity]);
+
   const screen = useMemo(() => {
     if (activeTab === 'inicio') {
-      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={setActiveTab} adminConfig={adminConfig} />;
+      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={navigateToTab} adminConfig={adminConfig} />;
     }
     if (activeTab === 'notilestra') {
       return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} editor={pageEditorProps('notilestra')} />;
     }
     if (activeTab === 'materiales') {
-      return <MaterialsScreen session={session} title={tabLabel('materiales')} content={appContent.find((item) => item.tab_key === 'materiales')} editor={pageEditorProps('materiales')} />;
+      return <MaterialsScreen session={session} title={tabLabel('materiales')} content={appContent.find((item) => item.tab_key === 'materiales')} refreshKey={contentVersion} editor={pageEditorProps('materiales')} />;
     }
     if (activeTab === 'comunidades') {
       return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} editor={pageEditorProps('comunidades')} />;
@@ -453,9 +545,9 @@ export default function App() {
       <SafeAreaView
         style={styles.safeArea}
         onTouchStart={(event) => {
-          const { locationX, locationY } = event.nativeEvent;
+          const { pageX, pageY } = event.nativeEvent;
           const id = Date.now();
-          setTapEffect({ x: locationX, y: locationY, id });
+          setTapEffect({ x: pageX, y: pageY, id });
           setTimeout(() => setTapEffect((current) => (current?.id === id ? null : current)), 420);
         }}
       >
@@ -470,18 +562,40 @@ export default function App() {
             <View>
               <Text style={styles.brand}>{adminConfig.identity.appName}</Text>
               <Text style={styles.subtitle}>{adminConfig.identity.subtitle}</Text>
+              <Text style={styles.demoLabel}>{demoVersionLabel}</Text>
             </View>
           </View>
           <View style={styles.sessionBadge}>
             <Text style={styles.sessionBadgeText}>{session ? roleLabel(session.role) : 'Invitado'}</Text>
           </View>
         </View>
-        <ScrollView contentContainerStyle={styles.content}>{screen}</ScrollView>
+        {appMessage ? (
+          <View pointerEvents="none" style={styles.appToast}>
+            <Text style={styles.appToastText}>{appMessage}</Text>
+          </View>
+        ) : null}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={(
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={() => refreshAppContent('manual')}
+              tintColor={palette.red}
+              colors={[palette.red, palette.gold, palette.blueDeep]}
+              progressBackgroundColor={palette.white}
+            />
+          )}
+        >
+          <Animated.View style={{ opacity: screenOpacity }}>
+            {screen}
+          </Animated.View>
+        </ScrollView>
         <View style={styles.tabBar}>
           {visibleTabs.map((tab) => {
             const selected = activeTab === tab.key;
             return (
-              <TouchableOpacity key={tab.key} style={styles.tabButton} onPress={() => setActiveTab(tab.key)} activeOpacity={0.8}>
+              <TouchableOpacity key={`${tab.key}-${tab.sortOrder}`} style={styles.tabButton} onPress={() => navigateToTab(tab.key)} activeOpacity={0.8}>
                 <View style={[styles.tabIconFrame, selected && styles.tabIconFrameActive]}>
                   <Ionicons name={tab.icon} size={20} color={selected ? palette.white : palette.red} />
                 </View>
@@ -632,14 +746,15 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
     if (content.blocks && content.blocks.length > 0) {
       return (
         <View style={styles.contentIntro}>
-          {content.blocks.map((block) => {
+          {content.blocks.map((block, index) => {
+            const blockKey = `${block.id}-${index}`;
             if (block.type === 'titulo') {
-              return <Text key={block.id} style={styles.cardTitle}>{block.value}</Text>;
+              return <Text key={blockKey} style={styles.cardTitle}>{block.value}</Text>;
             }
             if (block.type === 'imagen') {
-              return <Image key={block.id} source={{ uri: block.value }} style={styles.cardImage} />;
+              return <Image key={blockKey} source={{ uri: block.value }} style={styles.cardImage} />;
             }
-            return <Text key={block.id} style={styles.cardText}>{block.value}</Text>;
+            return <Text key={blockKey} style={styles.cardText}>{block.value}</Text>;
           })}
         </View>
       );
@@ -681,7 +796,7 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
               </TouchableOpacity>
             </View>
             {draftBlocks.map((block, index) => (
-              <View key={block.id} style={styles.inlineBlockEditor}>
+              <View key={`${block.id}-${index}`} style={styles.inlineBlockEditor}>
                 <View style={styles.inlineBlockHeader}>
                   <Text style={styles.cardEyebrow}>{block.type}</Text>
                   <View style={styles.inlineIconActions}>
@@ -799,8 +914,8 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             <Text style={styles.linkText}>Ver todas</Text>
           </TouchableOpacity>
         </View>
-        {nextEvents.map((item) => (
-          <View key={item.title} style={styles.miniEventRow}>
+        {nextEvents.map((item, index) => (
+          <View key={`${item.title}-${index}`} style={styles.miniEventRow}>
             <View style={styles.miniEventDate}>
               <Text style={styles.miniEventDay}>{new Date(`${item.date}T00:00:00`).getDate()}</Text>
               <Text style={styles.miniEventMonth}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { month: 'short' })}</Text>
@@ -932,7 +1047,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
             </TouchableOpacity>
             <Text style={styles.cardEyebrow}>Recordatorio</Text>
             <Text style={styles.cardTitle}>Tenes eventos marcados para manana</Text>
-            {dueReminderItems.map((item) => <Text key={item.title} style={styles.cardText}>{item.title} - {item.date}</Text>)}
+            {dueReminderItems.map((item, index) => <Text key={`${item.title}-${index}`} style={styles.cardText}>{item.title} - {item.date}</Text>)}
           </View>
         </View>
       </Modal>
@@ -1036,7 +1151,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
   );
 }
 
-function MaterialsScreen({ session, title, content, editor }: { session: Session | null; title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
+function MaterialsScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const [remoteMaterials, setRemoteMaterials] = useState<AppMaterialRecord[]>([]);
 
   useEffect(() => {
@@ -1049,7 +1164,7 @@ function MaterialsScreen({ session, title, content, editor }: { session: Session
     return () => {
       alive = false;
     };
-  }, []);
+  }, [refreshKey]);
 
   const visibleMaterials = remoteMaterials.length > 0
     ? remoteMaterials.map((material) => ({
@@ -1064,10 +1179,10 @@ function MaterialsScreen({ session, title, content, editor }: { session: Session
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {visibleMaterials.map((material) => {
+      {visibleMaterials.map((material, index) => {
         const locked = material.permission && !hasPermission(session, material.permission as Permission);
         return (
-          <View key={material.title} style={[styles.card, styles.libraryCard, locked && styles.lockedCard]}>
+          <View key={`${material.title}-${index}`} style={[styles.card, styles.libraryCard, locked && styles.lockedCard]}>
             <View style={styles.libraryIcon}>
               <Ionicons name={locked ? 'lock-closed-outline' : 'document-text-outline'} size={24} color={locked ? palette.inkMuted : palette.red} />
             </View>
@@ -1103,6 +1218,22 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
       alive = false;
     };
   }, [refreshKey]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !selectedProvince) {
+      return undefined;
+    }
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (selectedCommunity) {
+        setSelectedCommunity(null);
+        return true;
+      }
+      setSelectedProvince(null);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [selectedCommunity, selectedProvince]);
 
   if (province) {
     return (
@@ -1217,8 +1348,8 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
       ))}
       <SectionTitle title="Filtro demo" />
       <View style={styles.filterRow}>
-        {['Todas', ...visibleCommunityData.map((item) => item.province)].map((item) => (
-          <TouchableOpacity key={item} style={[styles.filterChip, filterProvince === item && styles.filterChipActive]} onPress={() => setFilterProvince(item)}>
+        {['Todas', ...visibleCommunityData.map((item) => item.province)].map((item, index) => (
+          <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, filterProvince === item && styles.filterChipActive]} onPress={() => setFilterProvince(item)}>
             <Text style={[styles.filterChipText, filterProvince === item && styles.filterChipTextActive]}>{item}</Text>
           </TouchableOpacity>
         ))}
@@ -2427,8 +2558,8 @@ function ProfileScreen({
                 {['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ' Este rango supervisa estructura nacional y provincias.' : ''}
               </Text>
               {hasPermission(session, 'ver_noticias_comunidad') ? (
-                profileNews.length > 0 ? profileNews.map((item) => (
-                  <View key={item.title} style={styles.innerNewsCard}>
+                profileNews.length > 0 ? profileNews.map((item, index) => (
+                  <View key={`${item.title}-${index}`} style={styles.innerNewsCard}>
                     <Text style={styles.cardTitle}>{item.title}</Text>
                     <Text style={styles.cardText}>{item.body}</Text>
                   </View>
@@ -2438,10 +2569,10 @@ function ProfileScreen({
               )}
               <SectionTitle title="Publicado por mi comunidad" />
               {myCommunityPublications.length === 0 ? <Text style={styles.cardText}>Todavia no hay publicaciones de tu animador o coordinador.</Text> : null}
-              {myCommunityPublications.map((item) => {
+              {myCommunityPublications.map((item, index) => {
                 const results = Object.entries(item.pollResults ?? {}).sort((a, b) => Number(b[1]) - Number(a[1]));
                 return (
-                  <View key={item.id ?? item.title} style={styles.innerNewsCard}>
+                  <View key={`${item.id ?? item.title}-${index}`} style={styles.innerNewsCard}>
                     <Text style={styles.cardEyebrow}>{item.kind} - {item.visibility}</Text>
                     <Text style={styles.cardTitle}>{item.title}</Text>
                     <Text style={styles.cardText}>{item.body}</Text>
@@ -2552,8 +2683,8 @@ function ProfileScreen({
             <Text style={styles.cardText}>{session.province} / {session.communityOfOrigin}</Text>
           </View>
           {session.role !== 'administrador' ? <SectionTitle title="Solicitudes" /> : null}
-          {session.role !== 'administrador' ? demoRequests.map((item) => (
-            <View key={item}>
+          {session.role !== 'administrador' ? demoRequests.map((item, index) => (
+            <View key={`${item}-${index}`}>
               <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === item ? null : item)}>
                 <Text style={styles.cardTitle}>{item}</Text>
                 <Text style={styles.expandHint}>{selectedRequest === item ? 'Cerrar solicitud' : 'Abrir solicitud'}</Text>
@@ -2603,8 +2734,8 @@ function ProfileScreen({
             </View>
           ) : null}
           <SectionTitle title="Mensajes" />
-          {internalMessages.map((item) => (
-            <View key={item.title} style={styles.innerNewsCard}>
+          {internalMessages.map((item, index) => (
+            <View key={`${item.title}-${index}`} style={styles.innerNewsCard}>
               <Text style={styles.cardEyebrow}>{item.from}</Text>
               <Text style={styles.cardTitle}>{item.title}</Text>
               <Text style={styles.cardText}>{item.body}</Text>
@@ -2627,10 +2758,10 @@ function ProfileScreen({
                   </TouchableOpacity>
                 </View>
               ))}
-              {pendingUsers.map((user) => (
-                <Text key={user.name} style={styles.cardText}>{user.name}: {user.requestedRole} - {user.status}</Text>
+              {pendingUsers.map((user, index) => (
+                <Text key={`${user.name}-${index}`} style={styles.cardText}>{user.name}: {user.requestedRole} - {user.status}</Text>
               ))}
-              {auditLog.map((item) => <Text key={item} style={styles.cardText}>- {item}</Text>)}
+              {auditLog.map((item, index) => <Text key={`${item}-${index}`} style={styles.cardText}>- {item}</Text>)}
             </View>
           ) : null}
           {(hasPermission(session, 'gestionar_sistema') || canReviewLeadershipRequests) ? (
@@ -2723,8 +2854,8 @@ function ProfileScreen({
                   <TextInput style={styles.input} placeholder="Banner destacado" value={adminConfigDraft.home.featuredBanner} onChangeText={(value) => updateAdminConfigSection('home', { featuredBanner: value })} />
                   <Text style={styles.cardEyebrow}>Modulos visibles</Text>
                   <View style={styles.filterRow}>
-                    {['noticias', 'comunidades', 'materiales', 'perfil', 'agenda', 'actividad'].map((item) => (
-                      <TouchableOpacity key={item} style={[styles.filterChip, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipActive]} onPress={() => toggleAdminConfigList('home', item)}>
+                    {['noticias', 'comunidades', 'materiales', 'perfil', 'agenda', 'actividad'].map((item, index) => (
+                      <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipActive]} onPress={() => toggleAdminConfigList('home', item)}>
                         <Text style={[styles.filterChipText, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipTextActive]}>{item}</Text>
                       </TouchableOpacity>
                     ))}
@@ -2775,8 +2906,8 @@ function ProfileScreen({
                   <TextInput style={styles.input} placeholder="URL del archivo o PDF" value={materialFileUrl} onChangeText={setMaterialFileUrl} />
                   <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialDescription} onChangeText={setMaterialDescription} multiline />
                   <View style={styles.filterRow}>
-                    {['publico', 'interno', 'reservado', 'administrador'].map((item) => (
-                      <TouchableOpacity key={item} style={[styles.filterChip, materialVisibility === item && styles.filterChipActive]} onPress={() => setMaterialVisibility(item)}>
+                    {['publico', 'interno', 'reservado', 'administrador'].map((item, index) => (
+                      <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, materialVisibility === item && styles.filterChipActive]} onPress={() => setMaterialVisibility(item)}>
                         <Text style={[styles.filterChipText, materialVisibility === item && styles.filterChipTextActive]}>{item}</Text>
                       </TouchableOpacity>
                     ))}
@@ -3083,8 +3214,8 @@ function ProfileScreen({
                   <Text style={styles.cardTitle}>Noticias</Text>
                   <Text style={styles.cardText}>Crear, preparar borradores y marcar publicaciones destacadas. La publicacion real reutiliza la funcion existente.</Text>
                   <View style={styles.filterRow}>
-                    {['General', 'Agenda', 'Formacion', 'Comunidad'].map((item) => (
-                      <TouchableOpacity key={item} style={[styles.filterChip, adminNewsCategory === item && styles.filterChipActive]} onPress={() => setAdminNewsCategory(item)}>
+                    {['General', 'Agenda', 'Formacion', 'Comunidad'].map((item, index) => (
+                      <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, adminNewsCategory === item && styles.filterChipActive]} onPress={() => setAdminNewsCategory(item)}>
                         <Text style={[styles.filterChipText, adminNewsCategory === item && styles.filterChipTextActive]}>{item}</Text>
                       </TouchableOpacity>
                     ))}
@@ -3270,7 +3401,7 @@ function ProfileScreen({
                   </TouchableOpacity>
                 </View>
                 {contentBlocks.map((block, index) => (
-                  <View key={block.id} style={styles.blockEditorCard}>
+                  <View key={`${block.id}-${index}`} style={styles.blockEditorCard}>
                     <Text style={styles.cardEyebrow}>{block.type}</Text>
                     <TextInput
                       style={[styles.input, block.type === 'texto' && styles.textArea]}
@@ -3462,7 +3593,7 @@ const styles = StyleSheet.create({
   },
   tapCircle: {
     position: 'absolute',
-    zIndex: 20,
+    zIndex: 120,
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -3514,6 +3645,34 @@ const styles = StyleSheet.create({
     color: palette.inkMuted,
     fontSize: 13,
     marginTop: 2
+  },
+  demoLabel: {
+    color: palette.red,
+    fontSize: 10,
+    fontWeight: '900',
+    marginTop: 2,
+    textTransform: 'uppercase'
+  },
+  appToast: {
+    position: 'absolute',
+    top: 86,
+    left: 18,
+    right: 18,
+    zIndex: 80,
+    backgroundColor: palette.ink,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 5
+  },
+  appToastText: {
+    color: palette.white,
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center'
   },
   sessionBadge: {
     backgroundColor: 'rgba(45, 141, 200, 0.12)',
