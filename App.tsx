@@ -7,8 +7,8 @@ import { palette } from './src/theme/palette';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, demoRequests, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
-import { AppCommunity, fetchCommunities, fetchNews, fetchNotilestra } from './src/lib/remoteData';
-import { AdminUser, AppContentBlock, AppTabSetting, ContentEditorBlock, UserRequestRecord, approveProfile, confirmAdminUserEmail, createAppTab, createEvent, createNews, createUserRequest, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppTabs, fetchMyRequests, fetchPendingProfiles, PendingProfile, resolveUserRequest, updateAdminUser, updateAppContent, updateAppTab, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AppCommunity, createCommunityPublication, fetchCommunities, fetchCommunityPublications, fetchNews, fetchNotilestra } from './src/lib/remoteData';
+import { AdminUser, AppContentBlock, AppTabSetting, CommunityMember, ContentEditorBlock, UserRequestRecord, approveProfile, confirmAdminUserEmail, createAppTab, createEvent, createNews, createLeadershipChangeRequest, createUserRequest, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppTabs, fetchMyCommunityMembers, fetchMyRequests, fetchPendingProfiles, PendingProfile, resolveUserRequest, updateAdminUser, updateAppContent, updateAppTab, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvince, canSeeAllProvinces, visibleHierarchyFor } from './src/lib/roles';
@@ -27,6 +27,10 @@ type AdminRequest = {
   message?: string;
   resolvedAt?: string;
   resolvedBy?: string;
+  targetUserId?: string | null;
+  targetUserName?: string | null;
+  targetRole?: string | null;
+  communityName?: string | null;
 };
 
 type NotilestraItem = (typeof notilestra)[number];
@@ -549,7 +553,11 @@ function HomeScreen({ session, title, content, refreshKey, editor }: { session: 
     let alive = true;
     fetchNews(session).then((items) => {
       if (alive) {
-        setHomeNews(items);
+        fetchCommunityPublications(session).then((communityItems) => {
+          if (alive) {
+            setHomeNews([...communityItems, ...items]);
+          }
+        });
       }
     });
     return () => {
@@ -1010,6 +1018,16 @@ function ProfileScreen({
   const [adminRequestMessage, setAdminRequestMessage] = useState('');
   const [perseveranceRole, setPerseveranceRole] = useState<Role>('sedimentador');
   const [perseveranceRoleDropdownOpen, setPerseveranceRoleDropdownOpen] = useState(false);
+  const [communityMembers, setCommunityMembers] = useState<CommunityMember[]>([]);
+  const [leadershipRole, setLeadershipRole] = useState<Role>('animador_comunidad');
+  const [leadershipRoleDropdownOpen, setLeadershipRoleDropdownOpen] = useState(false);
+  const [successorUserId, setSuccessorUserId] = useState('');
+  const [successorDropdownOpen, setSuccessorDropdownOpen] = useState(false);
+  const [communityPostKind, setCommunityPostKind] = useState<'aviso' | 'noticia' | 'fecha' | 'encuesta'>('aviso');
+  const [communityPostVisibility, setCommunityPostVisibility] = useState<'publica' | 'registrados' | 'sedimentadores'>('publica');
+  const [communityPostTitle, setCommunityPostTitle] = useState('');
+  const [communityPostBody, setCommunityPostBody] = useState('');
+  const [communityPostDate, setCommunityPostDate] = useState('');
   const [sentRequests, setSentRequests] = useState<AdminRequest[]>([]);
   const [requestSubtab, setRequestSubtab] = useState<'pendientes' | 'resueltas'>('pendientes');
   const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([
@@ -1047,6 +1065,9 @@ function ProfileScreen({
   const tabLabel = (key: TabKey) => editableTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
   const profileNews = session ? communityNews.filter((item) => item.community === session.communityOfOrigin) : [];
   const roleInfo = session ? roleDefinitions.find((item) => item.role === session.role) : null;
+  const isCommunityLeader = Boolean(session && ['animador_comunidad', 'coordinador_comunidad'].includes(session.role));
+  const canReviewLeadershipRequests = Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
+  const selectableCommunityMembers = communityMembers;
   const pendingAdminRequests = adminRequests.filter((item) => item.status === 'pendiente').sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
   const resolvedAdminRequests = adminRequests.filter((item) => item.status !== 'pendiente').sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   const filteredAdminUsers = adminUsers.filter((user) => {
@@ -1150,7 +1171,11 @@ function ProfileScreen({
       status: item.status === 'rechazada' ? 'denegada' : item.status as AdminRequest['status'],
       message: item.admin_message ?? undefined,
       resolvedAt: item.resolved_at ?? undefined,
-      resolvedBy: item.resolved_by_name ? `${item.resolved_by_name}${item.resolved_by_role ? ` - ${roleLabel(item.resolved_by_role as Role)}` : ''}` : undefined
+      resolvedBy: item.resolved_by_name ? `${item.resolved_by_name}${item.resolved_by_role ? ` - ${roleLabel(item.resolved_by_role as Role)}` : ''}` : undefined,
+      targetUserId: item.target_user_id,
+      targetUserName: item.target_user_name,
+      targetRole: item.target_role,
+      communityName: item.community_name
     };
   }
 
@@ -1171,7 +1196,13 @@ function ProfileScreen({
   useEffect(() => {
     if (session) {
       loadMyRequests();
+      if (['animador_comunidad', 'coordinador_comunidad'].includes(session.role)) {
+        fetchMyCommunityMembers().then(setCommunityMembers);
+      }
       if (session.role === 'administrador') {
+        loadAdminRequests();
+      }
+      if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
         loadAdminRequests();
       }
     }
@@ -1592,7 +1623,7 @@ function ProfileScreen({
 
   async function resolveAdminRequest(id: string, status: 'aprobada' | 'denegada') {
     const request = adminRequests.find((item) => item.id === id);
-    const assignRole = status === 'aprobada' && request?.title === 'Solicitud de perseverancia' ? perseveranceRole : null;
+    const assignRole = status === 'aprobada' && request?.title === 'Solicitud de perseverancia' ? perseveranceRole : status === 'aprobada' && request?.title === 'Cambio de dirigencia' ? (request.targetRole as Role | undefined ?? leadershipRole) : null;
     if (assignRole && !canApproveRole(session, assignRole)) {
       setAuthMessage(`Tu rango no puede aprobar el rol ${roleLabel(assignRole)}.`);
       return;
@@ -1601,7 +1632,7 @@ function ProfileScreen({
     if (!error) {
       await loadAdminRequests();
       setRequestSubtab('resueltas');
-      setAuthMessage(assignRole ? 'Solicitud aprobada y rol Sedimentador asignado.' : `Solicitud ${status}. El usuario vera la resolucion en su perfil.`);
+      setAuthMessage(assignRole ? `Solicitud aprobada y rol ${roleLabel(assignRole)} asignado.` : `Solicitud ${status}. El usuario vera la resolucion en su perfil.`);
       setAdminRequestMessage('');
       return;
     }
@@ -1650,6 +1681,69 @@ function ProfileScreen({
     setSelectedRequest(null);
     setUserRequestText('');
     setAuthMessage('Solicitud enviada al panel del administrador.');
+  }
+
+  async function submitLeadershipChangeRequest() {
+    if (!session || !isCommunityLeader) {
+      return;
+    }
+    if (!successorUserId) {
+      setAuthMessage('Selecciona el sucesor dentro de tu comunidad.');
+      return;
+    }
+    if (!userRequestText.trim()) {
+      setAuthMessage('Escribi un mensaje para fundamentar el cambio de dirigencia.');
+      return;
+    }
+
+    const successor = selectableCommunityMembers.find((member) => member.id === successorUserId);
+    const details = `${userRequestText.trim().slice(0, 500)}\n\nSucesor propuesto: ${successor?.full_name ?? 'Usuario seleccionado'}\nRol propuesto: ${roleLabel(leadershipRole)}\nComunidad: ${session.communityOfOrigin}`;
+    const { error } = await createLeadershipChangeRequest({
+      successorUserId,
+      successorRole: leadershipRole,
+      details
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadMyRequests();
+    setSelectedRequest(null);
+    setUserRequestText('');
+    setSuccessorUserId('');
+    setAuthMessage('Solicitud de cambio de dirigencia enviada al Vocal Diocesano.');
+  }
+
+  async function publishCommunityPost() {
+    if (!session || !isCommunityLeader) {
+      return;
+    }
+    if (!communityPostTitle.trim() || !communityPostBody.trim()) {
+      setAuthMessage('Completa titulo y texto antes de publicar en tu comunidad.');
+      return;
+    }
+    if (communityPostKind === 'fecha' && !communityPostDate.trim()) {
+      setAuthMessage('Las fechas de calendario necesitan una fecha.');
+      return;
+    }
+
+    const visibility = session.role === 'animador_comunidad' ? 'publica' : communityPostVisibility;
+    const { error } = await createCommunityPublication({
+      kind: communityPostKind,
+      title: communityPostTitle.trim(),
+      body: communityPostBody.trim(),
+      eventDate: communityPostKind === 'fecha' ? communityPostDate.trim() : null,
+      visibility
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setCommunityPostTitle('');
+    setCommunityPostBody('');
+    setCommunityPostDate('');
+    setAuthMessage('Publicacion enviada a la comunidad.');
+    await onContentChanged();
   }
 
   return (
@@ -1709,22 +1803,6 @@ function ProfileScreen({
           <Text style={styles.cardText}>Comunidad de origen: {session.communityOfOrigin}</Text>
           <Text style={styles.cardText}>Estado: {statusLabel(session.status)}</Text>
           {roleInfo ? <Text style={styles.cardText}>{roleInfo.description}</Text> : null}
-          {roleInfo ? (
-            <View style={styles.profileCommunityPanel}>
-              <Text style={styles.cardEyebrow}>Jerarquia y alcance</Text>
-              <Text style={styles.cardText}>Nivel {roleInfo.rank}: {roleInfo.label}. Alcance: {roleInfo.scope}.</Text>
-              <Text style={styles.cardText}>{roleInfo.approval}</Text>
-              <Text style={styles.cardText}>Vista territorial: {canSeeAllProvinces(session) ? 'todas las provincias y nacional' : `${session.province} y nacional`}.</Text>
-              <View style={styles.roleTimeline}>
-                {visibleHierarchyFor(session).map((role) => (
-                  <View key={role.role} style={[styles.roleStep, role.role === session.role && styles.roleStepActive]}>
-                    <Text style={[styles.roleStepRank, role.role === session.role && styles.roleStepTextActive]}>{role.rank}</Text>
-                    <Text style={[styles.roleStepLabel, role.role === session.role && styles.roleStepTextActive]}>{role.label}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ) : null}
           <View style={styles.filterRow}>
             <TouchableOpacity style={[styles.filterChip, profilePanel === 'vista' && styles.filterChipActive]} onPress={() => setProfilePanel('vista')}>
               <Text style={[styles.filterChipText, profilePanel === 'vista' && styles.filterChipTextActive]}>Mi perfil</Text>
@@ -1805,6 +1883,85 @@ function ProfileScreen({
               ) : (
                 <Text style={styles.cardText}>Tu rango actual no permite ver noticias internas de comunidad.</Text>
               )}
+            </View>
+          ) : null}
+          {isCommunityLeader ? (
+            <View style={styles.profileCommunityPanel}>
+              <Text style={styles.cardEyebrow}>Comunidad</Text>
+              <Text style={styles.cardTitle}>{session.communityOfOrigin}</Text>
+              <Text style={styles.cardText}>Panel de {roleLabel(session.role)}. Esta comunidad es asignada por el Vocal Diocesano; no puede cambiarse desde este perfil.</Text>
+              <SectionTitle title="Publicar en comunidad" />
+              <View style={styles.filterRow}>
+                {(['aviso', 'noticia', 'fecha', 'encuesta'] as const).map((kind) => (
+                  <TouchableOpacity key={kind} style={[styles.filterChip, communityPostKind === kind && styles.filterChipActive]} onPress={() => setCommunityPostKind(kind)}>
+                    <Text style={[styles.filterChipText, communityPostKind === kind && styles.filterChipTextActive]}>{kind}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {session.role === 'coordinador_comunidad' ? (
+                <>
+                  <Text style={styles.cardEyebrow}>Visibilidad</Text>
+                  <View style={styles.filterRow}>
+                    {[
+                      { key: 'publica', label: 'Invitados/Palestristas/Sedis' },
+                      { key: 'sedimentadores', label: 'Solo sedimentadores' }
+                    ].map((item) => (
+                      <TouchableOpacity key={item.key} style={[styles.filterChip, communityPostVisibility === item.key && styles.filterChipActive]} onPress={() => setCommunityPostVisibility(item.key as typeof communityPostVisibility)}>
+                        <Text style={[styles.filterChipText, communityPostVisibility === item.key && styles.filterChipTextActive]}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.cardText}>Las publicaciones del animador se muestran publicamente.</Text>
+              )}
+              <TextInput style={styles.input} placeholder="Titulo" value={communityPostTitle} onChangeText={setCommunityPostTitle} />
+              {communityPostKind === 'fecha' ? <TextInput style={styles.input} placeholder="Fecha: 2026-05-28" value={communityPostDate} onChangeText={setCommunityPostDate} /> : null}
+              <TextInput style={[styles.input, styles.textArea]} placeholder={communityPostKind === 'encuesta' ? 'Pregunta y opciones de la encuesta' : 'Texto de la publicacion'} value={communityPostBody} onChangeText={setCommunityPostBody} multiline />
+              <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
+                <Text style={styles.primaryButtonText}>Publicar</Text>
+              </TouchableOpacity>
+              <SectionTitle title="Cambio de dirigencia" />
+              <Text style={styles.cardText}>Solicitud privada para proponer sucesor al finalizar el periodo de servicio.</Text>
+              <TouchableOpacity style={styles.dropdownButton} onPress={() => setLeadershipRoleDropdownOpen(!leadershipRoleDropdownOpen)}>
+                <Text style={styles.dropdownButtonText}>{roleLabel(leadershipRole)}</Text>
+                <Ionicons name={leadershipRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+              </TouchableOpacity>
+              {leadershipRoleDropdownOpen ? (
+                <View style={styles.dropdownList}>
+                  {(['animador_comunidad', 'coordinador_comunidad'] as Role[]).map((role) => (
+                    <TouchableOpacity key={role} style={styles.dropdownItem} onPress={() => { setLeadershipRole(role); setLeadershipRoleDropdownOpen(false); }}>
+                      <Text style={styles.dropdownItemText}>{roleLabel(role)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
+              <TouchableOpacity style={styles.dropdownButton} onPress={async () => { if (communityMembers.length === 0) setCommunityMembers(await fetchMyCommunityMembers()); setSuccessorDropdownOpen(!successorDropdownOpen); }}>
+                <Text style={styles.dropdownButtonText}>{selectableCommunityMembers.find((member) => member.id === successorUserId)?.full_name ?? 'Seleccionar sucesor de mi comunidad'}</Text>
+                <Ionicons name={successorDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+              </TouchableOpacity>
+              {successorDropdownOpen ? (
+                <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                  {selectableCommunityMembers.length === 0 ? <Text style={styles.cardText}>No hay miembros cargados para esta comunidad.</Text> : null}
+                  {selectableCommunityMembers.map((member) => (
+                    <TouchableOpacity key={member.id} style={styles.dropdownItem} onPress={() => { setSuccessorUserId(member.id); setSuccessorDropdownOpen(false); }}>
+                      <Text style={styles.dropdownItemText}>{member.full_name ?? member.email}</Text>
+                      <Text style={styles.cardText}>{roleLabel((member.role || 'palestrista') as Role)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              ) : null}
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Mensaje para el Vocal Diocesano"
+                value={userRequestText}
+                onChangeText={(value) => setUserRequestText(value.slice(0, 500))}
+                multiline
+              />
+              <Text style={styles.cardText}>{userRequestText.length}/500</Text>
+              <TouchableOpacity style={styles.secondaryButton} onPress={submitLeadershipChangeRequest}>
+                <Text style={styles.secondaryButtonText}>Enviar cambio de dirigencia</Text>
+              </TouchableOpacity>
             </View>
           ) : null}
           <View style={styles.profileCommunityPanel}>
@@ -1894,11 +2051,11 @@ function ProfileScreen({
               {auditLog.map((item) => <Text key={item} style={styles.cardText}>- {item}</Text>)}
             </View>
           ) : null}
-          {hasPermission(session, 'gestionar_sistema') ? (
+          {(hasPermission(session, 'gestionar_sistema') || canReviewLeadershipRequests) ? (
             <View style={styles.adminPanel}>
-              <Text style={styles.cardEyebrow}>Administrador</Text>
-              <Text style={styles.cardTitle}>Panel tecnico global</Text>
-              <Text style={styles.cardText}>Gestionar roles, permisos, pestanas, secciones, comunidades, provincias, usuarios, contenido y configuracion general.</Text>
+              <Text style={styles.cardEyebrow}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
+              <Text style={styles.cardTitle}>{session.role === 'administrador' ? 'Panel tecnico global' : 'Panel diocesano'}</Text>
+              <Text style={styles.cardText}>{session.role === 'administrador' ? 'Gestionar roles, permisos, pestanas, secciones, comunidades, provincias, usuarios, contenido y configuracion general.' : 'Revisar solicitudes y gestionar cambios de dirigencia dentro de la provincia.'}</Text>
               {authMessage ? <Text style={styles.adminMessage}>{authMessage}</Text> : null}
               <View style={styles.adminModuleGrid}>
                 {[
@@ -1909,7 +2066,7 @@ function ProfileScreen({
                   { key: 'eventos', label: 'Eventos', icon: 'calendar-outline' },
                   { key: 'comunidades', label: 'Comunidades', icon: 'location-outline' },
                   { key: 'contenido_general', label: 'Contenido General', icon: 'create-outline' }
-                ].map((item) => (
+                ].filter((item) => hasPermission(session, 'gestionar_sistema') || ['resumen', 'usuarios', 'solicitudes', 'comunidades'].includes(item.key)).map((item) => (
                   <TouchableOpacity
                     key={item.key}
                     style={[styles.adminModuleButton, adminModule === item.key && styles.adminModuleButtonActive]}
@@ -2092,6 +2249,8 @@ function ProfileScreen({
                       <Text style={styles.cardEyebrow}>Llegada #{index + 1} - {new Date(item.createdAt).toLocaleDateString('es-AR')}</Text>
                       <Text style={styles.cardTitle}>{item.title}</Text>
                       <Text style={styles.cardText}>Solicitante: {item.requester}</Text>
+                      {item.communityName ? <Text style={styles.cardText}>Comunidad: {item.communityName}</Text> : null}
+                      {item.targetUserName ? <Text style={styles.cardText}>Sucesor propuesto: {item.targetUserName} - {roleLabel((item.targetRole ?? 'palestrista') as Role)}</Text> : null}
                       <Text style={styles.cardText}>Definicion: {item.definition}</Text>
                       <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje opcional para el usuario" value={adminRequestMessage} onChangeText={setAdminRequestMessage} multiline />
                       {item.title === 'Solicitud de perseverancia' ? (
@@ -2112,6 +2271,12 @@ function ProfileScreen({
                           ) : null}
                         </View>
                       ) : null}
+                      {item.title === 'Cambio de dirigencia' ? (
+                        <View style={styles.profileCommunityPanel}>
+                          <Text style={styles.cardEyebrow}>Resolucion de dirigencia</Text>
+                          <Text style={styles.cardText}>Al aprobar se asignara {roleLabel((item.targetRole ?? 'animador_comunidad') as Role)} al sucesor propuesto.</Text>
+                        </View>
+                      ) : null}
                       <View style={styles.inlineActions}>
                         <TouchableOpacity style={styles.primaryButton} onPress={() => resolveAdminRequest(item.id, 'aprobada')}>
                           <Text style={styles.primaryButtonText}>Aprobar</Text>
@@ -2129,6 +2294,8 @@ function ProfileScreen({
                       <Text style={styles.cardEyebrow}>{item.status.toUpperCase()} - {new Date(item.createdAt).toLocaleDateString('es-AR')}</Text>
                       <Text style={styles.cardTitle}>{item.title}</Text>
                       <Text style={styles.cardText}>Solicitante: {item.requester}</Text>
+                      {item.communityName ? <Text style={styles.cardText}>Comunidad: {item.communityName}</Text> : null}
+                      {item.targetUserName ? <Text style={styles.cardText}>Sucesor: {item.targetUserName} - {roleLabel((item.targetRole ?? 'palestrista') as Role)}</Text> : null}
                       <Text style={styles.cardText}>Definicion: {item.definition}</Text>
                       <Text style={styles.cardText}>Resolvio: {item.resolvedBy ?? 'Sin responsable'}</Text>
                       <Text style={styles.cardText}>Fecha de resolucion: {item.resolvedAt ? new Date(item.resolvedAt).toLocaleString('es-AR') : 'Sin fecha'}</Text>

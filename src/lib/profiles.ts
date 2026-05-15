@@ -30,6 +30,15 @@ export type AdminUser = {
   email_confirmed_at: string | null;
 };
 
+export type CommunityMember = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string;
+  community_name: string | null;
+  province: string | null;
+};
+
 export async function fetchPendingProfiles(): Promise<PendingProfile[]> {
   const { data, error } = await supabase.rpc('admin_get_pending_profiles');
 
@@ -101,6 +110,10 @@ export type UserRequestRecord = {
   resolved_at: string | null;
   resolved_by_name: string | null;
   resolved_by_role: string | null;
+  target_user_id?: string | null;
+  target_user_name?: string | null;
+  target_role?: string | null;
+  community_name?: string | null;
 };
 
 export async function fetchMyRequests(): Promise<UserRequestRecord[]> {
@@ -132,6 +145,34 @@ export async function createUserRequest(requestType: string, details: string) {
     return await supabase.rpc('create_user_request', {
       p_request_type: requestType,
       p_details: details
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchMyCommunityMembers(): Promise<CommunityMember[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_my_community_members');
+    if (error || !data) {
+      return [];
+    }
+    return data as CommunityMember[];
+  } catch {
+    return [];
+  }
+}
+
+export async function createLeadershipChangeRequest(values: {
+  successorUserId: string;
+  successorRole: string;
+  details: string;
+}) {
+  try {
+    return await supabase.rpc('create_leadership_change_request', {
+      p_successor_user_id: values.successorUserId,
+      p_successor_role: values.successorRole,
+      p_details: values.details
     });
   } catch (error) {
     return networkError(error);

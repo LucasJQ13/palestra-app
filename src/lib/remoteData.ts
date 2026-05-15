@@ -97,6 +97,74 @@ export async function fetchNews(session?: Session | null) {
   }));
 }
 
+export async function createCommunityPublication(values: {
+  kind: 'aviso' | 'noticia' | 'fecha' | 'encuesta';
+  title: string;
+  body: string;
+  eventDate?: string | null;
+  visibility: 'publica' | 'registrados' | 'sedimentadores';
+}) {
+  try {
+    return await supabase.rpc('create_community_publication', {
+      p_kind: values.kind,
+      p_title: values.title,
+      p_body: values.body,
+      p_event_date: values.eventDate ?? null,
+      p_visibility: values.visibility
+    });
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message: error instanceof Error ? error.message : 'No se pudo conectar con Supabase.'
+      }
+    };
+  }
+}
+
+export async function fetchCommunityPublications(session?: Session | null) {
+  let result;
+  try {
+    result = await supabase
+      .from('community_publications')
+      .select('kind, title, body, event_date, visibility, created_at, communities(name, provinces(name))')
+      .order('created_at', { ascending: false })
+      .limit(30);
+  } catch {
+    return [];
+  }
+
+  const { data, error } = result;
+  if (error || !data) {
+    return [];
+  }
+
+  const role = session?.role ?? 'invitado';
+  const canSeeSedimentadores = ['sedimentador', 'animador_comunidad', 'coordinador_comunidad', 'vocal', 'asesor', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(role);
+  const canSeeRegistered = role !== 'invitado';
+
+  return (data as any[])
+    .filter((item) => {
+      const province = item.communities?.provinces?.name ?? 'Nacional';
+      if (!canAccessProvince(session ?? null, province)) {
+        return false;
+      }
+      if (item.visibility === 'sedimentadores') {
+        return canSeeSedimentadores;
+      }
+      if (item.visibility === 'registrados') {
+        return canSeeRegistered;
+      }
+      return true;
+    })
+    .map((item) => ({
+      scope: `${item.kind} - ${item.communities?.name ?? 'Comunidad'}`,
+      title: item.title,
+      body: item.event_date ? `${String(item.event_date).slice(0, 10)} - ${item.body}` : item.body,
+      imageUrl: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
+    }));
+}
+
 export async function fetchNotilestra(session?: Session | null) {
   let result;
   try {
