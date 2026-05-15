@@ -3022,9 +3022,10 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: palette.ink,
-    fontSize: 20,
-    fontWeight: '800',
-    marginTop: 4
+    fontSize: 21,
+    fontWeight: '900',
+    marginTop: 6,
+    marginBottom: 2
   },
   card: {
     backgroundColor: palette.white,
@@ -3058,11 +3059,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: palette.white,
-    borderColor: palette.line,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 1
   },
   backButtonText: {
     color: palette.red,
@@ -3094,25 +3099,30 @@ const styles = StyleSheet.create({
     marginTop: 10
   },
   detailPanel: {
-    backgroundColor: palette.whiteSoft,
-    borderColor: palette.line,
+    backgroundColor: palette.white,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 22,
     padding: 14,
-    gap: 10
+    gap: 10,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2
   },
   modalPanel: {
     width: '100%',
     maxWidth: 520,
     backgroundColor: palette.white,
-    borderColor: palette.red,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 24,
+    padding: 18,
     gap: 10,
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.12,
-    shadowRadius: 16
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 8
   },
   modalOverlay: {
     flex: 1,
@@ -3141,10 +3151,10 @@ const styles = StyleSheet.create({
   },
   groupNote: {
     backgroundColor: palette.goldSoft,
-    borderColor: palette.line,
+    borderColor: 'rgba(242, 184, 75, 0.42)',
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12
+    borderRadius: 18,
+    padding: 14
   },
   groupNoteText: {
     color: palette.ink,
@@ -3153,26 +3163,38 @@ const styles = StyleSheet.create({
     lineHeight: 20
   },
   heroMini: {
-    backgroundColor: palette.whiteSoft,
+    backgroundColor: palette.white,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
-    padding: 16
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderRadius: 22,
+    padding: 18,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 1
   },
   contentIntro: {
     backgroundColor: palette.white,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 226, 234, 0.62)',
-    borderRadius: 10,
+    borderWidth: 0,
+    borderColor: 'rgba(45, 141, 200, 0.12)',
+    borderRadius: 20,
     padding: 14,
-    gap: 6
+    gap: 6,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 1
   },
   calendarCard: {
     backgroundColor: palette.white,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: palette.line,
-    borderRadius: 8,
-    padding: 14
+    borderRadius: 24,
+    padding: 16,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.09,
+    shadowRadius: 16,
+    elevation: 2
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -3187,13 +3209,14 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize'
   },
   iconButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    borderWidth: 1,
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    borderWidth: 0,
     borderColor: palette.line,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45, 141, 200, 0.1)'
   },
   calendarGrid: {
     flexDirection: 'row',
@@ -3214,11 +3237,11 @@ const styles = StyleSheet.create({
   },
   calendarEventDay: {
     backgroundColor: palette.goldSoft,
-    borderRadius: 8
+    borderRadius: 12
   },
   calendarActivityDay: {
     backgroundColor: palette.red,
-    borderRadius: 8
+    borderRadius: 12
   },
   calendarDayText: {
     color: palette.ink,
@@ -3237,10 +3260,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: palette.white,
-    borderColor: palette.line,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 14
+    borderRadius: 18,
+    padding: 14,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 1
   },
   noticeText: {
     flex: 1,
@@ -3292,7 +3319,7 @@ const styles = StyleSheet.create({
     height: 132,
     borderRadius: 66,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
     backgroundColor: palette.whiteSoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -3308,12 +3335,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
     backgroundColor: palette.white,
-    borderRadius: 8,
-    minHeight: 38,
-    paddingHorizontal: 10,
-    marginTop: 12
+    borderRadius: 18,
+    minHeight: 42,
+    paddingHorizontal: 12,
+    marginTop: 12,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 1
   },
   photoChangeText: {
     color: palette.red,
@@ -3353,12 +3384,13 @@ const styles = StyleSheet.create({
     width: 238,
     backgroundColor: palette.white,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 12,
-    padding: 8,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderRadius: 22,
+    padding: 10,
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.12,
-    shadowRadius: 16
+    shadowOpacity: 0.14,
+    shadowRadius: 20,
+    elevation: 6
   },
   accountMenuHeader: {
     flexDirection: 'row',
@@ -3366,7 +3398,7 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 8,
     borderBottomWidth: 1,
-    borderBottomColor: palette.line,
+    borderBottomColor: 'rgba(45, 141, 200, 0.12)',
     marginBottom: 4
   },
   accountMenuAvatar: {
@@ -3398,7 +3430,7 @@ const styles = StyleSheet.create({
     gap: 10,
     minHeight: 38,
     paddingHorizontal: 8,
-    borderRadius: 8
+    borderRadius: 14
   },
   accountMenuItemText: {
     color: palette.ink,
@@ -3410,11 +3442,15 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: palette.red,
-    minHeight: 46,
-    borderRadius: 8,
+    minHeight: 48,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10
+    marginTop: 10,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 2
   },
   primaryButtonText: {
     color: palette.white,
@@ -3423,12 +3459,13 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: palette.red,
-    minHeight: 46,
-    borderRadius: 8,
+    borderColor: 'rgba(45, 141, 200, 0.32)',
+    minHeight: 48,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 14
+    marginTop: 14,
+    backgroundColor: palette.white
   },
   secondaryButtonText: {
     color: palette.red,
@@ -3482,21 +3519,29 @@ const styles = StyleSheet.create({
     color: palette.red
   },
   profileCommunityPanel: {
-    backgroundColor: palette.whiteSoft,
-    borderColor: 'rgba(217, 226, 234, 0.7)',
+    backgroundColor: palette.white,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 20,
+    padding: 14,
     marginTop: 12,
-    gap: 10
+    gap: 10,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 1
   },
   profileShell: {
     position: 'relative',
     backgroundColor: palette.white,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 226, 234, 0.62)',
-    borderRadius: 10,
-    padding: 15
+    borderWidth: 0,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderRadius: 24,
+    padding: 16,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.09,
+    shadowRadius: 16,
+    elevation: 2
   },
   roleTimeline: {
     flexDirection: 'row',
@@ -3508,8 +3553,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 16,
     paddingHorizontal: 9,
     paddingVertical: 7,
     backgroundColor: palette.white
@@ -3532,10 +3577,14 @@ const styles = StyleSheet.create({
   },
   innerNewsCard: {
     backgroundColor: palette.white,
-    borderColor: 'rgba(217, 226, 234, 0.62)',
+    borderColor: 'rgba(45, 141, 200, 0.12)',
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 12
+    borderRadius: 18,
+    padding: 14,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 1
   },
   adminUserHeader: {
     flexDirection: 'row',
@@ -3550,7 +3599,7 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21,
     backgroundColor: palette.whiteSoft,
-    borderColor: palette.line,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -3571,8 +3620,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
+    borderRadius: 18,
     paddingHorizontal: 10,
     marginTop: 10,
     backgroundColor: palette.white
@@ -3593,7 +3642,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     minHeight: 38,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
     borderRadius: 20,
     paddingHorizontal: 12,
     flexDirection: 'row',
@@ -3609,16 +3658,20 @@ const styles = StyleSheet.create({
   inlineEditorPanel: {
     backgroundColor: palette.white,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 12,
-    padding: 12,
-    gap: 8
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderRadius: 22,
+    padding: 14,
+    gap: 8,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 1
   },
   smallActionButton: {
     minHeight: 38,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 16,
     paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
@@ -3632,8 +3685,8 @@ const styles = StyleSheet.create({
   },
   inlineBlockEditor: {
     backgroundColor: palette.whiteSoft,
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 18,
+    padding: 12,
     gap: 6
   },
   inlineBlockHeader: {
@@ -3646,12 +3699,14 @@ const styles = StyleSheet.create({
     gap: 6
   },
   iconButtonGhost: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.white
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.12)'
   },
   filterRow: {
     flexDirection: 'row',
@@ -3664,11 +3719,11 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
     backgroundColor: palette.white,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 9
   },
   filterChipActive: {
     backgroundColor: palette.red,
@@ -3684,7 +3739,7 @@ const styles = StyleSheet.create({
   avatarPlaceholder: {
     height: 132,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
     borderRadius: 66,
     backgroundColor: palette.whiteSoft,
     alignItems: 'center',
@@ -3698,16 +3753,16 @@ const styles = StyleSheet.create({
   communityChoiceList: {
     maxHeight: 220,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 18,
     padding: 8,
     gap: 8,
     backgroundColor: palette.whiteSoft
   },
   communityChoice: {
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 10,
     backgroundColor: palette.white
@@ -3718,8 +3773,8 @@ const styles = StyleSheet.create({
   },
   statusBanner: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 18,
+    padding: 14,
     marginBottom: 12
   },
   statusBanner_pendiente: {
@@ -3746,11 +3801,11 @@ const styles = StyleSheet.create({
     lineHeight: 20
   },
   input: {
-    minHeight: 46,
+    minHeight: 48,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 18,
+    paddingHorizontal: 14,
     marginTop: 10,
     color: palette.ink,
     backgroundColor: palette.white
@@ -3761,11 +3816,11 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top'
   },
   dropdownButton: {
-    minHeight: 46,
+    minHeight: 48,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 18,
+    paddingHorizontal: 14,
     marginTop: 8,
     backgroundColor: palette.white,
     flexDirection: 'row',
@@ -3781,8 +3836,8 @@ const styles = StyleSheet.create({
   },
   dropdownList: {
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 18,
     backgroundColor: palette.white,
     marginTop: 8,
     maxHeight: 220,
@@ -3793,7 +3848,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: palette.line,
+    borderBottomColor: 'rgba(45, 141, 200, 0.1)',
     justifyContent: 'center'
   },
   dropdownItemText: {
@@ -3805,7 +3860,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF4CC',
     borderColor: palette.gold,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 18,
     padding: 8,
     marginBottom: 8
   },
@@ -3815,13 +3870,17 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   adminPanel: {
-    backgroundColor: '#E9F1F6',
-    borderColor: palette.line,
+    backgroundColor: palette.white,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 24,
+    padding: 16,
     gap: 10,
-    marginTop: 12
+    marginTop: 12,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.09,
+    shadowRadius: 16,
+    elevation: 2
   },
   adminModuleGrid: {
     flexDirection: 'row',
@@ -3831,10 +3890,10 @@ const styles = StyleSheet.create({
   adminModuleButton: {
     width: '31.5%',
     minHeight: 66,
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: palette.line,
-    backgroundColor: palette.white,
-    borderRadius: 10,
+    backgroundColor: 'rgba(45, 141, 200, 0.09)',
+    borderRadius: 18,
     padding: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -3855,11 +3914,15 @@ const styles = StyleSheet.create({
   },
   adminWorkspace: {
     backgroundColor: palette.white,
-    borderColor: 'rgba(217, 226, 234, 0.62)',
+    borderColor: 'rgba(45, 141, 200, 0.12)',
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 10
+    borderRadius: 22,
+    padding: 14,
+    gap: 10,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 1
   },
   adminStatRow: {
     flexDirection: 'row',
@@ -3868,9 +3931,9 @@ const styles = StyleSheet.create({
   adminStat: {
     flex: 1,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
-    padding: 10,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderRadius: 18,
+    padding: 12,
     backgroundColor: palette.whiteSoft
   },
   adminStatNumber: {
@@ -3889,16 +3952,16 @@ const styles = StyleSheet.create({
   adminInlineEditor: {
     backgroundColor: palette.whiteSoft,
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
-    padding: 10,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 18,
+    padding: 12,
     margin: 8
   },
   blockEditorCard: {
     borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: 8,
-    padding: 10,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 18,
+    padding: 12,
     backgroundColor: palette.whiteSoft
   },
   adminMessage: {
@@ -3906,13 +3969,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 8,
+    borderRadius: 18,
     padding: 10,
     fontWeight: '800'
   },
   tabEditorRow: {
     borderTopWidth: 1,
-    borderTopColor: palette.line,
+    borderTopColor: 'rgba(45, 141, 200, 0.14)',
     paddingTop: 10,
     marginTop: 8
   }
