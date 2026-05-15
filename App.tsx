@@ -8,7 +8,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
 import { AppCommunity, createCommunityPublication, fetchCommunities, fetchCommunityPublications, fetchNews, fetchNotilestra, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AppContentBlock, AppTabSetting, CommunityMember, ContentEditorBlock, UserRequestRecord, approveProfile, confirmAdminUserEmail, createAppTab, createEvent, createNews, createLeadershipChangeRequest, createUserRequest, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppTabs, fetchMyCommunityMembers, fetchMyRequests, fetchPendingProfiles, PendingProfile, resolveUserRequest, updateAdminUser, updateAppContent, updateAppTab, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, NewsDraftRecord, UserRequestRecord, approveProfile, archiveAppMaterial, confirmAdminUserEmail, createAppTab, createEvent, createNews, createLeadershipChangeRequest, createUserRequest, fetchAdminConfig, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, PendingProfile, resolveUserRequest, saveAdminConfig, saveAppMaterial, saveNewsDraft, updateAdminUser, updateAppContent, updateAppTab, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvince, canSeeAllProvinces, visibleHierarchyFor } from './src/lib/roles';
@@ -376,6 +376,13 @@ export default function App() {
     setAppContent(items);
   }
 
+  async function reloadAdminConfig() {
+    const config = await fetchAdminConfig();
+    if (config) {
+      setAdminConfig({ ...defaultAdminConfig, ...config } as AppAdminConfig);
+    }
+  }
+
   async function refreshPublishedContent() {
     await reloadAppContent();
     setContentVersion((current) => current + 1);
@@ -399,6 +406,7 @@ export default function App() {
     hydrateSession();
     reloadTabSettings();
     reloadAppContent();
+    reloadAdminConfig();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, authSession) => {
       if (!authSession?.user) {
@@ -1029,12 +1037,35 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
 }
 
 function MaterialsScreen({ session, title, content, editor }: { session: Session | null; title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
+  const [remoteMaterials, setRemoteMaterials] = useState<AppMaterialRecord[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    fetchAppMaterials().then((items) => {
+      if (alive) {
+        setRemoteMaterials(items);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const visibleMaterials = remoteMaterials.length > 0
+    ? remoteMaterials.map((material) => ({
+      type: material.category ?? material.visibility ?? 'Material',
+      title: material.title,
+      description: material.description,
+      permission: material.required_permission as Permission | null
+    }))
+    : materials;
+
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {materials.map((material) => {
-        const locked = material.permission && !hasPermission(session, material.permission);
+      {visibleMaterials.map((material) => {
+        const locked = material.permission && !hasPermission(session, material.permission as Permission);
         return (
           <View key={material.title} style={[styles.card, styles.libraryCard, locked && styles.lockedCard]}>
             <View style={styles.libraryIcon}>
@@ -1329,6 +1360,14 @@ function ProfileScreen({
   const [adminNewsImage, setAdminNewsImage] = useState('');
   const [adminNewsDraft, setAdminNewsDraft] = useState(false);
   const [adminNewsFeatured, setAdminNewsFeatured] = useState(false);
+  const [newsDrafts, setNewsDrafts] = useState<NewsDraftRecord[]>([]);
+  const [adminMaterials, setAdminMaterials] = useState<AppMaterialRecord[]>([]);
+  const [materialTitle, setMaterialTitle] = useState('');
+  const [materialDescription, setMaterialDescription] = useState('');
+  const [materialCategory, setMaterialCategory] = useState('General');
+  const [materialVisibility, setMaterialVisibility] = useState('interno');
+  const [materialPermission, setMaterialPermission] = useState('');
+  const [materialFileUrl, setMaterialFileUrl] = useState('');
   const [adminEventTitle, setAdminEventTitle] = useState('');
   const [adminEventBody, setAdminEventBody] = useState('');
   const [adminEventDate, setAdminEventDate] = useState('');
@@ -1467,13 +1506,19 @@ function ProfileScreen({
     });
   }
 
-  function saveAdminConfigDraft(scope: string) {
+  async function saveAdminConfigDraft(scope: string) {
     if (session?.role !== 'administrador') {
       setAuthMessage('Solo el administrador puede guardar configuracion global.');
       return;
     }
+    setAuthMessage(`Guardando ${scope}...`);
+    const { error } = await saveAdminConfig(adminConfigDraft);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
     onAdminConfigChange(adminConfigDraft);
-    setAuthMessage(`${scope} actualizado en la configuracion local. El siguiente paso es persistirlo en Supabase.`);
+    setAuthMessage(`${scope} guardado en Supabase.`);
   }
 
   useEffect(() => {
@@ -1862,6 +1907,85 @@ function ProfileScreen({
       setAdminNewsFeatured(false);
       await onContentChanged();
     }
+  }
+
+  async function loadNewsDrafts() {
+    const items = await fetchNewsDrafts();
+    setNewsDrafts(items);
+    setAuthMessage(items.length > 0 ? 'Borradores cargados.' : 'No hay borradores guardados.');
+  }
+
+  async function adminSaveNewsDraft(status = 'borrador') {
+    if (!adminNewsTitle.trim() || !adminNewsBody.trim()) {
+      setAuthMessage('Completa titulo y texto antes de guardar el borrador.');
+      return;
+    }
+
+    setAuthMessage('Guardando borrador...');
+    const { error } = await saveNewsDraft({
+      title: adminNewsTitle.trim(),
+      body: adminNewsBody.trim(),
+      category: adminNewsCategory,
+      imageUrl: adminNewsImage.trim() || null,
+      isFeatured: adminNewsFeatured,
+      status
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAdminNewsTitle('');
+    setAdminNewsBody('');
+    setAdminNewsImage('');
+    setAdminNewsDraft(false);
+    setAdminNewsFeatured(false);
+    await loadNewsDrafts();
+    setAuthMessage(status === 'borrador' ? 'Borrador guardado.' : 'Borrador actualizado.');
+  }
+
+  async function loadAdminMaterials() {
+    const items = await fetchAppMaterials();
+    setAdminMaterials(items);
+    setAuthMessage(items.length > 0 ? 'Materiales cargados.' : 'No hay materiales guardados.');
+  }
+
+  async function adminSaveMaterial() {
+    if (!materialTitle.trim() || !materialDescription.trim()) {
+      setAuthMessage('Completa nombre y descripcion del material.');
+      return;
+    }
+
+    setAuthMessage('Guardando material...');
+    const { error } = await saveAppMaterial({
+      title: materialTitle.trim(),
+      description: materialDescription.trim(),
+      category: materialCategory.trim() || 'General',
+      visibility: materialVisibility,
+      requiredPermission: materialPermission.trim() || null,
+      fileUrl: materialFileUrl.trim() || null,
+      filePath: null,
+      sortOrder: 100
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setMaterialTitle('');
+    setMaterialDescription('');
+    setMaterialFileUrl('');
+    setMaterialPermission('');
+    await loadAdminMaterials();
+    setAuthMessage('Material guardado y visible segun permisos.');
+  }
+
+  async function adminArchiveMaterial(id: string) {
+    const { error } = await archiveAppMaterial(id);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadAdminMaterials();
+    setAuthMessage('Material archivado.');
   }
 
   async function adminCreateEvent() {
@@ -2614,31 +2738,52 @@ function ProfileScreen({
               {adminModule === 'descargas' ? (
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Descargas y materiales</Text>
-                  <Text style={styles.cardText}>Estructura base para biblioteca editable. La subida real de archivos se conectara al bucket de Supabase en el siguiente paso.</Text>
+                  <Text style={styles.cardText}>Biblioteca editable persistida en Supabase. Se puede guardar URL o ruta de archivo y definir visibilidad por rol.</Text>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={loadAdminMaterials}>
+                    <Text style={styles.secondaryButtonText}>Cargar materiales</Text>
+                  </TouchableOpacity>
                   <Text style={styles.cardEyebrow}>Materiales actuales</Text>
-                  {materials.map((material) => (
-                    <View key={material.title} style={styles.adminListRow}>
+                  {(adminMaterials.length > 0 ? adminMaterials : materials.map((material, index) => ({
+                    id: `fallback-${index}`,
+                    title: material.title,
+                    description: material.description,
+                    category: material.type,
+                    visibility: material.permission ? 'interno' : 'publico',
+                    required_permission: material.permission,
+                    file_url: null,
+                    file_path: null,
+                    sort_order: index,
+                    archived_at: null,
+                    created_at: null
+                  } as AppMaterialRecord))).map((material) => (
+                    <View key={material.id} style={styles.adminListRow}>
                       <Ionicons name="document-text-outline" size={19} color={palette.red} />
                       <View style={styles.adminUserHeaderText}>
                         <Text style={styles.cardTitle}>{material.title}</Text>
-                        <Text style={styles.cardText}>{material.type} - {material.permission ? 'Restringido por rol' : 'Publico'}</Text>
+                        <Text style={styles.cardText}>{material.category ?? 'General'} - {material.visibility ?? 'interno'}{material.required_permission ? ` - ${material.required_permission}` : ''}</Text>
                       </View>
-                      <Text style={styles.adminStateDraft}>Editar</Text>
+                      {!material.id.startsWith('fallback-') ? (
+                        <TouchableOpacity onPress={() => adminArchiveMaterial(material.id)}>
+                          <Text style={styles.adminStateDraft}>Archivar</Text>
+                        </TouchableOpacity>
+                      ) : <Text style={styles.adminStateDraft}>Base</Text>}
                     </View>
                   ))}
                   <Text style={styles.cardEyebrow}>Nuevo material</Text>
-                  <TextInput style={styles.input} placeholder="Nombre del archivo" />
-                  <TextInput style={styles.input} placeholder="Categoria" />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" multiline />
+                  <TextInput style={styles.input} placeholder="Nombre del archivo" value={materialTitle} onChangeText={setMaterialTitle} />
+                  <TextInput style={styles.input} placeholder="Categoria" value={materialCategory} onChangeText={setMaterialCategory} />
+                  <TextInput style={styles.input} placeholder="URL del archivo o PDF" value={materialFileUrl} onChangeText={setMaterialFileUrl} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialDescription} onChangeText={setMaterialDescription} multiline />
                   <View style={styles.filterRow}>
                     {['publico', 'interno', 'reservado', 'administrador'].map((item) => (
-                      <TouchableOpacity key={item} style={styles.filterChip}>
-                        <Text style={styles.filterChipText}>{item}</Text>
+                      <TouchableOpacity key={item} style={[styles.filterChip, materialVisibility === item && styles.filterChipActive]} onPress={() => setMaterialVisibility(item)}>
+                        <Text style={[styles.filterChipText, materialVisibility === item && styles.filterChipTextActive]}>{item}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => setAuthMessage('Base lista. Falta conectar subida real al storage de Supabase.')}>
-                    <Text style={styles.secondaryButtonText}>Preparar subida</Text>
+                  <TextInput style={styles.input} placeholder="Permiso requerido opcional. Ej: ver_materiales_internos" value={materialPermission} onChangeText={setMaterialPermission} />
+                  <TouchableOpacity style={styles.primaryButton} onPress={adminSaveMaterial}>
+                    <Text style={styles.primaryButtonText}>Guardar material</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -2960,9 +3105,21 @@ function ProfileScreen({
                     <Text style={styles.cardTitle}>{adminNewsTitle || 'Titulo de noticia'}</Text>
                     <Text style={styles.cardText}>{adminNewsBody || 'Previsualizacion del contenido antes de publicar.'}</Text>
                   </View>
-                  <TouchableOpacity style={styles.primaryButton} onPress={adminNewsDraft ? () => setAuthMessage('Borrador preparado en la interfaz. Falta persistir borradores en Supabase.') : adminCreateNews}>
+                  <TouchableOpacity style={styles.primaryButton} onPress={adminNewsDraft ? () => adminSaveNewsDraft('borrador') : adminCreateNews}>
                     <Text style={styles.primaryButtonText}>{adminNewsDraft ? 'Guardar borrador' : 'Publicar noticia'}</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={loadNewsDrafts}>
+                    <Text style={styles.secondaryButtonText}>Cargar borradores</Text>
+                  </TouchableOpacity>
+                  {newsDrafts.map((draft) => (
+                    <View key={draft.id} style={styles.adminListRow}>
+                      <Ionicons name={draft.status === 'borrador' ? 'document-outline' : 'checkmark-circle-outline'} size={19} color={palette.red} />
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.cardTitle}>{draft.title}</Text>
+                        <Text style={styles.cardText}>{draft.category} - {draft.status}{draft.is_featured ? ' - destacada' : ''}</Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
               ) : null}
 

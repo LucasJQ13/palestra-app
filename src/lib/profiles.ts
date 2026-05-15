@@ -295,6 +295,150 @@ export type ContentEditorBlock = {
   value: string;
 };
 
+export type AdminConfigRecord = Record<string, any>;
+
+export type AppMaterialRecord = {
+  id: string;
+  title: string;
+  description: string;
+  category: string | null;
+  visibility: string | null;
+  required_permission: string | null;
+  file_url: string | null;
+  file_path: string | null;
+  sort_order: number | null;
+  archived_at: string | null;
+  created_at: string | null;
+};
+
+export type NewsDraftRecord = {
+  id: string;
+  title: string;
+  body: string;
+  category: string;
+  image_url: string | null;
+  is_featured: boolean;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function fetchAdminConfig(): Promise<AdminConfigRecord | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_admin_config');
+    if (error || !data) {
+      return null;
+    }
+    return data as AdminConfigRecord;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveAdminConfig(config: AdminConfigRecord) {
+  try {
+    return await supabase.rpc('admin_update_config', {
+      p_config: config
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchAppMaterials(): Promise<AppMaterialRecord[]> {
+  try {
+    const { data, error } = await supabase
+      .from('materials')
+      .select('id, title, description, category, visibility, required_permission, file_url, file_path, sort_order, archived_at, created_at')
+      .is('archived_at', null)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
+    if (error || !data) {
+      return [];
+    }
+    return data as AppMaterialRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveAppMaterial(values: {
+  id?: string | null;
+  title: string;
+  description: string;
+  category: string;
+  visibility: string;
+  requiredPermission?: string | null;
+  fileUrl?: string | null;
+  filePath?: string | null;
+  sortOrder?: number | null;
+}) {
+  try {
+    return await supabase.rpc('admin_upsert_material', {
+      p_id: values.id ?? null,
+      p_title: values.title,
+      p_description: values.description,
+      p_category: values.category,
+      p_visibility: values.visibility,
+      p_required_permission: values.requiredPermission ?? null,
+      p_file_url: values.fileUrl ?? null,
+      p_file_path: values.filePath ?? null,
+      p_sort_order: values.sortOrder ?? 100
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function archiveAppMaterial(id: string) {
+  try {
+    return await supabase.rpc('admin_archive_material', {
+      p_id: id
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchNewsDrafts(): Promise<NewsDraftRecord[]> {
+  try {
+    const { data, error } = await supabase
+      .from('news_drafts')
+      .select('id, title, body, category, image_url, is_featured, status, created_at, updated_at')
+      .order('updated_at', { ascending: false });
+    if (error || !data) {
+      return [];
+    }
+    return data as NewsDraftRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveNewsDraft(values: {
+  id?: string | null;
+  title: string;
+  body: string;
+  category: string;
+  imageUrl?: string | null;
+  isFeatured: boolean;
+  status: string;
+}) {
+  try {
+    return await supabase.rpc('admin_upsert_news_draft', {
+      p_id: values.id ?? null,
+      p_title: values.title,
+      p_body: values.body,
+      p_category: values.category,
+      p_image_url: values.imageUrl ?? null,
+      p_is_featured: values.isFeatured,
+      p_status: values.status
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function fetchAppContent() {
   const { data, error } = await supabase
     .from('app_content')
