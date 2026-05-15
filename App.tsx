@@ -991,18 +991,50 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
         </TouchableOpacity>
         <SectionTitle title={province.province} />
         <Text style={styles.screenIntro}>{province.description}</Text>
-        {community ? (
-          <View style={styles.detailPanel}>
-            <TouchableOpacity style={styles.backButton} onPress={() => setSelectedCommunity(null)} activeOpacity={0.8}>
-              <Ionicons name="close" size={18} color={palette.red} />
-              <Text style={styles.backButtonText}>Cerrar comunidad</Text>
+        <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={() => setSelectedCommunity(null)}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedCommunity(null)}>
+            <TouchableOpacity style={[styles.modalPanel, styles.communityModalPanel]} activeOpacity={1} onPress={() => undefined}>
+              <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedCommunity(null)} activeOpacity={0.8}>
+                <Ionicons name="close" size={22} color={palette.red} />
+              </TouchableOpacity>
+              {community ? (
+                <>
+                  <Image source={{ uri: community.imageUrl }} style={styles.communityModalImage} />
+                  <Text style={styles.cardEyebrow}>{province.region}</Text>
+                  <Text style={styles.cardTitle}>{community.name}</Text>
+                  <View style={styles.communityModalMeta}>
+                    <View style={styles.communityModalMetaItem}>
+                      <Ionicons name="map-outline" size={17} color={palette.red} />
+                      <Text style={styles.communityModalMetaText}>{province.province}</Text>
+                    </View>
+                    <View style={styles.communityModalMetaItem}>
+                      <Ionicons name="people-outline" size={17} color={palette.red} />
+                      <Text style={styles.communityModalMetaText}>{province.locations.length} comunidades activas</Text>
+                    </View>
+                    <View style={styles.communityModalMetaItem}>
+                      <Ionicons name="call-outline" size={17} color={palette.red} />
+                      <Text style={styles.communityModalMetaText}>{community.phone}</Text>
+                    </View>
+                    <View style={styles.communityModalMetaItem}>
+                      <Ionicons name="calendar-outline" size={17} color={palette.red} />
+                      <Text style={styles.communityModalMetaText}>{community.meetingDay} - {community.meetingTime}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardText}>{community.address}</Text>
+                  <Text style={styles.cardText}>{community.description}</Text>
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.primaryButton} onPress={() => setSelectedCommunity(null)}>
+                      <Text style={styles.primaryButtonText}>Ver mas</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => setSelectedCommunity(null)}>
+                      <Text style={styles.secondaryButtonText}>Contactar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : null}
             </TouchableOpacity>
-            <Image source={{ uri: community.imageUrl }} style={styles.cardImage} />
-            <Text style={styles.cardTitle}>{community.name}</Text>
-            <Text style={styles.cardText}>{community.description}</Text>
-            <Text style={styles.expandHint}>Abrir direccion en Google Maps</Text>
-          </View>
-        ) : null}
+          </TouchableOpacity>
+        </Modal>
         {province.province === 'Tucuman' || province.province === 'Catamarca' ? (
           <View style={styles.groupNote}>
             <Text style={styles.groupNoteText}>Esta provincia distingue comunidades de jovenes y comunidades de adultos.</Text>
@@ -2953,7 +2985,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 0,
-    backgroundColor: palette.paper,
+    backgroundColor: '#DDF1F6',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
@@ -3019,21 +3051,21 @@ const styles = StyleSheet.create({
   },
   hero: {
     backgroundColor: palette.red,
-    borderRadius: 28,
+    borderRadius: 30,
     padding: 24,
     overflow: 'hidden',
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    elevation: 4
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    elevation: 3
   },
   heroGlow: {
     position: 'absolute',
     width: 170,
     height: 170,
     borderRadius: 85,
-    backgroundColor: palette.gold,
-    opacity: 0.34,
+    backgroundColor: '#9FD8E8',
+    opacity: 0.46,
     right: -42,
     top: -54
   },
@@ -3058,19 +3090,22 @@ const styles = StyleSheet.create({
   homeTileGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 28,
+    padding: 8
   },
   homeTile: {
     flex: 1,
     minWidth: '46%',
-    minHeight: 122,
+    minHeight: 104,
     borderRadius: 22,
-    padding: 15,
+    padding: 14,
     justifyContent: 'space-between',
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    elevation: 3
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0
   },
   homeTilePrimary: {
     backgroundColor: palette.red
@@ -3113,14 +3148,14 @@ const styles = StyleSheet.create({
     minHeight: 92,
     borderRadius: 22,
     padding: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.78)',
+    backgroundColor: 'rgba(255, 255, 255, 0.46)',
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.12)',
     justifyContent: 'space-between',
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 1
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0
   },
   dashboardValue: {
     color: palette.ink,
@@ -3134,16 +3169,16 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   featurePanel: {
-    backgroundColor: palette.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.38)',
     borderRadius: 26,
     padding: 16,
     gap: 10,
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.12)',
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.09,
-    shadowRadius: 16,
-    elevation: 2
+    shadowOpacity: 0.04,
+    shadowRadius: 18,
+    elevation: 1
   },
   featurePanelHeader: {
     flexDirection: 'row',
@@ -3155,7 +3190,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: palette.whiteSoft,
+    backgroundColor: 'rgba(230, 243, 245, 0.72)',
     borderRadius: 20,
     padding: 10
   },
@@ -3200,18 +3235,26 @@ const styles = StyleSheet.create({
     marginBottom: 2
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderWidth: 0,
-    borderColor: 'rgba(198, 226, 234, 0.62)',
-    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.34)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.08)',
+    borderRadius: 22,
     padding: 16,
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.09,
-    shadowRadius: 14,
-    elevation: 2
+    shadowOpacity: 0.02,
+    shadowRadius: 12,
+    elevation: 0
   },
   feedCard: {
-    gap: 10
+    gap: 10,
+    borderRadius: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+    borderBottomWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    paddingHorizontal: 2,
+    paddingVertical: 14
   },
   feedHeader: {
     flexDirection: 'row',
@@ -3244,7 +3287,14 @@ const styles = StyleSheet.create({
   libraryCard: {
     flexDirection: 'row',
     gap: 14,
-    alignItems: 'flex-start'
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 1,
+    borderRadius: 0,
+    paddingHorizontal: 2
   },
   libraryIcon: {
     width: 54,
@@ -3261,7 +3311,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 14,
     alignItems: 'flex-start',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.32)'
   },
   provinceIcon: {
     width: 54,
@@ -3279,8 +3330,18 @@ const styles = StyleSheet.create({
     flex: 1
   },
   communityCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: 'rgba(45, 141, 200, 0.45)'
+    borderLeftColor: 'rgba(45, 141, 200, 0.45)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: 1,
+    borderRadius: 0,
+    paddingHorizontal: 2,
+    paddingVertical: 15,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0
   },
   lockedCard: {
     opacity: 0.72
@@ -3357,7 +3418,7 @@ const styles = StyleSheet.create({
   modalPanel: {
     width: '100%',
     maxWidth: 520,
-    backgroundColor: palette.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
     borderColor: 'rgba(45, 141, 200, 0.18)',
     borderWidth: 1,
     borderRadius: 24,
@@ -3393,6 +3454,42 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingTop: 6
   },
+  communityModalPanel: {
+    maxHeight: '86%',
+    borderRadius: 30,
+    paddingBottom: 20
+  },
+  communityModalImage: {
+    width: '100%',
+    height: 176,
+    borderRadius: 24,
+    marginBottom: 12,
+    backgroundColor: palette.whiteSoft
+  },
+  communityModalMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 6
+  },
+  communityModalMetaItem: {
+    flex: 1,
+    minWidth: '46%',
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(230, 243, 245, 0.78)'
+  },
+  communityModalMetaText: {
+    flex: 1,
+    color: palette.ink,
+    fontSize: 12,
+    fontWeight: '800'
+  },
   groupNote: {
     backgroundColor: palette.goldSoft,
     borderColor: 'rgba(242, 184, 75, 0.42)',
@@ -3418,16 +3515,16 @@ const styles = StyleSheet.create({
     elevation: 1
   },
   contentIntro: {
-    backgroundColor: palette.white,
+    backgroundColor: 'rgba(255,255,255,0.26)',
     borderWidth: 0,
     borderColor: 'rgba(45, 141, 200, 0.12)',
     borderRadius: 20,
     padding: 14,
     gap: 6,
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.07,
+    shadowOpacity: 0,
     shadowRadius: 12,
-    elevation: 1
+    elevation: 0
   },
   calendarCard: {
     backgroundColor: palette.white,
