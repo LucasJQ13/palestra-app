@@ -387,6 +387,7 @@ export default function App() {
                   <Ionicons name={tab.icon} size={20} color={selected ? palette.white : palette.red} />
                 </View>
                 <Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>{tab.label}</Text>
+                {selected ? <View style={styles.tabActiveDot} /> : null}
               </TouchableOpacity>
             );
           })}
@@ -633,6 +634,12 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate }:
     { tab: 'materiales', title: 'Materiales', meta: 'Archivos internos', icon: 'folder-open-outline', style: styles.homeTileWarm },
     { tab: 'perfil', title: session ? 'Perfil' : 'Ingresar', meta: session ? roleLabel(session.role) : 'Cuenta personal', icon: 'person-circle-outline', style: styles.homeTileDeep }
   ];
+  const dashboardStats = [
+    { label: 'Provincias', value: String(communities.length), icon: 'map-outline' as keyof typeof Ionicons.glyphMap },
+    { label: 'Comunidades', value: String(communities.reduce((total, item) => total + item.locations.length, 0)), icon: 'people-circle-outline' as keyof typeof Ionicons.glyphMap },
+    { label: 'Materiales', value: String(materials.length), icon: 'library-outline' as keyof typeof Ionicons.glyphMap }
+  ];
+  const nextEvents = notilestra.slice(0, 2);
 
   useEffect(() => {
     let alive = true;
@@ -672,14 +679,60 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate }:
       </View>
 
       <EditableIntro content={content} editor={editor} />
-      <SectionTitle title="Avisos" />
-      {homeNews.map((item) => (
-        <TouchableOpacity key={item.title} style={styles.card} activeOpacity={0.86} onPress={() => setExpandedNews(expandedNews === item.title ? null : item.title)}>
-          <Text style={styles.cardEyebrow}>{item.scope}</Text>
+
+      <View style={styles.dashboardStrip}>
+        {dashboardStats.map((item) => (
+          <View key={item.label} style={styles.dashboardStat}>
+            <Ionicons name={item.icon} size={18} color={palette.red} />
+            <Text style={styles.dashboardValue}>{item.value}</Text>
+            <Text style={styles.dashboardLabel}>{item.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.featurePanel}>
+        <View style={styles.featurePanelHeader}>
+          <View>
+            <Text style={styles.cardEyebrow}>Proximamente</Text>
+            <Text style={styles.cardTitle}>Agenda comunitaria</Text>
+          </View>
+          <TouchableOpacity style={styles.iconButton} activeOpacity={0.8} onPress={() => onNavigate('notilestra')}>
+            <Ionicons name="arrow-forward" size={18} color={palette.red} />
+          </TouchableOpacity>
+        </View>
+        {nextEvents.map((item) => (
+          <View key={item.title} style={styles.miniEventRow}>
+            <View style={styles.miniEventDate}>
+              <Text style={styles.miniEventDay}>{new Date(`${item.date}T00:00:00`).getDate()}</Text>
+              <Text style={styles.miniEventMonth}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { month: 'short' })}</Text>
+            </View>
+            <View style={styles.miniEventBody}>
+              <Text style={styles.miniEventTitle}>{item.title}</Text>
+              <Text style={styles.miniEventScope}>{item.scope}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <SectionTitle title="Actividad reciente" />
+      {homeNews.map((item, index) => (
+        <TouchableOpacity key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]} activeOpacity={0.86} onPress={() => setExpandedNews(expandedNews === item.title ? null : item.title)}>
+          <View style={styles.feedHeader}>
+            <View style={styles.feedAvatar}>
+              <Ionicons name="sparkles-outline" size={18} color={palette.red} />
+            </View>
+            <View style={styles.feedHeaderText}>
+              <Text style={styles.cardEyebrow}>{item.scope}</Text>
+              <Text style={styles.feedMeta}>Comunidad Palestra</Text>
+            </View>
+          </View>
           <Text style={styles.cardTitle}>{item.title}</Text>
           <Text style={styles.cardText} numberOfLines={expandedNews === item.title ? undefined : 2}>{item.body}</Text>
           {expandedNews === item.title ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
-          <Text style={styles.expandHint}>{expandedNews === item.title ? 'Tocar para contraer' : 'Tocar para leer mas'}</Text>
+          <View style={styles.feedFooter}>
+            <Text style={styles.expandHint}>{expandedNews === item.title ? 'Tocar para contraer' : 'Tocar para leer mas'}</Text>
+            <Ionicons name={expandedNews === item.title ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+          </View>
         </TouchableOpacity>
       ))}
 
@@ -839,10 +892,18 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
           </View>
         </View>
       </Modal>
-      {subtab === 'noticias' ? notilestraItems.map((item) => (
-        <View key={item.title} style={styles.card}>
+      {subtab === 'noticias' ? notilestraItems.map((item, index) => (
+        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
           <TouchableOpacity activeOpacity={0.86} onPress={() => setExpandedItem(expandedItem === item.title ? null : item.title)}>
-            <Text style={styles.cardEyebrow}>{item.scope} - {item.date}</Text>
+            <View style={styles.feedHeader}>
+              <View style={styles.feedAvatar}>
+                <Ionicons name="megaphone-outline" size={18} color={palette.red} />
+              </View>
+              <View style={styles.feedHeaderText}>
+                <Text style={styles.cardEyebrow}>{item.scope}</Text>
+                <Text style={styles.feedMeta}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+              </View>
+            </View>
             <Text style={styles.cardTitle}>{item.title}</Text>
             <Text style={styles.cardText} numberOfLines={expandedItem === item.title ? undefined : 2}>{item.body}</Text>
           </TouchableOpacity>
@@ -858,15 +919,15 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
           </View>
         </View>
       )) : null}
-      {subtab === 'favoritos' ? <View style={styles.stack}>{favoriteItems.length > 0 ? favoriteItems.map((item) => (
-        <View key={item.title} style={styles.card}>
+      {subtab === 'favoritos' ? <View style={styles.stack}>{favoriteItems.length > 0 ? favoriteItems.map((item, index) => (
+        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
           <Text style={styles.cardEyebrow}>{item.scope} - {item.date}</Text>
           <Text style={styles.cardTitle}>{item.title}</Text>
           <Text style={styles.cardText}>{item.body}</Text>
         </View>
       )) : <View style={styles.card}><Text style={styles.cardText}>Todavia no marcaste favoritos.</Text></View>}</View> : null}
-      {subtab === 'recordatorios' ? <View style={styles.stack}>{reminderItems.length > 0 ? reminderItems.map((item) => (
-        <View key={item.title} style={styles.card}>
+      {subtab === 'recordatorios' ? <View style={styles.stack}>{reminderItems.length > 0 ? reminderItems.map((item, index) => (
+        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
           <Text style={styles.cardEyebrow}>Recordatorio - {item.date}</Text>
           <Text style={styles.cardTitle}>{item.title}</Text>
           <Text style={styles.cardText}>La app mostrara un aviso interno 1 dia antes al abrir Notilestra.</Text>
@@ -884,10 +945,15 @@ function MaterialsScreen({ session, title, content, editor }: { session: Session
       {materials.map((material) => {
         const locked = material.permission && !hasPermission(session, material.permission);
         return (
-          <View key={material.title} style={[styles.card, locked && styles.lockedCard]}>
-            <Text style={styles.cardEyebrow}>{material.type}</Text>
-            <Text style={styles.cardTitle}>{material.title}</Text>
-            <Text style={styles.cardText}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
+          <View key={material.title} style={[styles.card, styles.libraryCard, locked && styles.lockedCard]}>
+            <View style={styles.libraryIcon}>
+              <Ionicons name={locked ? 'lock-closed-outline' : 'document-text-outline'} size={24} color={locked ? palette.inkMuted : palette.red} />
+            </View>
+            <View style={styles.libraryBody}>
+              <Text style={styles.cardEyebrow}>{material.type}</Text>
+              <Text style={styles.cardTitle}>{material.title}</Text>
+              <Text style={styles.cardText}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
+            </View>
           </View>
         );
       })}
@@ -946,7 +1012,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
           <>
             <SectionTitle title="Comunidades de jovenes" />
             {province.locations.filter((location) => location.group !== 'adultos').map((location) => (
-              <TouchableOpacity key={`young-${location.name}`} style={styles.card} activeOpacity={0.86} onPress={() => setSelectedCommunity(location.name)}>
+              <TouchableOpacity key={`young-${location.name}`} style={[styles.card, styles.communityCard]} activeOpacity={0.86} onPress={() => setSelectedCommunity(location.name)}>
                 <Text style={styles.cardTitle}>{location.name}</Text>
                 <Text style={styles.cardText}>{location.address}</Text>
                 <Text style={styles.cardText}>Contacto: {location.phone}</Text>
@@ -956,7 +1022,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
             ))}
             <SectionTitle title="Comunidades de adultos" />
             {province.locations.filter((location) => location.group === 'adultos').map((location) => (
-              <TouchableOpacity key={`adult-${location.name}`} style={styles.card} activeOpacity={0.86} onPress={() => setSelectedCommunity(location.name)}>
+              <TouchableOpacity key={`adult-${location.name}`} style={[styles.card, styles.communityCard]} activeOpacity={0.86} onPress={() => setSelectedCommunity(location.name)}>
                 <Text style={styles.cardTitle}>{location.name}</Text>
                 <Text style={styles.cardText}>{location.address}</Text>
                 <Text style={styles.cardText}>Contacto: {location.phone}</Text>
@@ -966,7 +1032,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
             ))}
           </>
         ) : province.locations.map((location) => (
-          <TouchableOpacity key={location.name} style={styles.card} activeOpacity={0.86} onPress={() => setSelectedCommunity(location.name)}>
+          <TouchableOpacity key={location.name} style={[styles.card, styles.communityCard]} activeOpacity={0.86} onPress={() => setSelectedCommunity(location.name)}>
             <Text style={styles.cardTitle}>{location.name}</Text>
             <Text style={styles.cardText}>{location.address}</Text>
             <Text style={styles.cardText}>Contacto: {location.phone}</Text>
@@ -983,10 +1049,16 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
       {visibleCommunityData.map((community) => (
-        <TouchableOpacity key={community.province} style={styles.card} onPress={() => setSelectedProvince(community.province)} activeOpacity={0.85}>
-          <Text style={styles.cardEyebrow}>{community.region}</Text>
-          <Text style={styles.cardTitle}>{community.province}</Text>
-          <Text style={styles.cardText}>{community.description}</Text>
+        <TouchableOpacity key={community.province} style={[styles.card, styles.provinceCard]} onPress={() => setSelectedProvince(community.province)} activeOpacity={0.85}>
+          <View style={styles.provinceIcon}>
+            <Ionicons name="location-outline" size={22} color={palette.white} />
+          </View>
+          <View style={styles.provinceBody}>
+            <Text style={styles.cardEyebrow}>{community.region}</Text>
+            <Text style={styles.cardTitle}>{community.province}</Text>
+            <Text style={styles.cardText}>{community.description}</Text>
+            <Text style={styles.expandHint}>{community.locations.length} comunidades activas</Text>
+          </View>
         </TouchableOpacity>
       ))}
       <SectionTitle title="Filtro demo" />
@@ -1980,11 +2052,23 @@ function ProfileScreen({
               </View>
             </Modal>
           ) : null}
-          <Text style={styles.cardText}>Provincia: {session.province}</Text>
-          <Text style={styles.cardText}>Rango: {roleLabel(session.role)}</Text>
-          <Text style={styles.cardText}>Contacto: {session.contact}</Text>
-          <Text style={styles.cardText}>Comunidad de origen: {session.communityOfOrigin}</Text>
-          <Text style={styles.cardText}>Estado: {statusLabel(session.status)}</Text>
+          <View style={styles.profileMetaGrid}>
+            {[
+              { label: 'Provincia', value: session.province, icon: 'map-outline' },
+              { label: 'Rango', value: roleLabel(session.role), icon: 'ribbon-outline' },
+              { label: 'Contacto', value: session.contact, icon: 'chatbubble-ellipses-outline' },
+              { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' },
+              { label: 'Estado', value: statusLabel(session.status), icon: 'checkmark-circle-outline' }
+            ].map((item) => (
+              <View key={item.label} style={styles.profileMetaItem}>
+                <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={17} color={palette.red} />
+                <View style={styles.profileMetaText}>
+                  <Text style={styles.profileMetaLabel}>{item.label}</Text>
+                  <Text style={styles.profileMetaValue}>{item.value}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
           {roleInfo ? <Text style={styles.cardText}>{roleInfo.description}</Text> : null}
           {profilePanel === 'editar' ? <View style={styles.profileCommunityPanel}>
             <Text style={styles.cardEyebrow}>Editar perfil</Text>
@@ -3020,6 +3104,94 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 3
   },
+  dashboardStrip: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  dashboardStat: {
+    flex: 1,
+    minHeight: 92,
+    borderRadius: 22,
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.12)',
+    justifyContent: 'space-between',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 1
+  },
+  dashboardValue: {
+    color: palette.ink,
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 6
+  },
+  dashboardLabel: {
+    color: palette.inkMuted,
+    fontSize: 11,
+    fontWeight: '800'
+  },
+  featurePanel: {
+    backgroundColor: palette.white,
+    borderRadius: 26,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.12)',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.09,
+    shadowRadius: 16,
+    elevation: 2
+  },
+  featurePanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12
+  },
+  miniEventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: palette.whiteSoft,
+    borderRadius: 20,
+    padding: 10
+  },
+  miniEventDate: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: palette.red,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  miniEventDay: {
+    color: palette.white,
+    fontSize: 18,
+    fontWeight: '900'
+  },
+  miniEventMonth: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase'
+  },
+  miniEventBody: {
+    flex: 1
+  },
+  miniEventTitle: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: '900'
+  },
+  miniEventScope: {
+    color: palette.inkMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2
+  },
   sectionTitle: {
     color: palette.ink,
     fontSize: 21,
@@ -3028,15 +3200,87 @@ const styles = StyleSheet.create({
     marginBottom: 2
   },
   card: {
-    backgroundColor: palette.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
     borderWidth: 0,
     borderColor: 'rgba(198, 226, 234, 0.62)',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 16,
     shadowColor: palette.blueDeep,
     shadowOpacity: 0.09,
     shadowRadius: 14,
     elevation: 2
+  },
+  feedCard: {
+    gap: 10
+  },
+  feedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 2
+  },
+  feedAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    backgroundColor: 'rgba(45, 141, 200, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  feedHeaderText: {
+    flex: 1
+  },
+  feedMeta: {
+    color: palette.inkMuted,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  feedFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2
+  },
+  libraryCard: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'flex-start'
+  },
+  libraryIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 20,
+    backgroundColor: 'rgba(45, 141, 200, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  libraryBody: {
+    flex: 1
+  },
+  provinceCard: {
+    flexDirection: 'row',
+    gap: 14,
+    alignItems: 'flex-start',
+    overflow: 'hidden'
+  },
+  provinceIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 20,
+    backgroundColor: palette.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 2
+  },
+  provinceBody: {
+    flex: 1
+  },
+  communityCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: 'rgba(45, 141, 200, 0.45)'
   },
   lockedCard: {
     opacity: 0.72
@@ -3314,6 +3558,40 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     flex: 1
   },
+  profileMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12
+  },
+  profileMetaItem: {
+    flex: 1,
+    minWidth: '46%',
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 20,
+    padding: 12,
+    backgroundColor: palette.whiteSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.12)'
+  },
+  profileMetaText: {
+    flex: 1
+  },
+  profileMetaLabel: {
+    color: palette.inkMuted,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 3
+  },
+  profileMetaValue: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '800'
+  },
   avatarFrameLarge: {
     width: 132,
     height: 132,
@@ -3477,17 +3755,17 @@ const styles = StyleSheet.create({
     left: 14,
     right: 14,
     bottom: 12,
-    backgroundColor: palette.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
     borderTopWidth: 0,
-    borderRadius: 26,
+    borderRadius: 30,
     flexDirection: 'row',
-    paddingTop: 9,
-    paddingBottom: 9,
+    paddingTop: 10,
+    paddingBottom: 8,
     paddingHorizontal: 6,
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.16,
-    shadowRadius: 18,
-    elevation: 8
+    shadowOpacity: 0.2,
+    shadowRadius: 22,
+    elevation: 10
   },
   tabButton: {
     flex: 1,
@@ -3495,8 +3773,8 @@ const styles = StyleSheet.create({
     gap: 3
   },
   tabIconFrame: {
-    width: 36,
-    height: 32,
+    width: 38,
+    height: 34,
     borderWidth: 0,
     borderTopLeftRadius: 14,
     borderTopRightRadius: 8,
@@ -3508,7 +3786,11 @@ const styles = StyleSheet.create({
   },
   tabIconFrameActive: {
     backgroundColor: palette.red,
-    borderColor: palette.red
+    borderColor: palette.red,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 3
   },
   tabLabel: {
     color: palette.inkMuted,
@@ -3517,6 +3799,13 @@ const styles = StyleSheet.create({
   },
   tabLabelActive: {
     color: palette.red
+  },
+  tabActiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: palette.red,
+    marginTop: 1
   },
   profileCommunityPanel: {
     backgroundColor: palette.white,
