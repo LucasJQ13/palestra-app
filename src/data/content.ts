@@ -321,63 +321,7 @@ export const auditLog = [
   'Coordinacion Nacional actualizo permisos de prueba.'
 ];
 
-export const roleDefinitions = [
-  {
-    role: 'invitado',
-    label: 'Invitado',
-    description: 'Solo puede ver inicio, noticias, comunidades, historia y contacto.'
-  },
-  {
-    role: 'palestrista',
-    label: 'Palestrista',
-    description: 'Iniciador dentro del movimiento. Puede descargar archivos y ver noticias de su comunidad.'
-  },
-  {
-    role: 'sedimentador',
-    label: 'Sedimentador',
-    description: 'Hizo el PM. Puede descargar archivos exclusivos y ver fechas no publicas.'
-  },
-  {
-    role: 'coordinador_comunidad',
-    label: 'Coordinador de comunidad',
-    description: 'Gestiona noticias, horarios, fechas especiales y mensajes de su comunidad.'
-  },
-  {
-    role: 'animador_comunidad',
-    label: 'Animador de comunidad',
-    description: 'Acompana iniciadores y gestiona comunicacion comunitaria.'
-  },
-  {
-    role: 'vocal',
-    label: 'Vocal',
-    description: 'Controla publicaciones, aprueba sedimentadores y otorga roles provinciales.'
-  },
-  {
-    role: 'coordinador_diocesano',
-    label: 'Coordinador Diocesano',
-    description: 'Gestiona como vocal y puede otorgar roles de Vocal y Asesor.'
-  },
-  {
-    role: 'asesor',
-    label: 'Asesor',
-    description: 'Cargo honorifico con seccion exclusiva y atribuciones de coordinador de comunidad.'
-  },
-  {
-    role: 'vocal_nacional',
-    label: 'Vocal Nacional',
-    description: 'Puede modificar contenido en todas las provincias.'
-  },
-  {
-    role: 'coordinador_nacional',
-    label: 'Coordinador Nacional',
-    description: 'Gestiona permisos de todos los roles y otorga el cargo de Vocal Nacional.'
-  },
-  {
-    role: 'administrador',
-    label: 'Administrador',
-    description: 'Perfil tecnico de maxima confianza. Puede gestionar estructura, roles, permisos, pestanas, comunidades y configuracion global.'
-  }
-];
+export { roleHierarchy as roleDefinitions } from '../lib/roles';
 
 export const communityNews = [
   {

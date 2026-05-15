@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Image, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
@@ -11,6 +11,7 @@ import { AppCommunity, fetchCommunities, fetchNews, fetchNotilestra } from './sr
 import { AdminUser, AppContentBlock, AppTabSetting, ContentEditorBlock, UserRequestRecord, approveProfile, confirmAdminUserEmail, createAppTab, createEvent, createNews, createUserRequest, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppTabs, fetchMyRequests, fetchPendingProfiles, PendingProfile, resolveUserRequest, updateAdminUser, updateAppContent, updateAppTab, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
+import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvince, canSeeAllProvinces, visibleHierarchyFor } from './src/lib/roles';
 
 type TabKey = string;
 type AdminModule = 'resumen' | 'usuarios' | 'solicitudes' | 'noticias' | 'eventos' | 'comunidades' | 'contenido_general';
@@ -27,6 +28,8 @@ type AdminRequest = {
   resolvedAt?: string;
   resolvedBy?: string;
 };
+
+type NotilestraItem = (typeof notilestra)[number];
 
 type PageEditorProps = {
   tabKey: TabKey;
@@ -67,7 +70,7 @@ const demoSessions: Record<string, Session> = {
     communityOfOrigin: 'Sin comunidad asignada',
     role: 'invitado',
     status: 'aprobado',
-    permissions: ['ver_inicio', 'ver_noticias', 'ver_comunidades', 'ver_historia', 'ver_contacto']
+    permissions: getPermissionsForRole('invitado')
   },
   palestrista: {
     fullName: 'Camila Torres',
@@ -76,7 +79,7 @@ const demoSessions: Record<string, Session> = {
     communityOfOrigin: 'Comunidad Tucuman 1',
     role: 'palestrista',
     status: 'aprobado',
-    permissions: ['ver_inicio', 'ver_noticias', 'ver_comunidades', 'ver_historia', 'ver_contacto', 'ver_materiales_internos', 'descargar_archivos', 'ver_noticias_comunidad']
+    permissions: getPermissionsForRole('palestrista')
   },
   sedimentador: {
     fullName: 'Mateo Herrera',
@@ -85,7 +88,7 @@ const demoSessions: Record<string, Session> = {
     communityOfOrigin: 'Comunidad Catamarca 2',
     role: 'sedimentador',
     status: 'aprobado',
-    permissions: ['ver_inicio', 'ver_noticias', 'ver_comunidades', 'ver_historia', 'ver_contacto', 'ver_materiales_internos', 'descargar_archivos', 'descargar_archivos_exclusivos', 'ver_fechas_privadas', 'ver_noticias_comunidad']
+    permissions: getPermissionsForRole('sedimentador')
   },
   coordinador: {
     fullName: 'Lucia Rios',
@@ -94,7 +97,7 @@ const demoSessions: Record<string, Session> = {
     communityOfOrigin: 'Comunidad Cordoba 1',
     role: 'coordinador_comunidad',
     status: 'aprobado',
-    permissions: ['ver_inicio', 'ver_noticias', 'ver_comunidades', 'ver_historia', 'ver_contacto', 'ver_materiales_internos', 'descargar_archivos', 'descargar_archivos_exclusivos', 'ver_fechas_privadas', 'ver_noticias_comunidad', 'subir_noticias_comunidad', 'gestionar_comunidad', 'enviar_mensajes_comunidad']
+    permissions: getPermissionsForRole('coordinador_comunidad')
   },
   nacional: {
     fullName: 'Equipo Nacional Demo',
@@ -103,7 +106,7 @@ const demoSessions: Record<string, Session> = {
     communityOfOrigin: 'Equipo Nacional',
     role: 'coordinador_nacional',
     status: 'aprobado',
-    permissions: ['ver_inicio', 'ver_noticias', 'ver_comunidades', 'ver_historia', 'ver_contacto', 'ver_materiales_internos', 'descargar_archivos', 'descargar_archivos_exclusivos', 'ver_fechas_privadas', 'ver_noticias_comunidad', 'gestionar_contenido', 'gestionar_permisos', 'enviar_notificaciones']
+    permissions: getPermissionsForRole('coordinador_nacional')
   },
   administrador: {
     fullName: 'Administrador Tecnico',
@@ -112,7 +115,7 @@ const demoSessions: Record<string, Session> = {
     communityOfOrigin: 'Administracion global',
     role: 'administrador',
     status: 'aprobado',
-    permissions: ['ver_inicio', 'ver_noticias', 'ver_comunidades', 'ver_historia', 'ver_contacto', 'ver_materiales_internos', 'descargar_archivos', 'descargar_archivos_exclusivos', 'ver_fechas_privadas', 'ver_noticias_comunidad', 'subir_noticias_comunidad', 'gestionar_comunidad', 'enviar_mensajes_comunidad', 'aprobar_sedimentadores', 'otorgar_roles_provincia', 'otorgar_roles_diocesanos', 'ver_seccion_asesores', 'gestionar_permisos', 'gestionar_sistema', 'gestionar_roles_globales', 'gestionar_pestanas', 'gestionar_comunidades_global', 'enviar_notificaciones', 'gestionar_contenido']
+    permissions: getPermissionsForRole('administrador')
   }
 };
 
@@ -249,7 +252,7 @@ export default function App() {
       return <MaterialsScreen session={session} title={tabLabel('materiales')} content={appContent.find((item) => item.tab_key === 'materiales')} editor={pageEditorProps('materiales')} />;
     }
     if (activeTab === 'comunidades') {
-      return <CommunitiesScreen title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} editor={pageEditorProps('comunidades')} />;
+      return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} editor={pageEditorProps('comunidades')} />;
     }
     if (activeTab === 'historia') {
       return <HistoryScreen title={tabLabel('historia')} content={appContent.find((item) => item.tab_key === 'historia')} editor={pageEditorProps('historia')} />;
@@ -544,7 +547,7 @@ function HomeScreen({ session, title, content, refreshKey, editor }: { session: 
 
   useEffect(() => {
     let alive = true;
-    fetchNews().then((items) => {
+    fetchNews(session).then((items) => {
       if (alive) {
         setHomeNews(items);
       }
@@ -552,7 +555,7 @@ function HomeScreen({ session, title, content, refreshKey, editor }: { session: 
     return () => {
       alive = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, session?.province, session?.role]);
 
   return (
     <View style={styles.stack}>
@@ -592,11 +595,11 @@ function HomeScreen({ session, title, content, refreshKey, editor }: { session: 
 
 function NotilestraScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [selectedActivity, setSelectedActivity] = useState<(typeof calendarActivities)[number] | null>(null);
-  const [favorite, setFavorite] = useState<string | null>(null);
-  const [reminder, setReminder] = useState<string | null>(null);
+  const [selectedCalendarItems, setSelectedCalendarItems] = useState<Array<{ date: string; title: string; body?: string; imageUrl?: string; scope?: string }>>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [reminders, setReminders] = useState<string[]>([]);
   const [subtab, setSubtab] = useState<'noticias' | 'favoritos' | 'recordatorios'>('noticias');
-  const [notilestraItems, setNotilestraItems] = useState(notilestra);
+  const [notilestraItems, setNotilestraItems] = useState<NotilestraItem[]>(notilestra);
   const [monthOffset, setMonthOffset] = useState(0);
   const baseDate = new Date(2026, 4 + monthOffset, 1);
   const monthLabel = baseDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
@@ -604,7 +607,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
   const firstDay = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1).getDay();
   useEffect(() => {
     let alive = true;
-    fetchNotilestra().then((items) => {
+    fetchNotilestra(session).then((items) => {
       if (alive) {
         setNotilestraItems(items);
       }
@@ -612,7 +615,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     return () => {
       alive = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, session?.province, session?.role]);
 
   const eventDays = notilestraItems
     .filter((item) => {
@@ -625,6 +628,33 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     const canSee = !('requiredPermission' in item) || hasPermission(session, item.requiredPermission as Permission);
     return canSee && itemDate.getFullYear() === baseDate.getFullYear() && itemDate.getMonth() === baseDate.getMonth();
   });
+  const favoriteItems = notilestraItems.filter((item) => favorites.includes(item.title));
+  const reminderItems = notilestraItems.filter((item) => reminders.includes(item.title));
+
+  function openCalendarDay(day: number) {
+    const dateKey = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const newsForDay = notilestraItems
+      .filter((item) => item.date === dateKey)
+      .map((item) => ({ date: item.date, title: item.title, body: item.body, scope: item.scope }));
+    const activitiesForDay = activityDays
+      .filter((item) => item.date === dateKey)
+      .map((item) => ({
+        date: item.date,
+        title: item.title,
+        body: 'body' in item ? item.body : undefined,
+        imageUrl: 'imageUrl' in item ? item.imageUrl : undefined,
+        scope: 'Actividad'
+      }));
+    setSelectedCalendarItems([...newsForDay, ...activitiesForDay]);
+  }
+
+  function toggleFavorite(title: string) {
+    setFavorites((current) => current.includes(title) ? current.filter((item) => item !== title) : [...current, title]);
+  }
+
+  function toggleReminder(title: string) {
+    setReminders((current) => current.includes(title) ? current.filter((item) => item !== title) : [...current, title]);
+  }
 
   return (
     <View style={styles.stack}>
@@ -658,40 +688,54 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
             const day = index + 1;
             const hasEvent = eventDays.includes(day);
             const activity = activityDays.find((item) => new Date(`${item.date}T00:00:00`).getDate() === day);
+            const canOpenDay = hasEvent || Boolean(activity);
             return (
-              <TouchableOpacity key={day} style={[styles.calendarDay, hasEvent && styles.calendarEventDay, activity && styles.calendarActivityDay]} activeOpacity={activity ? 0.75 : 1} onPress={() => activity && setSelectedActivity(activity)}>
+              <TouchableOpacity key={day} style={[styles.calendarDay, hasEvent && styles.calendarEventDay, activity && styles.calendarActivityDay]} activeOpacity={canOpenDay ? 0.75 : 1} onPress={() => canOpenDay && openCalendarDay(day)}>
                 <Text style={[styles.calendarDayText, hasEvent && styles.calendarEventText, activity && styles.calendarActivityText]}>{day}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
       </View>
-      {selectedActivity ? (
-        <View style={styles.modalPanel}>
-          <TouchableOpacity style={styles.backButton} onPress={() => setSelectedActivity(null)} activeOpacity={0.8}>
-            <Ionicons name="close" size={18} color={palette.red} />
-            <Text style={styles.backButtonText}>Cerrar actividad</Text>
-          </TouchableOpacity>
-          <Text style={styles.cardEyebrow}>{selectedActivity.date}</Text>
-          <Text style={styles.cardTitle}>{selectedActivity.title}</Text>
-          {'imageUrl' in selectedActivity && selectedActivity.imageUrl ? <Image source={{ uri: selectedActivity.imageUrl }} style={styles.cardImage} /> : null}
-          {'body' in selectedActivity && selectedActivity.body ? <Text style={styles.cardText}>{selectedActivity.body}</Text> : null}
-        </View>
-      ) : null}
-      {subtab === 'noticias' ? notilestraItems.map((item) => (
-        <TouchableOpacity key={item.title} style={styles.card} activeOpacity={0.86} onPress={() => setExpandedItem(expandedItem === item.title ? null : item.title)}>
-          <Text style={styles.cardEyebrow}>{item.scope} - {item.date}</Text>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardText} numberOfLines={expandedItem === item.title ? undefined : 2}>{item.body}</Text>
-          <View style={styles.inlineActions}>
-            <Text style={styles.expandHint} onPress={() => setFavorite(item.title)}>Favorito</Text>
-            <Text style={styles.expandHint} onPress={() => setReminder(item.title)}>Recordar</Text>
+      <Modal visible={selectedCalendarItems.length > 0} transparent animationType="fade" onRequestClose={() => setSelectedCalendarItems([])}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalPanel}>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedCalendarItems([])} activeOpacity={0.8}>
+              <Ionicons name="close" size={22} color={palette.red} />
+            </TouchableOpacity>
+            <Text style={styles.cardEyebrow}>{selectedCalendarItems[0]?.date}</Text>
+            {selectedCalendarItems.map((item) => (
+              <View key={`${item.date}-${item.title}`} style={styles.modalItem}>
+                <Text style={styles.cardEyebrow}>{item.scope ?? 'Notilestra'}</Text>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
+                {item.body ? <Text style={styles.cardText}>{item.body}</Text> : null}
+              </View>
+            ))}
           </View>
-          <Text style={styles.expandHint}>{expandedItem === item.title ? 'Tocar para contraer' : 'Tocar para leer mas'}</Text>
-        </TouchableOpacity>
+        </View>
+      </Modal>
+      {subtab === 'noticias' ? notilestraItems.map((item) => (
+        <View key={item.title} style={styles.card}>
+          <TouchableOpacity activeOpacity={0.86} onPress={() => setExpandedItem(expandedItem === item.title ? null : item.title)}>
+            <Text style={styles.cardEyebrow}>{item.scope} - {item.date}</Text>
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            <Text style={styles.cardText} numberOfLines={expandedItem === item.title ? undefined : 2}>{item.body}</Text>
+          </TouchableOpacity>
+          <View style={styles.inlineActions}>
+            <TouchableOpacity style={[styles.actionPill, favorites.includes(item.title) && styles.actionPillActive]} onPress={() => toggleFavorite(item.title)}>
+              <Ionicons name={favorites.includes(item.title) ? 'star' : 'star-outline'} size={16} color={favorites.includes(item.title) ? palette.white : palette.red} />
+              <Text style={[styles.actionPillText, favorites.includes(item.title) && styles.actionPillTextActive]}>Favorito</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionPill, reminders.includes(item.title) && styles.actionPillActive]} onPress={() => toggleReminder(item.title)}>
+              <Ionicons name={reminders.includes(item.title) ? 'notifications' : 'notifications-outline'} size={16} color={reminders.includes(item.title) ? palette.white : palette.red} />
+              <Text style={[styles.actionPillText, reminders.includes(item.title) && styles.actionPillTextActive]}>Recordar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )) : null}
-      {subtab === 'favoritos' ? <View style={styles.card}><Text style={styles.cardTitle}>Favoritos</Text><Text style={styles.cardText}>{favorite ?? 'Todavia no marcaste favoritos.'}</Text></View> : null}
-      {subtab === 'recordatorios' ? <View style={styles.card}><Text style={styles.cardTitle}>Recordatorios</Text><Text style={styles.cardText}>{reminder ?? 'Todavia no marcaste recordatorios.'}</Text></View> : null}
+      {subtab === 'favoritos' ? <View style={styles.card}><Text style={styles.cardTitle}>Favoritos</Text>{favoriteItems.length > 0 ? favoriteItems.map((item) => <Text key={item.title} style={styles.cardText}>- {item.title}</Text>) : <Text style={styles.cardText}>Todavia no marcaste favoritos.</Text>}</View> : null}
+      {subtab === 'recordatorios' ? <View style={styles.card}><Text style={styles.cardTitle}>Recordatorios</Text>{reminderItems.length > 0 ? reminderItems.map((item) => <Text key={item.title} style={styles.cardText}>- {item.title} ({item.date})</Text>) : <Text style={styles.cardText}>Todavia no marcaste recordatorios.</Text>}</View> : null}
     </View>
   );
 }
@@ -715,12 +759,13 @@ function MaterialsScreen({ session, title, content, editor }: { session: Session
   );
 }
 
-function CommunitiesScreen({ title, content, refreshKey, editor }: { title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
+function CommunitiesScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const [communityData, setCommunityData] = useState<AppCommunity[]>(communities);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
   const [filterProvince, setFilterProvince] = useState<string>('Todas');
-  const province = communityData.find((item) => item.province === selectedProvince);
+  const visibleCommunityData = useMemo(() => communityData.filter((item) => canAccessProvince(session, item.province)), [communityData, session?.province, session?.role]);
+  const province = visibleCommunityData.find((item) => item.province === selectedProvince);
   const community = province?.locations.find((item) => item.name === selectedCommunity);
 
   useEffect(() => {
@@ -801,7 +846,7 @@ function CommunitiesScreen({ title, content, refreshKey, editor }: { title: stri
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {communityData.map((community) => (
+      {visibleCommunityData.map((community) => (
         <TouchableOpacity key={community.province} style={styles.card} onPress={() => setSelectedProvince(community.province)} activeOpacity={0.85}>
           <Text style={styles.cardEyebrow}>{community.region}</Text>
           <Text style={styles.cardTitle}>{community.province}</Text>
@@ -810,7 +855,7 @@ function CommunitiesScreen({ title, content, refreshKey, editor }: { title: stri
       ))}
       <SectionTitle title="Filtro demo" />
       <View style={styles.filterRow}>
-        {['Todas', 'Salta', 'Tucuman', 'Catamarca'].map((item) => (
+        {['Todas', ...visibleCommunityData.map((item) => item.province)].map((item) => (
           <TouchableOpacity key={item} style={[styles.filterChip, filterProvince === item && styles.filterChipActive]} onPress={() => setFilterProvince(item)}>
             <Text style={[styles.filterChipText, filterProvince === item && styles.filterChipTextActive]}>{item}</Text>
           </TouchableOpacity>
@@ -987,10 +1032,13 @@ function ProfileScreen({
   ]);
   const selectedRegistrationProvince = registrationCommunities.find((item) => item.province === registerProvince);
   const selectedEditProvince = registrationCommunities.find((item) => item.province === editProvince);
-  const selectedAdminProvince = registrationCommunities.find((item) => item.province === adminCommunityProvince);
+  const visibleRegistrationCommunities = useMemo(() => registrationCommunities.filter((item) => canAccessProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
+  const manageableCommunities = useMemo(() => registrationCommunities.filter((item) => canManageProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
+  const selectedAdminProvince = manageableCommunities.find((item) => item.province === adminCommunityProvince);
   const selectedAdminCommunity = selectedAdminProvince?.locations.find((item) => (item.id ?? item.name) === adminCommunityId);
   const selectedAdminUser = adminUsers.find((item) => item.id === selectedAdminUserId);
-  const selectedAdminUserProvince = registrationCommunities.find((item) => item.province === adminUserProvince);
+  const selectedAdminUserProvince = visibleRegistrationCommunities.find((item) => item.province === adminUserProvince);
+  const assignableRoles = useMemo(() => assignableRolesFor(session), [session?.role]);
   const selectedEditableContent = appContent.find((item) => item.tab_key === selectedContentTab);
   const editableTabs = useMemo(
     () => (tabs.length > 0 ? tabs : defaultTabs.map((tab, index) => ({ ...tab, visible: true, sortOrder: index, visibleRoles: null }))),
@@ -1002,6 +1050,9 @@ function ProfileScreen({
   const pendingAdminRequests = adminRequests.filter((item) => item.status === 'pendiente').sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
   const resolvedAdminRequests = adminRequests.filter((item) => item.status !== 'pendiente').sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   const filteredAdminUsers = adminUsers.filter((user) => {
+    if (!canAccessProvince(session, user.province)) {
+      return false;
+    }
     const query = adminUserSearch.trim().toLowerCase();
     if (!query) {
       return true;
@@ -1337,6 +1388,14 @@ function ProfileScreen({
       setAuthMessage('Elegir un usuario para editar.');
       return;
     }
+    if (!canAccessProvince(session, adminUserProvince)) {
+      setAuthMessage('No podes editar usuarios de otra provincia.');
+      return;
+    }
+    if (selectedAdminUser.role !== adminUserRole && !canApproveRole(session, adminUserRole)) {
+      setAuthMessage(`Tu rango no puede asignar el rol ${roleLabel(adminUserRole)}.`);
+      return;
+    }
 
     setAuthMessage('Guardando usuario...');
     const { error } = await updateAdminUser({
@@ -1474,6 +1533,10 @@ function ProfileScreen({
       setAuthMessage('Elegir una comunidad cargada desde Supabase para editar.');
       return;
     }
+    if (!canManageProvince(session, adminCommunityProvince)) {
+      setAuthMessage('Tu rango solo puede editar comunidades de tu provincia o de tu alcance.');
+      return;
+    }
 
     setAuthMessage('Guardando comunidad...');
     const { error } = await updateCommunity(selectedAdminCommunity.id, {
@@ -1530,6 +1593,10 @@ function ProfileScreen({
   async function resolveAdminRequest(id: string, status: 'aprobada' | 'denegada') {
     const request = adminRequests.find((item) => item.id === id);
     const assignRole = status === 'aprobada' && request?.title === 'Solicitud de perseverancia' ? perseveranceRole : null;
+    if (assignRole && !canApproveRole(session, assignRole)) {
+      setAuthMessage(`Tu rango no puede aprobar el rol ${roleLabel(assignRole)}.`);
+      return;
+    }
     const { error } = await resolveUserRequest(id, status === 'denegada' ? 'rechazada' : status, adminRequestMessage || 'Sin mensaje del administrador', assignRole);
     if (!error) {
       await loadAdminRequests();
@@ -1642,6 +1709,22 @@ function ProfileScreen({
           <Text style={styles.cardText}>Comunidad de origen: {session.communityOfOrigin}</Text>
           <Text style={styles.cardText}>Estado: {statusLabel(session.status)}</Text>
           {roleInfo ? <Text style={styles.cardText}>{roleInfo.description}</Text> : null}
+          {roleInfo ? (
+            <View style={styles.profileCommunityPanel}>
+              <Text style={styles.cardEyebrow}>Jerarquia y alcance</Text>
+              <Text style={styles.cardText}>Nivel {roleInfo.rank}: {roleInfo.label}. Alcance: {roleInfo.scope}.</Text>
+              <Text style={styles.cardText}>{roleInfo.approval}</Text>
+              <Text style={styles.cardText}>Vista territorial: {canSeeAllProvinces(session) ? 'todas las provincias y nacional' : `${session.province} y nacional`}.</Text>
+              <View style={styles.roleTimeline}>
+                {visibleHierarchyFor(session).map((role) => (
+                  <View key={role.role} style={[styles.roleStep, role.role === session.role && styles.roleStepActive]}>
+                    <Text style={[styles.roleStepRank, role.role === session.role && styles.roleStepTextActive]}>{role.rank}</Text>
+                    <Text style={[styles.roleStepLabel, role.role === session.role && styles.roleStepTextActive]}>{role.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
           <View style={styles.filterRow}>
             <TouchableOpacity style={[styles.filterChip, profilePanel === 'vista' && styles.filterChipActive]} onPress={() => setProfilePanel('vista')}>
               <Text style={[styles.filterChipText, profilePanel === 'vista' && styles.filterChipTextActive]}>Mi perfil</Text>
@@ -1706,6 +1789,12 @@ function ProfileScreen({
           {showCommunity ? (
             <View style={styles.profileCommunityPanel}>
               <Text style={styles.cardEyebrow}>{session.communityOfOrigin}</Text>
+              <Text style={styles.cardText}>
+                Relacion activa: {roleLabel(session.role)} vinculado a {session.communityOfOrigin} en {session.province}.
+                {['animador_comunidad', 'coordinador_comunidad'].includes(session.role) ? ' Este rango puede editar su comunidad asignada.' : ''}
+                {['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? ' Este rango supervisa animadores y coordinadores de comunidad de su provincia.' : ''}
+                {['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ' Este rango supervisa estructura nacional y provincias.' : ''}
+              </Text>
               {hasPermission(session, 'ver_noticias_comunidad') ? (
                 profileNews.length > 0 ? profileNews.map((item) => (
                   <View key={item.title} style={styles.innerNewsCard}>
@@ -1841,8 +1930,8 @@ function ProfileScreen({
                       <Text style={styles.adminStatLabel}>Pendientes cargados</Text>
                     </View>
                     <View style={styles.adminStat}>
-                      <Text style={styles.adminStatNumber}>{registrationCommunities.reduce((total, item) => total + item.locations.length, 0)}</Text>
-                      <Text style={styles.adminStatLabel}>Comunidades</Text>
+                      <Text style={styles.adminStatNumber}>{manageableCommunities.reduce((total, item) => total + item.locations.length, 0)}</Text>
+                      <Text style={styles.adminStatLabel}>Comunidades gestionables</Text>
                     </View>
                     <View style={styles.adminStat}>
                       <Text style={styles.adminStatNumber}>{editableTabs.filter((tab) => tab.visible).length}</Text>
@@ -1907,7 +1996,7 @@ function ProfileScreen({
                                 </TouchableOpacity>
                                 {adminUserProvinceDropdownOpen ? (
                                   <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                                    {registrationCommunities.map((item) => (
+                                    {visibleRegistrationCommunities.map((item) => (
                                       <TouchableOpacity key={item.province} style={styles.dropdownItem} onPress={() => { setAdminUserProvince(item.province); setAdminUserCommunity(''); setAdminUserProvinceDropdownOpen(false); }}>
                                         <Text style={styles.dropdownItemText}>{item.province}</Text>
                                       </TouchableOpacity>
@@ -1947,7 +2036,7 @@ function ProfileScreen({
                                 </TouchableOpacity>
                                 {adminUserRoleDropdownOpen ? (
                                   <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                                    {roleDefinitions.map((role) => (
+                                    {roleDefinitions.filter((role) => role.role === selectedAdminUser?.role || assignableRoles.some((item) => item.role === role.role)).map((role) => (
                                       <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setAdminUserRole(role.role as Role); setAdminUserRoleDropdownOpen(false); }}>
                                         <Text style={styles.dropdownItemText}>{role.label}</Text>
                                       </TouchableOpacity>
@@ -2014,7 +2103,7 @@ function ProfileScreen({
                           </TouchableOpacity>
                           {perseveranceRoleDropdownOpen ? (
                             <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                              {roleDefinitions.filter((role) => role.role !== 'invitado' && role.role !== 'palestrista').map((role) => (
+                              {assignableRoles.filter((role) => role.role !== 'palestrista').map((role) => (
                                 <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setPerseveranceRole(role.role as Role); setPerseveranceRoleDropdownOpen(false); }}>
                                   <Text style={styles.dropdownItemText}>{role.label}</Text>
                                 </TouchableOpacity>
@@ -2078,7 +2167,7 @@ function ProfileScreen({
                   <Text style={styles.cardText}>Seleccionar provincia y comunidad. Los cambios se guardan en Supabase.</Text>
                   <Text style={styles.cardEyebrow}>Provincia</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                    {registrationCommunities.map((item) => (
+                    {manageableCommunities.map((item) => (
                       <TouchableOpacity
                         key={item.province}
                         style={[styles.filterChip, adminCommunityProvince === item.province && styles.filterChipActive]}
@@ -2136,7 +2225,7 @@ function ProfileScreen({
                 <TextInput style={styles.input} placeholder="Nombre de la pagina" value={newTabLabel} onChangeText={setNewTabLabel} />
                 <Text style={styles.cardText}>Roles que pueden verla</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                  {roleDefinitions.map((role) => (
+                  {visibleHierarchyFor(session).map((role) => (
                     <TouchableOpacity key={role.role} style={[styles.filterChip, newTabRoles.includes(role.role as Role) && styles.filterChipActive]} onPress={() => toggleNewTabRole(role.role as Role)}>
                       <Text style={[styles.filterChipText, newTabRoles.includes(role.role as Role) && styles.filterChipTextActive]}>{role.label}</Text>
                     </TouchableOpacity>
@@ -2167,8 +2256,8 @@ function ProfileScreen({
                       </TouchableOpacity>
                       <Text style={styles.cardEyebrow}>Visible para roles</Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                        {roleDefinitions.map((role) => {
-                          const roles = draft.visibleRoles ?? roleDefinitions.map((item) => item.role);
+                        {visibleHierarchyFor(session).map((role) => {
+                          const roles = draft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role);
                           const checked = roles.includes(role.role);
                           return (
                             <TouchableOpacity key={role.role} style={[styles.filterChip, checked && styles.filterChipActive]} onPress={() => updateTabRole(tab.key, role.role as Role, !checked)}>
@@ -2539,6 +2628,8 @@ const styles = StyleSheet.create({
     gap: 10
   },
   modalPanel: {
+    width: '100%',
+    maxWidth: 520,
     backgroundColor: palette.white,
     borderColor: palette.red,
     borderWidth: 1,
@@ -2548,6 +2639,31 @@ const styles = StyleSheet.create({
     shadowColor: palette.blueDeep,
     shadowOpacity: 0.12,
     shadowRadius: 16
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(12, 25, 38, 0.46)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 18
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 2,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  modalItem: {
+    gap: 6,
+    paddingTop: 6
   },
   groupNote: {
     backgroundColor: palette.goldSoft,
@@ -2830,6 +2946,38 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15
   },
+  roleTimeline: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  roleStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    backgroundColor: palette.white
+  },
+  roleStepActive: {
+    backgroundColor: palette.red,
+    borderColor: palette.red
+  },
+  roleStepRank: {
+    color: palette.red,
+    fontWeight: '900'
+  },
+  roleStepLabel: {
+    color: palette.ink,
+    fontWeight: '800',
+    fontSize: 12
+  },
+  roleStepTextActive: {
+    color: palette.white
+  },
   innerNewsCard: {
     backgroundColor: palette.white,
     borderColor: 'rgba(217, 226, 234, 0.62)',
@@ -2864,6 +3012,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8
+  },
+  actionPill: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginTop: 10,
+    backgroundColor: palette.white
+  },
+  actionPillActive: {
+    backgroundColor: palette.red,
+    borderColor: palette.red
+  },
+  actionPillText: {
+    color: palette.red,
+    fontSize: 13,
+    fontWeight: '900'
+  },
+  actionPillTextActive: {
+    color: palette.white
   },
   inlineEditButton: {
     alignSelf: 'flex-start',

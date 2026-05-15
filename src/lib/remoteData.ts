@@ -1,5 +1,7 @@
 import { communities as fallbackCommunities } from '../data/content';
 import { news as fallbackNews, notilestra as fallbackNotilestra } from '../data/content';
+import { Session } from '../types/auth';
+import { canAccessProvince } from './roles';
 import { supabase } from './supabase';
 
 type RemoteCommunityRow = {
@@ -67,7 +69,7 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
   return Array.from(grouped.values());
 }
 
-export async function fetchNews() {
+export async function fetchNews(session?: Session | null) {
   let result;
   try {
     result = await supabase
@@ -84,15 +86,18 @@ export async function fetchNews() {
     return fallbackNews;
   }
 
-  return data.map((item: any) => ({
-    scope: item.is_public ? 'Publico' : 'Interno',
+  return data
+    .filter((item: any) => canAccessProvince(session ?? null, item.provinces?.name ?? 'Nacional'))
+    .map((item: any) => ({
+    scope: item.provinces?.name ? `${item.is_public ? 'Publico' : 'Interno'} - ${item.provinces.name}` : item.is_public ? 'Publico nacional' : 'Interno nacional',
     title: item.title,
     body: item.body,
+    province: item.provinces?.name ?? 'Nacional',
     imageUrl: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
   }));
 }
 
-export async function fetchNotilestra() {
+export async function fetchNotilestra(session?: Session | null) {
   let result;
   try {
     result = await supabase
@@ -109,8 +114,11 @@ export async function fetchNotilestra() {
     return fallbackNotilestra;
   }
 
-  return data.map((item: any) => ({
-    scope: item.is_public ? 'Agenda' : 'Privado',
+  return data
+    .filter((item: any) => canAccessProvince(session ?? null, item.provinces?.name ?? 'Nacional'))
+    .map((item: any) => ({
+    scope: item.provinces?.name ? `${item.is_public ? 'Agenda' : 'Privado'} - ${item.provinces.name}` : item.is_public ? 'Agenda nacional' : 'Privado nacional',
+    province: item.provinces?.name ?? 'Nacional',
     date: String(item.starts_at).slice(0, 10),
     title: item.title,
     body: item.description
