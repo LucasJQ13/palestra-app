@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Animated, BackHandler, Easing, Image, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native';
+import { Animated, BackHandler, Easing, Image, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
@@ -15,10 +16,11 @@ import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvinc
 
 const palestraLogo = require('./assets/logo-palestra.png');
 const demoVersionLabel = 'DEMO 0.1.0';
+const touchPointerPreferenceKey = 'palestra.showTouchPointer';
 
 type TabKey = string;
 type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general';
-type ProfilePanel = 'vista' | 'editar';
+type ProfilePanel = 'vista' | 'editar' | 'configuracion';
 type AppAdminConfig = {
   identity: {
     appName: string;
@@ -314,7 +316,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>('inicio');
   const [tabHistory, setTabHistory] = useState<TabKey[]>(['inicio']);
   const [session, setSession] = useState<Session | null>(null);
-  const [tapEffect, setTapEffect] = useState<{ x: number; y: number; id: number } | null>(null);
+  const [touchPointer, setTouchPointer] = useState<{ x: number; y: number } | null>(null);
+  const [touchPointerEnabled, setTouchPointerEnabled] = useState(false);
   const [tabSettings, setTabSettings] = useState<AppTabSetting[]>([]);
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
   const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
@@ -323,11 +326,68 @@ export default function App() {
   const [appMessage, setAppMessage] = useState('');
   const lastBackPressRef = useRef(0);
   const screenOpacity = useRef(new Animated.Value(1)).current;
+  const touchPointerOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const timer = setTimeout(() => setIsBooting(false), 2200);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(touchPointerPreferenceKey)
+      .then((value) => setTouchPointerEnabled(value === 'true'))
+      .catch((error) => console.error('touch pointer preference', error));
+  }, []);
+
+  async function updateTouchPointerPreference(value: boolean) {
+    setTouchPointerEnabled(value);
+    try {
+      await AsyncStorage.setItem(touchPointerPreferenceKey, value ? 'true' : 'false');
+    } catch (error) {
+      console.error('save touch pointer preference', error);
+      setAppMessage('No pude guardar la preferencia del puntero.');
+      setTimeout(() => setAppMessage(''), 1800);
+    }
+  }
+
+  function showTouchPointer(x: number, y: number) {
+    if (!touchPointerEnabled) {
+      return;
+    }
+
+    setTouchPointer({ x, y });
+    Animated.timing(touchPointerOpacity, {
+      toValue: 1,
+      duration: 90,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true
+    }).start();
+  }
+
+  function moveTouchPointer(x: number, y: number) {
+    if (!touchPointerEnabled) {
+      return;
+    }
+
+    setTouchPointer({ x, y });
+  }
+
+  function hideTouchPointer() {
+    if (!touchPointerEnabled) {
+      return;
+    }
+
+    Animated.timing(touchPointerOpacity, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true
+    }).start(({ finished }) => {
+      if (finished) {
+        setTouchPointer(null);
+      }
+    });
+  }
 
   const resolvedTabs = useMemo<AppTabDisplay[]>(() => {
     const settingsByKey = new Map(tabSettings.map((item) => [item.key, item]));
@@ -537,8 +597,8 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} />;
-  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig]);
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} />;
+  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled]);
 
   return (
     <SafeAreaProvider>
@@ -546,13 +606,43 @@ export default function App() {
         style={styles.safeArea}
         onTouchStart={(event) => {
           const { pageX, pageY } = event.nativeEvent;
-          const id = Date.now();
-          setTapEffect({ x: pageX, y: pageY, id });
-          setTimeout(() => setTapEffect((current) => (current?.id === id ? null : current)), 420);
+          showTouchPointer(pageX, pageY);
+        }}
+        onTouchMove={(event) => {
+          const { pageX, pageY } = event.nativeEvent;
+          moveTouchPointer(pageX, pageY);
+        }}
+        onTouchEnd={hideTouchPointer}
+        onTouchCancel={hideTouchPointer}
+        onTouchEndCapture={(event) => {
+          const { pageX, pageY } = event.nativeEvent;
+          if (touchPointerEnabled && pageX && pageY) {
+            moveTouchPointer(pageX, pageY);
+          }
         }}
       >
         {isBooting ? <AppLoadingScreen /> : null}
-        {tapEffect ? <View pointerEvents="none" style={[styles.tapCircle, { left: tapEffect.x - 24, top: tapEffect.y - 24 }]} /> : null}
+        {touchPointer && touchPointerEnabled ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.tapCircle,
+              {
+                left: touchPointer.x - 24,
+                top: touchPointer.y - 24,
+                opacity: touchPointerOpacity,
+                transform: [
+                  {
+                    scale: touchPointerOpacity.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.82, 1]
+                    })
+                  }
+                ]
+              }
+            ]}
+          />
+        ) : null}
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
           <View style={styles.brandBlock}>
@@ -1430,6 +1520,8 @@ function ProfileScreen({
   tabs,
   appContent,
   adminConfig,
+  touchPointerEnabled,
+  onTouchPointerEnabledChange,
   onAdminConfigChange,
   onTabsChanged,
   onContentChanged
@@ -1439,6 +1531,8 @@ function ProfileScreen({
   tabs: AppTabDisplay[];
   appContent: AppContentBlock[];
   adminConfig: AppAdminConfig;
+  touchPointerEnabled: boolean;
+  onTouchPointerEnabledChange: (value: boolean) => void;
   onAdminConfigChange: (config: AppAdminConfig) => void;
   onTabsChanged: () => Promise<void>;
   onContentChanged: () => Promise<void>;
@@ -2435,6 +2529,7 @@ function ProfileScreen({
               {[
                 { icon: 'person-outline', label: 'Mi perfil', action: () => setProfilePanel('vista') },
                 { icon: 'create-outline', label: 'Editar perfil', action: () => setProfilePanel('editar') },
+                { icon: 'settings-outline', label: 'Configuracion', action: () => setProfilePanel('configuracion') },
                 { icon: 'people-outline', label: 'Mi comunidad', action: () => setShowCommunity(true) },
                 ...(isCommunityLeader ? [{ icon: 'briefcase-outline', label: 'Gestionar comunidad', action: () => setShowCommunityManagement(true) }] : []),
                 { icon: 'refresh-outline', label: 'Actualizar estado', action: refreshRealProfile }
@@ -2548,6 +2643,24 @@ function ProfileScreen({
             </TouchableOpacity>
             {authMessage ? <Text style={styles.cardText}>{authMessage}</Text> : null}
           </View> : null}
+          {profilePanel === 'configuracion' ? (
+            <View style={styles.profileCommunityPanel}>
+              <Text style={styles.cardEyebrow}>Configuracion de usuario</Text>
+              <View style={styles.settingRow}>
+                <View style={styles.settingRowText}>
+                  <Text style={styles.cardTitle}>Mostrar puntero tactil</Text>
+                  <Text style={styles.cardText}>Ayuda visual para testing: muestra un circulo que sigue tu dedo mientras tocas la pantalla.</Text>
+                </View>
+                <Switch
+                  value={touchPointerEnabled}
+                  onValueChange={onTouchPointerEnabledChange}
+                  trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
+                  thumbColor={touchPointerEnabled ? palette.red : palette.white}
+                />
+              </View>
+              <Text style={styles.cardText}>Esta opcion queda guardada en este dispositivo y por defecto permanece apagada.</Text>
+            </View>
+          ) : null}
           {showCommunity ? (
             <View style={styles.profileCommunityPanel}>
               <Text style={styles.cardEyebrow}>{session.communityOfOrigin}</Text>
@@ -4281,6 +4394,16 @@ const styles = StyleSheet.create({
     color: palette.ink,
     fontSize: 14,
     lineHeight: 20
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 6
+  },
+  settingRowText: {
+    flex: 1
   },
   verifiedRow: {
     flexDirection: 'row',
