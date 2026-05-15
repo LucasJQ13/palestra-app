@@ -326,7 +326,7 @@ export default function App() {
 
   const screen = useMemo(() => {
     if (activeTab === 'inicio') {
-      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} />;
+      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={setActiveTab} />;
     }
     if (activeTab === 'notilestra') {
       return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} editor={pageEditorProps('notilestra')} />;
@@ -624,9 +624,15 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
   return renderedContent;
 }
 
-function HomeScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
+function HomeScreen({ session, title, content, refreshKey, editor, onNavigate }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void }) {
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
   const [homeNews, setHomeNews] = useState(news);
+  const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; style: any }> = [
+    { tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', style: styles.homeTilePrimary },
+    { tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', style: styles.homeTileSky },
+    { tab: 'materiales', title: 'Materiales', meta: 'Archivos internos', icon: 'folder-open-outline', style: styles.homeTileWarm },
+    { tab: 'perfil', title: session ? 'Perfil' : 'Ingresar', meta: session ? roleLabel(session.role) : 'Cuenta personal', icon: 'person-circle-outline', style: styles.homeTileDeep }
+  ];
 
   useEffect(() => {
     let alive = true;
@@ -651,6 +657,18 @@ function HomeScreen({ session, title, content, refreshKey, editor }: { session: 
         <Text style={styles.kicker}>Argentina</Text>
         <Text style={styles.heroTitle}>Una app para caminar juntos.</Text>
         <Text style={styles.heroText}>Noticias, agenda, materiales y comunicacion interna para las comunidades de Palestra.</Text>
+      </View>
+
+      <View style={styles.homeTileGrid}>
+        {homeTiles.map((tile) => (
+          <TouchableOpacity key={tile.tab} style={[styles.homeTile, tile.style]} activeOpacity={0.88} onPress={() => onNavigate(tile.tab)}>
+            <View style={styles.homeTileIcon}>
+              <Ionicons name={tile.icon} size={25} color={palette.white} />
+            </View>
+            <Text style={styles.homeTileTitle}>{tile.title}</Text>
+            <Text style={styles.homeTileMeta}>{tile.meta}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <EditableIntro content={content} editor={editor} />
@@ -2848,10 +2866,10 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.line,
-    backgroundColor: palette.white,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 0,
+    backgroundColor: palette.paper,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
@@ -2863,15 +2881,19 @@ const styles = StyleSheet.create({
     flex: 1
   },
   brandLogo: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 1,
-    borderColor: palette.line,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
     backgroundColor: palette.white,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 2
   },
   brandLogoImage: {
     width: '100%',
@@ -2888,19 +2910,22 @@ const styles = StyleSheet.create({
     marginTop: 2
   },
   sessionBadge: {
-    backgroundColor: palette.whiteSoft,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 18
+    backgroundColor: 'rgba(45, 141, 200, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)'
   },
   sessionBadgeText: {
-    color: palette.ink,
+    color: palette.blueDeep,
     fontSize: 12,
     fontWeight: '700'
   },
   content: {
-    padding: 20,
-    paddingBottom: 104
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 112
   },
   stack: {
     gap: 14
@@ -2909,38 +2934,91 @@ const styles = StyleSheet.create({
     gap: 10
   },
   hero: {
-    backgroundColor: '#EAF1F6',
-    borderRadius: 10,
-    padding: 22,
-    overflow: 'hidden'
+    backgroundColor: palette.red,
+    borderRadius: 28,
+    padding: 24,
+    overflow: 'hidden',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 4
   },
   heroGlow: {
     position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: palette.red,
-    opacity: 0.28,
-    right: -38,
-    top: -48
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: palette.gold,
+    opacity: 0.34,
+    right: -42,
+    top: -54
   },
   kicker: {
-    color: palette.red,
+    color: palette.goldSoft,
     fontSize: 13,
     fontWeight: '800',
     textTransform: 'uppercase'
   },
   heroTitle: {
-    color: palette.ink,
+    color: palette.white,
     fontSize: 30,
     fontWeight: '900',
     marginTop: 8
   },
   heroText: {
-    color: palette.inkMuted,
+    color: 'rgba(255, 255, 255, 0.86)',
     fontSize: 15,
     lineHeight: 22,
     marginTop: 10
+  },
+  homeTileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  homeTile: {
+    flex: 1,
+    minWidth: '46%',
+    minHeight: 122,
+    borderRadius: 22,
+    padding: 15,
+    justifyContent: 'space-between',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    elevation: 3
+  },
+  homeTilePrimary: {
+    backgroundColor: palette.red
+  },
+  homeTileSky: {
+    backgroundColor: '#5DA7DB'
+  },
+  homeTileWarm: {
+    backgroundColor: '#F2B84B'
+  },
+  homeTileDeep: {
+    backgroundColor: '#5E8396'
+  },
+  homeTileIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  homeTileTitle: {
+    color: palette.white,
+    fontSize: 17,
+    fontWeight: '900',
+    marginTop: 10
+  },
+  homeTileMeta: {
+    color: 'rgba(255, 255, 255, 0.82)',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 3
   },
   sectionTitle: {
     color: palette.ink,
@@ -2950,10 +3028,14 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: palette.white,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 226, 234, 0.62)',
-    borderRadius: 10,
-    padding: 15
+    borderWidth: 0,
+    borderColor: 'rgba(198, 226, 234, 0.62)',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.09,
+    shadowRadius: 14,
+    elevation: 2
   },
   lockedCard: {
     opacity: 0.72
@@ -3001,7 +3083,7 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: 160,
-    borderRadius: 8,
+    borderRadius: 16,
     marginTop: 12,
     backgroundColor: palette.whiteSoft
   },
@@ -3355,15 +3437,20 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
+    left: 14,
+    right: 14,
+    bottom: 12,
     backgroundColor: palette.white,
-    borderTopWidth: 1,
-    borderTopColor: palette.line,
+    borderTopWidth: 0,
+    borderRadius: 26,
     flexDirection: 'row',
-    paddingTop: 8,
-    paddingBottom: 10
+    paddingTop: 9,
+    paddingBottom: 9,
+    paddingHorizontal: 6,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 8
   },
   tabButton: {
     flex: 1,
@@ -3371,17 +3458,16 @@ const styles = StyleSheet.create({
     gap: 3
   },
   tabIconFrame: {
-    width: 32,
-    height: 28,
-    borderWidth: 1,
-    borderColor: palette.line,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 6,
-    borderBottomRightRadius: 13,
-    borderBottomLeftRadius: 7,
+    width: 36,
+    height: 32,
+    borderWidth: 0,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 15,
+    borderBottomLeftRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.whiteSoft
+    backgroundColor: 'rgba(45, 141, 200, 0.1)'
   },
   tabIconFrameActive: {
     backgroundColor: palette.red,
