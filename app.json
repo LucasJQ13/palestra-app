@@ -25,7 +25,10 @@
     },
     "extra": {
       "supabaseUrl": "https://lqnwdoehandtzxfzeghc.supabase.co",
-      "supabaseAnonKey": "sb_publishable_VC-GuhM65eDiZxHSwmRF9w_tLK_xqdr"
+      "supabaseAnonKey": "sb_publishable_VC-GuhM65eDiZxHSwmRF9w_tLK_xqdr",
+      "eas": {
+        "projectId": "ae3f9e9c-fa3d-4273-a840-e5796b9734d6"
+      }
     },
     "plugins": [
       "expo-font"
