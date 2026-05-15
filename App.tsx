@@ -16,8 +16,44 @@ import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvinc
 const palestraLogo = require('./assets/logo-palestra.png');
 
 type TabKey = string;
-type AdminModule = 'resumen' | 'usuarios' | 'solicitudes' | 'noticias' | 'eventos' | 'comunidades' | 'contenido_general';
+type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general';
 type ProfilePanel = 'vista' | 'editar';
+type AppAdminConfig = {
+  identity: {
+    appName: string;
+    subtitle: string;
+    description: string;
+    logoUrl: string;
+    heroImageUrl: string;
+    primaryColor: string;
+    secondaryColor: string;
+  };
+  home: {
+    heroTitle: string;
+    heroText: string;
+    featuredBanner: string;
+    visibleModules: string[];
+  };
+  contact: {
+    email: string;
+    phone: string;
+    instagram: string;
+    helpText: string;
+    donationText: string;
+  };
+  settings: {
+    maintenanceMode: boolean;
+    globalMessage: string;
+    futureForumEnabled: boolean;
+    futureChatEnabled: boolean;
+  };
+  periodoMotivador: {
+    active: boolean;
+    title: string;
+    body: string;
+    imageUrl: string;
+  };
+};
 type AdminRequest = {
   id: string;
   userId?: string | null;
@@ -37,6 +73,60 @@ type AdminRequest = {
 
 type NotilestraItem = (typeof notilestra)[number];
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
+
+const defaultAdminConfig: AppAdminConfig = {
+  identity: {
+    appName: 'Palestra',
+    subtitle: 'Movimiento Catolico',
+    description: 'Movimiento catolico juvenil y comunitario presente en Argentina.',
+    logoUrl: '',
+    heroImageUrl: '',
+    primaryColor: '#2d8dc8',
+    secondaryColor: '#5da7db'
+  },
+  home: {
+    heroTitle: 'Una app para caminar juntos.',
+    heroText: 'Noticias, agenda, materiales y comunicacion interna para las comunidades de Palestra.',
+    featuredBanner: 'Agenda comunitaria',
+    visibleModules: ['noticias', 'comunidades', 'materiales', 'perfil']
+  },
+  contact: {
+    email: contactInfo.email,
+    phone: contactInfo.phone,
+    instagram: contactInfo.instagram,
+    helpText: contactInfo.helpText,
+    donationText: contactInfo.donationText
+  },
+  settings: {
+    maintenanceMode: false,
+    globalMessage: '',
+    futureForumEnabled: false,
+    futureChatEnabled: false
+  },
+  periodoMotivador: {
+    active: false,
+    title: 'Periodo Motivador',
+    body: 'Espacio de preparacion, materiales y textos asociados al periodo motivador.',
+    imageUrl: ''
+  }
+};
+
+const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof typeof Ionicons.glyphMap; systemOnly?: boolean }> = [
+  { key: 'resumen', label: 'Dashboard', icon: 'grid-outline' },
+  { key: 'identidad', label: 'Identidad', icon: 'sparkles-outline', systemOnly: true },
+  { key: 'home', label: 'Home', icon: 'home-outline', systemOnly: true },
+  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', systemOnly: true },
+  { key: 'descargas', label: 'Descargas', icon: 'folder-open-outline', systemOnly: true },
+  { key: 'comunidades', label: 'Comunidades', icon: 'location-outline' },
+  { key: 'historia_admin', label: 'Historia', icon: 'book-outline', systemOnly: true },
+  { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
+  { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
+  { key: 'solicitudes', label: 'Solicitudes', icon: 'mail-unread-outline' },
+  { key: 'periodo_motivador', label: 'Periodo', icon: 'flame-outline', systemOnly: true },
+  { key: 'configuracion', label: 'Config', icon: 'settings-outline', systemOnly: true },
+  { key: 'eventos', label: 'Eventos', icon: 'calendar-outline', systemOnly: true },
+  { key: 'contenido_general', label: 'Contenido', icon: 'create-outline', systemOnly: true }
+];
 
 type PageEditorProps = {
   tabKey: TabKey;
@@ -225,6 +315,7 @@ export default function App() {
   const [tapEffect, setTapEffect] = useState<{ x: number; y: number; id: number } | null>(null);
   const [tabSettings, setTabSettings] = useState<AppTabSetting[]>([]);
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
+  const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
   const [contentVersion, setContentVersion] = useState(0);
 
   useEffect(() => {
@@ -326,7 +417,7 @@ export default function App() {
 
   const screen = useMemo(() => {
     if (activeTab === 'inicio') {
-      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={setActiveTab} />;
+      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={setActiveTab} adminConfig={adminConfig} />;
     }
     if (activeTab === 'notilestra') {
       return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} editor={pageEditorProps('notilestra')} />;
@@ -346,8 +437,8 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} />;
-  }, [activeTab, session, resolvedTabs, appContent, contentVersion]);
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} />;
+  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig]);
 
   return (
     <SafeAreaProvider>
@@ -369,8 +460,8 @@ export default function App() {
               <Image source={palestraLogo} style={styles.brandLogoImage} />
             </View>
             <View>
-              <Text style={styles.brand}>Palestra</Text>
-              <Text style={styles.subtitle}>Movimiento Catolico</Text>
+              <Text style={styles.brand}>{adminConfig.identity.appName}</Text>
+              <Text style={styles.subtitle}>{adminConfig.identity.subtitle}</Text>
             </View>
           </View>
           <View style={styles.sessionBadge}>
@@ -625,7 +716,7 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
   return renderedContent;
 }
 
-function HomeScreen({ session, title, content, refreshKey, editor, onNavigate }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void }) {
+function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void; adminConfig: AppAdminConfig }) {
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
   const [homeNews, setHomeNews] = useState(news);
   const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; style: any }> = [
@@ -662,8 +753,8 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate }:
       <View style={styles.hero}>
         <View style={styles.heroGlow} />
         <Text style={styles.kicker}>Argentina</Text>
-        <Text style={styles.heroTitle}>Una app para caminar juntos.</Text>
-        <Text style={styles.heroText}>Noticias, agenda, materiales y comunicacion interna para las comunidades de Palestra.</Text>
+        <Text style={styles.heroTitle}>{adminConfig.home.heroTitle}</Text>
+        <Text style={styles.heroText}>{adminConfig.home.heroText}</Text>
       </View>
 
       <View style={styles.homeTileGrid}>
@@ -694,7 +785,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate }:
         <View style={styles.featurePanelHeader}>
           <View>
             <Text style={styles.cardEyebrow}>Proximamente</Text>
-            <Text style={styles.cardTitle}>Agenda comunitaria</Text>
+            <Text style={styles.cardTitle}>{adminConfig.home.featuredBanner}</Text>
           </View>
           <TouchableOpacity style={styles.iconButton} activeOpacity={0.8} onPress={() => onNavigate('notilestra')}>
             <Ionicons name="arrow-forward" size={18} color={palette.red} />
@@ -1176,6 +1267,8 @@ function ProfileScreen({
   onSessionChange,
   tabs,
   appContent,
+  adminConfig,
+  onAdminConfigChange,
   onTabsChanged,
   onContentChanged
 }: {
@@ -1183,6 +1276,8 @@ function ProfileScreen({
   onSessionChange: (session: Session | null) => void;
   tabs: AppTabDisplay[];
   appContent: AppContentBlock[];
+  adminConfig: AppAdminConfig;
+  onAdminConfigChange: (config: AppAdminConfig) => void;
   onTabsChanged: () => Promise<void>;
   onContentChanged: () => Promise<void>;
 }) {
@@ -1230,10 +1325,15 @@ function ProfileScreen({
   const [adminUserRole, setAdminUserRole] = useState<Role>('palestrista');
   const [adminNewsTitle, setAdminNewsTitle] = useState('');
   const [adminNewsBody, setAdminNewsBody] = useState('');
+  const [adminNewsCategory, setAdminNewsCategory] = useState('General');
+  const [adminNewsImage, setAdminNewsImage] = useState('');
+  const [adminNewsDraft, setAdminNewsDraft] = useState(false);
+  const [adminNewsFeatured, setAdminNewsFeatured] = useState(false);
   const [adminEventTitle, setAdminEventTitle] = useState('');
   const [adminEventBody, setAdminEventBody] = useState('');
   const [adminEventDate, setAdminEventDate] = useState('');
   const [adminModule, setAdminModule] = useState<AdminModule>('resumen');
+  const [adminConfigDraft, setAdminConfigDraft] = useState<AppAdminConfig>(adminConfig);
   const [adminCommunityProvince, setAdminCommunityProvince] = useState('');
   const [adminCommunityId, setAdminCommunityId] = useState('');
   const [adminCommunityName, setAdminCommunityName] = useState('');
@@ -1330,6 +1430,13 @@ function ProfileScreen({
   }, {});
   const userProvinceOptions = Object.keys(adminUsersByProvince).sort((a, b) => a.localeCompare(b));
   const visibleAdminUsers = selectedUsersProvince ? (adminUsersByProvince[selectedUsersProvince] ?? []) : [];
+  const enabledAdminModules = adminModuleCatalog.filter((item) => hasPermission(session, 'gestionar_sistema') || !item.systemOnly || ['resumen', 'usuarios', 'solicitudes', 'comunidades'].includes(item.key));
+  const adminDraftSummary = [
+    { label: 'Usuarios', value: String(adminUsers.length || realPendingProfiles.length), icon: 'people-outline' as keyof typeof Ionicons.glyphMap },
+    { label: 'Solicitudes', value: String(pendingAdminRequests.length), icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap },
+    { label: 'Comunidades', value: String(manageableCommunities.reduce((total, item) => total + item.locations.length, 0)), icon: 'location-outline' as keyof typeof Ionicons.glyphMap },
+    { label: 'Modulos', value: String(editableTabs.filter((tab) => tab.visible).length), icon: 'apps-outline' as keyof typeof Ionicons.glyphMap }
+  ];
 
   useEffect(() => {
     setEditFullName(session?.fullName ?? '');
@@ -1337,6 +1444,37 @@ function ProfileScreen({
     setEditProvince(session?.province ?? '');
     setEditCommunity(session?.communityOfOrigin ?? '');
   }, [session]);
+
+  useEffect(() => {
+    setAdminConfigDraft(adminConfig);
+  }, [adminConfig]);
+
+  function updateAdminConfigSection<K extends keyof AppAdminConfig>(section: K, patch: Partial<AppAdminConfig[K]>) {
+    setAdminConfigDraft((current) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        ...patch
+      }
+    }));
+  }
+
+  function toggleAdminConfigList(section: 'home', key: string) {
+    setAdminConfigDraft((current) => {
+      const currentList = current[section].visibleModules;
+      const nextList = currentList.includes(key) ? currentList.filter((item) => item !== key) : [...currentList, key];
+      return { ...current, [section]: { ...current[section], visibleModules: nextList } };
+    });
+  }
+
+  function saveAdminConfigDraft(scope: string) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede guardar configuracion global.');
+      return;
+    }
+    onAdminConfigChange(adminConfigDraft);
+    setAuthMessage(`${scope} actualizado en la configuracion local. El siguiente paso es persistirlo en Supabase.`);
+  }
 
   useEffect(() => {
     const tab = editableTabs.find((item) => item.key === selectedContentTab);
@@ -1719,6 +1857,9 @@ function ProfileScreen({
     if (!error) {
       setAdminNewsTitle('');
       setAdminNewsBody('');
+      setAdminNewsImage('');
+      setAdminNewsDraft(false);
+      setAdminNewsFeatured(false);
       await onContentChanged();
     }
   }
@@ -2374,16 +2515,14 @@ function ProfileScreen({
               <Text style={styles.cardTitle}>{session.role === 'administrador' ? 'Panel tecnico global' : 'Panel diocesano'}</Text>
               <Text style={styles.cardText}>{session.role === 'administrador' ? 'Gestionar roles, permisos, pestanas, secciones, comunidades, provincias, usuarios, contenido y configuracion general.' : 'Revisar solicitudes y gestionar cambios de dirigencia dentro de la provincia.'}</Text>
               {authMessage ? <Text style={styles.adminMessage}>{authMessage}</Text> : null}
+              {adminConfigDraft.settings.maintenanceMode ? (
+                <View style={styles.adminStatusPill}>
+                  <Ionicons name="warning-outline" size={17} color={palette.gold} />
+                  <Text style={styles.adminStatusText}>Modo mantenimiento activo</Text>
+                </View>
+              ) : null}
               <View style={styles.adminModuleGrid}>
-                {[
-                  { key: 'resumen', label: 'Resumen', icon: 'grid-outline' },
-                  { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
-                  { key: 'solicitudes', label: 'Solicitudes', icon: 'mail-unread-outline' },
-                  { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline' },
-                  { key: 'eventos', label: 'Eventos', icon: 'calendar-outline' },
-                  { key: 'comunidades', label: 'Comunidades', icon: 'location-outline' },
-                  { key: 'contenido_general', label: 'Contenido General', icon: 'create-outline' }
-                ].filter((item) => hasPermission(session, 'gestionar_sistema') || ['resumen', 'usuarios', 'solicitudes', 'comunidades'].includes(item.key)).map((item) => (
+                {enabledAdminModules.map((item) => (
                   <TouchableOpacity
                     key={item.key}
                     style={[styles.adminModuleButton, adminModule === item.key && styles.adminModuleButtonActive]}
@@ -2397,22 +2536,194 @@ function ProfileScreen({
 
               {adminModule === 'resumen' ? (
                 <View style={styles.adminWorkspace}>
-                  <Text style={styles.cardTitle}>Panel de control</Text>
+                  <Text style={styles.cardTitle}>Admin Dashboard</Text>
+                  <Text style={styles.cardText}>Consola base para controlar contenido, usuarios, comunidades, identidad y configuracion general de la app.</Text>
                   <View style={styles.adminStatRow}>
-                    <View style={styles.adminStat}>
-                      <Text style={styles.adminStatNumber}>{realPendingProfiles.length}</Text>
-                      <Text style={styles.adminStatLabel}>Pendientes cargados</Text>
+                    {adminDraftSummary.map((item) => (
+                      <TouchableOpacity key={item.label} style={styles.adminStat} activeOpacity={0.84}>
+                        <Ionicons name={item.icon} size={18} color={palette.red} />
+                        <Text style={styles.adminStatNumber}>{item.value}</Text>
+                        <Text style={styles.adminStatLabel}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={styles.cardEyebrow}>Accesos rapidos</Text>
+                  <View style={styles.adminQuickGrid}>
+                    {[
+                      { label: 'Nueva noticia', module: 'noticias', icon: 'add-circle-outline' },
+                      { label: 'Subir material', module: 'descargas', icon: 'cloud-upload-outline' },
+                      { label: 'Crear comunidad', module: 'comunidades', icon: 'location-outline' },
+                      { label: 'Revisar usuarios', module: 'usuarios', icon: 'people-outline' }
+                    ].map((item) => (
+                      <TouchableOpacity key={item.label} style={styles.adminQuickAction} onPress={() => setAdminModule(item.module as AdminModule)}>
+                        <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={20} color={palette.red} />
+                        <Text style={styles.adminQuickText}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={styles.cardEyebrow}>Arquitectura editable</Text>
+                  <Text style={styles.cardText}>Identidad, home, contacto, periodo motivador y configuracion ya estan centralizados en un objeto de configuracion local. Noticias, usuarios, pestañas, contenido y comunidades siguen usando las funciones reales existentes.</Text>
+                </View>
+              ) : null}
+
+              {adminModule === 'identidad' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Identidad de la app</Text>
+                  <Text style={styles.cardText}>Base editable para nombre, subtitulo, logo, portada y colores principales.</Text>
+                  <TextInput style={styles.input} placeholder="Nombre de la app" value={adminConfigDraft.identity.appName} onChangeText={(value) => updateAdminConfigSection('identity', { appName: value })} />
+                  <TextInput style={styles.input} placeholder="Subtitulo" value={adminConfigDraft.identity.subtitle} onChangeText={(value) => updateAdminConfigSection('identity', { subtitle: value })} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion institucional" value={adminConfigDraft.identity.description} onChangeText={(value) => updateAdminConfigSection('identity', { description: value })} multiline />
+                  <TextInput style={styles.input} placeholder="URL del logo" value={adminConfigDraft.identity.logoUrl} onChangeText={(value) => updateAdminConfigSection('identity', { logoUrl: value })} />
+                  <TextInput style={styles.input} placeholder="URL de imagen hero/portada" value={adminConfigDraft.identity.heroImageUrl} onChangeText={(value) => updateAdminConfigSection('identity', { heroImageUrl: value })} />
+                  <View style={styles.inlineActions}>
+                    <TextInput style={[styles.input, styles.colorInput]} placeholder="#2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })} />
+                    <TextInput style={[styles.input, styles.colorInput]} placeholder="#5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })} />
+                  </View>
+                  <View style={styles.adminPreviewPane}>
+                    <Text style={styles.cardEyebrow}>Previsualizacion</Text>
+                    <Text style={styles.cardTitle}>{adminConfigDraft.identity.appName}</Text>
+                    <Text style={styles.cardText}>{adminConfigDraft.identity.subtitle}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Identidad')}>
+                    <Text style={styles.primaryButtonText}>Guardar identidad</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'home' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Home</Text>
+                  <Text style={styles.cardText}>Control visual del dashboard inicial, accesos rapidos y secciones visibles.</Text>
+                  <TextInput style={styles.input} placeholder="Titulo principal" value={adminConfigDraft.home.heroTitle} onChangeText={(value) => updateAdminConfigSection('home', { heroTitle: value })} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto principal" value={adminConfigDraft.home.heroText} onChangeText={(value) => updateAdminConfigSection('home', { heroText: value })} multiline />
+                  <TextInput style={styles.input} placeholder="Banner destacado" value={adminConfigDraft.home.featuredBanner} onChangeText={(value) => updateAdminConfigSection('home', { featuredBanner: value })} />
+                  <Text style={styles.cardEyebrow}>Modulos visibles</Text>
+                  <View style={styles.filterRow}>
+                    {['noticias', 'comunidades', 'materiales', 'perfil', 'agenda', 'actividad'].map((item) => (
+                      <TouchableOpacity key={item} style={[styles.filterChip, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipActive]} onPress={() => toggleAdminConfigList('home', item)}>
+                        <Text style={[styles.filterChipText, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipTextActive]}>{item}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Home')}>
+                    <Text style={styles.primaryButtonText}>Guardar Home</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'descargas' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Descargas y materiales</Text>
+                  <Text style={styles.cardText}>Estructura base para biblioteca editable. La subida real de archivos se conectara al bucket de Supabase en el siguiente paso.</Text>
+                  <Text style={styles.cardEyebrow}>Materiales actuales</Text>
+                  {materials.map((material) => (
+                    <View key={material.title} style={styles.adminListRow}>
+                      <Ionicons name="document-text-outline" size={19} color={palette.red} />
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.cardTitle}>{material.title}</Text>
+                        <Text style={styles.cardText}>{material.type} - {material.permission ? 'Restringido por rol' : 'Publico'}</Text>
+                      </View>
+                      <Text style={styles.adminStateDraft}>Editar</Text>
                     </View>
-                    <View style={styles.adminStat}>
-                      <Text style={styles.adminStatNumber}>{manageableCommunities.reduce((total, item) => total + item.locations.length, 0)}</Text>
-                      <Text style={styles.adminStatLabel}>Comunidades gestionables</Text>
-                    </View>
-                    <View style={styles.adminStat}>
-                      <Text style={styles.adminStatNumber}>{editableTabs.filter((tab) => tab.visible).length}</Text>
-                      <Text style={styles.adminStatLabel}>Pestanas visibles</Text>
+                  ))}
+                  <Text style={styles.cardEyebrow}>Nuevo material</Text>
+                  <TextInput style={styles.input} placeholder="Nombre del archivo" />
+                  <TextInput style={styles.input} placeholder="Categoria" />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" multiline />
+                  <View style={styles.filterRow}>
+                    {['publico', 'interno', 'reservado', 'administrador'].map((item) => (
+                      <TouchableOpacity key={item} style={styles.filterChip}>
+                        <Text style={styles.filterChipText}>{item}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => setAuthMessage('Base lista. Falta conectar subida real al storage de Supabase.')}>
+                    <Text style={styles.secondaryButtonText}>Preparar subida</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'historia_admin' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Nuestra Historia</Text>
+                  <Text style={styles.cardText}>Gestion de capitulos, preguntas frecuentes y textos institucionales desde el editor centralizado.</Text>
+                  <View style={styles.adminListRow}>
+                    <Ionicons name="book-outline" size={19} color={palette.red} />
+                    <View style={styles.adminUserHeaderText}>
+                      <Text style={styles.cardTitle}>{movementHistory.length} capitulos actuales</Text>
+                      <Text style={styles.cardText}>Migracion progresiva al editor de bloques.</Text>
                     </View>
                   </View>
-                  <Text style={styles.cardText}>Elegir un modulo arriba para administrar una parte concreta de la aplicacion.</Text>
+                  <View style={styles.adminListRow}>
+                    <Ionicons name="help-circle-outline" size={19} color={palette.red} />
+                    <View style={styles.adminUserHeaderText}>
+                      <Text style={styles.cardTitle}>{faqItems.length} preguntas frecuentes</Text>
+                      <Text style={styles.cardText}>Editable desde Contenido General por ahora.</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => { setSelectedContentTab('historia'); setAdminModule('contenido_general'); }}>
+                    <Text style={styles.primaryButtonText}>Abrir editor de Historia</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'contacto_admin' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Contacto oficial</Text>
+                  <Text style={styles.cardText}>Datos y textos institucionales que luego se persistiran como configuracion global.</Text>
+                  <TextInput style={styles.input} placeholder="Mail oficial" value={adminConfigDraft.contact.email} onChangeText={(value) => updateAdminConfigSection('contact', { email: value })} />
+                  <TextInput style={styles.input} placeholder="Telefono" value={adminConfigDraft.contact.phone} onChangeText={(value) => updateAdminConfigSection('contact', { phone: value })} />
+                  <TextInput style={styles.input} placeholder="Instagram" value={adminConfigDraft.contact.instagram} onChangeText={(value) => updateAdminConfigSection('contact', { instagram: value })} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de ayuda" value={adminConfigDraft.contact.helpText} onChangeText={(value) => updateAdminConfigSection('contact', { helpText: value })} multiline />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de donaciones" value={adminConfigDraft.contact.donationText} onChangeText={(value) => updateAdminConfigSection('contact', { donationText: value })} multiline />
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Contacto')}>
+                    <Text style={styles.primaryButtonText}>Guardar contacto</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'periodo_motivador' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Periodo Motivador</Text>
+                  <Text style={styles.cardText}>Seccion preparada para activar/desactivar, editar portada, titulo, textos y materiales asociados.</Text>
+                  <View style={styles.filterRow}>
+                    <TouchableOpacity style={[styles.filterChip, adminConfigDraft.periodoMotivador.active && styles.filterChipActive]} onPress={() => updateAdminConfigSection('periodoMotivador', { active: !adminConfigDraft.periodoMotivador.active })}>
+                      <Text style={[styles.filterChipText, adminConfigDraft.periodoMotivador.active && styles.filterChipTextActive]}>{adminConfigDraft.periodoMotivador.active ? 'Activo' : 'Inactivo'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput style={styles.input} placeholder="Titulo" value={adminConfigDraft.periodoMotivador.title} onChangeText={(value) => updateAdminConfigSection('periodoMotivador', { title: value })} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido" value={adminConfigDraft.periodoMotivador.body} onChangeText={(value) => updateAdminConfigSection('periodoMotivador', { body: value })} multiline />
+                  <TextInput style={styles.input} placeholder="URL de imagen principal" value={adminConfigDraft.periodoMotivador.imageUrl} onChangeText={(value) => updateAdminConfigSection('periodoMotivador', { imageUrl: value })} />
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Periodo Motivador')}>
+                    <Text style={styles.primaryButtonText}>Guardar periodo</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'configuracion' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Configuracion general</Text>
+                  <Text style={styles.cardText}>Base para mantenimiento, aviso global, permisos, modulos activos, foro y chat.</Text>
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje global" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline />
+                  {[
+                    { key: 'maintenanceMode', label: 'Modo mantenimiento' },
+                    { key: 'futureForumEnabled', label: 'Preparar foro' },
+                    { key: 'futureChatEnabled', label: 'Preparar chat' }
+                  ].map((item) => {
+                    const key = item.key as keyof AppAdminConfig['settings'];
+                    const active = Boolean(adminConfigDraft.settings[key]);
+                    return (
+                      <TouchableOpacity key={item.key} style={[styles.adminListRow, active && styles.adminListRowActive]} onPress={() => updateAdminConfigSection('settings', { [key]: !active } as Partial<AppAdminConfig['settings']>)}>
+                        <Ionicons name={active ? 'toggle' : 'toggle-outline'} size={24} color={active ? palette.red : palette.inkMuted} />
+                        <Text style={styles.adminQuickText}>{item.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  <Text style={styles.cardEyebrow}>Orden de navegacion</Text>
+                  <Text style={styles.cardText}>El orden y visibilidad se administran desde Contenido.</Text>
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Configuracion general')}>
+                    <Text style={styles.primaryButtonText}>Guardar configuracion</Text>
+                  </TouchableOpacity>
                 </View>
               ) : null}
 
@@ -2624,12 +2935,34 @@ function ProfileScreen({
 
               {adminModule === 'noticias' ? (
                 <View style={styles.adminWorkspace}>
-                <Text style={styles.cardTitle}>Crear noticia</Text>
-                <TextInput style={styles.input} placeholder="Titulo" value={adminNewsTitle} onChangeText={setAdminNewsTitle} />
-                <TextInput style={[styles.input, styles.textArea]} placeholder="Texto" value={adminNewsBody} onChangeText={setAdminNewsBody} multiline />
-                <TouchableOpacity style={styles.primaryButton} onPress={adminCreateNews}>
-                  <Text style={styles.primaryButtonText}>Publicar noticia</Text>
-                </TouchableOpacity>
+                  <Text style={styles.cardTitle}>Noticias</Text>
+                  <Text style={styles.cardText}>Crear, preparar borradores y marcar publicaciones destacadas. La publicacion real reutiliza la funcion existente.</Text>
+                  <View style={styles.filterRow}>
+                    {['General', 'Agenda', 'Formacion', 'Comunidad'].map((item) => (
+                      <TouchableOpacity key={item} style={[styles.filterChip, adminNewsCategory === item && styles.filterChipActive]} onPress={() => setAdminNewsCategory(item)}>
+                        <Text style={[styles.filterChipText, adminNewsCategory === item && styles.filterChipTextActive]}>{item}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput style={styles.input} placeholder="Titulo" value={adminNewsTitle} onChangeText={setAdminNewsTitle} />
+                  <TextInput style={styles.input} placeholder="URL de imagen" value={adminNewsImage} onChangeText={setAdminNewsImage} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto" value={adminNewsBody} onChangeText={setAdminNewsBody} multiline />
+                  <View style={styles.filterRow}>
+                    <TouchableOpacity style={[styles.filterChip, adminNewsDraft && styles.filterChipActive]} onPress={() => setAdminNewsDraft(!adminNewsDraft)}>
+                      <Text style={[styles.filterChipText, adminNewsDraft && styles.filterChipTextActive]}>{adminNewsDraft ? 'Borrador' : 'Publicar'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.filterChip, adminNewsFeatured && styles.filterChipActive]} onPress={() => setAdminNewsFeatured(!adminNewsFeatured)}>
+                      <Text style={[styles.filterChipText, adminNewsFeatured && styles.filterChipTextActive]}>Destacada</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.adminPreviewPane}>
+                    <Text style={styles.cardEyebrow}>{adminNewsCategory}{adminNewsFeatured ? ' - destacada' : ''}</Text>
+                    <Text style={styles.cardTitle}>{adminNewsTitle || 'Titulo de noticia'}</Text>
+                    <Text style={styles.cardText}>{adminNewsBody || 'Previsualizacion del contenido antes de publicar.'}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.primaryButton} onPress={adminNewsDraft ? () => setAuthMessage('Borrador preparado en la interfaz. Falta persistir borradores en Supabase.') : adminCreateNews}>
+                    <Text style={styles.primaryButtonText}>{adminNewsDraft ? 'Guardar borrador' : 'Publicar noticia'}</Text>
+                  </TouchableOpacity>
                 </View>
               ) : null}
 
@@ -4271,10 +4604,13 @@ const styles = StyleSheet.create({
   adminModuleGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: 8,
+    backgroundColor: 'rgba(230, 243, 245, 0.58)',
+    borderRadius: 24,
+    padding: 8
   },
   adminModuleButton: {
-    width: '31.5%',
+    width: '31%',
     minHeight: 66,
     borderWidth: 0,
     borderColor: palette.line,
@@ -4299,7 +4635,7 @@ const styles = StyleSheet.create({
     color: palette.white
   },
   adminWorkspace: {
-    backgroundColor: palette.white,
+    backgroundColor: 'rgba(255,255,255,0.38)',
     borderColor: 'rgba(45, 141, 200, 0.12)',
     borderWidth: 1,
     borderRadius: 22,
@@ -4308,14 +4644,30 @@ const styles = StyleSheet.create({
     shadowColor: palette.blueDeep,
     shadowOpacity: 0.06,
     shadowRadius: 12,
-    elevation: 1
+    elevation: 0
+  },
+  adminStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: palette.goldSoft,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 9
+  },
+  adminStatusText: {
+    color: palette.ink,
+    fontWeight: '900',
+    fontSize: 13
   },
   adminStatRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8
   },
   adminStat: {
     flex: 1,
+    minWidth: '46%',
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.14)',
     borderRadius: 18,
@@ -4342,6 +4694,59 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 12,
     margin: 8
+  },
+  adminQuickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  adminQuickAction: {
+    flex: 1,
+    minWidth: '46%',
+    minHeight: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(45, 141, 200, 0.09)'
+  },
+  adminQuickText: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '900',
+    flex: 1
+  },
+  adminPreviewPane: {
+    backgroundColor: 'rgba(230, 243, 245, 0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.12)',
+    borderRadius: 22,
+    padding: 14,
+    gap: 6
+  },
+  colorInput: {
+    flex: 1,
+    minWidth: 130
+  },
+  adminListRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(45, 141, 200, 0.11)',
+    paddingVertical: 12
+  },
+  adminListRowActive: {
+    backgroundColor: 'rgba(45, 141, 200, 0.08)',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    borderBottomWidth: 0
+  },
+  adminStateDraft: {
+    color: palette.red,
+    fontWeight: '900',
+    fontSize: 12
   },
   blockEditorCard: {
     borderWidth: 1,
