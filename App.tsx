@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Image, Modal, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Image, Modal, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
@@ -148,13 +148,89 @@ function statusLabel(status: UserStatus) {
   return 'Pendiente de aprobacion';
 }
 
+function AppLoadingScreen() {
+  const flash = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.82)).current;
+  const barTravel = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(flash, {
+          toValue: 1,
+          duration: 180,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true
+        }),
+        Animated.timing(logoScale, {
+          toValue: 1.08,
+          duration: 220,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true
+        })
+      ]),
+      Animated.parallel([
+        Animated.timing(flash, {
+          toValue: 0,
+          duration: 520,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true
+        }),
+        Animated.spring(logoScale, {
+          toValue: 1,
+          friction: 5,
+          tension: 70,
+          useNativeDriver: true
+        })
+      ])
+    ]).start();
+
+    const loop = Animated.loop(
+      Animated.timing(barTravel, {
+        toValue: 1,
+        duration: 980,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true
+      })
+    );
+    loop.start();
+
+    return () => loop.stop();
+  }, [barTravel, flash, logoScale]);
+
+  const translateX = barTravel.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-92, 230]
+  });
+
+  return (
+    <View style={styles.loadingOverlay} pointerEvents="auto">
+      <Animated.View style={[styles.loadingFlash, { opacity: flash }]} />
+      <Animated.View style={[styles.loadingLogoFrame, { transform: [{ scale: logoScale }] }]}>
+        <Image source={palestraLogo} style={styles.loadingLogo} />
+      </Animated.View>
+      <Text style={styles.loadingTitle}>Palestra</Text>
+      <Text style={styles.loadingSubtitle}>Movimiento Catolico</Text>
+      <View style={styles.loadingBarTrack}>
+        <Animated.View style={[styles.loadingBarPulse, { transform: [{ translateX }] }]} />
+      </View>
+    </View>
+  );
+}
+
 export default function App() {
+  const [isBooting, setIsBooting] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('inicio');
   const [session, setSession] = useState<Session | null>(null);
   const [tapEffect, setTapEffect] = useState<{ x: number; y: number; id: number } | null>(null);
   const [tabSettings, setTabSettings] = useState<AppTabSetting[]>([]);
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
   const [contentVersion, setContentVersion] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsBooting(false), 2200);
+    return () => clearTimeout(timer);
+  }, []);
 
   const resolvedTabs = useMemo<AppTabDisplay[]>(() => {
     const settingsByKey = new Map(tabSettings.map((item) => [item.key, item]));
@@ -284,6 +360,7 @@ export default function App() {
           setTimeout(() => setTapEffect((current) => (current?.id === id ? null : current)), 420);
         }}
       >
+        {isBooting ? <AppLoadingScreen /> : null}
         {tapEffect ? <View pointerEvents="none" style={[styles.tapCircle, { left: tapEffect.x - 24, top: tapEffect.y - 24 }]} /> : null}
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
@@ -2703,6 +2780,61 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: palette.paper
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 34
+  },
+  loadingFlash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF'
+  },
+  loadingLogoFrame: {
+    width: 142,
+    height: 142,
+    borderRadius: 71,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.16,
+    shadowRadius: 24
+  },
+  loadingLogo: {
+    width: '100%',
+    height: '100%'
+  },
+  loadingTitle: {
+    color: palette.ink,
+    fontSize: 28,
+    fontWeight: '900',
+    marginTop: 18
+  },
+  loadingSubtitle: {
+    color: palette.inkMuted,
+    fontSize: 14,
+    marginTop: 4
+  },
+  loadingBarTrack: {
+    width: 220,
+    height: 7,
+    borderRadius: 7,
+    backgroundColor: palette.whiteSoft,
+    overflow: 'hidden',
+    marginTop: 28
+  },
+  loadingBarPulse: {
+    width: 92,
+    height: 7,
+    borderRadius: 7,
+    backgroundColor: palette.red
   },
   tapCircle: {
     position: 'absolute',
