@@ -103,6 +103,7 @@ export async function createCommunityPublication(values: {
   body: string;
   eventDate?: string | null;
   visibility: 'publica' | 'registrados' | 'sedimentadores';
+  pollOptions?: string[];
 }) {
   try {
     return await supabase.rpc('create_community_publication', {
@@ -110,7 +111,8 @@ export async function createCommunityPublication(values: {
       p_title: values.title,
       p_body: values.body,
       p_event_date: values.eventDate ?? null,
-      p_visibility: values.visibility
+      p_visibility: values.visibility,
+      p_poll_options: values.pollOptions ?? null
     });
   } catch (error) {
     return {
@@ -127,7 +129,7 @@ export async function fetchCommunityPublications(session?: Session | null) {
   try {
     result = await supabase
       .from('community_publications')
-      .select('kind, title, body, event_date, visibility, created_at, communities(name, provinces(name))')
+      .select('id, kind, title, body, event_date, visibility, poll_options, poll_results, created_at, communities(name, provinces(name))')
       .order('created_at', { ascending: false })
       .limit(30);
   } catch {
@@ -146,7 +148,11 @@ export async function fetchCommunityPublications(session?: Session | null) {
   return (data as any[])
     .filter((item) => {
       const province = item.communities?.provinces?.name ?? 'Nacional';
+      const communityName = item.communities?.name ?? '';
       if (!canAccessProvince(session ?? null, province)) {
+        return false;
+      }
+      if (communityName && !['vocal', 'asesor', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(role) && communityName !== session?.communityOfOrigin) {
         return false;
       }
       if (item.visibility === 'sedimentadores') {
@@ -158,11 +164,34 @@ export async function fetchCommunityPublications(session?: Session | null) {
       return true;
     })
     .map((item) => ({
+      id: item.id,
+      kind: item.kind,
+      communityName: item.communities?.name ?? 'Comunidad',
+      visibility: item.visibility,
+      eventDate: item.event_date,
+      pollOptions: item.poll_options ?? [],
+      pollResults: item.poll_results ?? {},
       scope: `${item.kind} - ${item.communities?.name ?? 'Comunidad'}`,
       title: item.title,
       body: item.event_date ? `${String(item.event_date).slice(0, 10)} - ${item.body}` : item.body,
       imageUrl: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
     }));
+}
+
+export async function voteCommunityPoll(publicationId: string, option: string) {
+  try {
+    return await supabase.rpc('vote_community_poll', {
+      p_publication_id: publicationId,
+      p_option: option
+    });
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message: error instanceof Error ? error.message : 'No se pudo registrar el voto.'
+      }
+    };
+  }
 }
 
 export async function fetchNotilestra(session?: Session | null) {

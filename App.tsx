@@ -7,7 +7,7 @@ import { palette } from './src/theme/palette';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, demoRequests, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
-import { AppCommunity, createCommunityPublication, fetchCommunities, fetchCommunityPublications, fetchNews, fetchNotilestra } from './src/lib/remoteData';
+import { AppCommunity, createCommunityPublication, fetchCommunities, fetchCommunityPublications, fetchNews, fetchNotilestra, voteCommunityPoll } from './src/lib/remoteData';
 import { AdminUser, AppContentBlock, AppTabSetting, CommunityMember, ContentEditorBlock, UserRequestRecord, approveProfile, confirmAdminUserEmail, createAppTab, createEvent, createNews, createLeadershipChangeRequest, createUserRequest, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppTabs, fetchMyCommunityMembers, fetchMyRequests, fetchPendingProfiles, PendingProfile, resolveUserRequest, updateAdminUser, updateAppContent, updateAppTab, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
@@ -34,6 +34,7 @@ type AdminRequest = {
 };
 
 type NotilestraItem = (typeof notilestra)[number];
+type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
 type PageEditorProps = {
   tabKey: TabKey;
@@ -638,6 +639,13 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
   });
   const favoriteItems = notilestraItems.filter((item) => favorites.includes(item.title));
   const reminderItems = notilestraItems.filter((item) => reminders.includes(item.title));
+  const dueReminderItems = reminderItems.filter((item) => {
+    const eventDate = new Date(`${item.date}T00:00:00`);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return eventDate.toDateString() === tomorrow.toDateString();
+  });
+  const [dismissedReminderPopup, setDismissedReminderPopup] = useState(false);
 
   function openCalendarDay(day: number) {
     const dateKey = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -668,6 +676,18 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
+      <Modal visible={dueReminderItems.length > 0 && !dismissedReminderPopup} transparent animationType="fade" onRequestClose={() => setDismissedReminderPopup(true)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalPanel}>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setDismissedReminderPopup(true)} activeOpacity={0.8}>
+              <Ionicons name="close" size={22} color={palette.red} />
+            </TouchableOpacity>
+            <Text style={styles.cardEyebrow}>Recordatorio</Text>
+            <Text style={styles.cardTitle}>Tenes eventos marcados para manana</Text>
+            {dueReminderItems.map((item) => <Text key={item.title} style={styles.cardText}>{item.title} - {item.date}</Text>)}
+          </View>
+        </View>
+      </Modal>
       <View style={styles.filterRow}>
         {[
           { key: 'noticias', label: 'Noticias' },
@@ -742,8 +762,20 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
           </View>
         </View>
       )) : null}
-      {subtab === 'favoritos' ? <View style={styles.card}><Text style={styles.cardTitle}>Favoritos</Text>{favoriteItems.length > 0 ? favoriteItems.map((item) => <Text key={item.title} style={styles.cardText}>- {item.title}</Text>) : <Text style={styles.cardText}>Todavia no marcaste favoritos.</Text>}</View> : null}
-      {subtab === 'recordatorios' ? <View style={styles.card}><Text style={styles.cardTitle}>Recordatorios</Text>{reminderItems.length > 0 ? reminderItems.map((item) => <Text key={item.title} style={styles.cardText}>- {item.title} ({item.date})</Text>) : <Text style={styles.cardText}>Todavia no marcaste recordatorios.</Text>}</View> : null}
+      {subtab === 'favoritos' ? <View style={styles.stack}>{favoriteItems.length > 0 ? favoriteItems.map((item) => (
+        <View key={item.title} style={styles.card}>
+          <Text style={styles.cardEyebrow}>{item.scope} - {item.date}</Text>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.cardText}>{item.body}</Text>
+        </View>
+      )) : <View style={styles.card}><Text style={styles.cardText}>Todavia no marcaste favoritos.</Text></View>}</View> : null}
+      {subtab === 'recordatorios' ? <View style={styles.stack}>{reminderItems.length > 0 ? reminderItems.map((item) => (
+        <View key={item.title} style={styles.card}>
+          <Text style={styles.cardEyebrow}>Recordatorio - {item.date}</Text>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.cardText}>La app mostrara un aviso interno 1 dia antes al abrir Notilestra.</Text>
+        </View>
+      )) : <View style={styles.card}><Text style={styles.cardText}>Todavia no marcaste recordatorios.</Text></View>}</View> : null}
     </View>
   );
 }
@@ -772,7 +804,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
   const [filterProvince, setFilterProvince] = useState<string>('Todas');
-  const visibleCommunityData = useMemo(() => communityData.filter((item) => canAccessProvince(session, item.province)), [communityData, session?.province, session?.role]);
+  const visibleCommunityData = communityData;
   const province = visibleCommunityData.find((item) => item.province === selectedProvince);
   const community = province?.locations.find((item) => item.name === selectedCommunity);
 
@@ -955,6 +987,7 @@ function ProfileScreen({
   onContentChanged: () => Promise<void>;
 }) {
   const [showCommunity, setShowCommunity] = useState(false);
+  const [showCommunityManagement, setShowCommunityManagement] = useState(false);
   const [showProfilePhoto, setShowProfilePhoto] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [userRequestText, setUserRequestText] = useState('');
@@ -1029,6 +1062,9 @@ function ProfileScreen({
   const [communityPostTitle, setCommunityPostTitle] = useState('');
   const [communityPostBody, setCommunityPostBody] = useState('');
   const [communityPostDate, setCommunityPostDate] = useState('');
+  const [communityPollOptions, setCommunityPollOptions] = useState('');
+  const [myCommunityPublications, setMyCommunityPublications] = useState<CommunityPublication[]>([]);
+  const [localPollVotes, setLocalPollVotes] = useState<Record<string, string>>({});
   const [sentRequests, setSentRequests] = useState<AdminRequest[]>([]);
   const [requestSubtab, setRequestSubtab] = useState<'pendientes' | 'resueltas'>('pendientes');
   const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([
@@ -1200,6 +1236,9 @@ function ProfileScreen({
   useEffect(() => {
     if (session) {
       loadMyRequests();
+      fetchCommunityPublications(session).then((items) => {
+        setMyCommunityPublications(items.filter((item) => item.communityName === session.communityOfOrigin));
+      });
       if (['animador_comunidad', 'coordinador_comunidad'].includes(session.role)) {
         fetchMyCommunityMembers().then(setCommunityMembers);
       }
@@ -1210,7 +1249,7 @@ function ProfileScreen({
         loadAdminRequests();
       }
     }
-  }, [session?.email, session?.role]);
+  }, [session?.email, session?.role, session?.communityOfOrigin]);
 
   async function loadRealProfile(userId: string, fallbackEmail: string) {
     const result = await getMyProfileSession(fallbackEmail);
@@ -1732,12 +1771,20 @@ function ProfileScreen({
     }
 
     const visibility = session.role === 'animador_comunidad' ? 'publica' : communityPostVisibility;
+    const pollOptions = communityPostKind === 'encuesta'
+      ? communityPollOptions.split('\n').map((item) => item.trim()).filter(Boolean).slice(0, 8)
+      : [];
+    if (communityPostKind === 'encuesta' && pollOptions.length < 2) {
+      setAuthMessage('Las encuestas necesitan al menos 2 opciones, una por linea.');
+      return;
+    }
     const { error } = await createCommunityPublication({
       kind: communityPostKind,
       title: communityPostTitle.trim(),
       body: communityPostBody.trim(),
       eventDate: communityPostKind === 'fecha' ? communityPostDate.trim() : null,
-      visibility
+      visibility,
+      pollOptions
     });
     if (error) {
       setAuthMessage(error.message);
@@ -1746,8 +1793,25 @@ function ProfileScreen({
     setCommunityPostTitle('');
     setCommunityPostBody('');
     setCommunityPostDate('');
+    setCommunityPollOptions('');
     setAuthMessage('Publicacion enviada a la comunidad.');
+    const updatedItems = await fetchCommunityPublications(session);
+    setMyCommunityPublications(updatedItems.filter((item) => item.communityName === session.communityOfOrigin));
     await onContentChanged();
+  }
+
+  async function votePoll(publication: CommunityPublication, option: string) {
+    if (!publication.id) {
+      return;
+    }
+    const { error } = await voteCommunityPoll(publication.id, option);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setLocalPollVotes((current) => ({ ...current, [publication.id]: option }));
+    const updatedItems = await fetchCommunityPublications(session);
+    setMyCommunityPublications(updatedItems.filter((item) => item.communityName === session?.communityOfOrigin));
   }
 
   return (
@@ -1776,6 +1840,7 @@ function ProfileScreen({
                 { icon: 'person-outline', label: 'Mi perfil', action: () => setProfilePanel('vista') },
                 { icon: 'create-outline', label: 'Editar perfil', action: () => setProfilePanel('editar') },
                 { icon: 'people-outline', label: 'Mi comunidad', action: () => setShowCommunity(true) },
+                ...(isCommunityLeader ? [{ icon: 'briefcase-outline', label: 'Gestionar comunidad', action: () => setShowCommunityManagement(true) }] : []),
                 { icon: 'refresh-outline', label: 'Actualizar estado', action: refreshRealProfile }
               ].map((item) => (
                 <TouchableOpacity key={item.label} style={styles.accountMenuItem} onPress={() => { item.action(); setShowAccountMenu(false); }}>
@@ -1894,9 +1959,35 @@ function ProfileScreen({
               ) : (
                 <Text style={styles.cardText}>Tu rango actual no permite ver noticias internas de comunidad.</Text>
               )}
+              <SectionTitle title="Publicado por mi comunidad" />
+              {myCommunityPublications.length === 0 ? <Text style={styles.cardText}>Todavia no hay publicaciones de tu animador o coordinador.</Text> : null}
+              {myCommunityPublications.map((item) => {
+                const results = Object.entries(item.pollResults ?? {}).sort((a, b) => Number(b[1]) - Number(a[1]));
+                return (
+                  <View key={item.id ?? item.title} style={styles.innerNewsCard}>
+                    <Text style={styles.cardEyebrow}>{item.kind} - {item.visibility}</Text>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    <Text style={styles.cardText}>{item.body}</Text>
+                    {item.kind === 'encuesta' ? (
+                      <View style={styles.profileCommunityPanel}>
+                        <Text style={styles.cardEyebrow}>Opciones</Text>
+                        {(item.pollOptions ?? []).map((option: string) => (
+                          <TouchableOpacity key={option} style={[styles.filterChip, localPollVotes[item.id ?? ''] === option && styles.filterChipActive]} onPress={() => votePoll(item, option)}>
+                            <Text style={[styles.filterChipText, localPollVotes[item.id ?? ''] === option && styles.filterChipTextActive]}>{option}</Text>
+                          </TouchableOpacity>
+                        ))}
+                        <Text style={styles.cardEyebrow}>Resultados</Text>
+                        {results.length === 0 ? <Text style={styles.cardText}>Todavia no hay votos registrados.</Text> : results.map(([option, total]) => (
+                          <Text key={option} style={styles.cardText}>{option}: {String(total)} voto/s</Text>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
             </View>
           ) : null}
-          {isCommunityLeader ? (
+          {isCommunityLeader && showCommunityManagement ? (
             <View style={styles.profileCommunityPanel}>
               <Text style={styles.cardEyebrow}>Comunidad</Text>
               <Text style={styles.cardTitle}>{session.communityOfOrigin}</Text>
@@ -1929,6 +2020,9 @@ function ProfileScreen({
               <TextInput style={styles.input} placeholder="Titulo" value={communityPostTitle} onChangeText={setCommunityPostTitle} />
               {communityPostKind === 'fecha' ? <TextInput style={styles.input} placeholder="Fecha: 2026-05-28" value={communityPostDate} onChangeText={setCommunityPostDate} /> : null}
               <TextInput style={[styles.input, styles.textArea]} placeholder={communityPostKind === 'encuesta' ? 'Pregunta y opciones de la encuesta' : 'Texto de la publicacion'} value={communityPostBody} onChangeText={setCommunityPostBody} multiline />
+              {communityPostKind === 'encuesta' ? (
+                <TextInput style={[styles.input, styles.textArea]} placeholder="Opciones, una por linea" value={communityPollOptions} onChangeText={setCommunityPollOptions} multiline />
+              ) : null}
               <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
                 <Text style={styles.primaryButtonText}>Publicar</Text>
               </TouchableOpacity>
