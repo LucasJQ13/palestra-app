@@ -13,6 +13,8 @@ import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvince, canSeeAllProvinces, visibleHierarchyFor } from './src/lib/roles';
 
+const palestraLogo = require('./assets/logo-palestra.png');
+
 type TabKey = string;
 type AdminModule = 'resumen' | 'usuarios' | 'solicitudes' | 'noticias' | 'eventos' | 'comunidades' | 'contenido_general';
 type ProfilePanel = 'vista' | 'editar';
@@ -287,8 +289,7 @@ export default function App() {
         <View style={styles.header}>
           <View style={styles.brandBlock}>
             <View style={styles.brandLogo}>
-              <View style={styles.brandTriangle} />
-              <Text style={styles.brandLogoText}>P</Text>
+              <Image source={palestraLogo} style={styles.brandLogoImage} />
             </View>
             <View>
               <Text style={styles.brand}>Palestra</Text>
@@ -2733,29 +2734,16 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    borderWidth: 2,
-    borderColor: palette.red,
+    borderWidth: 1,
+    borderColor: palette.line,
     backgroundColor: palette.white,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
   },
-  brandTriangle: {
-    position: 'absolute',
-    width: 24,
-    height: 24,
-    borderLeftWidth: 12,
-    borderRightWidth: 12,
-    borderBottomWidth: 22,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: palette.goldSoft,
-    top: 8
-  },
-  brandLogoText: {
-    color: palette.red,
-    fontSize: 20,
-    fontWeight: '900'
+  brandLogoImage: {
+    width: '100%',
+    height: '100%'
   },
   brand: {
     color: palette.ink,

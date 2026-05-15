@@ -4,9 +4,14 @@
     "slug": "palestra-argentina",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/logo-palestra.png",
     "scheme": "palestra",
     "userInterfaceStyle": "light",
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo-palestra.png",
+        "backgroundColor": "#FFFFFF"
+      },
       "package": "org.palestra.argentina",
       "versionCode": 1
     },
