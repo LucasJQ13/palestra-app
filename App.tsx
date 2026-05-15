@@ -727,11 +727,11 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
 function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void; adminConfig: AppAdminConfig }) {
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
   const [homeNews, setHomeNews] = useState(news);
-  const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; style: any }> = [
-    { tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', style: styles.homeTilePrimary },
-    { tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', style: styles.homeTileSky },
-    { tab: 'materiales', title: 'Materiales', meta: 'Archivos internos', icon: 'folder-open-outline', style: styles.homeTileWarm },
-    { tab: 'perfil', title: session ? 'Perfil' : 'Ingresar', meta: session ? roleLabel(session.role) : 'Cuenta personal', icon: 'person-circle-outline', style: styles.homeTileDeep }
+  const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = [
+    { tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
+    { tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
+    { tab: 'materiales', title: 'Materiales', meta: 'Archivos internos', icon: 'folder-open-outline', color: palette.gold },
+    { tab: 'perfil', title: session ? 'Perfil' : 'Ingresar', meta: session ? roleLabel(session.role) : 'Cuenta personal', icon: 'person-circle-outline', color: palette.inkMuted }
   ];
   const dashboardStats = [
     { label: 'Provincias', value: String(communities.length), icon: 'map-outline' as keyof typeof Ionicons.glyphMap },
@@ -765,10 +765,13 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
         <Text style={styles.heroText}>{adminConfig.home.heroText}</Text>
       </View>
 
+      <EditableIntro content={content} editor={editor} />
+
+      <SectionTitle title="Accesos rapidos" />
       <View style={styles.homeTileGrid}>
         {homeTiles.map((tile) => (
-          <TouchableOpacity key={tile.tab} style={[styles.homeTile, tile.style]} activeOpacity={0.88} onPress={() => onNavigate(tile.tab)}>
-            <View style={styles.homeTileIcon}>
+          <TouchableOpacity key={tile.tab} style={styles.homeTile} activeOpacity={0.88} onPress={() => onNavigate(tile.tab)}>
+            <View style={[styles.homeTileIcon, { backgroundColor: tile.color }]}>
               <Ionicons name={tile.icon} size={25} color={palette.white} />
             </View>
             <Text style={styles.homeTileTitle}>{tile.title}</Text>
@@ -777,8 +780,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
         ))}
       </View>
 
-      <EditableIntro content={content} editor={editor} />
-
+      <SectionTitle title="Resumen" />
       <View style={styles.dashboardStrip}>
         {dashboardStats.map((item) => (
           <View key={item.label} style={styles.dashboardStat}>
@@ -789,14 +791,12 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
         ))}
       </View>
 
+      <SectionTitle title="Agenda comunitaria" />
       <View style={styles.featurePanel}>
         <View style={styles.featurePanelHeader}>
-          <View>
-            <Text style={styles.cardEyebrow}>Proximamente</Text>
-            <Text style={styles.cardTitle}>{adminConfig.home.featuredBanner}</Text>
-          </View>
-          <TouchableOpacity style={styles.iconButton} activeOpacity={0.8} onPress={() => onNavigate('notilestra')}>
-            <Ionicons name="arrow-forward" size={18} color={palette.red} />
+          <Text style={styles.cardEyebrow}>Proximamente</Text>
+          <TouchableOpacity style={[styles.iconButton, styles.viewAllButton]} activeOpacity={0.8} onPress={() => onNavigate('notilestra')}>
+            <Text style={styles.linkText}>Ver todas</Text>
           </TouchableOpacity>
         </View>
         {nextEvents.map((item) => (
@@ -3531,10 +3531,10 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 18,
     paddingTop: 10,
-    paddingBottom: 112
+    paddingBottom: 156
   },
   stack: {
-    gap: 14
+    gap: 18
   },
   stackTight: {
     gap: 10
@@ -3545,9 +3545,10 @@ const styles = StyleSheet.create({
     padding: 24,
     overflow: 'hidden',
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.14,
+    shadowOpacity: 0.18,
     shadowRadius: 22,
-    elevation: 3
+    elevation: 4,
+    marginBottom: 2
   },
   heroGlow: {
     position: 'absolute',
@@ -3579,55 +3580,64 @@ const styles = StyleSheet.create({
   },
   homeTileGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    justifyContent: 'space-between',
     gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 28,
-    padding: 8
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    padding: 0
   },
   homeTile: {
     flex: 1,
-    minWidth: '46%',
-    minHeight: 104,
-    borderRadius: 22,
-    padding: 14,
-    justifyContent: 'space-between',
+    minWidth: 0,
+    minHeight: 116,
+    borderRadius: 0,
+    padding: 0,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
     shadowColor: palette.blueDeep,
     shadowOpacity: 0,
     shadowRadius: 0,
     elevation: 0
   },
   homeTilePrimary: {
-    backgroundColor: palette.red
+    backgroundColor: 'transparent'
   },
   homeTileSky: {
-    backgroundColor: '#5DA7DB'
+    backgroundColor: 'transparent'
   },
   homeTileWarm: {
-    backgroundColor: '#F2B84B'
+    backgroundColor: 'transparent'
   },
   homeTileDeep: {
-    backgroundColor: '#5E8396'
+    backgroundColor: 'transparent'
   },
   homeTileIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: palette.red,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 3
   },
   homeTileTitle: {
-    color: palette.white,
-    fontSize: 17,
+    color: palette.ink,
+    fontSize: 13,
     fontWeight: '900',
-    marginTop: 10
+    marginTop: 10,
+    textAlign: 'center'
   },
   homeTileMeta: {
-    color: 'rgba(255, 255, 255, 0.82)',
-    fontSize: 12,
+    color: palette.inkMuted,
+    fontSize: 11,
     fontWeight: '700',
-    marginTop: 3
+    marginTop: 4,
+    textAlign: 'center',
+    lineHeight: 15
   },
   dashboardStrip: {
     flexDirection: 'row',
@@ -3635,17 +3645,17 @@ const styles = StyleSheet.create({
   },
   dashboardStat: {
     flex: 1,
-    minHeight: 92,
+    minHeight: 116,
     borderRadius: 22,
-    padding: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.46)',
+    padding: 14,
+    backgroundColor: palette.white,
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.12)',
     justifyContent: 'space-between',
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2
   },
   dashboardValue: {
     color: palette.ink,
@@ -3659,16 +3669,16 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   featurePanel: {
-    backgroundColor: 'rgba(255, 255, 255, 0.38)',
-    borderRadius: 26,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.12)',
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    padding: 0,
+    gap: 12,
+    borderWidth: 0,
+    borderColor: 'transparent',
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.04,
-    shadowRadius: 18,
-    elevation: 1
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0
   },
   featurePanelHeader: {
     flexDirection: 'row',
@@ -3680,9 +3690,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(230, 243, 245, 0.72)',
-    borderRadius: 20,
-    padding: 10
+    backgroundColor: palette.white,
+    borderRadius: 22,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.1)',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 1
   },
   miniEventDate: {
     width: 52,
@@ -3725,26 +3741,27 @@ const styles = StyleSheet.create({
     marginBottom: 2
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.34)',
+    backgroundColor: palette.white,
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.08)',
     borderRadius: 22,
     padding: 16,
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0.02,
+    shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 0
   },
   feedCard: {
     gap: 10,
-    borderRadius: 0,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
+    borderRadius: 22,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderTopWidth: 1,
     borderBottomWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.28)',
-    paddingHorizontal: 2,
-    paddingVertical: 14
+    backgroundColor: palette.white,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 2
   },
   feedHeader: {
     flexDirection: 'row',
@@ -4005,16 +4022,16 @@ const styles = StyleSheet.create({
     elevation: 1
   },
   contentIntro: {
-    backgroundColor: 'rgba(255,255,255,0.26)',
-    borderWidth: 0,
+    backgroundColor: palette.white,
+    borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.12)',
     borderRadius: 20,
     padding: 14,
     gap: 6,
     shadowColor: palette.blueDeep,
-    shadowOpacity: 0,
+    shadowOpacity: 0.04,
     shadowRadius: 12,
-    elevation: 0
+    elevation: 1
   },
   calendarCard: {
     backgroundColor: palette.white,
@@ -4370,6 +4387,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(45, 141, 200, 0.1)'
+  },
+  viewAllButton: {
+    width: 'auto',
+    minWidth: 76,
+    paddingHorizontal: 10
+  },
+  linkText: {
+    color: palette.red,
+    fontSize: 13,
+    fontWeight: '900'
   },
   tabIconFrameActive: {
     backgroundColor: palette.red,
