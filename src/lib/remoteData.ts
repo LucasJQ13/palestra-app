@@ -21,6 +21,15 @@ type RemoteCommunityRow = {
 };
 
 export type AppCommunity = (typeof fallbackCommunities)[number];
+export type RemoteAgendaItem = {
+  scope: string;
+  province?: string;
+  date: string;
+  title: string;
+  body: string;
+  imageUrl?: string;
+  mapUrl?: string;
+};
 
 export async function fetchCommunities(): Promise<AppCommunity[]> {
   let result;
@@ -220,4 +229,44 @@ export async function fetchNotilestra(session?: Session | null) {
     title: item.title,
     body: item.description
   }));
+}
+
+export async function fetchMotivadorPeriods(session?: Session | null): Promise<RemoteAgendaItem[]> {
+  let result;
+  try {
+    result = await supabase
+      .from('motivador_periods')
+      .select('gender, pm_number, starts_on, ends_on, retreat_house, address, description, place_photo_url, flyer_url, visible_to_lower_roles, provinces(name)')
+      .eq('is_visible', true)
+      .order('starts_on', { ascending: true });
+  } catch {
+    return [];
+  }
+
+  const { data, error } = result;
+  if (error || !data) {
+    return [];
+  }
+
+  return (data as any[])
+    .filter((item) => canAccessProvince(session ?? null, item.provinces?.name ?? 'Nacional'))
+    .map((item) => {
+      const province = item.provinces?.name ?? 'Nacional';
+      const genderLabel = item.gender === 'femenino' ? 'Femenino' : 'Masculino';
+      const startsOn = String(item.starts_on).slice(0, 10);
+      const endsOn = String(item.ends_on).slice(0, 10);
+      const exactDays = startsOn === endsOn ? startsOn : `${startsOn} al ${endsOn}`;
+      const description = item.description ? ` ${item.description}` : '';
+      const address = item.address ?? 'Direccion a confirmar';
+
+      return {
+        scope: `PM - ${province}`,
+        province,
+        date: startsOn,
+        title: `PM ${genderLabel} ${item.pm_number}`,
+        body: `Dias: ${exactDays}. Casa de retiro: ${item.retreat_house}. Direccion: ${address}.${description}`,
+        imageUrl: item.flyer_url ?? item.place_photo_url ?? undefined,
+        mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+      };
+    });
 }

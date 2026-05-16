@@ -9,7 +9,7 @@ import { palette } from './src/theme/palette';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, demoRequests, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
-import { AppCommunity, createCommunityPublication, fetchCommunities, fetchCommunityPublications, fetchNews, fetchNotilestra, voteCommunityPoll } from './src/lib/remoteData';
+import { AppCommunity, RemoteAgendaItem, createCommunityPublication, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, voteCommunityPoll } from './src/lib/remoteData';
 import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, NewsDraftRecord, UserRequestRecord, approveProfile, archiveAppMaterial, confirmAdminUserEmail, createAppTab, createEvent, createNews, createLeadershipChangeRequest, createUserRequest, fetchAdminConfig, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, PendingProfile, resolveUserRequest, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveNewsDraft, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
@@ -86,6 +86,7 @@ type AdminRequest = {
 
 type NotilestraItem = (typeof notilestra)[number];
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
+type AgendaItem = NotilestraItem & Partial<Pick<RemoteAgendaItem, 'imageUrl' | 'mapUrl' | 'province'>>;
 
 const defaultAdminConfig: AppAdminConfig = {
   identity: {
@@ -165,6 +166,7 @@ type PageEditorProps = {
   content?: AppContentBlock;
   tab?: AppTabDisplay;
   isAdmin: boolean;
+  contentLoaded: boolean;
   onContentChanged: () => Promise<void>;
   onTabsChanged: () => Promise<void>;
 };
@@ -380,6 +382,7 @@ export default function App() {
   const [touchPointerEnabled, setTouchPointerEnabled] = useState(false);
   const [tabSettings, setTabSettings] = useState<AppTabSetting[]>([]);
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
+  const [contentLoaded, setContentLoaded] = useState(false);
   const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
   const [contentVersion, setContentVersion] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -501,6 +504,7 @@ export default function App() {
     content: appContent.find((item) => item.tab_key === key),
     tab: resolvedTabs.find((tab) => tab.key === key),
     isAdmin: canEditPageContent(session, key),
+    contentLoaded,
     onContentChanged: refreshPublishedContent,
     onTabsChanged: reloadTabSettings
   });
@@ -513,6 +517,7 @@ export default function App() {
   async function reloadAppContent() {
     const items = await fetchAppContent();
     setAppContent(items);
+    setContentLoaded(true);
   }
 
   async function reloadAdminConfig() {
@@ -1149,11 +1154,11 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
 
 function NotilestraScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [selectedCalendarItems, setSelectedCalendarItems] = useState<Array<{ date: string; title: string; body?: string; imageUrl?: string; scope?: string }>>([]);
+  const [selectedCalendarItems, setSelectedCalendarItems] = useState<Array<{ date: string; title: string; body?: string; imageUrl?: string; scope?: string; mapUrl?: string }>>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [reminders, setReminders] = useState<string[]>([]);
   const [subtab, setSubtab] = useState<'noticias' | 'favoritos' | 'recordatorios'>('noticias');
-  const [notilestraItems, setNotilestraItems] = useState<NotilestraItem[]>(notilestra);
+  const [notilestraItems, setNotilestraItems] = useState<AgendaItem[]>(notilestra);
   const [monthOffset, setMonthOffset] = useState(0);
   const baseDate = new Date(2026, 4 + monthOffset, 1);
   const monthLabel = baseDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
@@ -1161,9 +1166,9 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
   const firstDay = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1).getDay();
   useEffect(() => {
     let alive = true;
-    fetchNotilestra(session).then((items) => {
+    Promise.all([fetchNotilestra(session), fetchMotivadorPeriods(session)]).then(([items, pmItems]) => {
       if (alive) {
-        setNotilestraItems(items);
+        setNotilestraItems([...items, ...pmItems].sort((a, b) => Date.parse(a.date) - Date.parse(b.date)));
       }
     });
     return () => {
@@ -1196,7 +1201,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     const dateKey = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const newsForDay = notilestraItems
       .filter((item) => item.date === dateKey)
-      .map((item) => ({ date: item.date, title: item.title, body: item.body, scope: item.scope }));
+      .map((item) => ({ date: item.date, title: item.title, body: item.body, scope: item.scope, imageUrl: item.imageUrl, mapUrl: item.mapUrl }));
     const activitiesForDay = activityDays
       .filter((item) => item.date === dateKey)
       .map((item) => ({
@@ -1283,6 +1288,12 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
                 {item.body ? <Text style={styles.cardText}>{item.body}</Text> : null}
+                {item.mapUrl ? (
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(item.mapUrl as string)}>
+                    <Ionicons name="map-outline" size={17} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>Abrir mapa</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             ))}
           </View>
@@ -1334,17 +1345,17 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
 }
 
 function MotivadorScreen({ session, title, content, refreshKey, editor, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
-  const [items, setItems] = useState<NotilestraItem[]>([]);
+  const [items, setItems] = useState<AgendaItem[]>([]);
 
   useEffect(() => {
     let alive = true;
-    fetchNotilestra(session).then((events) => {
+    Promise.all([fetchMotivadorPeriods(session), fetchNotilestra(session)]).then(([pmPeriods, events]) => {
       if (alive) {
         const pmItems = events.filter((item) => {
           const text = `${item.title} ${item.body} ${item.scope}`.toLowerCase();
           return text.includes('periodo motivador') || text.includes(' pm ') || text.includes('retiro');
         });
-        setItems(pmItems.length > 0 ? pmItems : [
+        setItems(pmPeriods.length > 0 ? pmPeriods : pmItems.length > 0 ? pmItems : [
           {
             scope: 'PM - Nacional',
             date: '2026-06-20',
@@ -1388,15 +1399,18 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
           </View>
           <Text style={styles.cardTitle}>{item.title}</Text>
           <Text style={styles.cardText}>{item.body}</Text>
-          <TouchableOpacity style={styles.secondaryButton}>
-            <Ionicons name="map-outline" size={17} color={palette.red} />
-            <Text style={styles.secondaryButtonText}>Abrir mapa</Text>
-          </TouchableOpacity>
+          {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
+          {item.mapUrl ? (
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(item.mapUrl as string)}>
+              <Ionicons name="map-outline" size={17} color={palette.red} />
+              <Text style={styles.secondaryButtonText}>Abrir mapa</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       ))}
       <View style={styles.notice}>
         <Ionicons name="archive-outline" size={20} color={palette.red} />
-        <Text style={styles.noticeText}>El registro historico de PM queda disponible aca; las fechas tambien se reflejan en el calendario de Noticias cuando se cargan como eventos.</Text>
+        <Text style={styles.noticeText}>El registro historico de PM queda disponible aca; las fechas cargadas en Supabase tambien se reflejan en el calendario de Noticias.</Text>
       </View>
     </View>
   );
@@ -1764,26 +1778,29 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
 }
 
 function HistoryScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
+  const shouldShowFallback = !content && !editor?.contentLoaded;
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {!content ? (
+      {shouldShowFallback ? (
         <View style={styles.contentIntro}>
           <Text style={styles.cardTitle}>Nuestra Historia</Text>
           {movementHistory.map((paragraph, index) => <Text key={`${paragraph.slice(0, 12)}-${index}`} style={styles.cardText}>{paragraph}</Text>)}
         </View>
       ) : null}
+      {!content && editor?.contentLoaded ? <EmptyRemoteContent title="Historia pendiente" /> : null}
     </View>
   );
 }
 
 function ContactScreen({ title, content, editor, adminConfig }: { title: string; content?: AppContentBlock; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
+  const shouldShowFallback = !content && !editor?.contentLoaded;
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {!content ? (
+      {shouldShowFallback ? (
         <View style={styles.contentIntro}>
           <Text style={styles.cardTitle}>Encontrar una comunidad</Text>
           <Text style={styles.cardText}>{adminConfig.contact.helpText}</Text>
@@ -1793,26 +1810,30 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
           <Text style={styles.cardText}>{adminConfig.contact.donationText}</Text>
         </View>
       ) : null}
+      {!content && editor?.contentLoaded ? <EmptyRemoteContent title="Contacto pendiente" /> : null}
     </View>
   );
 }
 
 function PublicLibraryScreen({ title, content, editor, emptyTitle, emptyText }: { title: string; content?: AppContentBlock; editor?: PageEditorProps; emptyTitle: string; emptyText: string }) {
+  const shouldShowFallback = !content && !editor?.contentLoaded;
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {!content ? (
+      {shouldShowFallback ? (
         <View style={styles.contentIntro}>
           <Text style={styles.cardTitle}>{emptyTitle}</Text>
           <Text style={styles.cardText}>{emptyText}</Text>
         </View>
       ) : null}
+      {!content && editor?.contentLoaded ? <EmptyRemoteContent title={`${emptyTitle} pendiente`} /> : null}
     </View>
   );
 }
 
 function HymnScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
+  const shouldShowFallback = !content && !editor?.contentLoaded;
   const fallbackStanzas = [
     'Himno Palestrista',
     'Aqui se cargara el himno de Palestra en estrofas, con lectura clara y espaciado amplio.',
@@ -1823,13 +1844,23 @@ function HymnScreen({ title, content, editor }: { title: string; content?: AppCo
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {!content ? (
+      {shouldShowFallback ? (
         <View style={styles.hymnPanel}>
           {fallbackStanzas.map((stanza, index) => (
             <Text key={`${stanza}-${index}`} style={index === 0 ? styles.hymnTitle : styles.hymnStanza}>{stanza}</Text>
           ))}
         </View>
       ) : null}
+      {!content && editor?.contentLoaded ? <EmptyRemoteContent title="Himno pendiente" /> : null}
+    </View>
+  );
+}
+
+function EmptyRemoteContent({ title }: { title: string }) {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardText}>No hay contenido publicado en Supabase para esta seccion todavia.</Text>
     </View>
   );
 }
