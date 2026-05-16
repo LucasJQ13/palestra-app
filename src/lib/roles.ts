@@ -140,7 +140,7 @@ export function canManageProvince(session: Session | null, province?: string | n
   if (!session || !province) {
     return false;
   }
-  if (session.role === 'administrador' || canSeeAllProvinces(session)) {
+  if (session.role === 'administrador') {
     return true;
   }
   return province === session.province && ['animador_comunidad', 'coordinador_comunidad', 'vocal', 'asesor', 'coordinador_diocesano'].includes(session.role);

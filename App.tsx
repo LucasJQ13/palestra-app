@@ -1,26 +1,36 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Animated, BackHandler, Easing, Image, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native';
+import { Animated, BackHandler, Easing, Image, Linking, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, demoRequests, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
 import { AppCommunity, createCommunityPublication, fetchCommunities, fetchCommunityPublications, fetchNews, fetchNotilestra, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, NewsDraftRecord, UserRequestRecord, approveProfile, archiveAppMaterial, confirmAdminUserEmail, createAppTab, createEvent, createNews, createLeadershipChangeRequest, createUserRequest, fetchAdminConfig, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, PendingProfile, resolveUserRequest, saveAdminConfig, saveAppMaterial, saveNewsDraft, updateAdminUser, updateAppContent, updateAppTab, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, NewsDraftRecord, UserRequestRecord, approveProfile, archiveAppMaterial, confirmAdminUserEmail, createAppTab, createEvent, createNews, createLeadershipChangeRequest, createUserRequest, fetchAdminConfig, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, PendingProfile, resolveUserRequest, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveNewsDraft, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
-import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvince, canSeeAllProvinces, visibleHierarchyFor } from './src/lib/roles';
+import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
 
 const palestraLogo = require('./assets/logo-palestra.png');
+const provinceLogos: Record<string, any> = {
+  Salta: require('./assets/logo-provincia-salta.png'),
+  Jujuy: require('./assets/logo-provincia-jujuy.png'),
+  Tucuman: require('./assets/logo-provincia-tucuman.png'),
+  Catamarca: require('./assets/logo-provincia-catamarca.png'),
+  Cordoba: require('./assets/logo-provincia-cordoba.png'),
+  'San Luis': require('./assets/logo-provincia-san-luis.png')
+};
 const demoVersionLabel = 'DEMO 0.1.0';
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
+const officialInstagramUrl = 'https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA==';
 
 type TabKey = string;
 type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general';
-type ProfilePanel = 'vista' | 'editar' | 'configuracion';
+type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'configuracion';
 type AppAdminConfig = {
   identity: {
     appName: string;
@@ -96,7 +106,7 @@ const defaultAdminConfig: AppAdminConfig = {
   contact: {
     email: contactInfo.email,
     phone: contactInfo.phone,
-    instagram: contactInfo.instagram,
+    instagram: officialInstagramUrl,
     helpText: contactInfo.helpText,
     donationText: contactInfo.donationText
   },
@@ -113,6 +123,24 @@ const defaultAdminConfig: AppAdminConfig = {
     imageUrl: ''
   }
 };
+
+function normalizeAdminConfig(config?: Partial<AppAdminConfig> | null): AppAdminConfig {
+  const merged: AppAdminConfig = {
+    ...defaultAdminConfig,
+    ...config,
+    identity: { ...defaultAdminConfig.identity, ...(config?.identity ?? {}) },
+    home: { ...defaultAdminConfig.home, ...(config?.home ?? {}) },
+    contact: { ...defaultAdminConfig.contact, ...(config?.contact ?? {}) },
+    settings: { ...defaultAdminConfig.settings, ...(config?.settings ?? {}) },
+    periodoMotivador: { ...defaultAdminConfig.periodoMotivador, ...(config?.periodoMotivador ?? {}) }
+  };
+
+  if (!merged.contact.instagram || merged.contact.instagram === contactInfo.instagram || merged.contact.instagram === '@palestra.argentina') {
+    merged.contact.instagram = officialInstagramUrl;
+  }
+
+  return merged;
+}
 
 const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof typeof Ionicons.glyphMap; systemOnly?: boolean }> = [
   { key: 'resumen', label: 'Dashboard', icon: 'grid-outline' },
@@ -145,9 +173,13 @@ const defaultTabs: Array<{ key: TabKey; label: string; icon: keyof typeof Ionico
   { key: 'inicio', label: 'Inicio', icon: 'home-outline' },
   { key: 'notilestra', label: 'Notilestra', icon: 'newspaper-outline' },
   { key: 'materiales', label: 'Materiales', icon: 'document-text-outline' },
+  { key: 'oraciones', label: 'Oraciones', icon: 'heart-outline' },
+  { key: 'cancionero', label: 'Cancionero', icon: 'musical-notes-outline' },
+  { key: 'himno', label: 'Himno', icon: 'flag-outline' },
   { key: 'comunidades', label: 'Comunidades', icon: 'people-outline' },
   { key: 'historia', label: 'Historia', icon: 'book-outline' },
   { key: 'contacto', label: 'Contacto', icon: 'chatbubbles-outline' },
+  { key: 'periodo_motivador', label: 'Periodo', icon: 'flame-outline' },
   { key: 'perfil', label: 'Perfil', icon: 'person-circle-outline' }
 ];
 
@@ -225,6 +257,34 @@ function canAccessPrivate(session: Session | null) {
 
 function hasPermission(session: Session | null, permission: Permission) {
   return Boolean(session?.permissions.includes(permission));
+}
+
+function canManagePublishedContent(session: Session | null) {
+  return Boolean(session && roleRank(session.role) >= roleRank('vocal'));
+}
+
+function canEditStaticInstitutionalPage(session: Session | null) {
+  return Boolean(session && ['coordinador_nacional', 'administrador'].includes(session.role));
+}
+
+function canManageGlobalInstagram(session: Session | null) {
+  return Boolean(session && ['coordinador_nacional', 'administrador'].includes(session.role));
+}
+
+function canEditPageContent(session: Session | null, key: TabKey) {
+  if (!session) {
+    return false;
+  }
+  if (['historia', 'contacto'].includes(key)) {
+    return canEditStaticInstitutionalPage(session);
+  }
+  if (key === 'himno') {
+    return session.role === 'administrador';
+  }
+  if (session.role === 'administrador') {
+    return true;
+  }
+  return canManagePublishedContent(session) && ['inicio', 'notilestra', 'materiales', 'oraciones', 'cancionero', 'comunidades', 'periodo_motivador'].includes(key);
 }
 
 function roleLabel(role: Role) {
@@ -420,6 +480,12 @@ export default function App() {
     const currentRole = session?.role ?? 'invitado';
     const seen = new Set<string>();
     return resolvedTabs.filter((tab) => {
+      if (tab.key === 'perfil') {
+        return false;
+      }
+      if (tab.key === 'periodo_motivador' && roleRank(currentRole as Role) < roleRank('sedimentador')) {
+        return false;
+      }
       if (!tab.visible || (tab.visibleRoles && !tab.visibleRoles.includes(currentRole)) || seen.has(tab.key)) {
         return false;
       }
@@ -434,7 +500,7 @@ export default function App() {
     title: tabLabel(key),
     content: appContent.find((item) => item.tab_key === key),
     tab: resolvedTabs.find((tab) => tab.key === key),
-    isAdmin: session?.role === 'administrador',
+    isAdmin: canEditPageContent(session, key),
     onContentChanged: refreshPublishedContent,
     onTabsChanged: reloadTabSettings
   });
@@ -452,7 +518,7 @@ export default function App() {
   async function reloadAdminConfig() {
     const config = await fetchAdminConfig();
     if (config) {
-      setAdminConfig({ ...defaultAdminConfig, ...config } as AppAdminConfig);
+      setAdminConfig(normalizeAdminConfig(config as Partial<AppAdminConfig>));
     }
   }
 
@@ -585,6 +651,15 @@ export default function App() {
     if (activeTab === 'materiales') {
       return <MaterialsScreen session={session} title={tabLabel('materiales')} content={appContent.find((item) => item.tab_key === 'materiales')} refreshKey={contentVersion} editor={pageEditorProps('materiales')} />;
     }
+    if (activeTab === 'oraciones') {
+      return <PublicLibraryScreen title={tabLabel('oraciones')} content={appContent.find((item) => item.tab_key === 'oraciones')} editor={pageEditorProps('oraciones')} emptyTitle="Oraciones" emptyText="Las oraciones publicadas por la dirigencia apareceran en esta seccion para todo publico." />;
+    }
+    if (activeTab === 'cancionero') {
+      return <PublicLibraryScreen title={tabLabel('cancionero')} content={appContent.find((item) => item.tab_key === 'cancionero')} editor={pageEditorProps('cancionero')} emptyTitle="Cancionero" emptyText="Las canciones cargadas por la dirigencia apareceran aca para acompanar encuentros y comunidades." />;
+    }
+    if (activeTab === 'himno') {
+      return <HymnScreen title={tabLabel('himno')} content={appContent.find((item) => item.tab_key === 'himno')} editor={pageEditorProps('himno')} />;
+    }
     if (activeTab === 'comunidades') {
       return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} editor={pageEditorProps('comunidades')} />;
     }
@@ -592,7 +667,10 @@ export default function App() {
       return <HistoryScreen title={tabLabel('historia')} content={appContent.find((item) => item.tab_key === 'historia')} editor={pageEditorProps('historia')} />;
     }
     if (activeTab === 'contacto') {
-      return <ContactScreen title={tabLabel('contacto')} content={appContent.find((item) => item.tab_key === 'contacto')} editor={pageEditorProps('contacto')} />;
+      return <ContactScreen adminConfig={adminConfig} title={tabLabel('contacto')} content={appContent.find((item) => item.tab_key === 'contacto')} editor={pageEditorProps('contacto')} />;
+    }
+    if (activeTab === 'periodo_motivador') {
+      return <MotivadorScreen session={session} title={tabLabel('periodo_motivador')} content={appContent.find((item) => item.tab_key === 'periodo_motivador')} refreshKey={contentVersion} editor={pageEditorProps('periodo_motivador')} adminConfig={adminConfig} />;
     }
     if (activeTab !== 'perfil') {
       return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
@@ -655,8 +733,14 @@ export default function App() {
               <Text style={styles.demoLabel}>{demoVersionLabel}</Text>
             </View>
           </View>
-          <View style={styles.sessionBadge}>
-            <Text style={styles.sessionBadgeText}>{session ? roleLabel(session.role) : 'Invitado'}</Text>
+          <View style={styles.headerActions}>
+            <View style={styles.sessionBadge}>
+              <Text style={styles.sessionBadgeText}>{session ? roleLabel(session.role) : 'Invitado'}</Text>
+            </View>
+            <TouchableOpacity style={styles.headerProfileButton} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
+              <Ionicons name="person-circle-outline" size={17} color={palette.red} />
+              <Text style={styles.headerProfileButtonText}>Mi Perfil</Text>
+            </TouchableOpacity>
           </View>
         </View>
         {appMessage ? (
@@ -754,7 +838,8 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
         });
 
       if (uploadError) {
-        setEditorMessage(uploadError.message);
+        setDraftBlocks((current) => [...current, { id: `imagen-${Date.now()}`, type: 'imagen', value: asset.uri }]);
+        setEditorMessage(`No pude subir a Supabase (${uploadError.message}). La imagen quedo cargada localmente para esta edicion.`);
         return;
       }
 
@@ -768,11 +853,6 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
 
   async function saveInlinePage() {
     if (!editor) {
-      return;
-    }
-
-    if (!draftTitle.trim()) {
-      setEditorMessage('La pagina necesita un titulo.');
       return;
     }
 
@@ -794,7 +874,9 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
     const normalizedBlocks = draftBlocks
       .map((block) => ({ ...block, value: block.value.trim() }))
       .filter((block) => block.value.length > 0);
-    const { error } = await updateAppContent(editor.tabKey, draftTitle.trim(), draftBody.trim(), normalizedBlocks);
+    const titleFromBlocks = normalizedBlocks.find((block) => block.type === 'titulo')?.value ?? draftTitle.trim() ?? editor.title;
+    const bodyFromBlocks = normalizedBlocks.find((block) => block.type === 'texto')?.value ?? draftBody.trim();
+    const { error } = await updateAppContent(editor.tabKey, titleFromBlocks, bodyFromBlocks, normalizedBlocks);
     if (error) {
       setEditorMessage(error.message);
       return;
@@ -867,10 +949,7 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
         </TouchableOpacity>
         {isEditing ? (
           <View style={styles.inlineEditorPanel}>
-            <Text style={styles.cardEyebrow}>Edicion directa</Text>
-            <TextInput style={styles.input} placeholder="Nombre de la pestana" value={draftLabel} onChangeText={setDraftLabel} />
-            <TextInput style={styles.input} placeholder="Titulo interno" value={draftTitle} onChangeText={setDraftTitle} />
-            <TextInput style={[styles.input, styles.textArea]} placeholder="Resumen o texto base" value={draftBody} onChangeText={setDraftBody} multiline />
+            <Text style={styles.cardText}>Edita el contenido con bloques. El primer bloque de texto se usa como resumen interno de la pagina.</Text>
             <View style={styles.inlineActions}>
               <TouchableOpacity style={styles.smallActionButton} onPress={() => addInlineBlock('titulo')}>
                 <Ionicons name="text-outline" size={16} color={palette.red} />
@@ -932,6 +1011,9 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
 function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void; adminConfig: AppAdminConfig }) {
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
   const [homeNews, setHomeNews] = useState(news);
+  const [communityAgenda, setCommunityAgenda] = useState<CommunityPublication[]>([]);
+  const instagramUrl = adminConfig.contact.instagram?.startsWith('http') ? adminConfig.contact.instagram : `https://www.instagram.com/${adminConfig.contact.instagram.replace('@', '')}`;
+  const instagramLabel = instagramUrl.includes('infopalestra.argentina') ? '@infopalestra.argentina' : adminConfig.contact.instagram;
   const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = [
     { tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
     { tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
@@ -952,6 +1034,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
         fetchCommunityPublications(session).then((communityItems) => {
           if (alive) {
             setHomeNews([...communityItems, ...items]);
+            setCommunityAgenda(communityItems.filter((item) => item.kind === 'fecha'));
           }
         });
       }
@@ -996,6 +1079,15 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
         ))}
       </View>
 
+      <TouchableOpacity style={styles.instagramButton} activeOpacity={0.88} onPress={() => Linking.openURL(instagramUrl)}>
+        <Ionicons name="logo-instagram" size={22} color={palette.white} />
+        <View style={styles.instagramButtonText}>
+          <Text style={styles.instagramButtonTitle}>Instagram Palestrista</Text>
+          <Text style={styles.instagramButtonMeta}>{instagramLabel}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={palette.white} />
+      </TouchableOpacity>
+
       <SectionTitle title="Agenda comunitaria" />
       <View style={styles.featurePanel}>
         <View style={styles.featurePanelHeader}>
@@ -1004,11 +1096,11 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             <Text style={styles.linkText}>Ver todas</Text>
           </TouchableOpacity>
         </View>
-        {nextEvents.map((item, index) => (
+        {(communityAgenda.length > 0 ? communityAgenda.slice(0, 3) : nextEvents).map((item, index) => (
           <View key={`${item.title}-${index}`} style={styles.miniEventRow}>
             <View style={styles.miniEventDate}>
-              <Text style={styles.miniEventDay}>{new Date(`${item.date}T00:00:00`).getDate()}</Text>
-              <Text style={styles.miniEventMonth}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { month: 'short' })}</Text>
+              <Text style={styles.miniEventDay}>{new Date(`${'date' in item ? item.date : item.eventDate}T00:00:00`).getDate()}</Text>
+              <Text style={styles.miniEventMonth}>{new Date(`${'date' in item ? item.date : item.eventDate}T00:00:00`).toLocaleDateString('es-AR', { month: 'short' })}</Text>
             </View>
             <View style={styles.miniEventBody}>
               <Text style={styles.miniEventTitle}>{item.title}</Text>
@@ -1018,7 +1110,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
         ))}
       </View>
 
-      <SectionTitle title="Actividad reciente" />
+      <SectionTitle title="Info Palestrista" />
       {homeNews.map((item, index) => (
         <TouchableOpacity key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]} activeOpacity={0.86} onPress={() => setExpandedNews(expandedNews === item.title ? null : item.title)}>
           <View style={styles.feedHeader}>
@@ -1241,8 +1333,83 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
   );
 }
 
+function MotivadorScreen({ session, title, content, refreshKey, editor, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
+  const [items, setItems] = useState<NotilestraItem[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    fetchNotilestra(session).then((events) => {
+      if (alive) {
+        const pmItems = events.filter((item) => {
+          const text = `${item.title} ${item.body} ${item.scope}`.toLowerCase();
+          return text.includes('periodo motivador') || text.includes(' pm ') || text.includes('retiro');
+        });
+        setItems(pmItems.length > 0 ? pmItems : [
+          {
+            scope: 'PM - Nacional',
+            date: '2026-06-20',
+            title: 'PM Masculino 1',
+            body: 'Casa de retiro a confirmar. Direccion a confirmar. Visible para sedimentadores y rangos superiores.'
+          },
+          {
+            scope: 'PM - Cordoba',
+            date: '2026-07-04',
+            title: 'PM Femenino 1',
+            body: 'Casa de retiro a confirmar. Direccion a confirmar. Visible segun provincia.'
+          }
+        ]);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [refreshKey, session?.province, session?.role]);
+
+  return (
+    <View style={styles.stack}>
+      <SectionTitle title={title} />
+      <EditableIntro content={content} editor={editor} />
+      <View style={styles.featurePanel}>
+        <Text style={styles.cardTitle}>{adminConfig.periodoMotivador.title}</Text>
+        <Text style={styles.cardText}>{adminConfig.periodoMotivador.body}</Text>
+        {adminConfig.periodoMotivador.imageUrl ? <Image source={{ uri: adminConfig.periodoMotivador.imageUrl }} style={styles.cardImage} /> : null}
+      </View>
+      <SectionTitle title="Agenda de PM" />
+      {items.map((item, index) => (
+        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
+          <View style={styles.feedHeader}>
+            <View style={styles.feedAvatar}>
+              <Ionicons name="flame-outline" size={18} color={palette.red} />
+            </View>
+            <View style={styles.feedHeaderText}>
+              <Text style={styles.cardEyebrow}>{item.scope}</Text>
+              <Text style={styles.feedMeta}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+            </View>
+          </View>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.cardText}>{item.body}</Text>
+          <TouchableOpacity style={styles.secondaryButton}>
+            <Ionicons name="map-outline" size={17} color={palette.red} />
+            <Text style={styles.secondaryButtonText}>Abrir mapa</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+      <View style={styles.notice}>
+        <Ionicons name="archive-outline" size={20} color={palette.red} />
+        <Text style={styles.noticeText}>El registro historico de PM queda disponible aca; las fechas tambien se reflejan en el calendario de Noticias cuando se cargan como eventos.</Text>
+      </View>
+    </View>
+  );
+}
+
 function MaterialsScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const [remoteMaterials, setRemoteMaterials] = useState<AppMaterialRecord[]>([]);
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadVisibility, setUploadVisibility] = useState<'publico' | 'desde_rango' | 'solo_rango'>('desde_rango');
+  const [uploadRole, setUploadRole] = useState<Role>('sedimentador');
+  const [uploadMessage, setUploadMessage] = useState('');
 
   useEffect(() => {
     let alive = true;
@@ -1261,14 +1428,133 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       type: material.category ?? material.visibility ?? 'Material',
       title: material.title,
       description: material.description,
-      permission: material.required_permission as Permission | null
-    }))
+      permission: material.required_permission as Permission | null,
+      visibility: material.visibility,
+      fileUrl: material.file_url
+    })).filter((material) => {
+      if (material.visibility === 'publico') {
+        return true;
+      }
+      if (!session) {
+        return false;
+      }
+      const selectedRole = material.permission?.replace('rango_', '') as Role | undefined;
+      if (!selectedRole || !roleDefinitions.some((item) => item.role === selectedRole)) {
+        return !material.permission || hasPermission(session, material.permission as Permission);
+      }
+      if (material.visibility === 'solo_rango') {
+        return session.role === selectedRole;
+      }
+      return roleRank(session.role) >= roleRank(selectedRole);
+    })
     : materials;
+
+  async function uploadPdfMaterial() {
+    if (!session || !canManagePublishedContent(session)) {
+      setUploadMessage('Solo Vocal Diocesano en adelante puede subir contenido.');
+      return;
+    }
+    if (!uploadTitle.trim() || !uploadDescription.trim()) {
+      setUploadMessage('Completa titulo y descripcion.');
+      return;
+    }
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'application/pdf',
+      copyToCacheDirectory: true,
+      multiple: false
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    const asset = result.assets[0];
+    if (!asset.name.toLowerCase().endsWith('.pdf') && asset.mimeType !== 'application/pdf') {
+      setUploadMessage('Solo se permiten documentos PDF.');
+      return;
+    }
+    if ((asset.size ?? 0) > 15 * 1024 * 1024) {
+      setUploadMessage('El PDF no puede pesar mas de 15Mb.');
+      return;
+    }
+    try {
+      setUploadMessage('Subiendo PDF...');
+      const response = await fetch(asset.uri);
+      const bytes = await response.arrayBuffer();
+      const path = `${session.province}/${Date.now()}-${asset.name.replace(/[^a-zA-Z0-9_.-]/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from('materials')
+        .upload(path, bytes, { contentType: 'application/pdf', upsert: true });
+      if (uploadError) {
+        setUploadMessage(uploadError.message);
+        return;
+      }
+      const { data: publicUrl } = supabase.storage.from('materials').getPublicUrl(path);
+      const { error } = await saveAppMaterial({
+        title: uploadTitle.trim(),
+        description: uploadDescription.trim(),
+        category: session.province,
+        visibility: uploadVisibility,
+        requiredPermission: uploadVisibility === 'publico' ? null : `rango_${uploadRole}`,
+        fileUrl: publicUrl.publicUrl,
+        filePath: path,
+        sortOrder: 100
+      });
+      if (error) {
+        setUploadMessage(error.message);
+        return;
+      }
+      setUploadTitle('');
+      setUploadDescription('');
+      setShowUpload(false);
+      setUploadMessage('PDF subido correctamente.');
+      setRemoteMaterials(await fetchAppMaterials());
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : 'No pude subir el PDF.');
+    }
+  }
 
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
+      {canManagePublishedContent(session) ? (
+        <TouchableOpacity style={styles.primaryButton} onPress={() => setShowUpload(!showUpload)}>
+          <Ionicons name="cloud-upload-outline" size={17} color={palette.white} />
+          <Text style={styles.primaryButtonText}>Subir contenido</Text>
+        </TouchableOpacity>
+      ) : null}
+      {showUpload ? (
+        <View style={styles.inlineEditorPanel}>
+          <Text style={styles.cardEyebrow}>Nuevo PDF</Text>
+          <TextInput style={styles.input} placeholder="Titulo" value={uploadTitle} onChangeText={setUploadTitle} />
+          <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={uploadDescription} onChangeText={setUploadDescription} multiline />
+          <Text style={styles.cardEyebrow}>Visibilidad</Text>
+          <View style={styles.filterRow}>
+            {[
+              { key: 'publico', label: 'Todo publico' },
+              { key: 'desde_rango', label: 'Desde rango y superiores' },
+              { key: 'solo_rango', label: 'Solo rango seleccionado' }
+            ].map((item) => (
+              <TouchableOpacity key={item.key} style={[styles.filterChip, uploadVisibility === item.key && styles.filterChipActive]} onPress={() => setUploadVisibility(item.key as typeof uploadVisibility)}>
+                <Text style={[styles.filterChipText, uploadVisibility === item.key && styles.filterChipTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {uploadVisibility !== 'publico' ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+              {roleDefinitions.filter((role) => role.role !== 'invitado').map((role) => (
+                <TouchableOpacity key={role.role} style={[styles.filterChip, uploadRole === role.role && styles.filterChipActive]} onPress={() => setUploadRole(role.role as Role)}>
+                  <Text style={[styles.filterChipText, uploadRole === role.role && styles.filterChipTextActive]}>{role.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : null}
+          <TouchableOpacity style={styles.secondaryButton} onPress={uploadPdfMaterial}>
+            <Ionicons name="document-attach-outline" size={17} color={palette.red} />
+            <Text style={styles.secondaryButtonText}>Elegir PDF max. 15Mb</Text>
+          </TouchableOpacity>
+          {uploadMessage ? <Text style={styles.cardText}>{uploadMessage}</Text> : null}
+        </View>
+      ) : null}
       {visibleMaterials.map((material, index) => {
         const locked = material.permission && !hasPermission(session, material.permission as Permission);
         return (
@@ -1292,8 +1578,11 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
   const [communityData, setCommunityData] = useState<AppCommunity[]>(communities);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
-  const [filterProvince, setFilterProvince] = useState<string>('Todas');
-  const visibleCommunityData = communityData;
+  const [selectedProvinceLogo, setSelectedProvinceLogo] = useState<AppCommunity | null>(null);
+  const [showContactBox, setShowContactBox] = useState(false);
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactStatus, setContactStatus] = useState('');
+  const visibleCommunityData = communityData.filter((item) => canAccessProvince(session, item.province));
   const province = visibleCommunityData.find((item) => item.province === selectedProvince);
   const community = province?.locations.find((item) => item.name === selectedCommunity);
 
@@ -1326,6 +1615,8 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
   }, [selectedCommunity, selectedProvince]);
 
   if (province) {
+    const provinceInitials = province.province.slice(0, 2).toUpperCase();
+    const provinceLogo = provinceLogos[province.province];
     return (
       <View style={styles.stack}>
         <TouchableOpacity style={styles.backButton} onPress={() => { setSelectedCommunity(null); setSelectedProvince(null); }} activeOpacity={0.8}>
@@ -1333,7 +1624,18 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
           <Text style={styles.backButtonText}>Provincias</Text>
         </TouchableOpacity>
         <SectionTitle title={province.province} />
+        <TouchableOpacity style={styles.provinceLogoLarge} onPress={() => setSelectedProvinceLogo(province)} activeOpacity={0.85}>
+          {provinceLogo ? <Image source={provinceLogo} style={styles.provinceLogoImage} /> : <Text style={styles.provinceLogoText}>{provinceInitials}</Text>}
+        </TouchableOpacity>
         <Text style={styles.screenIntro}>{province.description}</Text>
+        <Modal visible={Boolean(selectedProvinceLogo)} transparent animationType="fade" onRequestClose={() => setSelectedProvinceLogo(null)}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedProvinceLogo(null)}>
+            <View style={styles.provinceLogoModal}>
+              {selectedProvinceLogo && provinceLogos[selectedProvinceLogo.province] ? <Image source={provinceLogos[selectedProvinceLogo.province]} style={styles.provinceLogoModalImage} /> : <Text style={styles.provinceLogoModalText}>{selectedProvinceLogo?.province.slice(0, 2).toUpperCase()}</Text>}
+              <Text style={styles.cardTitle}>{selectedProvinceLogo?.province}</Text>
+            </View>
+          </TouchableOpacity>
+        </Modal>
         <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={() => setSelectedCommunity(null)}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedCommunity(null)}>
             <TouchableOpacity style={[styles.modalPanel, styles.communityModalPanel]} activeOpacity={1} onPress={() => undefined}>
@@ -1366,23 +1668,36 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                   <Text style={styles.cardText}>{community.address}</Text>
                   <Text style={styles.cardText}>{community.description}</Text>
                   <View style={styles.inlineActions}>
-                    <TouchableOpacity style={styles.primaryButton} onPress={() => setSelectedCommunity(null)}>
-                      <Text style={styles.primaryButtonText}>Ver mas</Text>
+                    <TouchableOpacity style={styles.primaryButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(community.address)}`)}>
+                      <Ionicons name="map-outline" size={17} color={palette.white} />
+                      <Text style={styles.primaryButtonText}>Maps</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.secondaryButton} onPress={() => setSelectedCommunity(null)}>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowContactBox(!showContactBox)}>
                       <Text style={styles.secondaryButtonText}>Contactar</Text>
                     </TouchableOpacity>
                   </View>
+                  {showContactBox ? (
+                    <View style={styles.inlineEditorPanel}>
+                      <Text style={styles.cardEyebrow}>Mensaje a animacion/coordinacion</Text>
+                      <TextInput
+                        style={[styles.input, styles.textArea]}
+                        placeholder="Escribi tu mensaje"
+                        value={contactMessage}
+                        onChangeText={(value) => setContactMessage(value.slice(0, 500))}
+                        multiline
+                      />
+                      <Text style={styles.cardText}>{contactMessage.length}/500</Text>
+                      <TouchableOpacity style={styles.primaryButton} onPress={() => { setContactStatus('Mensaje enviado al panel de la comunidad.'); setContactMessage(''); }}>
+                        <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
+                      </TouchableOpacity>
+                      {contactStatus ? <Text style={styles.cardText}>{contactStatus}</Text> : null}
+                    </View>
+                  ) : null}
                 </>
               ) : null}
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
-        {province.province === 'Tucuman' || province.province === 'Catamarca' ? (
-          <View style={styles.groupNote}>
-            <Text style={styles.groupNoteText}>Esta provincia distingue comunidades de jovenes y comunidades de adultos.</Text>
-          </View>
-        ) : null}
         {(province.province === 'Tucuman' || province.province === 'Catamarca') ? (
           <>
             <SectionTitle title="Comunidades de jovenes" />
@@ -1425,9 +1740,9 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
       <EditableIntro content={content} editor={editor} />
       {visibleCommunityData.map((community) => (
         <TouchableOpacity key={community.province} style={[styles.card, styles.provinceCard]} onPress={() => setSelectedProvince(community.province)} activeOpacity={0.85}>
-          <View style={styles.provinceIcon}>
-            <Ionicons name="location-outline" size={22} color={palette.white} />
-          </View>
+          <TouchableOpacity style={styles.provinceIcon} onPress={() => setSelectedProvinceLogo(community)} activeOpacity={0.85}>
+            {provinceLogos[community.province] ? <Image source={provinceLogos[community.province]} style={styles.provinceLogoMiniImage} /> : <Text style={styles.provinceLogoMiniText}>{community.province.slice(0, 2).toUpperCase()}</Text>}
+          </TouchableOpacity>
           <View style={styles.provinceBody}>
             <Text style={styles.cardEyebrow}>{community.region}</Text>
             <Text style={styles.cardTitle}>{community.province}</Text>
@@ -1436,66 +1751,85 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
           </View>
         </TouchableOpacity>
       ))}
-      <SectionTitle title="Filtro demo" />
-      <View style={styles.filterRow}>
-        {['Todas', ...visibleCommunityData.map((item) => item.province)].map((item, index) => (
-          <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, filterProvince === item && styles.filterChipActive]} onPress={() => setFilterProvince(item)}>
-            <Text style={[styles.filterChipText, filterProvince === item && styles.filterChipTextActive]}>{item}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Modal visible={Boolean(selectedProvinceLogo)} transparent animationType="fade" onRequestClose={() => setSelectedProvinceLogo(null)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedProvinceLogo(null)}>
+          <View style={styles.provinceLogoModal}>
+            {selectedProvinceLogo && provinceLogos[selectedProvinceLogo.province] ? <Image source={provinceLogos[selectedProvinceLogo.province]} style={styles.provinceLogoModalImage} /> : <Text style={styles.provinceLogoModalText}>{selectedProvinceLogo?.province.slice(0, 2).toUpperCase()}</Text>}
+            <Text style={styles.cardTitle}>{selectedProvinceLogo?.province}</Text>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
 
 function HistoryScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
-  const [subtab, setSubtab] = useState<'historia' | 'faq'>('historia');
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      <View style={styles.filterRow}>
-        <TouchableOpacity style={[styles.filterChip, subtab === 'historia' && styles.filterChipActive]} onPress={() => setSubtab('historia')}>
-          <Text style={[styles.filterChipText, subtab === 'historia' && styles.filterChipTextActive]}>Historia</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.filterChip, subtab === 'faq' && styles.filterChipActive]} onPress={() => setSubtab('faq')}>
-          <Text style={[styles.filterChipText, subtab === 'faq' && styles.filterChipTextActive]}>Preguntas frecuentes</Text>
-        </TouchableOpacity>
-      </View>
-      {subtab === 'historia' ? movementHistory.map((paragraph, index) => (
-        <View key={paragraph.slice(0, 24)} style={styles.card}>
-          <Text style={styles.cardEyebrow}>Capitulo {index + 1}</Text>
-          <Text style={styles.cardText}>{paragraph}</Text>
+      {!content ? (
+        <View style={styles.contentIntro}>
+          <Text style={styles.cardTitle}>Nuestra Historia</Text>
+          {movementHistory.map((paragraph, index) => <Text key={`${paragraph.slice(0, 12)}-${index}`} style={styles.cardText}>{paragraph}</Text>)}
         </View>
-      )) : faqItems.map((item) => (
-        <View key={item.question} style={styles.card}>
-          <Text style={styles.cardTitle}>{item.question}</Text>
-          <Text style={styles.cardText}>{item.answer}</Text>
-        </View>
-      ))}
+      ) : null}
     </View>
   );
 }
 
-function ContactScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
+function ContactScreen({ title, content, editor, adminConfig }: { title: string; content?: AppContentBlock; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      <View style={styles.heroMini}>
-        <Text style={styles.cardTitle}>Encontrar una comunidad</Text>
-        <Text style={styles.cardText}>{contactInfo.helpText}</Text>
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.cardEyebrow}>Canales</Text>
-        <Text style={styles.cardText}>Mail: {contactInfo.email}</Text>
-        <Text style={styles.cardText}>Celular: {contactInfo.phone}</Text>
-        <Text style={styles.cardText}>Instagram: {contactInfo.instagram}</Text>
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.cardEyebrow}>Donaciones</Text>
-        <Text style={styles.cardText}>{contactInfo.donationText}</Text>
-      </View>
+      {!content ? (
+        <View style={styles.contentIntro}>
+          <Text style={styles.cardTitle}>Encontrar una comunidad</Text>
+          <Text style={styles.cardText}>{adminConfig.contact.helpText}</Text>
+          <Text style={styles.cardText}>Mail: {adminConfig.contact.email}</Text>
+          <Text style={styles.cardText}>Celular: {adminConfig.contact.phone}</Text>
+          <Text style={styles.cardText}>Instagram: {adminConfig.contact.instagram}</Text>
+          <Text style={styles.cardText}>{adminConfig.contact.donationText}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function PublicLibraryScreen({ title, content, editor, emptyTitle, emptyText }: { title: string; content?: AppContentBlock; editor?: PageEditorProps; emptyTitle: string; emptyText: string }) {
+  return (
+    <View style={styles.stack}>
+      <SectionTitle title={title} />
+      <EditableIntro content={content} editor={editor} />
+      {!content ? (
+        <View style={styles.contentIntro}>
+          <Text style={styles.cardTitle}>{emptyTitle}</Text>
+          <Text style={styles.cardText}>{emptyText}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function HymnScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
+  const fallbackStanzas = [
+    'Himno Palestrista',
+    'Aqui se cargara el himno de Palestra en estrofas, con lectura clara y espaciado amplio.',
+    'Cada estrofa debe conservar su ritmo visual para que pueda leerse comodamente en reuniones, retiros y celebraciones.'
+  ];
+
+  return (
+    <View style={styles.stack}>
+      <SectionTitle title={title} />
+      <EditableIntro content={content} editor={editor} />
+      {!content ? (
+        <View style={styles.hymnPanel}>
+          {fallbackStanzas.map((stanza, index) => (
+            <Text key={`${stanza}-${index}`} style={index === 0 ? styles.hymnTitle : styles.hymnStanza}>{stanza}</Text>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1544,6 +1878,9 @@ function ProfileScreen({
   const [userRequestText, setUserRequestText] = useState('');
   const [selectedSentRequestId, setSelectedSentRequestId] = useState('');
   const [profilePanel, setProfilePanel] = useState<ProfilePanel>('vista');
+  const [themeMode, setThemeMode] = useState<'normal' | 'dark'>('normal');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -1694,7 +2031,24 @@ function ProfileScreen({
   }, {});
   const userProvinceOptions = Object.keys(adminUsersByProvince).sort((a, b) => a.localeCompare(b));
   const visibleAdminUsers = selectedUsersProvince ? (adminUsersByProvince[selectedUsersProvince] ?? []) : [];
-  const enabledAdminModules = adminModuleCatalog.filter((item) => hasPermission(session, 'gestionar_sistema') || !item.systemOnly || ['resumen', 'usuarios', 'solicitudes', 'comunidades'].includes(item.key));
+  const enabledAdminModules = adminModuleCatalog.filter((item) => {
+    if (hasPermission(session, 'gestionar_sistema')) {
+      return true;
+    }
+    if (['resumen', 'usuarios', 'solicitudes', 'comunidades'].includes(item.key)) {
+      return true;
+    }
+    if (canManagePublishedContent(session) && ['home', 'noticias', 'descargas', 'eventos', 'periodo_motivador'].includes(item.key)) {
+      return true;
+    }
+    if (hasPermission(session, 'gestionar_comunidad') && item.key === 'comunidades') {
+      return true;
+    }
+    if (canEditStaticInstitutionalPage(session) && ['historia_admin', 'contacto_admin', 'contenido_general'].includes(item.key)) {
+      return true;
+    }
+    return !item.systemOnly;
+  });
   const adminDraftSummary = [
     { label: 'Usuarios', value: String(adminUsers.length || realPendingProfiles.length), icon: 'people-outline' as keyof typeof Ionicons.glyphMap },
     { label: 'Solicitudes', value: String(pendingAdminRequests.length), icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap },
@@ -1744,6 +2098,30 @@ function ProfileScreen({
     }
     onAdminConfigChange(adminConfigDraft);
     setAuthMessage(`${scope} guardado en Supabase.`);
+  }
+
+  async function saveInstagramConfigDraft() {
+    if (!canManageGlobalInstagram(session)) {
+      setAuthMessage('Solo Coordinador Nacional y Administrador pueden modificar Instagram.');
+      return;
+    }
+    setAuthMessage('Guardando Instagram...');
+    const instagram = adminConfigDraft.contact.instagram.trim();
+    const nextConfig = {
+      ...adminConfig,
+      contact: {
+        ...adminConfig.contact,
+        instagram
+      }
+    };
+    const { error } = await saveAdminInstagram(instagram);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAdminConfigDraft(nextConfig);
+    onAdminConfigChange(nextConfig);
+    setAuthMessage('Instagram guardado en Supabase.');
   }
 
   useEffect(() => {
@@ -2235,6 +2613,10 @@ function ProfileScreen({
   }
 
   async function adminSaveTab(key: string, fallbackLabel: string) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede modificar los accesos.');
+      return;
+    }
     const tab = editableTabs.find((item) => item.key === key);
     const draft = editingTabs[key] ?? { label: fallbackLabel, isVisible: true, visibleRoles: tab?.visibleRoles ?? null };
     const { error } = await updateAppTab(key, draft.label || fallbackLabel, draft.isVisible, draft.visibleRoles);
@@ -2243,6 +2625,10 @@ function ProfileScreen({
   }
 
   async function adminCreatePage() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede crear paginas nuevas.');
+      return;
+    }
     if (!newTabLabel.trim()) {
       setAuthMessage('Escribir un nombre para la nueva pagina.');
       return;
@@ -2261,6 +2647,40 @@ function ProfileScreen({
     await onTabsChanged();
     await onContentChanged();
     setAuthMessage('Pagina creada con visibilidad por rol.');
+  }
+
+  async function adminMoveTab(key: string, direction: -1 | 1) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede ordenar los accesos.');
+      return;
+    }
+    const sorted = editableTabs.map((tab, index) => ({ ...tab, sortOrder: Number.isFinite(tab.sortOrder) ? tab.sortOrder : index * 10 })).sort((a, b) => a.sortOrder - b.sortOrder);
+    const index = sorted.findIndex((item) => item.key === key);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= sorted.length) {
+      return;
+    }
+    const nextOrder = [...sorted];
+    const [moved] = nextOrder.splice(index, 1);
+    nextOrder.splice(targetIndex, 0, moved);
+
+    setAuthMessage('Actualizando orden de accesos...');
+    for (const [orderIndex, tab] of nextOrder.entries()) {
+      const draft = editingTabs[tab.key] ?? { label: tab.label, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+      const { error } = await updateAppTabPosition({
+        key: tab.key,
+        label: draft.label || tab.label,
+        isVisible: draft.isVisible,
+        sortOrder: (orderIndex + 1) * 10,
+        visibleRoles: draft.visibleRoles
+      });
+      if (error) {
+        setAuthMessage(error.message);
+        return;
+      }
+    }
+    await onTabsChanged();
+    setAuthMessage('Orden de accesos actualizado.');
   }
 
   function updateTabRole(key: string, role: Role, checked: boolean) {
@@ -2447,6 +2867,30 @@ function ProfileScreen({
     setAuthMessage('Solicitud de cambio de dirigencia enviada al Vocal Diocesano.');
   }
 
+  async function saveAccountSettings() {
+    setAuthMessage('Guardando ajustes...');
+    const updates: { email?: string; password?: string } = {};
+    if (newEmail.trim()) {
+      updates.email = newEmail.trim();
+    }
+    if (newPassword.trim()) {
+      updates.password = newPassword;
+    }
+    if (!updates.email && !updates.password) {
+      setAuthMessage('No hay cambios de mail o contrasena para guardar.');
+      return;
+    }
+    const { error } = await supabase.auth.updateUser(updates);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setNewEmail('');
+    setNewPassword('');
+    await refreshRealProfile();
+    setAuthMessage('Ajustes de cuenta actualizados.');
+  }
+
   async function publishCommunityPost() {
     if (!session || !isCommunityLeader) {
       return;
@@ -2527,12 +2971,10 @@ function ProfileScreen({
                 </View>
               </View>
               {[
-                { icon: 'person-outline', label: 'Mi perfil', action: () => setProfilePanel('vista') },
-                { icon: 'create-outline', label: 'Editar perfil', action: () => setProfilePanel('editar') },
-                { icon: 'settings-outline', label: 'Configuracion', action: () => setProfilePanel('configuracion') },
-                { icon: 'people-outline', label: 'Mi comunidad', action: () => setShowCommunity(true) },
-                ...(isCommunityLeader ? [{ icon: 'briefcase-outline', label: 'Gestionar comunidad', action: () => setShowCommunityManagement(true) }] : []),
-                { icon: 'refresh-outline', label: 'Actualizar estado', action: refreshRealProfile }
+                { icon: 'person-outline', label: 'Mi perfil', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); } },
+                { icon: 'create-outline', label: 'Editar perfil', action: () => { setProfilePanel('editar'); setShowCommunity(false); setShowCommunityManagement(false); } },
+                { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); setShowCommunity(false); setShowCommunityManagement(false); } },
+                { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowCommunity(false); setShowCommunityManagement(false); } },
               ].map((item) => (
                 <TouchableOpacity key={item.label} style={styles.accountMenuItem} onPress={() => { item.action(); setShowAccountMenu(false); }}>
                   <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={18} color={palette.inkMuted} />
@@ -2545,16 +2987,15 @@ function ProfileScreen({
               </TouchableOpacity>
             </View>
           ) : null}
-          <View style={styles.profileHero}>
-            <TouchableOpacity style={styles.avatarFrameLarge} onPress={() => session.avatarUrl ? setShowProfilePhoto(true) : uploadProfilePhoto()} activeOpacity={0.88}>
+          {profilePanel === 'vista' ? <View style={styles.profileHero}>
+            <TouchableOpacity style={styles.avatarFrameLarge} onPress={uploadProfilePhoto} activeOpacity={0.88}>
               {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.avatarImageLarge} /> : <Ionicons name="camera-outline" size={42} color={palette.red} />}
             </TouchableOpacity>
             <View style={styles.profileHeroInfo}>
               <View style={styles.profileNameRow}>
                 <Text style={styles.profileName}>{session.fullName}</Text>
                 <View style={styles.verifiedRow}>
-                  <Ionicons name={session.status === 'aprobado' ? 'checkmark-circle' : 'time-outline'} size={22} color={session.status === 'aprobado' ? palette.green : palette.gold} />
-                  <Text style={styles.verifiedText}>{statusLabel(session.status)}</Text>
+                  <Ionicons name="shield-checkmark-outline" size={22} color={palette.green} />
                 </View>
               </View>
               {session.email ? <Text style={styles.cardText}>{session.email}</Text> : null}
@@ -2564,24 +3005,13 @@ function ProfileScreen({
                 <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
               </TouchableOpacity>
             </View>
-          </View>
-          {session.avatarUrl ? (
-            <Modal visible={showProfilePhoto} transparent animationType="fade" onRequestClose={() => setShowProfilePhoto(false)}>
-              <View style={styles.photoModalBackdrop}>
-                <TouchableOpacity style={styles.photoModalClose} onPress={() => setShowProfilePhoto(false)}>
-                  <Ionicons name="close" size={22} color={palette.white} />
-                </TouchableOpacity>
-                <Image source={{ uri: session.avatarUrl }} style={styles.photoModalImage} />
-              </View>
-            </Modal>
-          ) : null}
-          <View style={styles.profileMetaGrid}>
+          </View> : null}
+          {profilePanel === 'vista' ? <View style={styles.profileMetaGrid}>
             {[
               { label: 'Provincia', value: session.province, icon: 'map-outline' },
               { label: 'Rango', value: roleLabel(session.role), icon: 'ribbon-outline' },
               { label: 'Contacto', value: session.contact, icon: 'chatbubble-ellipses-outline' },
-              { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' },
-              { label: 'Estado', value: statusLabel(session.status), icon: 'checkmark-circle-outline' }
+              { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' }
             ].map((item) => (
               <View key={item.label} style={styles.profileMetaItem}>
                 <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={17} color={palette.red} />
@@ -2591,8 +3021,8 @@ function ProfileScreen({
                 </View>
               </View>
             ))}
-          </View>
-          {roleInfo ? <Text style={styles.cardText}>{roleInfo.description}</Text> : null}
+          </View> : null}
+          {profilePanel === 'vista' && roleInfo ? <Text style={styles.cardText}>{roleInfo.description}</Text> : null}
           {profilePanel === 'editar' ? <View style={styles.profileCommunityPanel}>
             <Text style={styles.cardEyebrow}>Editar perfil</Text>
             <Text style={styles.cardText}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
@@ -2659,17 +3089,44 @@ function ProfileScreen({
                 />
               </View>
               <Text style={styles.cardText}>Esta opcion queda guardada en este dispositivo y por defecto permanece apagada.</Text>
+              <View style={styles.settingRow}>
+                <View style={styles.settingRowText}>
+                  <Text style={styles.cardTitle}>Tema de la aplicacion</Text>
+                  <Text style={styles.cardText}>Modo visual para pruebas. La capa completa de colores queda lista para profundizarla.</Text>
+                </View>
+                <Switch
+                  value={themeMode === 'dark'}
+                  onValueChange={(value) => setThemeMode(value ? 'dark' : 'normal')}
+                  trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
+                  thumbColor={themeMode === 'dark' ? palette.red : palette.white}
+                />
+              </View>
+              <TextInput style={styles.input} placeholder="Nuevo mail" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none" />
+              <TextInput style={styles.input} placeholder="Nueva contrasena" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
+              <TouchableOpacity style={styles.primaryButton} onPress={saveAccountSettings}>
+                <Text style={styles.primaryButtonText}>Guardar ajustes</Text>
+              </TouchableOpacity>
+              {authMessage ? <Text style={styles.cardText}>{authMessage}</Text> : null}
             </View>
           ) : null}
-          {showCommunity ? (
+          {profilePanel === 'comunidad' ? (
             <View style={styles.profileCommunityPanel}>
               <Text style={styles.cardEyebrow}>{session.communityOfOrigin}</Text>
+              <SectionTitle title="Mi comunidad" />
               <Text style={styles.cardText}>
                 Relacion activa: {roleLabel(session.role)} vinculado a {session.communityOfOrigin} en {session.province}.
                 {['animador_comunidad', 'coordinador_comunidad'].includes(session.role) ? ' Este rango puede editar su comunidad asignada.' : ''}
                 {['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? ' Este rango supervisa animadores y coordinadores de comunidad de su provincia.' : ''}
                 {['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ' Este rango supervisa estructura nacional y provincias.' : ''}
               </Text>
+              <SectionTitle title="Mensajes" />
+              {internalMessages.filter((item) => item.from !== 'Vocalia').map((item, index) => (
+                <View key={`${item.title}-${index}`} style={styles.innerNewsCard}>
+                  <Text style={styles.cardEyebrow}>{item.from}</Text>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <Text style={styles.cardText}>{item.body}</Text>
+                </View>
+              ))}
               {hasPermission(session, 'ver_noticias_comunidad') ? (
                 profileNews.length > 0 ? profileNews.map((item, index) => (
                   <View key={`${item.title}-${index}`} style={styles.innerNewsCard}>
@@ -2680,6 +3137,21 @@ function ProfileScreen({
               ) : (
                 <Text style={styles.cardText}>Tu rango actual no permite ver noticias internas de comunidad.</Text>
               )}
+              <SectionTitle title="Miembros" />
+              {communityMembers.length === 0 ? (
+                <TouchableOpacity style={styles.secondaryButton} onPress={async () => setCommunityMembers(await fetchMyCommunityMembers())}>
+                  <Text style={styles.secondaryButtonText}>Cargar miembros</Text>
+                </TouchableOpacity>
+              ) : communityMembers.map((member) => (
+                <View key={member.id} style={styles.innerNewsCard}>
+                  <Text style={styles.cardTitle}>{member.full_name ?? member.email}</Text>
+                  <Text style={styles.cardText}>{roleLabel((member.role || 'palestrista') as Role)}</Text>
+                </View>
+              ))}
+              <SectionTitle title="Encargados" />
+              {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).map((member) => (
+                <Text key={`leader-${member.id}`} style={styles.cardText}>{member.full_name ?? member.email} - {roleLabel(member.role as Role)}</Text>
+              ))}
               <SectionTitle title="Publicado por mi comunidad" />
               {myCommunityPublications.length === 0 ? <Text style={styles.cardText}>Todavia no hay publicaciones de tu animador o coordinador.</Text> : null}
               {myCommunityPublications.map((item, index) => {
@@ -2708,95 +3180,22 @@ function ProfileScreen({
               })}
             </View>
           ) : null}
-          {isCommunityLeader && showCommunityManagement ? (
-            <View style={styles.profileCommunityPanel}>
-              <Text style={styles.cardEyebrow}>Comunidad</Text>
-              <Text style={styles.cardTitle}>{session.communityOfOrigin}</Text>
-              <Text style={styles.cardText}>Panel de {roleLabel(session.role)}. Esta comunidad es asignada por el Vocal Diocesano; no puede cambiarse desde este perfil.</Text>
-              <SectionTitle title="Publicar en comunidad" />
-              <View style={styles.filterRow}>
-                {(['aviso', 'noticia', 'fecha', 'encuesta'] as const).map((kind) => (
-                  <TouchableOpacity key={kind} style={[styles.filterChip, communityPostKind === kind && styles.filterChipActive]} onPress={() => setCommunityPostKind(kind)}>
-                    <Text style={[styles.filterChipText, communityPostKind === kind && styles.filterChipTextActive]}>{kind}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {session.role === 'coordinador_comunidad' ? (
-                <>
-                  <Text style={styles.cardEyebrow}>Visibilidad</Text>
-                  <View style={styles.filterRow}>
-                    {[
-                      { key: 'publica', label: 'Invitados/Palestristas/Sedis' },
-                      { key: 'sedimentadores', label: 'Solo sedimentadores' }
-                    ].map((item) => (
-                      <TouchableOpacity key={item.key} style={[styles.filterChip, communityPostVisibility === item.key && styles.filterChipActive]} onPress={() => setCommunityPostVisibility(item.key as typeof communityPostVisibility)}>
-                        <Text style={[styles.filterChipText, communityPostVisibility === item.key && styles.filterChipTextActive]}>{item.label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </>
-              ) : (
-                <Text style={styles.cardText}>Las publicaciones del animador se muestran publicamente.</Text>
-              )}
-              <TextInput style={styles.input} placeholder="Titulo" value={communityPostTitle} onChangeText={setCommunityPostTitle} />
-              {communityPostKind === 'fecha' ? <TextInput style={styles.input} placeholder="Fecha: 2026-05-28" value={communityPostDate} onChangeText={setCommunityPostDate} /> : null}
-              <TextInput style={[styles.input, styles.textArea]} placeholder={communityPostKind === 'encuesta' ? 'Pregunta y opciones de la encuesta' : 'Texto de la publicacion'} value={communityPostBody} onChangeText={setCommunityPostBody} multiline />
-              {communityPostKind === 'encuesta' ? (
-                <TextInput style={[styles.input, styles.textArea]} placeholder="Opciones, una por linea" value={communityPollOptions} onChangeText={setCommunityPollOptions} multiline />
-              ) : null}
-              <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
-                <Text style={styles.primaryButtonText}>Publicar</Text>
-              </TouchableOpacity>
-              <SectionTitle title="Cambio de dirigencia" />
-              <Text style={styles.cardText}>Solicitud privada para proponer sucesor al finalizar el periodo de servicio.</Text>
-              <TouchableOpacity style={styles.dropdownButton} onPress={() => setLeadershipRoleDropdownOpen(!leadershipRoleDropdownOpen)}>
-                <Text style={styles.dropdownButtonText}>{roleLabel(leadershipRole)}</Text>
-                <Ionicons name={leadershipRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
-              </TouchableOpacity>
-              {leadershipRoleDropdownOpen ? (
-                <View style={styles.dropdownList}>
-                  {(['animador_comunidad', 'coordinador_comunidad'] as Role[]).map((role) => (
-                    <TouchableOpacity key={role} style={styles.dropdownItem} onPress={() => { setLeadershipRole(role); setLeadershipRoleDropdownOpen(false); }}>
-                      <Text style={styles.dropdownItemText}>{roleLabel(role)}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : null}
-              <TouchableOpacity style={styles.dropdownButton} onPress={async () => { if (communityMembers.length === 0) setCommunityMembers(await fetchMyCommunityMembers()); setSuccessorDropdownOpen(!successorDropdownOpen); }}>
-                <Text style={styles.dropdownButtonText}>{selectableCommunityMembers.find((member) => member.id === successorUserId)?.full_name ?? 'Seleccionar sucesor de mi comunidad'}</Text>
-                <Ionicons name={successorDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
-              </TouchableOpacity>
-              {successorDropdownOpen ? (
-                <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                  {selectableCommunityMembers.length === 0 ? <Text style={styles.cardText}>No hay miembros cargados para esta comunidad.</Text> : null}
-                  {selectableCommunityMembers.map((member) => (
-                    <TouchableOpacity key={member.id} style={styles.dropdownItem} onPress={() => { setSuccessorUserId(member.id); setSuccessorDropdownOpen(false); }}>
-                      <Text style={styles.dropdownItemText}>{member.full_name ?? member.email}</Text>
-                      <Text style={styles.cardText}>{roleLabel((member.role || 'palestrista') as Role)}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              ) : null}
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Mensaje para el Vocal Diocesano"
-                value={userRequestText}
-                onChangeText={(value) => setUserRequestText(value.slice(0, 500))}
-                multiline
-              />
-              <Text style={styles.cardText}>{userRequestText.length}/500</Text>
-              <TouchableOpacity style={styles.secondaryButton} onPress={submitLeadershipChangeRequest}>
-                <Text style={styles.secondaryButtonText}>Enviar cambio de dirigencia</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-          <View style={styles.profileCommunityPanel}>
+          {profilePanel === 'vista' ? <View style={styles.profileCommunityPanel}>
             <Text style={styles.cardEyebrow}>Credencial digital</Text>
-            <Text style={styles.cardText}>{session.fullName} - {roleLabel(session.role)}</Text>
-            <Text style={styles.cardText}>{session.province} / {session.communityOfOrigin}</Text>
-          </View>
-          {session.role !== 'administrador' ? <SectionTitle title="Solicitudes" /> : null}
-          {session.role !== 'administrador' ? demoRequests.map((item, index) => (
+            <View style={styles.digitalCredential}>
+              <View style={styles.credentialAvatar}>
+                {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.credentialAvatarImage} /> : <Ionicons name="person-outline" size={18} color={palette.red} />}
+              </View>
+              <View style={styles.adminUserHeaderText}>
+                <Text style={styles.credentialName}>{session.fullName}</Text>
+                <Text style={styles.cardText}>{roleLabel(session.role)}</Text>
+                <Text style={styles.cardText}>{session.communityOfOrigin}, {session.province}</Text>
+              </View>
+            </View>
+            <Text style={styles.cardText}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
+          </View> : null}
+          {profilePanel === 'vista' && session.role !== 'administrador' ? <SectionTitle title="Solicitudes" /> : null}
+          {profilePanel === 'vista' && session.role !== 'administrador' ? demoRequests.map((item, index) => (
             <View key={`${item}-${index}`}>
               <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === item ? null : item)}>
                 <Text style={styles.cardTitle}>{item}</Text>
@@ -2822,7 +3221,7 @@ function ProfileScreen({
               ) : null}
             </View>
           )) : null}
-          {session.role !== 'administrador' ? (
+          {profilePanel === 'vista' && session.role !== 'administrador' ? (
             <View style={styles.profileCommunityPanel}>
               <Text style={styles.cardEyebrow}>Solicitudes enviadas</Text>
               {sentRequests.length === 0 ? <Text style={styles.cardText}>Todavia no enviaste solicitudes.</Text> : null}
@@ -2846,38 +3245,7 @@ function ProfileScreen({
               ))}
             </View>
           ) : null}
-          <SectionTitle title="Mensajes" />
-          {internalMessages.map((item, index) => (
-            <View key={`${item.title}-${index}`} style={styles.innerNewsCard}>
-              <Text style={styles.cardEyebrow}>{item.from}</Text>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardText}>{item.body}</Text>
-            </View>
-          ))}
-          {(hasPermission(session, 'gestionar_comunidad') || hasPermission(session, 'gestionar_contenido') || hasPermission(session, 'gestionar_permisos')) ? (
-            <View style={styles.profileCommunityPanel}>
-              <Text style={styles.cardEyebrow}>Gestionar</Text>
-              <Text style={styles.cardText}>Publicar noticia, editar horarios, cargar fechas especiales y enviar mensajes.</Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={loadPendingProfiles}>
-                <Text style={styles.primaryButtonText}>Cargar usuarios pendientes</Text>
-              </TouchableOpacity>
-              {realPendingProfiles.map((user) => (
-                <View key={user.id} style={styles.innerNewsCard}>
-                  <Text style={styles.cardTitle}>{user.full_name}</Text>
-                  <Text style={styles.cardText}>Rol actual: {user.role}</Text>
-                  <Text style={styles.cardText}>Comunidad: {user.community_name ?? 'Sin comunidad'}</Text>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => approvePendingProfile(user.id, 'palestrista')}>
-                    <Text style={styles.secondaryButtonText}>Aprobar como Palestrista</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {pendingUsers.map((user, index) => (
-                <Text key={`${user.name}-${index}`} style={styles.cardText}>{user.name}: {user.requestedRole} - {user.status}</Text>
-              ))}
-              {auditLog.map((item, index) => <Text key={`${item}-${index}`} style={styles.cardText}>- {item}</Text>)}
-            </View>
-          ) : null}
-          {(hasPermission(session, 'gestionar_sistema') || canReviewLeadershipRequests) ? (
+          {(hasPermission(session, 'gestionar_sistema') || hasPermission(session, 'gestionar_comunidad') || hasPermission(session, 'gestionar_contenido') || hasPermission(session, 'gestionar_permisos') || canReviewLeadershipRequests) ? (
             <View style={styles.adminPanel}>
               <Text style={styles.cardEyebrow}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
               <Text style={styles.cardTitle}>{session.role === 'administrador' ? 'Panel tecnico global' : 'Panel diocesano'}</Text>
@@ -3060,14 +3428,26 @@ function ProfileScreen({
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Contacto oficial</Text>
                   <Text style={styles.cardText}>Datos y textos institucionales que luego se persistiran como configuracion global.</Text>
-                  <TextInput style={styles.input} placeholder="Mail oficial" value={adminConfigDraft.contact.email} onChangeText={(value) => updateAdminConfigSection('contact', { email: value })} />
-                  <TextInput style={styles.input} placeholder="Telefono" value={adminConfigDraft.contact.phone} onChangeText={(value) => updateAdminConfigSection('contact', { phone: value })} />
+                  {session?.role === 'administrador' ? (
+                    <>
+                      <TextInput style={styles.input} placeholder="Mail oficial" value={adminConfigDraft.contact.email} onChangeText={(value) => updateAdminConfigSection('contact', { email: value })} />
+                      <TextInput style={styles.input} placeholder="Telefono" value={adminConfigDraft.contact.phone} onChangeText={(value) => updateAdminConfigSection('contact', { phone: value })} />
+                    </>
+                  ) : null}
+                  <Text style={styles.cardEyebrow}>Instagram oficial</Text>
                   <TextInput style={styles.input} placeholder="Instagram" value={adminConfigDraft.contact.instagram} onChangeText={(value) => updateAdminConfigSection('contact', { instagram: value })} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de ayuda" value={adminConfigDraft.contact.helpText} onChangeText={(value) => updateAdminConfigSection('contact', { helpText: value })} multiline />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de donaciones" value={adminConfigDraft.contact.donationText} onChangeText={(value) => updateAdminConfigSection('contact', { donationText: value })} multiline />
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Contacto')}>
-                    <Text style={styles.primaryButtonText}>Guardar contacto</Text>
+                  <TouchableOpacity style={styles.primaryButton} onPress={saveInstagramConfigDraft}>
+                    <Text style={styles.primaryButtonText}>Guardar Instagram</Text>
                   </TouchableOpacity>
+                  {session?.role === 'administrador' ? (
+                    <>
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de ayuda" value={adminConfigDraft.contact.helpText} onChangeText={(value) => updateAdminConfigSection('contact', { helpText: value })} multiline />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de donaciones" value={adminConfigDraft.contact.donationText} onChangeText={(value) => updateAdminConfigSection('contact', { donationText: value })} multiline />
+                      <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Contacto')}>
+                        <Text style={styles.primaryButtonText}>Guardar contacto completo</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : null}
                 </View>
               ) : null}
 
@@ -3439,54 +3819,68 @@ function ProfileScreen({
                 <View style={styles.adminWorkspace}>
                 <Text style={styles.cardTitle}>Contenido General</Text>
                 <Text style={styles.cardText}>Modificar nombres de pestanas y editar el contenido completo de cada pagina.</Text>
-                <Text style={styles.cardEyebrow}>Crear pagina nueva</Text>
-                <TextInput style={styles.input} placeholder="Nombre de la pagina" value={newTabLabel} onChangeText={setNewTabLabel} />
-                <Text style={styles.cardText}>Roles que pueden verla</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                  {visibleHierarchyFor(session).map((role) => (
-                    <TouchableOpacity key={role.role} style={[styles.filterChip, newTabRoles.includes(role.role as Role) && styles.filterChipActive]} onPress={() => toggleNewTabRole(role.role as Role)}>
-                      <Text style={[styles.filterChipText, newTabRoles.includes(role.role as Role) && styles.filterChipTextActive]}>{role.label}</Text>
+                {session?.role === 'administrador' ? (
+                  <>
+                    <Text style={styles.cardEyebrow}>Crear pagina nueva</Text>
+                    <TextInput style={styles.input} placeholder="Nombre de la pagina" value={newTabLabel} onChangeText={setNewTabLabel} />
+                    <Text style={styles.cardText}>Roles que pueden verla</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                      {visibleHierarchyFor(session).map((role) => (
+                        <TouchableOpacity key={role.role} style={[styles.filterChip, newTabRoles.includes(role.role as Role) && styles.filterChipActive]} onPress={() => toggleNewTabRole(role.role as Role)}>
+                          <Text style={[styles.filterChipText, newTabRoles.includes(role.role as Role) && styles.filterChipTextActive]}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <TouchableOpacity style={styles.primaryButton} onPress={adminCreatePage}>
+                      <Text style={styles.primaryButtonText}>Crear pagina</Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <TouchableOpacity style={styles.primaryButton} onPress={adminCreatePage}>
-                  <Text style={styles.primaryButtonText}>Crear pagina</Text>
-                </TouchableOpacity>
-                <Text style={styles.cardEyebrow}>Nombres y visibilidad</Text>
-                {editableTabs.map((tab) => {
-                  const draft = editingTabs[tab.key] ?? { label: tab.label, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
-                  return (
-                    <View key={tab.key} style={styles.tabEditorRow}>
-                      <Text style={styles.cardEyebrow}>{tab.key}</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={draft.label}
-                        onChangeText={(value) => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, label: value } }))}
-                      />
-                      <TouchableOpacity
-                        style={[styles.secondaryButton, draft.isVisible && styles.filterChipActive]}
-                        onPress={() => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, isVisible: !draft.isVisible } }))}
-                      >
-                        <Text style={[styles.secondaryButtonText, draft.isVisible && styles.filterChipTextActive]}>{draft.isVisible ? 'Visible' : 'Oculta'}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.primaryButton} onPress={() => adminSaveTab(tab.key, tab.label)}>
-                        <Text style={styles.primaryButtonText}>Guardar pestana</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.cardEyebrow}>Visible para roles</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                        {visibleHierarchyFor(session).map((role) => {
-                          const roles = draft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role);
-                          const checked = roles.includes(role.role);
-                          return (
-                            <TouchableOpacity key={role.role} style={[styles.filterChip, checked && styles.filterChipActive]} onPress={() => updateTabRole(tab.key, role.role as Role, !checked)}>
-                              <Text style={[styles.filterChipText, checked && styles.filterChipTextActive]}>{role.label}</Text>
+                    <Text style={styles.cardEyebrow}>Accesos, orden y visibilidad</Text>
+                    {editableTabs.map((tab, index) => {
+                      const draft = editingTabs[tab.key] ?? { label: tab.label, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                      return (
+                        <View key={tab.key} style={styles.tabEditorRow}>
+                          <Text style={styles.cardEyebrow}>{tab.key}</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={draft.label}
+                            onChangeText={(value) => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, label: value } }))}
+                          />
+                          <View style={styles.inlineActions}>
+                            <TouchableOpacity style={styles.secondaryButton} onPress={() => adminMoveTab(tab.key, -1)} disabled={index === 0}>
+                              <Text style={styles.secondaryButtonText}>Subir</Text>
                             </TouchableOpacity>
-                          );
-                        })}
-                      </ScrollView>
-                    </View>
-                  );
-                })}
+                            <TouchableOpacity style={styles.secondaryButton} onPress={() => adminMoveTab(tab.key, 1)} disabled={index === editableTabs.length - 1}>
+                              <Text style={styles.secondaryButtonText}>Bajar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.secondaryButton, draft.isVisible && styles.filterChipActive]}
+                              onPress={() => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, isVisible: !draft.isVisible } }))}
+                            >
+                              <Text style={[styles.secondaryButtonText, draft.isVisible && styles.filterChipTextActive]}>{draft.isVisible ? 'Visible' : 'Oculta'}</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <TouchableOpacity style={styles.primaryButton} onPress={() => adminSaveTab(tab.key, tab.label)}>
+                            <Text style={styles.primaryButtonText}>Guardar pestana</Text>
+                          </TouchableOpacity>
+                          <Text style={styles.cardEyebrow}>Visible para roles</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                            {visibleHierarchyFor(session).map((role) => {
+                              const roles = draft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role);
+                              const checked = roles.includes(role.role);
+                              return (
+                                <TouchableOpacity key={role.role} style={[styles.filterChip, checked && styles.filterChipActive]} onPress={() => updateTabRole(tab.key, role.role as Role, !checked)}>
+                                  <Text style={[styles.filterChipText, checked && styles.filterChipTextActive]}>{role.label}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                        </View>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <Text style={styles.cardText}>La creacion, orden y visibilidad de accesos queda reservada al administrador.</Text>
+                )}
                 <Text style={styles.cardEyebrow}>Contenido de pagina</Text>
                 <Text style={styles.cardText}>Editor por bloques: podes mover, borrar, cambiar titulos, texto e imagenes.</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
@@ -3800,6 +4194,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700'
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0
+  },
+  headerProfileButton: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    borderRadius: 18,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)'
+  },
+  headerProfileButtonText: {
+    color: palette.red,
+    fontSize: 12,
+    fontWeight: '900'
+  },
   content: {
     paddingHorizontal: 18,
     paddingTop: 10,
@@ -3891,6 +4307,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.red,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: palette.blueDeep,
     shadowOpacity: 0.14,
     shadowRadius: 12,
@@ -3914,6 +4331,33 @@ const styles = StyleSheet.create({
   dashboardStrip: {
     flexDirection: 'row',
     gap: 10
+  },
+  instagramButton: {
+    minHeight: 72,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#C13584',
+    shadowColor: '#C13584',
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 3
+  },
+  instagramButtonText: {
+    flex: 1
+  },
+  instagramButtonTitle: {
+    color: palette.white,
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  instagramButtonMeta: {
+    color: 'rgba(255,255,255,0.84)',
+    fontSize: 13,
+    fontWeight: '700'
   },
   dashboardStat: {
     flex: 1,
@@ -4104,6 +4548,57 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 12,
     elevation: 2
+  },
+  provinceLogoMiniText: {
+    color: palette.white,
+    fontWeight: '900',
+    fontSize: 14
+  },
+  provinceLogoMiniImage: {
+    width: '100%',
+    height: '100%'
+  },
+  provinceLogoLarge: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.red,
+    borderWidth: 3,
+    borderColor: palette.gold,
+    overflow: 'hidden'
+  },
+  provinceLogoText: {
+    color: palette.white,
+    fontWeight: '900',
+    fontSize: 28
+  },
+  provinceLogoImage: {
+    width: '100%',
+    height: '100%'
+  },
+  provinceLogoModal: {
+    width: 220,
+    minHeight: 220,
+    borderRadius: 16,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: palette.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    padding: 18
+  },
+  provinceLogoModalText: {
+    color: palette.red,
+    fontWeight: '900',
+    fontSize: 58
+  },
+  provinceLogoModalImage: {
+    width: 170,
+    height: 170,
+    borderRadius: 18
   },
   provinceBody: {
     flex: 1
@@ -4305,6 +4800,30 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 1
   },
+  hymnPanel: {
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 24,
+    padding: 20,
+    gap: 18,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2
+  },
+  hymnTitle: {
+    color: palette.ink,
+    fontSize: 24,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
+  hymnStanza: {
+    color: palette.ink,
+    fontSize: 17,
+    lineHeight: 27,
+    textAlign: 'center'
+  },
   calendarCard: {
     backgroundColor: palette.white,
     borderWidth: 0,
@@ -4477,6 +4996,36 @@ const styles = StyleSheet.create({
     color: palette.ink,
     fontSize: 13,
     fontWeight: '800'
+  },
+  digitalCredential: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
+    backgroundColor: palette.white,
+    padding: 12
+  },
+  credentialAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: palette.line,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.whiteSoft
+  },
+  credentialAvatarImage: {
+    width: '100%',
+    height: '100%'
+  },
+  credentialName: {
+    color: palette.ink,
+    fontSize: 16,
+    fontWeight: '900'
   },
   avatarFrameLarge: {
     width: 132,

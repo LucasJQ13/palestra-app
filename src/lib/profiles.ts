@@ -281,6 +281,22 @@ export async function createAppTab(key: string, label: string, visibleRoles?: st
   });
 }
 
+export async function updateAppTabPosition(values: {
+  key: string;
+  label: string;
+  isVisible: boolean;
+  sortOrder: number;
+  visibleRoles?: string[] | null;
+}) {
+  return supabase.rpc('admin_set_tab_position', {
+    p_key: values.key,
+    p_label: values.label,
+    p_is_visible: values.isVisible,
+    p_sort_order: values.sortOrder,
+    p_visible_roles: values.visibleRoles ?? null
+  });
+}
+
 export type AppContentBlock = {
   tab_key: string;
   title: string;
@@ -339,6 +355,16 @@ export async function saveAdminConfig(config: AdminConfigRecord) {
   try {
     return await supabase.rpc('admin_update_config', {
       p_config: config
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function saveAdminInstagram(instagram: string) {
+  try {
+    return await supabase.rpc('admin_update_instagram', {
+      p_instagram: instagram
     });
   } catch (error) {
     return networkError(error);
