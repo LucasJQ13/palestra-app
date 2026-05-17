@@ -143,22 +143,25 @@ export function canManageProvince(session: Session | null, province?: string | n
   if (session.role === 'administrador') {
     return true;
   }
-  return province === session.province && ['animador_comunidad', 'coordinador_comunidad', 'vocal', 'asesor', 'coordinador_diocesano'].includes(session.role);
+  return province === session.province && ['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role);
 }
 
 export function canApproveRole(session: Session | null, targetRole: Role) {
   if (!session) {
     return false;
   }
+  if (targetRole === 'administrador') {
+    return false;
+  }
   if (session.role === 'administrador') {
     return true;
   }
   const target = roleHierarchy.find((item) => item.role === targetRole);
-  return Boolean(target?.approverRoles.includes(session.role) && roleRank(session.role) > roleRank(targetRole));
+  return Boolean(target?.approverRoles.includes(session.role) && roleRank(session.role) >= roleRank(targetRole));
 }
 
 export function assignableRolesFor(session: Session | null) {
-  return roleHierarchy.filter((item) => item.role !== 'invitado' && canApproveRole(session, item.role));
+  return roleHierarchy.filter((item) => !['invitado', 'administrador'].includes(item.role) && canApproveRole(session, item.role));
 }
 
 export function visibleHierarchyFor(session: Session | null) {

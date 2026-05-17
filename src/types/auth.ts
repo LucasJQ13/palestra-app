@@ -40,6 +40,7 @@ export type Permission =
   | 'gestionar_contenido';
 
 export type Session = {
+  id?: string;
   fullName: string;
   email?: string;
   avatarUrl?: string | null;

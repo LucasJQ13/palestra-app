@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Animated, BackHandler, Easing, Image, Linking, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -9,10 +9,12 @@ import { palette } from './src/theme/palette';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, demoRequests, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
-import { AppCommunity, RemoteAgendaItem, createCommunityPublication, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, NewsDraftRecord, UserRequestRecord, approveProfile, archiveAppMaterial, confirmAdminUserEmail, createAppTab, createEvent, createNews, createLeadershipChangeRequest, createUserRequest, fetchAdminConfig, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, PendingProfile, resolveUserRequest, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveNewsDraft, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveCommunityPublication, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateCommunityPublication, voteCommunityPoll } from './src/lib/remoteData';
+import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createUserRequest, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, PendingProfile, resolveUserRequest, respondMailboxMessage, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
+import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
+import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermission, fetchLibraryItems, saveLibraryItem } from './src/lib/library';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
 
 const palestraLogo = require('./assets/logo-palestra.png');
@@ -30,7 +32,8 @@ const officialInstagramUrl = 'https://www.instagram.com/infopalestra.argentina?i
 
 type TabKey = string;
 type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general';
-type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'configuracion';
+type ContactBlock = { id: string; type: 'texto' | 'telefono' | 'email' | 'imagen' | 'direccion' | 'enlace' | 'boton' | 'red_social'; label: string; value: string };
+type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'buzon' | 'configuracion';
 type AppAdminConfig = {
   identity: {
     appName: string;
@@ -51,6 +54,8 @@ type AppAdminConfig = {
     email: string;
     phone: string;
     instagram: string;
+    provinceInstagram: Record<string, string>;
+    blocks: ContactBlock[];
     helpText: string;
     donationText: string;
   };
@@ -58,7 +63,6 @@ type AppAdminConfig = {
     maintenanceMode: boolean;
     globalMessage: string;
     futureForumEnabled: boolean;
-    futureChatEnabled: boolean;
   };
   periodoMotivador: {
     active: boolean;
@@ -87,6 +91,15 @@ type AdminRequest = {
 type NotilestraItem = (typeof notilestra)[number];
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 type AgendaItem = NotilestraItem & Partial<Pick<RemoteAgendaItem, 'imageUrl' | 'mapUrl' | 'province'>>;
+type PublicProfilePreview = {
+  id?: string | null;
+  fullName: string;
+  role: Role;
+  province?: string | null;
+  communityName?: string | null;
+  avatarUrl?: string | null;
+  contact?: string | null;
+};
 
 const defaultAdminConfig: AppAdminConfig = {
   identity: {
@@ -108,14 +121,22 @@ const defaultAdminConfig: AppAdminConfig = {
     email: contactInfo.email,
     phone: contactInfo.phone,
     instagram: officialInstagramUrl,
+    provinceInstagram: {
+      Cordoba: '',
+      Salta: '',
+      Tucuman: '',
+      Jujuy: '',
+      Catamarca: '',
+      'San Luis': ''
+    },
+    blocks: [],
     helpText: contactInfo.helpText,
     donationText: contactInfo.donationText
   },
   settings: {
     maintenanceMode: false,
     globalMessage: '',
-    futureForumEnabled: false,
-    futureChatEnabled: false
+    futureForumEnabled: false
   },
   periodoMotivador: {
     active: false,
@@ -139,6 +160,8 @@ function normalizeAdminConfig(config?: Partial<AppAdminConfig> | null): AppAdmin
   if (!merged.contact.instagram || merged.contact.instagram === contactInfo.instagram || merged.contact.instagram === '@palestra.argentina') {
     merged.contact.instagram = officialInstagramUrl;
   }
+  merged.contact.provinceInstagram = { ...defaultAdminConfig.contact.provinceInstagram, ...(config?.contact?.provinceInstagram ?? {}) };
+  merged.contact.blocks = Array.isArray(config?.contact?.blocks) ? config.contact.blocks : [];
 
   return merged;
 }
@@ -148,16 +171,12 @@ const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof t
   { key: 'identidad', label: 'Identidad', icon: 'sparkles-outline', systemOnly: true },
   { key: 'home', label: 'Home', icon: 'home-outline', systemOnly: true },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', systemOnly: true },
-  { key: 'descargas', label: 'Descargas', icon: 'folder-open-outline', systemOnly: true },
   { key: 'comunidades', label: 'Comunidades', icon: 'location-outline' },
-  { key: 'historia_admin', label: 'Historia', icon: 'book-outline', systemOnly: true },
   { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
   { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
   { key: 'solicitudes', label: 'Solicitudes', icon: 'mail-unread-outline' },
   { key: 'periodo_motivador', label: 'Periodo', icon: 'flame-outline', systemOnly: true },
-  { key: 'configuracion', label: 'Config', icon: 'settings-outline', systemOnly: true },
-  { key: 'eventos', label: 'Eventos', icon: 'calendar-outline', systemOnly: true },
-  { key: 'contenido_general', label: 'Contenido', icon: 'create-outline', systemOnly: true }
+  { key: 'configuracion', label: 'Config', icon: 'settings-outline', systemOnly: true }
 ];
 
 type PageEditorProps = {
@@ -265,6 +284,32 @@ function canManagePublishedContent(session: Session | null) {
   return Boolean(session && roleRank(session.role) >= roleRank('vocal'));
 }
 
+function isCommunityLeaderRole(session: Session | null) {
+  return Boolean(session && ['animador_comunidad', 'coordinador_comunidad'].includes(session.role));
+}
+
+function canCreateOrAdministrateCommunities(session: Session | null) {
+  return Boolean(session && ['vocal', 'coordinador_diocesano', 'coordinador_nacional', 'administrador'].includes(session.role));
+}
+
+function canManageMotivadorPanel(session: Session | null) {
+  return Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
+}
+
+function canEditAdminUser(session: Session | null, user?: AdminUser | null) {
+  if (!session || !user) {
+    return false;
+  }
+  const targetRole = (user.role || 'palestrista') as Role;
+  if (targetRole === 'administrador') {
+    return false;
+  }
+  if (!canAccessProvince(session, user.province)) {
+    return false;
+  }
+  return roleRank(session.role) >= roleRank(targetRole);
+}
+
 function canEditStaticInstitutionalPage(session: Session | null) {
   return Boolean(session && ['coordinador_nacional', 'administrador'].includes(session.role));
 }
@@ -301,6 +346,46 @@ function statusLabel(status: UserStatus) {
     return 'Bloqueado';
   }
   return 'Pendiente de aprobacion';
+}
+
+function changeDone(detail: string) {
+  return `Cambio realizado. ${detail}`;
+}
+
+function isMissingProfileScope(session: Session | null) {
+  if (!session || session.role === 'invitado') {
+    return false;
+  }
+  return !session.province || session.province === 'Sin provincia' || !session.communityOfOrigin || session.communityOfOrigin === 'Sin comunidad asignada';
+}
+
+function provinceDowngradesRole(role: Role) {
+  return ['animador_comunidad', 'coordinador_comunidad', 'vocal', 'asesor', 'coordinador_diocesano'].includes(role);
+}
+
+function communityDowngradesRole(role: Role) {
+  return ['animador_comunidad', 'coordinador_comunidad'].includes(role);
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function safeAuthError(message?: string) {
+  const text = (message ?? '').toLowerCase();
+  if (text.includes('invalid login') || text.includes('invalid credentials')) {
+    return 'Mail o contrasena incorrectos.';
+  }
+  if (text.includes('email not confirmed')) {
+    return 'Tu correo todavia no esta confirmado.';
+  }
+  if (text.includes('already') || text.includes('existe')) {
+    return 'Ya existe un usuario con ese correo.';
+  }
+  if (text.includes('password') || text.includes('contrasena')) {
+    return 'Revisa la contrasena indicada.';
+  }
+  return 'No pudimos completar la accion. Revisa los datos e intenta nuevamente.';
 }
 
 function AppLoadingScreen() {
@@ -387,13 +472,27 @@ export default function App() {
   const [contentVersion, setContentVersion] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [appMessage, setAppMessage] = useState('');
+  const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
   const lastBackPressRef = useRef(0);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const touchPointerOpacity = useRef(new Animated.Value(0)).current;
 
+  const currentDateTimeLabel = useMemo(() => {
+    const date = currentDateTime
+      .toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+      .replace(',', '');
+    const time = currentDateTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    return `Hoy, ${date} · ${time}`;
+  }, [currentDateTime]);
+
   useEffect(() => {
     const timer = setTimeout(() => setIsBooting(false), 2200);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentDateTime(new Date()), 60000);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -481,9 +580,17 @@ export default function App() {
 
   const visibleTabs = useMemo(() => {
     const currentRole = session?.role ?? 'invitado';
+    const mustCompleteProfile = isMissingProfileScope(session);
+    const maintenanceForUser = adminConfig.settings.maintenanceMode && currentRole !== 'administrador';
     const seen = new Set<string>();
     return resolvedTabs.filter((tab) => {
       if (tab.key === 'perfil') {
+        return false;
+      }
+      if (maintenanceForUser) {
+        return false;
+      }
+      if (mustCompleteProfile) {
         return false;
       }
       if (tab.key === 'periodo_motivador' && roleRank(currentRole as Role) < roleRank('sedimentador')) {
@@ -495,7 +602,7 @@ export default function App() {
       seen.add(tab.key);
       return true;
     });
-  }, [resolvedTabs, session?.role]);
+  }, [resolvedTabs, session, adminConfig.settings.maintenanceMode]);
 
   const tabLabel = (key: TabKey) => resolvedTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
   const pageEditorProps = (key: TabKey): PageEditorProps => ({
@@ -570,6 +677,13 @@ export default function App() {
   }
 
   function navigateToTab(nextTab: TabKey) {
+    if (isMissingProfileScope(session) && nextTab !== 'perfil') {
+      setActiveTab('perfil');
+      setTabHistory(['perfil']);
+      setAppMessage('Completa provincia y comunidad para usar la app.');
+      setTimeout(() => setAppMessage(''), 2200);
+      return;
+    }
     if (nextTab === activeTab) {
       return;
     }
@@ -637,6 +751,13 @@ export default function App() {
   }, [activeTab, tabHistory]);
 
   useEffect(() => {
+    if (isMissingProfileScope(session) && activeTab !== 'perfil') {
+      setActiveTab('perfil');
+      setTabHistory(['perfil']);
+    }
+  }, [session, activeTab]);
+
+  useEffect(() => {
     screenOpacity.setValue(0.88);
     Animated.timing(screenOpacity, {
       toValue: 1,
@@ -647,6 +768,9 @@ export default function App() {
   }, [activeTab, screenOpacity]);
 
   const screen = useMemo(() => {
+    if (adminConfig.settings.maintenanceMode && session?.role !== 'administrador' && activeTab !== 'perfil' && !(adminConfig.settings.futureForumEnabled && activeTab === 'foro')) {
+      return <MaintenanceScreen adminConfig={adminConfig} onNavigate={navigateToTab} />;
+    }
     if (activeTab === 'inicio') {
       return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={navigateToTab} adminConfig={adminConfig} />;
     }
@@ -657,13 +781,13 @@ export default function App() {
       return <MaterialsScreen session={session} title={tabLabel('materiales')} content={appContent.find((item) => item.tab_key === 'materiales')} refreshKey={contentVersion} editor={pageEditorProps('materiales')} />;
     }
     if (activeTab === 'oraciones') {
-      return <PublicLibraryScreen title={tabLabel('oraciones')} content={appContent.find((item) => item.tab_key === 'oraciones')} editor={pageEditorProps('oraciones')} emptyTitle="Oraciones" emptyText="Las oraciones publicadas por la dirigencia apareceran en esta seccion para todo publico." />;
+      return <LibrarySectionScreen session={session} title={tabLabel('oraciones')} section="oraciones" variant="prayer" content={appContent.find((item) => item.tab_key === 'oraciones')} editor={pageEditorProps('oraciones')} />;
     }
     if (activeTab === 'cancionero') {
-      return <PublicLibraryScreen title={tabLabel('cancionero')} content={appContent.find((item) => item.tab_key === 'cancionero')} editor={pageEditorProps('cancionero')} emptyTitle="Cancionero" emptyText="Las canciones cargadas por la dirigencia apareceran aca para acompanar encuentros y comunidades." />;
+      return <LibrarySectionScreen session={session} title={tabLabel('cancionero')} section="cancionero" variant="song" content={appContent.find((item) => item.tab_key === 'cancionero')} editor={pageEditorProps('cancionero')} />;
     }
     if (activeTab === 'himno') {
-      return <HymnScreen title={tabLabel('himno')} content={appContent.find((item) => item.tab_key === 'himno')} editor={pageEditorProps('himno')} />;
+      return <LibrarySectionScreen session={session} title={tabLabel('himno')} section="himno" variant="song" content={appContent.find((item) => item.tab_key === 'himno')} editor={pageEditorProps('himno')} />;
     }
     if (activeTab === 'comunidades') {
       return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} editor={pageEditorProps('comunidades')} />;
@@ -677,10 +801,13 @@ export default function App() {
     if (activeTab === 'periodo_motivador') {
       return <MotivadorScreen session={session} title={tabLabel('periodo_motivador')} content={appContent.find((item) => item.tab_key === 'periodo_motivador')} refreshKey={contentVersion} editor={pageEditorProps('periodo_motivador')} adminConfig={adminConfig} />;
     }
+    if (activeTab === 'foro') {
+      return <ForumScreen session={session} title="Foro" />;
+    }
     if (activeTab !== 'perfil') {
       return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} />;
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} />;
   }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled]);
 
   return (
@@ -739,8 +866,11 @@ export default function App() {
             </View>
           </View>
           <View style={styles.headerActions}>
-            <View style={styles.sessionBadge}>
-              <Text style={styles.sessionBadgeText}>{session ? roleLabel(session.role) : 'Invitado'}</Text>
+            <View style={styles.headerStatusColumn}>
+              <View style={styles.sessionBadge}>
+                <Text style={styles.sessionBadgeText}>{session ? roleLabel(session.role) : 'Invitado'}</Text>
+              </View>
+              <Text style={styles.headerDateTime}>{currentDateTimeLabel}</Text>
             </View>
             <TouchableOpacity style={styles.headerProfileButton} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
               <Ionicons name="person-circle-outline" size={17} color={palette.red} />
@@ -887,7 +1017,7 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
       return;
     }
     await editor.onContentChanged();
-    setEditorMessage('Pagina actualizada.');
+    setEditorMessage(changeDone('Pagina actualizada.'));
     setIsEditing(false);
   }
 
@@ -1023,6 +1153,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
     { tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
     { tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
     { tab: 'materiales', title: 'Materiales', meta: 'Archivos internos', icon: 'folder-open-outline', color: palette.gold },
+    { tab: 'foro', title: 'Foro', meta: 'Nacional y provincias', icon: 'chatbubbles-outline', color: '#4AA06D' },
     { tab: 'perfil', title: session ? 'Perfil' : 'Ingresar', meta: session ? roleLabel(session.role) : 'Cuenta personal', icon: 'person-circle-outline', color: palette.inkMuted }
   ];
   const dashboardStats = [
@@ -1355,20 +1486,7 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
           const text = `${item.title} ${item.body} ${item.scope}`.toLowerCase();
           return text.includes('periodo motivador') || text.includes(' pm ') || text.includes('retiro');
         });
-        setItems(pmPeriods.length > 0 ? pmPeriods : pmItems.length > 0 ? pmItems : [
-          {
-            scope: 'PM - Nacional',
-            date: '2026-06-20',
-            title: 'PM Masculino 1',
-            body: 'Casa de retiro a confirmar. Direccion a confirmar. Visible para sedimentadores y rangos superiores.'
-          },
-          {
-            scope: 'PM - Cordoba',
-            date: '2026-07-04',
-            title: 'PM Femenino 1',
-            body: 'Casa de retiro a confirmar. Direccion a confirmar. Visible segun provincia.'
-          }
-        ]);
+        setItems(pmPeriods.length > 0 ? pmPeriods : pmItems);
       }
     });
     return () => {
@@ -1386,6 +1504,12 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
         {adminConfig.periodoMotivador.imageUrl ? <Image source={{ uri: adminConfig.periodoMotivador.imageUrl }} style={styles.cardImage} /> : null}
       </View>
       <SectionTitle title="Agenda de PM" />
+      {items.length === 0 ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>No hay Periodos Motivadores activos</Text>
+          <Text style={styles.cardText}>Cuando se carguen PM reales y activos en Supabase, apareceran aca.</Text>
+        </View>
+      ) : null}
       {items.map((item, index) => (
         <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
           <View style={styles.feedHeader}>
@@ -1424,6 +1548,11 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
   const [uploadVisibility, setUploadVisibility] = useState<'publico' | 'desde_rango' | 'solo_rango'>('desde_rango');
   const [uploadRole, setUploadRole] = useState<Role>('sedimentador');
   const [uploadMessage, setUploadMessage] = useState('');
+  const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
+  const [materialEditTitle, setMaterialEditTitle] = useState('');
+  const [materialEditDescription, setMaterialEditDescription] = useState('');
+  const [materialEditVisibility, setMaterialEditVisibility] = useState<'publico' | 'desde_rango' | 'solo_rango'>('desde_rango');
+  const [materialEditRole, setMaterialEditRole] = useState<Role>('sedimentador');
 
   useEffect(() => {
     let alive = true;
@@ -1439,13 +1568,21 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
 
   const visibleMaterials = remoteMaterials.length > 0
     ? remoteMaterials.map((material) => ({
+      id: material.id,
       type: material.category ?? material.visibility ?? 'Material',
       title: material.title,
       description: material.description,
       permission: material.required_permission as Permission | null,
       visibility: material.visibility,
-      fileUrl: material.file_url
+      fileUrl: material.file_url,
+      filePath: material.file_path,
+      createdBy: material.created_by,
+      provinceId: material.province_id,
+      sortOrder: material.sort_order
     })).filter((material) => {
+      if (!material.fileUrl && !material.filePath) {
+        return false;
+      }
       if (material.visibility === 'publico') {
         return true;
       }
@@ -1461,7 +1598,82 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       }
       return roleRank(session.role) >= roleRank(selectedRole);
     })
-    : materials;
+    : [];
+
+  function canManageMaterial(material: { createdBy?: string | null }) {
+    return Boolean(session && (material.createdBy === session.id || canManagePublishedContent(session)));
+  }
+
+  function startEditMaterial(material: typeof visibleMaterials[number]) {
+    if (!('id' in material) || !material.id) {
+      return;
+    }
+    setEditingMaterialId(material.id);
+    setMaterialEditTitle(material.title);
+    setMaterialEditDescription(material.description);
+    setMaterialEditVisibility((material.visibility === 'publico' || material.visibility === 'solo_rango' || material.visibility === 'desde_rango') ? material.visibility : 'desde_rango');
+    const selectedRole = material.permission?.replace('rango_', '') as Role | undefined;
+    setMaterialEditRole(selectedRole && roleDefinitions.some((item) => item.role === selectedRole) ? selectedRole : 'sedimentador');
+    setUploadMessage('');
+  }
+
+  async function saveEditedMaterial(material: typeof visibleMaterials[number]) {
+    if (!('id' in material) || !material.id) {
+      return;
+    }
+    if (!materialEditTitle.trim() || !materialEditDescription.trim()) {
+      setUploadMessage('Completa titulo y descripcion.');
+      return;
+    }
+    const { error } = await saveAppMaterial({
+      id: material.id,
+      title: materialEditTitle.trim(),
+      description: materialEditDescription.trim(),
+      category: material.type,
+      visibility: materialEditVisibility,
+      requiredPermission: materialEditVisibility === 'publico' ? null : `rango_${materialEditRole}`,
+      fileUrl: material.fileUrl ?? null,
+      filePath: material.filePath ?? null,
+      sortOrder: material.sortOrder ?? 100
+    });
+    if (error) {
+      setUploadMessage(error.message);
+      return;
+    }
+    setEditingMaterialId(null);
+    setUploadMessage(changeDone('Material actualizado.'));
+    setRemoteMaterials(await fetchAppMaterials());
+  }
+
+  async function deleteMaterial(material: typeof visibleMaterials[number]) {
+    if (!('id' in material) || !material.id) {
+      return;
+    }
+    const { error } = await archiveAppMaterial(material.id);
+    if (error) {
+      setUploadMessage(error.message);
+      return;
+    }
+    setUploadMessage(changeDone('Material eliminado.'));
+    setRemoteMaterials(await fetchAppMaterials());
+  }
+
+  async function openMaterialFile(material: typeof visibleMaterials[number]) {
+    if (!('fileUrl' in material) || !material.fileUrl) {
+      setUploadMessage('No se encontro el archivo de descarga.');
+      return;
+    }
+    try {
+      const canOpen = await Linking.canOpenURL(material.fileUrl);
+      if (!canOpen) {
+        setUploadMessage('No se pudo abrir el enlace del archivo.');
+        return;
+      }
+      await Linking.openURL(material.fileUrl);
+    } catch {
+      setUploadMessage('No se pudo descargar el archivo. Puede que ya no exista en Storage.');
+    }
+  }
 
   async function uploadPdfMaterial() {
     if (!session || !canManagePublishedContent(session)) {
@@ -1519,7 +1731,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       setUploadTitle('');
       setUploadDescription('');
       setShowUpload(false);
-      setUploadMessage('PDF subido correctamente.');
+      setUploadMessage(changeDone('PDF subido correctamente.'));
       setRemoteMaterials(await fetchAppMaterials());
     } catch (error) {
       setUploadMessage(error instanceof Error ? error.message : 'No pude subir el PDF.');
@@ -1569,17 +1781,79 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
           {uploadMessage ? <Text style={styles.cardText}>{uploadMessage}</Text> : null}
         </View>
       ) : null}
+      {visibleMaterials.length === 0 ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>No existen archivos actualmente</Text>
+        </View>
+      ) : null}
       {visibleMaterials.map((material, index) => {
         const locked = material.permission && !hasPermission(session, material.permission as Permission);
+        const canEditThisMaterial = 'id' in material && canManageMaterial(material);
+        const isEditingThisMaterial = 'id' in material && editingMaterialId === material.id;
         return (
           <View key={`${material.title}-${index}`} style={[styles.card, styles.libraryCard, locked && styles.lockedCard]}>
             <View style={styles.libraryIcon}>
               <Ionicons name={locked ? 'lock-closed-outline' : 'document-text-outline'} size={24} color={locked ? palette.inkMuted : palette.red} />
             </View>
             <View style={styles.libraryBody}>
-              <Text style={styles.cardEyebrow}>{material.type}</Text>
-              <Text style={styles.cardTitle}>{material.title}</Text>
-              <Text style={styles.cardText}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
+              {isEditingThisMaterial ? (
+                <View style={styles.profileCommunityPanel}>
+                  <Text style={styles.cardEyebrow}>Editar material</Text>
+                  <TextInput style={styles.input} placeholder="Titulo" value={materialEditTitle} onChangeText={setMaterialEditTitle} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialEditDescription} onChangeText={setMaterialEditDescription} multiline />
+                  <View style={styles.filterRow}>
+                    {[
+                      { key: 'publico', label: 'Todo publico' },
+                      { key: 'desde_rango', label: 'Desde rango' },
+                      { key: 'solo_rango', label: 'Solo rango' }
+                    ].map((item) => (
+                      <TouchableOpacity key={item.key} style={[styles.filterChip, materialEditVisibility === item.key && styles.filterChipActive]} onPress={() => setMaterialEditVisibility(item.key as typeof materialEditVisibility)}>
+                        <Text style={[styles.filterChipText, materialEditVisibility === item.key && styles.filterChipTextActive]}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {materialEditVisibility !== 'publico' ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                      {roleDefinitions.filter((role) => role.role !== 'invitado').map((role) => (
+                        <TouchableOpacity key={role.role} style={[styles.filterChip, materialEditRole === role.role && styles.filterChipActive]} onPress={() => setMaterialEditRole(role.role as Role)}>
+                          <Text style={[styles.filterChipText, materialEditRole === role.role && styles.filterChipTextActive]}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.primaryButton} onPress={() => saveEditedMaterial(material)}>
+                      <Text style={styles.primaryButtonText}>Guardar cambios</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => setEditingMaterialId(null)}>
+                      <Text style={styles.secondaryButtonText}>Cancelar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.cardEyebrow}>{material.type}</Text>
+                  <Text style={styles.cardTitle}>{material.title}</Text>
+                  <Text style={styles.cardText}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
+                  {locked ? <Text style={styles.cardText}>Requiere permiso: {material.permission}</Text> : null}
+                  {!locked && 'fileUrl' in material && material.fileUrl ? (
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => openMaterialFile(material)}>
+                      <Ionicons name="download-outline" size={16} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Descargar PDF</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {canEditThisMaterial ? (
+                    <View style={styles.inlineActions}>
+                      <TouchableOpacity style={styles.secondaryButton} onPress={() => startEditMaterial(material)}>
+                        <Text style={styles.secondaryButtonText}>Editar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.secondaryButton} onPress={() => deleteMaterial(material)}>
+                        <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                </>
+              )}
             </View>
           </View>
         );
@@ -1595,8 +1869,10 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
   const [selectedProvinceLogo, setSelectedProvinceLogo] = useState<AppCommunity | null>(null);
   const [showContactBox, setShowContactBox] = useState(false);
   const [contactMessage, setContactMessage] = useState('');
+  const [contactName, setContactName] = useState(session?.fullName ?? '');
+  const [contactInfoValue, setContactInfoValue] = useState(session?.email ?? '');
   const [contactStatus, setContactStatus] = useState('');
-  const visibleCommunityData = communityData.filter((item) => canAccessProvince(session, item.province));
+  const visibleCommunityData = communityData;
   const province = visibleCommunityData.find((item) => item.province === selectedProvince);
   const community = province?.locations.find((item) => item.name === selectedCommunity);
 
@@ -1611,6 +1887,33 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
       alive = false;
     };
   }, [refreshKey]);
+
+  async function sendCommunityContactMessage() {
+    if (!community?.id) {
+      setContactStatus('No se encontro la comunidad seleccionada.');
+      return;
+    }
+    if (!contactMessage.trim()) {
+      setContactStatus('Escribi un mensaje antes de enviarlo.');
+      return;
+    }
+    if (!session && (!contactName.trim() || !contactInfoValue.trim())) {
+      setContactStatus('Deja tu nombre y un contacto para que puedan responderte.');
+      return;
+    }
+    const { error } = await createCommunityContactMessage({
+      communityId: community.id,
+      senderName: contactName.trim() || session?.fullName || 'Consulta externa',
+      senderContact: contactInfoValue.trim() || session?.email || '',
+      message: contactMessage.trim()
+    });
+    if (error) {
+      setContactStatus(error.message);
+      return;
+    }
+    setContactStatus(changeDone('Mensaje enviado al buzon de la comunidad.'));
+    setContactMessage('');
+  }
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !selectedProvince) {
@@ -1652,7 +1955,9 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
         </Modal>
         <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={() => setSelectedCommunity(null)}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedCommunity(null)}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKeyboardAvoider}>
             <TouchableOpacity style={[styles.modalPanel, styles.communityModalPanel]} activeOpacity={1} onPress={() => undefined}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedCommunity(null)} activeOpacity={0.8}>
                 <Ionicons name="close" size={22} color={palette.red} />
               </TouchableOpacity>
@@ -1682,9 +1987,8 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                   <Text style={styles.cardText}>{community.address}</Text>
                   <Text style={styles.cardText}>{community.description}</Text>
                   <View style={styles.inlineActions}>
-                    <TouchableOpacity style={styles.primaryButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(community.address)}`)}>
-                      <Ionicons name="map-outline" size={17} color={palette.white} />
-                      <Text style={styles.primaryButtonText}>Maps</Text>
+                    <TouchableOpacity style={styles.locationIconButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(community.address)}`)}>
+                      <Ionicons name="location-outline" size={22} color={palette.white} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowContactBox(!showContactBox)}>
                       <Text style={styles.secondaryButtonText}>Contactar</Text>
@@ -1693,15 +1997,24 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                   {showContactBox ? (
                     <View style={styles.inlineEditorPanel}>
                       <Text style={styles.cardEyebrow}>Mensaje a animacion/coordinacion</Text>
+                      {!session ? (
+                        <>
+                          <Text style={styles.inputLabel}>Nombre</Text>
+                          <TextInput style={styles.input} placeholder="Ej: Juan Perez" value={contactName} onChangeText={setContactName} />
+                          <Text style={styles.inputLabel}>Contacto</Text>
+                          <TextInput style={styles.input} placeholder="Ej: nombre@email.com o telefono" value={contactInfoValue} onChangeText={setContactInfoValue} />
+                        </>
+                      ) : null}
+                      <Text style={styles.inputLabel}>Mensaje</Text>
                       <TextInput
                         style={[styles.input, styles.textArea]}
-                        placeholder="Escribi tu mensaje"
+                        placeholder="Escribi tu consulta para la comunidad"
                         value={contactMessage}
                         onChangeText={(value) => setContactMessage(value.slice(0, 500))}
                         multiline
                       />
                       <Text style={styles.cardText}>{contactMessage.length}/500</Text>
-                      <TouchableOpacity style={styles.primaryButton} onPress={() => { setContactStatus('Mensaje enviado al panel de la comunidad.'); setContactMessage(''); }}>
+                      <TouchableOpacity style={styles.primaryButton} onPress={sendCommunityContactMessage}>
                         <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
                       </TouchableOpacity>
                       {contactStatus ? <Text style={styles.cardText}>{contactStatus}</Text> : null}
@@ -1709,7 +2022,9 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                   ) : null}
                 </>
               ) : null}
+              </ScrollView>
             </TouchableOpacity>
+            </KeyboardAvoidingView>
           </TouchableOpacity>
         </Modal>
         {(province.province === 'Tucuman' || province.province === 'Catamarca') ? (
@@ -1796,17 +2111,53 @@ function HistoryScreen({ title, content, editor }: { title: string; content?: Ap
 
 function ContactScreen({ title, content, editor, adminConfig }: { title: string; content?: AppContentBlock; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
   const shouldShowFallback = !content && !editor?.contentLoaded;
+  const contactBlocks = adminConfig.contact.blocks ?? [];
+  const provinceInstagram = adminConfig.contact.provinceInstagram ?? {};
+  const openContactValue = (value: string) => {
+    if (!value.trim()) {
+      return;
+    }
+    const url = value.startsWith('http') ? value : `https://www.instagram.com/${value.replace('@', '')}`;
+    Linking.openURL(url);
+  };
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {shouldShowFallback ? (
+      {shouldShowFallback || contactBlocks.length > 0 ? (
         <View style={styles.contentIntro}>
           <Text style={styles.cardTitle}>Encontrar una comunidad</Text>
           <Text style={styles.cardText}>{adminConfig.contact.helpText}</Text>
-          <Text style={styles.cardText}>Mail: {adminConfig.contact.email}</Text>
-          <Text style={styles.cardText}>Celular: {adminConfig.contact.phone}</Text>
-          <Text style={styles.cardText}>Instagram: {adminConfig.contact.instagram}</Text>
+          {adminConfig.contact.email ? <Text style={styles.cardText}>Mail: {adminConfig.contact.email}</Text> : null}
+          {adminConfig.contact.phone ? <Text style={styles.cardText}>Celular: {adminConfig.contact.phone}</Text> : null}
+          {adminConfig.contact.instagram ? (
+            <TouchableOpacity style={styles.instagramButton} onPress={() => openContactValue(adminConfig.contact.instagram)}>
+              <Ionicons name="logo-instagram" size={20} color={palette.white} />
+              <Text style={styles.instagramButtonTitle}>Instagram nacional</Text>
+            </TouchableOpacity>
+          ) : null}
+          {Object.entries(provinceInstagram).some(([, value]) => value.trim()) ? (
+            <View style={styles.chipRow}>
+              {Object.entries(provinceInstagram).filter(([, value]) => value.trim()).map(([province, value]) => (
+                <TouchableOpacity key={province} style={styles.actionPill} onPress={() => openContactValue(value)}>
+                  <Ionicons name="logo-instagram" size={16} color={palette.red} />
+                  <Text style={styles.actionPillText}>{province}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
+          {contactBlocks.map((block) => (
+            <View key={block.id} style={styles.innerNewsCard}>
+              <Text style={styles.cardEyebrow}>{block.type}</Text>
+              {block.label ? <Text style={styles.cardTitle}>{block.label}</Text> : null}
+              {block.type === 'imagen' && block.value ? <Image source={{ uri: block.value }} style={styles.cardImage} /> : <Text style={styles.cardText}>{block.value}</Text>}
+              {['enlace', 'boton', 'red_social'].includes(block.type) && block.value ? (
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(block.value.startsWith('http') ? block.value : `https://${block.value}`)}>
+                  <Text style={styles.secondaryButtonText}>Abrir enlace</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ))}
           <Text style={styles.cardText}>{adminConfig.contact.donationText}</Text>
         </View>
       ) : null}
@@ -1815,43 +2166,265 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
   );
 }
 
-function PublicLibraryScreen({ title, content, editor, emptyTitle, emptyText }: { title: string; content?: AppContentBlock; editor?: PageEditorProps; emptyTitle: string; emptyText: string }) {
-  const shouldShowFallback = !content && !editor?.contentLoaded;
+function MaintenanceScreen({ adminConfig, onNavigate }: { adminConfig: AppAdminConfig; onNavigate: (tab: TabKey) => void }) {
+  const message = adminConfig.settings.globalMessage.trim() || 'Estamos realizando tareas de mantenimiento. La aplicacion volvera a estar disponible proximamente.';
   return (
     <View style={styles.stack}>
-      <SectionTitle title={title} />
-      <EditableIntro content={content} editor={editor} />
-      {shouldShowFallback ? (
-        <View style={styles.contentIntro}>
-          <Text style={styles.cardTitle}>{emptyTitle}</Text>
-          <Text style={styles.cardText}>{emptyText}</Text>
+      <View style={styles.maintenancePanel}>
+        <View style={styles.brandLogo}>
+          <Image source={palestraLogo} style={styles.brandLogoImage} />
         </View>
-      ) : null}
-      {!content && editor?.contentLoaded ? <EmptyRemoteContent title={`${emptyTitle} pendiente`} /> : null}
+        <Text style={styles.maintenanceTitle}>{adminConfig.identity.appName || 'Palestra'}</Text>
+        <Text style={styles.maintenanceText}>{message}</Text>
+        <Text style={styles.cardText}>Estamos ajustando herramientas internas para que la experiencia sea mas estable.</Text>
+        <View style={styles.inlineActions}>
+          {adminConfig.settings.futureForumEnabled ? (
+            <TouchableOpacity style={styles.primaryButton} onPress={() => onNavigate('foro')}>
+              <Ionicons name="chatbubbles-outline" size={17} color={palette.white} />
+              <Text style={styles.primaryButtonText}>Ir al Foro</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => onNavigate('perfil')}>
+            <Text style={styles.secondaryButtonText}>Mi Perfil</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
 
-function HymnScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
-  const shouldShowFallback = !content && !editor?.contentLoaded;
-  const fallbackStanzas = [
-    'Himno Palestrista',
-    'Aqui se cargara el himno de Palestra en estrofas, con lectura clara y espaciado amplio.',
-    'Cada estrofa debe conservar su ritmo visual para que pueda leerse comodamente en reuniones, retiros y celebraciones.'
-  ];
+function LibrarySectionScreen({
+  session,
+  title,
+  section,
+  variant,
+  content,
+  editor
+}: {
+  session: Session | null;
+  title: string;
+  section: LibrarySection;
+  variant: 'prayer' | 'song';
+  content?: AppContentBlock;
+  editor?: PageEditorProps;
+}) {
+  const [items, setItems] = useState<AppLibraryItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<AppLibraryItem | null>(null);
+  const [editingItem, setEditingItem] = useState<AppLibraryItem | null>(null);
+  const [showEditor, setShowEditor] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftSubtitle, setDraftSubtitle] = useState('');
+  const [draftBody, setDraftBody] = useState('');
+  const [draftImageUrl, setDraftImageUrl] = useState('');
+  const [message, setMessage] = useState('');
+  const canCreateItems = Boolean(session && roleRank(session.role) >= roleRank('sedimentador'));
+  const emptyTitle = section === 'oraciones' ? 'No hay oraciones publicadas' : section === 'himno' ? 'No hay himnos publicados' : 'No hay canciones publicadas';
+
+  async function loadItems() {
+    setItems(await fetchLibraryItems(section));
+  }
+
+  useEffect(() => {
+    loadItems();
+    setSelectedItem(null);
+    setShowEditor(false);
+  }, [section]);
+
+  function resetDraft(item?: AppLibraryItem | null) {
+    setEditingItem(item ?? null);
+    setDraftTitle(item?.title ?? '');
+    setDraftSubtitle(item?.subtitle ?? '');
+    setDraftBody(item?.body ?? '');
+    setDraftImageUrl(item?.image_url ?? '');
+    setShowEditor(true);
+    setMessage('');
+  }
+
+  function canManageLibraryItem(item: AppLibraryItem) {
+    return Boolean(session && (item.created_by === session.id || canManagePublishedContent(session)));
+  }
+
+  async function chooseLibraryImage() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    try {
+      setMessage('Subiendo imagen...');
+      const asset = result.assets[0];
+      const response = await fetch(asset.uri);
+      const bytes = await response.arrayBuffer();
+      const extension = asset.fileName?.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${section}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('library-images')
+        .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: true });
+      if (uploadError) {
+        setMessage(uploadError.message);
+        return;
+      }
+      const { data: publicUrl } = supabase.storage.from('library-images').getPublicUrl(path);
+      setDraftImageUrl(publicUrl.publicUrl);
+      setMessage(changeDone('Imagen cargada.'));
+    } catch {
+      setMessage('No pude subir la imagen.');
+    }
+  }
+
+  async function submitItem() {
+    if (!draftTitle.trim() || !draftBody.trim()) {
+      setMessage('Completa titulo y contenido antes de guardar.');
+      return;
+    }
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      setMessage('Para publicar contenido tenes que iniciar sesion con una cuenta real de Supabase. El acceso demo no puede guardar publicaciones.');
+      return;
+    }
+    const { error } = await saveLibraryItem({
+      id: editingItem?.id,
+      section,
+      title: draftTitle.trim(),
+      subtitle: draftSubtitle.trim(),
+      body: draftBody.trim(),
+      imageUrl: draftImageUrl.trim() || null,
+      category: null,
+      source: null,
+      itemDate: null,
+      status: 'publicado',
+      sortOrder: editingItem?.sort_order ?? 100
+    });
+    if (error) {
+      const debug = await debugLibraryPermission();
+      if (debug) {
+        setMessage(`${error.message} Supabase ve: ${debug.email ?? 'sin mail'} / ${debug.role ?? 'sin rol'} / ${debug.status ?? 'sin estado'}.`);
+      } else {
+        setMessage(error.message);
+      }
+      return;
+    }
+    setMessage(changeDone('Contenido guardado.'));
+    setShowEditor(false);
+    await loadItems();
+  }
+
+  async function deleteItem(item: AppLibraryItem) {
+    Alert.alert('Eliminar contenido', 'Este elemento dejara de mostrarse en la app. ¿Deseas continuar?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await archiveLibraryItem(item.id);
+          if (error) {
+            setMessage(error.message);
+            return;
+          }
+          setSelectedItem(null);
+          setMessage(changeDone('Contenido eliminado.'));
+          await loadItems();
+        }
+      }
+    ]);
+  }
+
+  if (selectedItem) {
+    const stanzas = selectedItem.body.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
+    return (
+      <View style={styles.stack}>
+        <TouchableOpacity style={styles.backButton} onPress={() => setSelectedItem(null)} activeOpacity={0.82}>
+          <Ionicons name="chevron-back" size={18} color={palette.red} />
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
+        <View style={variant === 'prayer' ? styles.prayerReader : styles.songReader}>
+          {variant === 'song' && selectedItem.image_url ? <Image source={{ uri: selectedItem.image_url }} style={styles.songHeroImage} resizeMode="cover" /> : null}
+          <Text style={variant === 'prayer' ? styles.prayerReaderTitle : styles.songReaderTitle}>{selectedItem.title}</Text>
+          {selectedItem.subtitle ? <Text style={variant === 'prayer' ? styles.prayerReaderSubtitle : styles.songReaderSubtitle}>{selectedItem.subtitle}</Text> : null}
+          <View style={variant === 'prayer' ? styles.prayerDivider : styles.songDivider} />
+          {stanzas.map((stanza, index) => (
+            <Text key={`${selectedItem.id}-${index}`} style={variant === 'prayer' ? styles.prayerParagraph : styles.songStanza}>
+              {stanza}
+            </Text>
+          ))}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {shouldShowFallback ? (
-        <View style={styles.hymnPanel}>
-          {fallbackStanzas.map((stanza, index) => (
-            <Text key={`${stanza}-${index}`} style={index === 0 ? styles.hymnTitle : styles.hymnStanza}>{stanza}</Text>
-          ))}
+      <View style={variant === 'prayer' ? styles.libraryPlainPanel : styles.libraryVisualPanel}>
+        <View style={styles.libraryHeaderRow}>
+          <View style={styles.flexOne}>
+            <Text style={variant === 'prayer' ? styles.libraryPlainTitle : styles.libraryVisualTitle}>{section === 'oraciones' ? 'Biblioteca de oraciones' : section === 'himno' ? 'Himnos y canciones' : 'Cancionero palestrista'}</Text>
+            <Text style={styles.cardText}>{section === 'oraciones' ? 'Lectura simple, clara y rapida.' : 'Letras ordenadas para encuentros, retiros y comunidades.'}</Text>
+          </View>
+          {canCreateItems ? (
+            <TouchableOpacity style={styles.iconActionButton} onPress={() => resetDraft(null)} activeOpacity={0.82}>
+              <Ionicons name="add" size={22} color={palette.white} />
+            </TouchableOpacity>
+          ) : null}
         </View>
-      ) : null}
-      {!content && editor?.contentLoaded ? <EmptyRemoteContent title="Himno pendiente" /> : null}
+        {message ? <Text style={styles.formErrorText}>{message}</Text> : null}
+        {showEditor && canCreateItems ? (
+          <View style={styles.libraryEditor}>
+            <Text style={styles.cardTitle}>{editingItem ? 'Editar contenido' : 'Nuevo contenido'}</Text>
+            <TextInput style={styles.input} placeholder="Titulo" value={draftTitle} onChangeText={setDraftTitle} />
+            <TextInput style={styles.input} placeholder="Subtitulo opcional" value={draftSubtitle} onChangeText={setDraftSubtitle} />
+            {variant === 'song' ? (
+              <>
+                <TextInput style={styles.input} placeholder="URL de portada o imagen" value={draftImageUrl} onChangeText={setDraftImageUrl} autoCapitalize="none" />
+                <TouchableOpacity style={styles.secondaryButton} onPress={chooseLibraryImage}>
+                  <Text style={styles.secondaryButtonText}>Subir imagen</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+            <TextInput style={[styles.input, styles.textArea, styles.libraryBodyInput]} placeholder={variant === 'prayer' ? 'Texto de la oracion' : 'Letra separada por estrofas'} value={draftBody} onChangeText={setDraftBody} multiline />
+            <TouchableOpacity style={styles.primaryButton} onPress={submitItem}>
+              <Text style={styles.primaryButtonText}>Guardar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowEditor(false)}>
+              <Text style={styles.secondaryButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        {items.length === 0 ? (
+          <View style={styles.emptyLibraryState}>
+            <Text style={styles.cardTitle}>{emptyTitle}</Text>
+            <Text style={styles.cardText}>Cuando se cargue contenido en Supabase, aparecera aca sin actualizar la APK.</Text>
+          </View>
+        ) : null}
+        {items.map((item) => (
+          <TouchableOpacity key={item.id} style={variant === 'prayer' ? styles.prayerListRow : styles.songListRow} activeOpacity={0.84} onPress={() => setSelectedItem(item)}>
+            {variant === 'song' ? (
+              <View style={styles.songThumb}>
+                {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.songThumbImage} resizeMode="cover" /> : <Ionicons name="musical-notes-outline" size={22} color={palette.red} />}
+              </View>
+            ) : null}
+            <View style={styles.flexOne}>
+              <Text style={variant === 'prayer' ? styles.prayerListTitle : styles.songListTitle}>{item.title}</Text>
+              {item.subtitle ? <Text style={styles.libraryMeta}>{item.subtitle}</Text> : null}
+            </View>
+            {canManageLibraryItem(item) ? (
+              <View style={styles.libraryActions}>
+                <TouchableOpacity style={styles.tinyIconButton} onPress={() => resetDraft(item)}>
+                  <Ionicons name="create-outline" size={17} color={palette.red} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.tinyIconButton} onPress={() => deleteItem(item)}>
+                  <Ionicons name="trash-outline" size={17} color="#B93232" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color={palette.inkMuted} />
+            )}
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 }
@@ -1879,6 +2452,272 @@ function GenericPageScreen({ title, content, editor }: { title: string; content?
   );
 }
 
+function ForumScreen({ session, title }: { session: Session | null; title: string }) {
+  const [categories, setCategories] = useState<ForumCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [topics, setTopics] = useState<ForumTopic[]>([]);
+  const [selectedTopic, setSelectedTopic] = useState<ForumTopic | null>(null);
+  const [comments, setComments] = useState<ForumComment[]>([]);
+  const [showComposer, setShowComposer] = useState(false);
+  const [topicTitle, setTopicTitle] = useState('');
+  const [topicBody, setTopicBody] = useState('');
+  const [topicMinRole, setTopicMinRole] = useState<Role>('invitado');
+  const [commentDraft, setCommentDraft] = useState('');
+  const [forumMessage, setForumMessage] = useState('');
+  const canCreate = Boolean(session && session.status === 'aprobado' && session.role !== 'invitado');
+  const selectedCategory = categories.find((item) => item.id === selectedCategoryId);
+  const allowedRoles = visibleForumRolesFor(session, selectedCategory);
+
+  async function loadCategories() {
+    const items = (await fetchForumCategories()).filter((category) => canUseForumCategory(session, category));
+    setCategories(items);
+    if ((!selectedCategoryId || !items.some((item) => item.id === selectedCategoryId)) && items.length > 0) {
+      const national = items.find((item) => item.scope === 'nacional');
+      setSelectedCategoryId((national ?? items[0]).id);
+    }
+  }
+
+  async function loadTopics(categoryId = selectedCategoryId) {
+    if (!categoryId) {
+      setTopics([]);
+      return;
+    }
+    setTopics(await fetchForumTopics(categoryId));
+  }
+
+  async function openTopic(topic: ForumTopic) {
+    setSelectedTopic(topic);
+    setComments(await fetchForumComments(topic.id));
+  }
+
+  useEffect(() => {
+    loadCategories();
+  }, [session?.role, session?.province, session?.status]);
+
+  useEffect(() => {
+    loadTopics(selectedCategoryId);
+    setSelectedTopic(null);
+  }, [selectedCategoryId]);
+
+  useEffect(() => {
+    const fallbackRole = allowedRoles.includes(topicMinRole) ? topicMinRole : allowedRoles[allowedRoles.length - 1] ?? 'invitado';
+    setTopicMinRole(fallbackRole);
+  }, [session?.role, selectedCategoryId]);
+
+  async function submitTopic() {
+    if (!canCreate) {
+      setForumMessage('Inicia sesion con un usuario aprobado para crear temas.');
+      return;
+    }
+    if (!selectedCategoryId || !topicTitle.trim() || !topicBody.trim()) {
+      setForumMessage('Completa categoria, titulo y contenido.');
+      return;
+    }
+    const { error } = selectedTopic && selectedTopic.authorId === session?.id
+      ? await updateForumTopic({ topicId: selectedTopic.id, title: topicTitle.trim(), body: topicBody.trim(), minRole: topicMinRole })
+      : await createForumTopic({ categoryId: selectedCategoryId, title: topicTitle.trim(), body: topicBody.trim(), minRole: topicMinRole });
+    if (error) {
+      setForumMessage(error.message);
+      return;
+    }
+    setTopicTitle('');
+    setTopicBody('');
+    setTopicMinRole('invitado');
+    setShowComposer(false);
+    setForumMessage(changeDone('Tema guardado en el foro.'));
+    await loadTopics(selectedCategoryId);
+  }
+
+  function startEditTopic(topic: ForumTopic) {
+    setSelectedTopic(topic);
+    setTopicTitle(topic.title);
+    setTopicBody(topic.body);
+    setTopicMinRole(topic.minRole);
+    setShowComposer(true);
+  }
+
+  async function closeTopic(topic: ForumTopic) {
+    const nextStatus = topic.status === 'cerrado' ? 'abierto' : 'cerrado';
+    const { error } = await setForumTopicStatus(topic.id, nextStatus);
+    if (error) {
+      setForumMessage(error.message);
+      return;
+    }
+    setForumMessage(changeDone(nextStatus === 'cerrado' ? 'Tema cerrado.' : 'Tema reabierto.'));
+    await loadTopics();
+    if (selectedTopic?.id === topic.id) {
+      setSelectedTopic({ ...topic, status: nextStatus });
+    }
+  }
+
+  async function deleteTopic(topic: ForumTopic) {
+    const confirmed = Platform.OS === 'web' ? (typeof window === 'undefined' ? true : window.confirm('Eliminar este tema del foro?')) : await new Promise<boolean>((resolve) => {
+      Alert.alert('Eliminar tema', 'Eliminar este tema del foro?', [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+      ]);
+    });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await archiveForumTopic(topic.id);
+    if (error) {
+      setForumMessage(error.message);
+      return;
+    }
+    setSelectedTopic(null);
+    setForumMessage(changeDone('Tema eliminado.'));
+    await loadTopics();
+  }
+
+  async function submitComment() {
+    if (!canCreate) {
+      setForumMessage('Inicia sesion con un usuario aprobado para comentar.');
+      return;
+    }
+    if (!selectedTopic || !commentDraft.trim()) {
+      setForumMessage('Escribe un comentario antes de publicar.');
+      return;
+    }
+    const { error } = await createForumComment(selectedTopic.id, commentDraft.trim());
+    if (error) {
+      setForumMessage(error.message);
+      return;
+    }
+    setCommentDraft('');
+    setComments(await fetchForumComments(selectedTopic.id));
+    setForumMessage(changeDone('Comentario publicado.'));
+    await loadTopics(selectedTopic.categoryId);
+  }
+
+  async function deleteComment(comment: ForumComment) {
+    const { error } = await archiveForumComment(comment.id);
+    if (error) {
+      setForumMessage(error.message);
+      return;
+    }
+    if (selectedTopic) {
+      setComments(await fetchForumComments(selectedTopic.id));
+    }
+  }
+
+  function canModerateTopic(topic: ForumTopic) {
+    return Boolean(session && (topic.authorId === session.id || roleRank(session.role) > roleRank(topic.authorRole)));
+  }
+
+  return (
+    <View style={styles.stack}>
+      <SectionTitle title={title} />
+      <View style={styles.contentIntro}>
+        <Text style={styles.cardTitle}>Foro Palestrista</Text>
+        <Text style={styles.cardText}>Temas nacionales y provinciales, ordenados por rango y alcance. Por ahora solo texto.</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+        {categories.map((category) => (
+          <TouchableOpacity key={category.id} style={[styles.filterChip, selectedCategoryId === category.id && styles.filterChipActive]} onPress={() => setSelectedCategoryId(category.id)}>
+            <Text style={[styles.filterChipText, selectedCategoryId === category.id && styles.filterChipTextActive]}>{category.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+      {selectedCategory ? (
+        <View style={styles.featurePanel}>
+          <Text style={styles.cardEyebrow}>{selectedCategory.scope}</Text>
+          <Text style={styles.cardTitle}>{selectedCategory.name}</Text>
+          <Text style={styles.cardText}>{selectedCategory.description ?? 'Categoria del foro.'}</Text>
+          {canCreate ? (
+            <TouchableOpacity style={styles.primaryButton} onPress={() => { setShowComposer(!showComposer); setSelectedTopic(null); }}>
+              <Ionicons name="add-circle-outline" size={17} color={palette.white} />
+              <Text style={styles.primaryButtonText}>Crear tema</Text>
+            </TouchableOpacity>
+          ) : <Text style={styles.cardText}>Inicia sesion para crear temas o comentar.</Text>}
+        </View>
+      ) : null}
+      {showComposer ? (
+        <View style={styles.inlineEditorPanel}>
+          <Text style={styles.cardEyebrow}>{selectedTopic ? 'Editar tema' : 'Nuevo tema'}</Text>
+          <Text style={styles.inputLabel}>Titulo</Text>
+          <TextInput style={styles.input} placeholder="Escribe un titulo claro" placeholderTextColor="#7FA4B5" value={topicTitle} onChangeText={setTopicTitle} />
+          <Text style={styles.inputLabel}>Contenido</Text>
+          <TextInput style={[styles.input, styles.textArea]} placeholder="Comparte el tema para conversar en comunidad" placeholderTextColor="#7FA4B5" value={topicBody} onChangeText={setTopicBody} multiline />
+          <Text style={styles.cardEyebrow}>Visible para</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+            {allowedRoles.map((role) => (
+              <TouchableOpacity key={role} style={[styles.filterChip, topicMinRole === role && styles.filterChipActive]} onPress={() => setTopicMinRole(role)}>
+                <Text style={[styles.filterChipText, topicMinRole === role && styles.filterChipTextActive]}>{roleLabel(role)}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity style={styles.primaryButton} onPress={submitTopic}>
+            <Text style={styles.primaryButtonText}>Guardar tema</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+      {forumMessage ? <Text style={styles.cardText}>{forumMessage}</Text> : null}
+      {selectedTopic ? (
+        <View style={styles.profileCommunityPanel}>
+          <TouchableOpacity style={styles.backButton} onPress={() => setSelectedTopic(null)}>
+            <Ionicons name="chevron-back" size={16} color={palette.red} />
+            <Text style={styles.backButtonText}>Volver a temas</Text>
+          </TouchableOpacity>
+          <Text style={styles.cardEyebrow}>{selectedTopic.status} - {roleLabel(selectedTopic.minRole)} en adelante</Text>
+          <Text style={styles.cardTitle}>{selectedTopic.title}</Text>
+          <Text style={styles.cardText}>{selectedTopic.body}</Text>
+          <Text style={styles.cardText}>Por {selectedTopic.authorName} - {roleLabel(selectedTopic.authorRole)}</Text>
+          {canModerateTopic(selectedTopic) ? (
+            <View style={styles.inlineActions}>
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => startEditTopic(selectedTopic)}>
+                <Text style={styles.secondaryButtonText}>Editar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => closeTopic(selectedTopic)}>
+                <Text style={styles.secondaryButtonText}>{selectedTopic.status === 'cerrado' ? 'Reabrir' : 'Cerrar'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => deleteTopic(selectedTopic)}>
+                <Text style={styles.secondaryButtonText}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          <SectionTitle title="Respuestas" />
+          {comments.length === 0 ? <Text style={styles.cardText}>Todavia no hay respuestas.</Text> : null}
+          {comments.map((comment) => (
+            <View key={comment.id} style={styles.innerNewsCard}>
+              <Text style={styles.cardEyebrow}>{comment.authorName} - {roleLabel(comment.authorRole)}</Text>
+              <Text style={styles.feedMeta}>{new Date(comment.createdAt).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
+              <Text style={styles.cardText}>{comment.body}</Text>
+              {(comment.authorId === session?.id || canModerateTopic(selectedTopic)) ? (
+                <TouchableOpacity style={styles.actionPill} onPress={() => deleteComment(comment)}>
+                  <Ionicons name="trash-outline" size={16} color={palette.red} />
+                  <Text style={styles.actionPillText}>Eliminar</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ))}
+          {canCreate && selectedTopic.status === 'abierto' ? (
+            <View style={styles.inlineEditorPanel}>
+              <Text style={styles.inputLabel}>Comentario</Text>
+              <TextInput style={[styles.input, styles.textArea]} placeholder="Escribe una respuesta respetuosa" placeholderTextColor="#7FA4B5" value={commentDraft} onChangeText={setCommentDraft} multiline />
+              <TouchableOpacity style={styles.primaryButton} onPress={submitComment}>
+                <Text style={styles.primaryButtonText}>Publicar respuesta</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+      ) : (
+        <View style={styles.stack}>
+          {topics.length === 0 ? <Text style={styles.cardText}>Todavia no hay temas publicados en esta categoria.</Text> : null}
+          {topics.map((topic) => (
+            <TouchableOpacity key={topic.id} style={styles.innerNewsCard} activeOpacity={0.86} onPress={() => openTopic(topic)}>
+              <Text style={styles.cardEyebrow}>{topic.status} - {roleLabel(topic.minRole)} en adelante</Text>
+              <Text style={styles.cardTitle}>{topic.title}</Text>
+              <Text style={styles.cardText}>{topic.body}</Text>
+              <Text style={styles.expandHint}>{topic.replyCount} respuesta/s - abrir tema</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function ProfileScreen({
   session,
   onSessionChange,
@@ -1889,7 +2728,9 @@ function ProfileScreen({
   onTouchPointerEnabledChange,
   onAdminConfigChange,
   onTabsChanged,
-  onContentChanged
+  onContentChanged,
+  onNavigate,
+  initialPanel = 'vista'
 }: {
   session: Session | null;
   onSessionChange: (session: Session | null) => void;
@@ -1901,6 +2742,8 @@ function ProfileScreen({
   onAdminConfigChange: (config: AppAdminConfig) => void;
   onTabsChanged: () => Promise<void>;
   onContentChanged: () => Promise<void>;
+  onNavigate: (tab: TabKey) => void;
+  initialPanel?: ProfilePanel;
 }) {
   const [showCommunity, setShowCommunity] = useState(false);
   const [showCommunityManagement, setShowCommunityManagement] = useState(false);
@@ -1908,13 +2751,17 @@ function ProfileScreen({
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [userRequestText, setUserRequestText] = useState('');
   const [selectedSentRequestId, setSelectedSentRequestId] = useState('');
-  const [profilePanel, setProfilePanel] = useState<ProfilePanel>('vista');
+  const [profilePanel, setProfilePanel] = useState<ProfilePanel>(initialPanel);
   const [themeMode, setThemeMode] = useState<'normal' | 'dark'>('normal');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
+  const [authPasswordVisible, setAuthPasswordVisible] = useState(false);
+  const [authFocusedField, setAuthFocusedField] = useState('');
+  const [authErrors, setAuthErrors] = useState<Record<string, string>>({});
   const [authMessage, setAuthMessage] = useState('');
   const [registerFullName, setRegisterFullName] = useState('');
   const [registerContact, setRegisterContact] = useState('');
@@ -1947,6 +2794,9 @@ function ProfileScreen({
   const [adminUserRoleDropdownOpen, setAdminUserRoleDropdownOpen] = useState(false);
   const [adminUserStatus, setAdminUserStatus] = useState('pendiente');
   const [adminUserRole, setAdminUserRole] = useState<Role>('palestrista');
+  const [adminCreateEmail, setAdminCreateEmail] = useState('');
+  const [adminCreatePassword, setAdminCreatePassword] = useState('');
+  const [adminCreatePasswordVisible, setAdminCreatePasswordVisible] = useState(false);
   const [adminNewsTitle, setAdminNewsTitle] = useState('');
   const [adminNewsBody, setAdminNewsBody] = useState('');
   const [adminNewsCategory, setAdminNewsCategory] = useState('General');
@@ -1964,6 +2814,27 @@ function ProfileScreen({
   const [adminEventTitle, setAdminEventTitle] = useState('');
   const [adminEventBody, setAdminEventBody] = useState('');
   const [adminEventDate, setAdminEventDate] = useState('');
+  const [adminMotivadorPeriods, setAdminMotivadorPeriods] = useState<MotivadorPeriodRecord[]>([]);
+  const [pmEditingId, setPmEditingId] = useState<string | null>(null);
+  const [pmGender, setPmGender] = useState<'masculino' | 'femenino'>('masculino');
+  const [pmNumber, setPmNumber] = useState('');
+  const [pmProvince, setPmProvince] = useState(session?.role === 'administrador' ? '' : session?.province ?? '');
+  const [pmSelectedDates, setPmSelectedDates] = useState<string[]>([]);
+  const [pmCalendarOpen, setPmCalendarOpen] = useState(false);
+  const [pmCalendarMonth, setPmCalendarMonth] = useState(new Date());
+  const [pmRetreatHouse, setPmRetreatHouse] = useState('');
+  const [pmAddress, setPmAddress] = useState('');
+  const [pmOpeningTime, setPmOpeningTime] = useState('');
+  const [pmClosingTime, setPmClosingTime] = useState('');
+  const [pmDescription, setPmDescription] = useState('');
+  const [pmPlacePhotoUrl, setPmPlacePhotoUrl] = useState('');
+  const [pmFlyerUrl, setPmFlyerUrl] = useState('');
+  const [pmVisibleToLowerRoles, setPmVisibleToLowerRoles] = useState(false);
+  const [pmStatus, setPmStatus] = useState<'activo' | 'inactivo' | 'borrador' | 'archivado'>('borrador');
+  const [pmProvinceFilter, setPmProvinceFilter] = useState('');
+  const [pmGenderFilter, setPmGenderFilter] = useState<'todos' | 'masculino' | 'femenino'>('todos');
+  const [pmStatusFilter, setPmStatusFilter] = useState<'todos' | 'activo' | 'inactivo' | 'borrador'>('todos');
+  const [pmTimeFilter, setPmTimeFilter] = useState<'todos' | 'proximos' | 'pasados'>('todos');
   const [adminModule, setAdminModule] = useState<AdminModule>('resumen');
   const [adminConfigDraft, setAdminConfigDraft] = useState<AppAdminConfig>(adminConfig);
   const [adminCommunityProvince, setAdminCommunityProvince] = useState('');
@@ -1974,6 +2845,8 @@ function ProfileScreen({
   const [adminCommunityDay, setAdminCommunityDay] = useState('');
   const [adminCommunityTime, setAdminCommunityTime] = useState('');
   const [adminCommunityDescription, setAdminCommunityDescription] = useState('');
+  const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
+  const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
   const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; isVisible: boolean; visibleRoles: string[] | null }>>({});
   const [newTabLabel, setNewTabLabel] = useState('');
   const [newTabRoles, setNewTabRoles] = useState<string[]>(['sedimentador', 'coordinador_comunidad', 'animador_comunidad', 'vocal', 'coordinador_diocesano', 'asesor', 'vocal_nacional', 'coordinador_nacional', 'administrador']);
@@ -1995,8 +2868,31 @@ function ProfileScreen({
   const [communityPostBody, setCommunityPostBody] = useState('');
   const [communityPostDate, setCommunityPostDate] = useState('');
   const [communityPollOptions, setCommunityPollOptions] = useState('');
+  const [editingCommunityPublicationId, setEditingCommunityPublicationId] = useState<string | null>(null);
+  const [editingCommunityPublicationTitle, setEditingCommunityPublicationTitle] = useState('');
+  const [editingCommunityPublicationBody, setEditingCommunityPublicationBody] = useState('');
   const [myCommunityPublications, setMyCommunityPublications] = useState<CommunityPublication[]>([]);
+  const [mailboxMessages, setMailboxMessages] = useState<MailboxMessageRecord[]>([]);
+  const [mailboxResponses, setMailboxResponses] = useState<Record<string, string>>({});
+  const [mailboxFilter, setMailboxFilter] = useState<'todos' | 'enviados' | 'recibidos' | 'nuevo' | 'respondido' | 'cerrado'>('todos');
+  const [showMailboxComposer, setShowMailboxComposer] = useState(false);
+  const [mailboxDraft, setMailboxDraft] = useState('');
+  const [mailboxTargetMode, setMailboxTargetMode] = useState<MailboxTargetMode>('my_community');
+  const [mailboxTargetCommunityId, setMailboxTargetCommunityId] = useState('');
+  const [mailboxTargetProvince, setMailboxTargetProvince] = useState('');
+  const [mailboxTargetRole, setMailboxTargetRole] = useState<Role>('palestrista');
+  const [mailboxTargetUserId, setMailboxTargetUserId] = useState('');
+  const [mailboxRecipientSearch, setMailboxRecipientSearch] = useState('');
+  const [mailboxSelectedUserIds, setMailboxSelectedUserIds] = useState<string[]>([]);
+  const [mailboxUserDropdownOpen, setMailboxUserDropdownOpen] = useState(false);
+  const [mailboxProvinceDropdownOpen, setMailboxProvinceDropdownOpen] = useState(false);
+  const [mailboxRoleDropdownOpen, setMailboxRoleDropdownOpen] = useState(false);
   const [localPollVotes, setLocalPollVotes] = useState<Record<string, string>>({});
+  const [forumComments, setForumComments] = useState<Record<string, PublicationComment[]>>({});
+  const [forumCommentDrafts, setForumCommentDrafts] = useState<Record<string, string>>({});
+  const [forumReportDrafts, setForumReportDrafts] = useState<Record<string, string>>({});
+  const [expandedForumItem, setExpandedForumItem] = useState<string | null>(null);
+  const [selectedPublicProfile, setSelectedPublicProfile] = useState<PublicProfilePreview | null>(null);
   const [sentRequests, setSentRequests] = useState<AdminRequest[]>([]);
   const [requestSubtab, setRequestSubtab] = useState<'pendientes' | 'resueltas'>('pendientes');
   const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([
@@ -2021,6 +2917,12 @@ function ProfileScreen({
   const selectedEditProvince = registrationCommunities.find((item) => item.province === editProvince);
   const visibleRegistrationCommunities = useMemo(() => registrationCommunities.filter((item) => canAccessProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
   const manageableCommunities = useMemo(() => registrationCommunities.filter((item) => canManageProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
+  const motivadorProvinceOptions = useMemo(() => {
+    if (session?.role === 'administrador') {
+      return registrationCommunities.map((item) => item.province);
+    }
+    return session?.province ? [session.province] : [];
+  }, [registrationCommunities, session?.province, session?.role]);
   const selectedAdminProvince = manageableCommunities.find((item) => item.province === adminCommunityProvince);
   const selectedAdminCommunity = selectedAdminProvince?.locations.find((item) => (item.id ?? item.name) === adminCommunityId);
   const selectedAdminUser = adminUsers.find((item) => item.id === selectedAdminUserId);
@@ -2034,7 +2936,8 @@ function ProfileScreen({
   const tabLabel = (key: TabKey) => editableTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
   const profileNews = session ? communityNews.filter((item) => item.community === session.communityOfOrigin) : [];
   const roleInfo = session ? roleDefinitions.find((item) => item.role === session.role) : null;
-  const isCommunityLeader = Boolean(session && ['animador_comunidad', 'coordinador_comunidad'].includes(session.role));
+  const isCommunityLeader = isCommunityLeaderRole(session);
+  const canAdministrateCommunities = canCreateOrAdministrateCommunities(session);
   const canReviewLeadershipRequests = Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
   const selectableCommunityMembers = communityMembers.filter((member) => (
     member.email !== session?.email
@@ -2062,20 +2965,120 @@ function ProfileScreen({
   }, {});
   const userProvinceOptions = Object.keys(adminUsersByProvince).sort((a, b) => a.localeCompare(b));
   const visibleAdminUsers = selectedUsersProvince ? (adminUsersByProvince[selectedUsersProvince] ?? []) : [];
+  const activeNationalCoordinator = adminUsers.find((user) => user.role === 'coordinador_nacional' && user.status === 'aprobado');
+  const activeDiocesanCoordinator = selectedUsersProvince
+    ? adminUsersByProvince[selectedUsersProvince]?.find((user) => user.role === 'coordinador_diocesano' && user.status === 'aprobado')
+    : null;
+  const filteredMotivadorPeriods = adminMotivadorPeriods.filter((period) => {
+    if (pmProvinceFilter && period.province !== pmProvinceFilter) {
+      return false;
+    }
+    if (pmGenderFilter !== 'todos' && period.gender !== pmGenderFilter) {
+      return false;
+    }
+    if (pmStatusFilter !== 'todos' && period.status !== pmStatusFilter) {
+      return false;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endsAt = new Date(`${period.ends_on}T00:00:00`);
+    if (pmTimeFilter === 'proximos' && endsAt < today) {
+      return false;
+    }
+    if (pmTimeFilter === 'pasados' && endsAt >= today) {
+      return false;
+    }
+    return true;
+  });
+  const visibleMailboxMessages = mailboxMessages.filter((message) => {
+    if (mailboxFilter === 'todos') {
+      return true;
+    }
+    if (mailboxFilter === 'enviados') {
+      return message.sender_id === session?.id;
+    }
+    if (mailboxFilter === 'recibidos') {
+      return message.can_respond;
+    }
+    return message.status === mailboxFilter;
+  });
+  const mailboxCommunityOptions = registrationCommunities
+    .flatMap((province) => province.locations.map((community) => ({ ...community, province: province.province })))
+    .filter((community) => {
+      if (!session) {
+        return false;
+      }
+      if (session.role === 'administrador' || ['vocal_nacional', 'coordinador_nacional'].includes(session.role)) {
+        return true;
+      }
+      if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
+        return community.province === session.province;
+      }
+      return community.name === session.communityOfOrigin;
+    });
+  const mailboxProvinceOptions = Array.from(new Set(registrationCommunities.map((item) => item.province))).sort((a, b) => a.localeCompare(b));
+  const mailboxUserOptions = adminUsers.filter((user) => user.role !== 'administrador');
+  const mailboxRecipientQuery = mailboxRecipientSearch.trim().toLowerCase();
+  const filteredMailboxUserOptions = mailboxUserOptions.filter((user) => {
+    if (!mailboxRecipientQuery) {
+      return true;
+    }
+    return [user.full_name, user.email, user.province, user.community_name, user.role]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(mailboxRecipientQuery));
+  });
+  const selectedMailboxUsers = mailboxUserOptions.filter((user) => mailboxSelectedUserIds.includes(user.id));
+  const estimatedMailboxRecipients = (() => {
+    if (mailboxTargetMode === 'user') {
+      return mailboxSelectedUserIds.length;
+    }
+    if (mailboxTargetMode === 'all') {
+      return mailboxUserOptions.length;
+    }
+    if (mailboxTargetMode === 'role') {
+      return mailboxUserOptions.filter((user) => user.role === mailboxTargetRole).length;
+    }
+    if (mailboxTargetMode === 'province') {
+      const province = mailboxTargetProvince || session?.province;
+      return mailboxUserOptions.filter((user) => user.province === province).length;
+    }
+    if (mailboxTargetMode === 'role_province') {
+      const province = mailboxTargetProvince || session?.province;
+      return mailboxUserOptions.filter((user) => user.role === mailboxTargetRole && user.province === province).length;
+    }
+    if (mailboxTargetMode === 'diocesan_leadership') {
+      const province = mailboxTargetProvince || '';
+      return mailboxUserOptions.filter((user) => ['vocal', 'coordinador_diocesano'].includes(user.role) && (!province || user.province === province)).length;
+    }
+    if (mailboxTargetMode === 'province_communities') {
+      return mailboxUserOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.province === session?.province).length;
+    }
+    if (['community', 'my_community'].includes(mailboxTargetMode)) {
+      const communityName = mailboxCommunityOptions.find((community) => community.id === (mailboxTargetCommunityId || mailboxCommunityOptions[0]?.id))?.name ?? session?.communityOfOrigin;
+      return mailboxUserOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.community_name === communityName).length;
+    }
+    return 0;
+  })();
   const enabledAdminModules = adminModuleCatalog.filter((item) => {
+    if (item.key === 'usuarios') {
+      return session?.role === 'administrador';
+    }
     if (hasPermission(session, 'gestionar_sistema')) {
       return true;
     }
-    if (['resumen', 'usuarios', 'solicitudes', 'comunidades'].includes(item.key)) {
+    if (['resumen', 'solicitudes', 'comunidades'].includes(item.key)) {
       return true;
     }
-    if (canManagePublishedContent(session) && ['home', 'noticias', 'descargas', 'eventos', 'periodo_motivador'].includes(item.key)) {
+    if (item.key === 'periodo_motivador') {
+      return canManageMotivadorPanel(session);
+    }
+    if (canManagePublishedContent(session) && ['home', 'noticias'].includes(item.key)) {
       return true;
     }
-    if (hasPermission(session, 'gestionar_comunidad') && item.key === 'comunidades') {
+    if (canAdministrateCommunities && item.key === 'comunidades') {
       return true;
     }
-    if (canEditStaticInstitutionalPage(session) && ['historia_admin', 'contacto_admin', 'contenido_general'].includes(item.key)) {
+    if (canEditStaticInstitutionalPage(session) && ['contacto_admin'].includes(item.key)) {
       return true;
     }
     return !item.systemOnly;
@@ -2084,7 +3087,7 @@ function ProfileScreen({
     { label: 'Usuarios', value: String(adminUsers.length || realPendingProfiles.length), icon: 'people-outline' as keyof typeof Ionicons.glyphMap },
     { label: 'Solicitudes', value: String(pendingAdminRequests.length), icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap },
     { label: 'Comunidades', value: String(manageableCommunities.reduce((total, item) => total + item.locations.length, 0)), icon: 'location-outline' as keyof typeof Ionicons.glyphMap },
-    { label: 'Modulos', value: String(editableTabs.filter((tab) => tab.visible).length), icon: 'apps-outline' as keyof typeof Ionicons.glyphMap }
+    { label: 'Herramientas', value: String(enabledAdminModules.length), icon: 'apps-outline' as keyof typeof Ionicons.glyphMap }
   ];
 
   useEffect(() => {
@@ -2097,6 +3100,26 @@ function ProfileScreen({
   useEffect(() => {
     setAdminConfigDraft(adminConfig);
   }, [adminConfig]);
+
+  useEffect(() => {
+    if (session?.role !== 'administrador') {
+      setPmProvince(session?.province ?? '');
+      setPmProvinceFilter('');
+    }
+  }, [session?.province, session?.role]);
+
+  useEffect(() => {
+    if (isMissingProfileScope(session)) {
+      setProfilePanel('editar');
+      setAuthMessage('Completa provincia y comunidad para continuar.');
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (!isMissingProfileScope(session)) {
+      setProfilePanel(initialPanel);
+    }
+  }, [initialPanel]);
 
   function updateAdminConfigSection<K extends keyof AppAdminConfig>(section: K, patch: Partial<AppAdminConfig[K]>) {
     setAdminConfigDraft((current) => ({
@@ -2128,7 +3151,7 @@ function ProfileScreen({
       return;
     }
     onAdminConfigChange(adminConfigDraft);
-    setAuthMessage(`${scope} guardado en Supabase.`);
+    setAuthMessage(changeDone(`${scope} guardado en Supabase.`));
   }
 
   async function saveInstagramConfigDraft() {
@@ -2152,7 +3175,117 @@ function ProfileScreen({
     }
     setAdminConfigDraft(nextConfig);
     onAdminConfigChange(nextConfig);
-    setAuthMessage('Instagram guardado en Supabase.');
+    setAuthMessage(changeDone('Instagram guardado en Supabase.'));
+  }
+
+  function formatPmDate(date: string) {
+    return new Date(`${date}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function isoDate(year: number, month: number, day: number) {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  function selectedDatesSummary(dates: string[]) {
+    if (dates.length === 0) {
+      return 'Sin fechas seleccionadas';
+    }
+    return [...dates].sort().map(formatPmDate).join(', ');
+  }
+
+  function togglePmDate(date: string) {
+    setPmSelectedDates((current) => current.includes(date)
+      ? current.filter((item) => item !== date)
+      : [...current, date].sort());
+  }
+
+  async function loadMotivadorAdminPeriods() {
+    if (!canManageMotivadorPanel(session)) {
+      setAdminMotivadorPeriods([]);
+      return;
+    }
+    const items = await fetchAdminMotivadorPeriods();
+    setAdminMotivadorPeriods(items);
+  }
+
+  function resetMotivadorForm() {
+    setPmEditingId(null);
+    setPmGender('masculino');
+    setPmNumber('');
+    setPmProvince(session?.role === 'administrador' ? (motivadorProvinceOptions[0] ?? '') : session?.province ?? '');
+    setPmSelectedDates([]);
+    setPmRetreatHouse('');
+    setPmAddress('');
+    setPmOpeningTime('');
+    setPmClosingTime('');
+    setPmDescription('');
+    setPmPlacePhotoUrl('');
+    setPmFlyerUrl('');
+    setPmVisibleToLowerRoles(false);
+    setPmStatus('borrador');
+    setPmCalendarOpen(false);
+  }
+
+  function editMotivadorPeriod(period: MotivadorPeriodRecord) {
+    setPmEditingId(period.id);
+    setPmGender(period.gender);
+    setPmNumber(String(period.pm_number));
+    setPmProvince(period.province ?? session?.province ?? '');
+    setPmSelectedDates((period.selected_dates?.length ? period.selected_dates : [period.starts_on, period.ends_on]).map((date) => String(date).slice(0, 10)).filter(Boolean));
+    setPmRetreatHouse(period.retreat_house ?? '');
+    setPmAddress(period.address ?? '');
+    setPmOpeningTime(period.opening_time ?? '');
+    setPmClosingTime(period.closing_time ?? '');
+    setPmDescription(period.description ?? '');
+    setPmPlacePhotoUrl(period.place_photo_url ?? '');
+    setPmFlyerUrl(period.flyer_url ?? '');
+    setPmVisibleToLowerRoles(Boolean(period.visible_to_lower_roles));
+    setPmStatus(period.status === 'archivado' ? 'inactivo' : period.status);
+    setPmCalendarOpen(true);
+  }
+
+  async function submitMotivadorPeriod() {
+    if (!canManageMotivadorPanel(session)) {
+      setAuthMessage('No tenes permisos para gestionar Periodos Motivadores.');
+      return;
+    }
+    if (!pmProvince || !pmNumber.trim() || pmSelectedDates.length === 0 || !pmRetreatHouse.trim() || !pmAddress.trim() || !pmOpeningTime.trim() || !pmClosingTime.trim()) {
+      setAuthMessage('Completa tipo, numero, provincia, fechas, casa, direccion y horarios.');
+      return;
+    }
+    const { error } = await saveMotivadorPeriod({
+      id: pmEditingId,
+      province: pmProvince,
+      gender: pmGender,
+      pmNumber: Number.parseInt(pmNumber, 10),
+      selectedDates: pmSelectedDates,
+      retreatHouse: pmRetreatHouse.trim(),
+      address: pmAddress.trim(),
+      openingTime: pmOpeningTime.trim(),
+      closingTime: pmClosingTime.trim(),
+      description: pmDescription.trim(),
+      placePhotoUrl: pmPlacePhotoUrl.trim(),
+      flyerUrl: pmFlyerUrl.trim(),
+      visibleToLowerRoles: pmVisibleToLowerRoles,
+      status: pmStatus
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Periodo Motivador guardado.'));
+    resetMotivadorForm();
+    await loadMotivadorAdminPeriods();
+  }
+
+  async function updateMotivadorStatus(id: string, status: 'activo' | 'inactivo' | 'borrador' | 'archivado') {
+    const { error } = await setMotivadorPeriodStatus(id, status);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone(status === 'archivado' ? 'Periodo Motivador archivado.' : `Estado actualizado a ${status}.`));
+    await loadMotivadorAdminPeriods();
   }
 
   useEffect(() => {
@@ -2178,6 +3311,15 @@ function ProfileScreen({
   }, []);
 
   useEffect(() => {
+    if (adminModule === 'periodo_motivador') {
+      loadMotivadorAdminPeriods();
+      if (!pmProvince && motivadorProvinceOptions.length > 0) {
+        setPmProvince(motivadorProvinceOptions[0]);
+      }
+    }
+  }, [adminModule, session?.role, session?.province, motivadorProvinceOptions.length]);
+
+  useEffect(() => {
     if (!selectedAdminCommunity) {
       setAdminCommunityName('');
       setAdminCommunityAddress('');
@@ -2194,6 +3336,8 @@ function ProfileScreen({
     setAdminCommunityDay(selectedAdminCommunity.meetingDay);
     setAdminCommunityTime(selectedAdminCommunity.meetingTime);
     setAdminCommunityDescription(selectedAdminCommunity.description);
+    setAdminCommunityGroupType(selectedAdminCommunity.group ?? 'jovenes');
+    setAdminCommunityIsActive(true);
   }, [selectedAdminCommunity]);
 
   useEffect(() => {
@@ -2250,12 +3394,167 @@ function ProfileScreen({
     }
   }
 
+  async function refreshCommunityForum() {
+    if (!session) {
+      setMyCommunityPublications([]);
+      setForumComments({});
+      return;
+    }
+    const items = await fetchCommunityPublications(session);
+    const scopedItems = items.filter((item) => item.communityName === session.communityOfOrigin);
+    setMyCommunityPublications(scopedItems);
+    const ids = scopedItems.map((item) => item.id).filter(Boolean) as string[];
+    setForumComments(await fetchPublicationComments(ids));
+  }
+
+  async function refreshMailbox() {
+    if (!session || session.role === 'invitado') {
+      setMailboxMessages([]);
+      return;
+    }
+    setMailboxMessages(await fetchMailboxMessages());
+  }
+
+  function defaultMailboxTargetMode(): MailboxTargetMode {
+    if (!session) {
+      return 'my_community';
+    }
+    if (session.role === 'administrador') {
+      return 'user';
+    }
+    if (['vocal_nacional', 'coordinador_nacional'].includes(session.role)) {
+      return 'diocesan_leadership';
+    }
+    if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
+      return 'community';
+    }
+    return 'my_community';
+  }
+
+  async function confirmMailboxSend(total: number) {
+    if (total <= 10) {
+      return true;
+    }
+    const message = `Vas a enviar este mensaje a ${total} destinatarios. Confirmas el envio?`;
+    if (Platform.OS === 'web') {
+      return typeof window === 'undefined' ? true : window.confirm(message);
+    }
+    return new Promise<boolean>((resolve) => {
+      Alert.alert('Confirmar envio', message, [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Enviar', onPress: () => resolve(true) }
+      ]);
+    });
+  }
+
+  function toggleMailboxUser(userId: string) {
+    setMailboxSelectedUserIds((current) => current.includes(userId)
+      ? current.filter((id) => id !== userId)
+      : [...current, userId]);
+  }
+
+  async function submitNewMailboxMessage() {
+    if (!session || session.role === 'invitado') {
+      setAuthMessage('Inicia sesion para enviar mensajes.');
+      return;
+    }
+    if (!mailboxDraft.trim()) {
+      setAuthMessage('Escribe un mensaje antes de enviar.');
+      return;
+    }
+
+    const mode = mailboxTargetMode || defaultMailboxTargetMode();
+    const fallbackCommunity = mailboxCommunityOptions[0];
+    const communityId = mode === 'my_community' ? fallbackCommunity?.id : mailboxTargetCommunityId || fallbackCommunity?.id;
+    const province = mailboxTargetProvince || session.province;
+
+    if (['my_community', 'community'].includes(mode) && !communityId) {
+      setAuthMessage('No hay responsables asignados para tu comunidad actualmente.');
+      return;
+    }
+    if (mode === 'user' && mailboxSelectedUserIds.length === 0) {
+      setAuthMessage('Selecciona al menos un usuario destinatario.');
+      return;
+    }
+    if (estimatedMailboxRecipients === 0) {
+      setAuthMessage('No hay destinatarios para el criterio seleccionado.');
+      return;
+    }
+
+    const confirmed = await confirmMailboxSend(estimatedMailboxRecipients);
+    if (!confirmed) {
+      return;
+    }
+
+    const errors: string[] = [];
+    if (mode === 'user') {
+      for (const userId of mailboxSelectedUserIds) {
+        const { error } = await createMailboxMessage({
+          targetMode: mode,
+          message: mailboxDraft.trim(),
+          userId
+        });
+        if (error) {
+          errors.push(error.message);
+        }
+      }
+    } else {
+      const { error } = await createMailboxMessage({
+        targetMode: mode,
+        message: mailboxDraft.trim(),
+        communityId,
+        province,
+        role: mailboxTargetRole,
+        userId: mailboxTargetUserId || null
+      });
+      if (error) {
+        errors.push(error.message);
+      }
+    }
+
+    if (errors.length > 0) {
+      setAuthMessage(errors[0]);
+      return;
+    }
+
+    setMailboxDraft('');
+    setMailboxRecipientSearch('');
+    setMailboxSelectedUserIds([]);
+    setShowMailboxComposer(false);
+    setAuthMessage(changeDone('Mensaje enviado.'));
+    await refreshMailbox();
+  }
+
+  async function submitMailboxResponse(messageId: string) {
+    const response = (mailboxResponses[messageId] ?? '').trim();
+    if (!response) {
+      setAuthMessage('Escribi una respuesta antes de enviarla.');
+      return;
+    }
+    const { error } = await respondMailboxMessage(messageId, response);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setMailboxResponses((current) => ({ ...current, [messageId]: '' }));
+    setAuthMessage(changeDone('Respuesta enviada.'));
+    await refreshMailbox();
+  }
+
+  async function updateMailboxStatus(messageId: string, status: MailboxMessageRecord['status']) {
+    const { error } = await setMailboxMessageStatus(messageId, status);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone(`Mensaje marcado como ${status}.`));
+    await refreshMailbox();
+  }
+
   useEffect(() => {
     if (session) {
       loadMyRequests();
-      fetchCommunityPublications(session).then((items) => {
-        setMyCommunityPublications(items.filter((item) => item.communityName === session.communityOfOrigin));
-      });
+      refreshCommunityForum();
       if (['animador_comunidad', 'coordinador_comunidad'].includes(session.role)) {
         fetchMyCommunityMembers().then(setCommunityMembers);
       }
@@ -2268,6 +3567,19 @@ function ProfileScreen({
     }
   }, [session?.email, session?.role, session?.communityOfOrigin]);
 
+  useEffect(() => {
+    if (profilePanel === 'comunidad') {
+      refreshCommunityForum();
+    }
+    if (profilePanel === 'buzon') {
+      setMailboxTargetMode(defaultMailboxTargetMode());
+      refreshMailbox();
+      if (session?.role === 'administrador' && adminUsers.length === 0) {
+        loadAdminUsers();
+      }
+    }
+  }, [profilePanel, session?.email, session?.communityOfOrigin, adminUsers.length]);
+
   async function loadRealProfile(userId: string, fallbackEmail: string) {
     const result = await getMyProfileSession(fallbackEmail);
     if (result.error) {
@@ -2279,11 +3591,67 @@ function ProfileScreen({
     }
   }
 
+  function validateAuthForm() {
+    const nextErrors: Record<string, string> = {};
+    if (!isValidEmail(authEmail)) {
+      nextErrors.email = 'Ingresa un correo valido';
+    }
+    if (!authPassword) {
+      nextErrors.password = 'La contrasena es obligatoria';
+    }
+    if (authMode === 'register') {
+      if (!registerFullName.trim()) {
+        nextErrors.fullName = 'Ingresa tu nombre completo';
+      }
+      if (!registerProvince) {
+        nextErrors.province = 'Selecciona tu provincia';
+      }
+      if (!registerCommunity) {
+        nextErrors.community = 'Selecciona tu comunidad';
+      }
+      if (authPassword.length < 6) {
+        nextErrors.password = 'La contrasena debe tener al menos 6 caracteres';
+      }
+      if (authPasswordConfirm !== authPassword) {
+        nextErrors.confirm = 'Las contrasenas no coinciden';
+      }
+    }
+    setAuthErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+
+  function confirmProfileChangeIfNeeded() {
+    if (!session) {
+      return Promise.resolve(false);
+    }
+    const changesProvince = editProvince && editProvince !== session.province;
+    const changesCommunity = editCommunity && editCommunity !== session.communityOfOrigin;
+    const canDowngrade = (changesProvince && provinceDowngradesRole(session.role)) || (changesCommunity && communityDowngradesRole(session.role));
+    if (!canDowngrade) {
+      return Promise.resolve(true);
+    }
+
+    const message = 'Al cambiar tu provincia o comunidad, tu rango actual puede volver a Sedimentador hasta nueva aprobacion.';
+    if (Platform.OS === 'web') {
+      return Promise.resolve(typeof window === 'undefined' ? true : window.confirm(message));
+    }
+
+    return new Promise<boolean>((resolve) => {
+      Alert.alert('Confirmar cambio', message, [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Continuar', style: 'destructive', onPress: () => resolve(true) }
+      ]);
+    });
+  }
+
   async function signInReal() {
+    if (!validateAuthForm()) {
+      return;
+    }
     setAuthMessage('Ingresando...');
     const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
     if (error || !data.user) {
-      setAuthMessage(error?.message ?? 'No se pudo iniciar sesion. Si registraste el email hoy, revisa que este confirmado o habilitado por SQL.');
+      setAuthMessage(safeAuthError(error?.message));
       return;
     }
     await loadRealProfile(data.user.id, authEmail.trim());
@@ -2291,16 +3659,7 @@ function ProfileScreen({
   }
 
   async function registerReal() {
-    if (authMode === 'register' && !registerFullName.trim()) {
-      setAuthMessage('Nombre y apellido es obligatorio para registrarte.');
-      return;
-    }
-    if (authMode === 'register' && !authEmail.trim()) {
-      setAuthMessage('El mail es obligatorio para registrarte.');
-      return;
-    }
-    if (authMode === 'register' && (!registerProvince || !registerCommunity)) {
-      setAuthMessage('Elegir provincia y comunidad es obligatorio para registrarte.');
+    if (!validateAuthForm()) {
       return;
     }
 
@@ -2318,7 +3677,7 @@ function ProfileScreen({
       }
     });
     if (error || !data.user) {
-      setAuthMessage(error?.message ?? 'No se pudo registrar.');
+      setAuthMessage(safeAuthError(error?.message));
       return;
     }
 
@@ -2358,6 +3717,12 @@ function ProfileScreen({
       return;
     }
 
+    const confirmed = await confirmProfileChangeIfNeeded();
+    if (!confirmed) {
+      return;
+    }
+    const mayDowngrade = (editProvince !== session.province && provinceDowngradesRole(session.role)) || (editCommunity !== session.communityOfOrigin && communityDowngradesRole(session.role));
+
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
       setAuthMessage('Perfil demo actualizado visualmente. Inicia sesion real para guardar en Supabase.');
@@ -2391,7 +3756,9 @@ function ProfileScreen({
       communityOfOrigin: editCommunity || session.communityOfOrigin
     });
     await loadRealProfile(authData.user.id, authData.user.email ?? session.email ?? session.fullName);
-    setAuthMessage('Perfil guardado.');
+    setAuthMessage(mayDowngrade
+      ? 'Tu provincia/comunidad fue actualizada. Tu rango fue ajustado a Sedimentador según las reglas del movimiento.'
+      : changeDone('Perfil guardado.'));
   }
 
   async function uploadProfilePhoto() {
@@ -2450,7 +3817,7 @@ function ProfileScreen({
       }
 
       onSessionChange({ ...session, avatarUrl });
-      setAuthMessage('Foto de perfil actualizada.');
+      setAuthMessage(changeDone('Foto de perfil actualizada.'));
     } catch (error) {
       setAuthMessage(error instanceof Error ? error.message : 'No pude subir la foto.');
     }
@@ -2462,15 +3829,49 @@ function ProfileScreen({
   }
 
   async function loadAdminUsers() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede acceder a usuarios.');
+      return;
+    }
     setAuthMessage('Cargando usuarios...');
     const items = await fetchAdminUsers();
     setAdminUsers(items);
+    if (!selectedUsersProvince && items.length > 0) {
+      const firstProvince = items.find((item) => item.province)?.province ?? 'Sin provincia';
+      setSelectedUsersProvince(firstProvince);
+    }
     setAuthMessage(items.length > 0 ? 'Usuarios cargados.' : 'No se encontraron usuarios o falta ejecutar el SQL de administracion.');
+  }
+
+  async function createBasicAdminUser() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede crear usuarios.');
+      return;
+    }
+    if (!isValidEmail(adminCreateEmail)) {
+      setAuthMessage('Ingresa un correo valido.');
+      return;
+    }
+    if (adminCreatePassword.length < 6) {
+      setAuthMessage('La contrasena debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    setAuthMessage('Creando usuario...');
+    const { error } = await createAdminBasicUser(adminCreateEmail.trim(), adminCreatePassword);
+    if (error) {
+      setAuthMessage(safeAuthError(error.message));
+      return;
+    }
+    setAdminCreateEmail('');
+    setAdminCreatePassword('');
+    await loadAdminUsers();
+    setAuthMessage(changeDone('Usuario creado y habilitado. Debera completar provincia y comunidad al ingresar.'));
   }
 
   async function approvePendingProfile(id: string, role: Role) {
     const { error } = await approveProfile(id, role);
-    setAuthMessage(error ? error.message : 'Usuario aprobado.');
+    setAuthMessage(error ? error.message : changeDone('Usuario aprobado.'));
     await loadPendingProfiles();
   }
 
@@ -2479,11 +3880,19 @@ function ProfileScreen({
       setAuthMessage('Elegir un usuario para editar.');
       return;
     }
+    if (!canEditAdminUser(session, selectedAdminUser)) {
+      setAuthMessage('No podes editar administradores, usuarios superiores o usuarios fuera de tu alcance.');
+      return;
+    }
+    if (adminUserRole === 'administrador') {
+      setAuthMessage('El rol Administrador no puede asignarse desde la app.');
+      return;
+    }
     if (!canAccessProvince(session, adminUserProvince)) {
       setAuthMessage('No podes editar usuarios de otra provincia.');
       return;
     }
-    if (selectedAdminUser.role !== adminUserRole && !canApproveRole(session, adminUserRole)) {
+    if (!canApproveRole(session, adminUserRole)) {
       setAuthMessage(`Tu rango no puede asignar el rol ${roleLabel(adminUserRole)}.`);
       return;
     }
@@ -2501,12 +3910,12 @@ function ProfileScreen({
       role: adminUserRole
     });
     if (error) {
-      setAuthMessage(error.message);
+      setAuthMessage(error.message || 'No se pudo guardar el usuario. Revisa permisos y datos.');
       return;
     }
     await loadAdminUsers();
     setSelectedAdminUserId('');
-    setAuthMessage('Usuario actualizado.');
+    setAuthMessage('Cambios realizados');
   }
 
   async function confirmSelectedUserEmail() {
@@ -2521,7 +3930,7 @@ function ProfileScreen({
       return;
     }
     await loadAdminUsers();
-    setAuthMessage('Email confirmado desde administracion.');
+    setAuthMessage('Cambios realizados');
   }
 
   async function adminCreateNews() {
@@ -2532,7 +3941,7 @@ function ProfileScreen({
 
     setAuthMessage('Publicando noticia...');
     const { error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true);
-    setAuthMessage(error ? error.message : 'Noticia creada.');
+    setAuthMessage(error ? error.message : changeDone('Noticia creada.'));
     if (!error) {
       setAdminNewsTitle('');
       setAdminNewsBody('');
@@ -2574,7 +3983,7 @@ function ProfileScreen({
     setAdminNewsDraft(false);
     setAdminNewsFeatured(false);
     await loadNewsDrafts();
-    setAuthMessage(status === 'borrador' ? 'Borrador guardado.' : 'Borrador actualizado.');
+    setAuthMessage(changeDone(status === 'borrador' ? 'Borrador guardado.' : 'Borrador actualizado.'));
   }
 
   async function loadAdminMaterials() {
@@ -2609,7 +4018,7 @@ function ProfileScreen({
     setMaterialFileUrl('');
     setMaterialPermission('');
     await loadAdminMaterials();
-    setAuthMessage('Material guardado y visible segun permisos.');
+    setAuthMessage(changeDone('Material guardado y visible segun permisos.'));
   }
 
   async function adminArchiveMaterial(id: string) {
@@ -2619,7 +4028,7 @@ function ProfileScreen({
       return;
     }
     await loadAdminMaterials();
-    setAuthMessage('Material archivado.');
+    setAuthMessage(changeDone('Material archivado.'));
   }
 
   async function adminCreateEvent() {
@@ -2634,7 +4043,7 @@ function ProfileScreen({
 
     setAuthMessage('Publicando evento...');
     const { error } = await createEvent(adminEventTitle.trim(), adminEventBody.trim(), adminEventDate.trim(), true);
-    setAuthMessage(error ? error.message : 'Evento creado.');
+    setAuthMessage(error ? error.message : changeDone('Evento creado.'));
     if (!error) {
       setAdminEventTitle('');
       setAdminEventBody('');
@@ -2651,7 +4060,7 @@ function ProfileScreen({
     const tab = editableTabs.find((item) => item.key === key);
     const draft = editingTabs[key] ?? { label: fallbackLabel, isVisible: true, visibleRoles: tab?.visibleRoles ?? null };
     const { error } = await updateAppTab(key, draft.label || fallbackLabel, draft.isVisible, draft.visibleRoles);
-    setAuthMessage(error ? error.message : 'Pestana actualizada.');
+    setAuthMessage(error ? error.message : changeDone('Pestana actualizada.'));
     await onTabsChanged();
   }
 
@@ -2677,7 +4086,7 @@ function ProfileScreen({
     setNewTabLabel('');
     await onTabsChanged();
     await onContentChanged();
-    setAuthMessage('Pagina creada con visibilidad por rol.');
+    setAuthMessage(changeDone('Pagina creada con visibilidad por rol.'));
   }
 
   async function adminMoveTab(key: string, direction: -1 | 1) {
@@ -2711,7 +4120,7 @@ function ProfileScreen({
       }
     }
     await onTabsChanged();
-    setAuthMessage('Orden de accesos actualizado.');
+    setAuthMessage(changeDone('Orden de accesos actualizado.'));
   }
 
   function updateTabRole(key: string, role: Role, checked: boolean) {
@@ -2737,7 +4146,7 @@ function ProfileScreen({
       .map((block) => ({ ...block, value: block.value.trim() }))
       .filter((block) => block.value.length > 0);
     const { error } = await updateAppContent(selectedContentTab, contentTitle.trim(), contentBody.trim(), normalizedBlocks);
-    setAuthMessage(error ? error.message : 'Contenido actualizado.');
+    setAuthMessage(error ? error.message : changeDone('Contenido actualizado.'));
     if (!error) {
       await onContentChanged();
     }
@@ -2770,11 +4179,84 @@ function ProfileScreen({
     const items = await fetchCommunities();
     setRegistrationCommunities(items);
     setAdminCommunityId('');
-    setAuthMessage('Comunidad actualizada.');
+    setAuthMessage(changeDone('Comunidad actualizada.'));
     if (session?.communityOfOrigin === selectedAdminCommunity.name) {
       onSessionChange({ ...session, communityOfOrigin: adminCommunityName || selectedAdminCommunity.name });
     }
     await onContentChanged();
+  }
+
+  async function adminCreateCommunity() {
+    if (!canAdministrateCommunities) {
+      setAuthMessage('Tu rango no puede crear comunidades.');
+      return;
+    }
+    if (!adminCommunityProvince || !adminCommunityName.trim()) {
+      setAuthMessage('Nombre y provincia son obligatorios.');
+      return;
+    }
+    if (!canManageProvince(session, adminCommunityProvince) && !canSeeAllProvinces(session)) {
+      setAuthMessage('Tu rango solo puede crear comunidades dentro de su jurisdiccion.');
+      return;
+    }
+
+    setAuthMessage('Creando comunidad...');
+    const { error } = await createCommunity({
+      province: adminCommunityProvince,
+      name: adminCommunityName.trim(),
+      groupType: adminCommunityGroupType,
+      address: adminCommunityAddress.trim(),
+      phone: adminCommunityPhone.trim(),
+      meetingDay: adminCommunityDay.trim(),
+      meetingTime: adminCommunityTime.trim(),
+      description: adminCommunityDescription.trim(),
+      isActive: adminCommunityIsActive
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    const items = await fetchCommunities();
+    setRegistrationCommunities(items);
+    setAdminCommunityName('');
+    setAdminCommunityAddress('');
+    setAdminCommunityPhone('');
+    setAdminCommunityDay('');
+    setAdminCommunityTime('');
+    setAdminCommunityDescription('');
+    setAuthMessage(changeDone('Comunidad creada.'));
+    await onContentChanged();
+  }
+
+  async function adminToggleCommunityStatus(id: string, isActive: boolean) {
+    const { error } = await setCommunityStatus(id, isActive);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setRegistrationCommunities(await fetchCommunities());
+    setAuthMessage(changeDone(isActive ? 'Comunidad habilitada.' : 'Comunidad deshabilitada.'));
+  }
+
+  async function adminArchiveCommunity(id: string) {
+    const message = '¿Seguro que deseas eliminar esta comunidad? Esta acción puede afectar usuarios, avisos y publicaciones vinculadas.';
+    const confirmed = Platform.OS === 'web' ? (typeof window === 'undefined' ? true : window.confirm(message)) : await new Promise<boolean>((resolve) => {
+      Alert.alert('Eliminar comunidad', message, [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+      ]);
+    });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await archiveCommunity(id);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setRegistrationCommunities(await fetchCommunities());
+    setAdminCommunityId('');
+    setAuthMessage(changeDone('Comunidad eliminada.'));
   }
 
   function addContentBlock(type: ContentEditorBlock['type']) {
@@ -2816,7 +4298,7 @@ function ProfileScreen({
     if (!error) {
       await loadAdminRequests();
       setRequestSubtab('resueltas');
-      setAuthMessage(assignRole ? `Solicitud aprobada y rol ${roleLabel(assignRole)} asignado.` : `Solicitud ${status}. El usuario vera la resolucion en su perfil.`);
+      setAuthMessage(changeDone(assignRole ? `Solicitud aprobada y rol ${roleLabel(assignRole)} asignado.` : `Solicitud ${status}. El usuario vera la resolucion en su perfil.`));
       setAdminRequestMessage('');
       return;
     }
@@ -2827,8 +4309,19 @@ function ProfileScreen({
         : request
     )));
     setRequestSubtab('resueltas');
-    setAuthMessage(`Solicitud ${status}. El usuario vera la resolucion en su perfil.`);
+    setAuthMessage(changeDone(`Solicitud ${status}. El usuario vera la resolucion en su perfil.`));
     setAdminRequestMessage('');
+  }
+
+  async function acceptDiocesanRequest(id: string) {
+    const { error } = await acceptDiocesanCoordinatorRequest(id);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadMyRequests();
+    await refreshRealProfile();
+    setAuthMessage(changeDone('Aceptaste el nuevo rango de coordinacion.'));
   }
 
   function submitUserRequest(title: string) {
@@ -2864,7 +4357,7 @@ function ProfileScreen({
     ]);
     setSelectedRequest(null);
     setUserRequestText('');
-    setAuthMessage('Solicitud enviada al panel del administrador.');
+    setAuthMessage(changeDone('Solicitud enviada al panel del administrador.'));
   }
 
   async function submitLeadershipChangeRequest() {
@@ -2895,7 +4388,7 @@ function ProfileScreen({
     setSelectedRequest(null);
     setUserRequestText('');
     setSuccessorUserId('');
-    setAuthMessage('Solicitud de cambio de dirigencia enviada al Vocal Diocesano.');
+    setAuthMessage(changeDone('Solicitud de cambio de dirigencia enviada al Vocal Diocesano.'));
   }
 
   async function saveAccountSettings() {
@@ -2919,15 +4412,15 @@ function ProfileScreen({
     setNewEmail('');
     setNewPassword('');
     await refreshRealProfile();
-    setAuthMessage('Ajustes de cuenta actualizados.');
+    setAuthMessage(changeDone('Ajustes de cuenta actualizados.'));
   }
 
   async function publishCommunityPost() {
     if (!session || !isCommunityLeader) {
       return;
     }
-    if (!communityPostTitle.trim() || !communityPostBody.trim()) {
-      setAuthMessage('Completa titulo y texto antes de publicar en tu comunidad.');
+    if (!communityPostBody.trim()) {
+      setAuthMessage('Completa el mensaje antes de publicar en tu comunidad.');
       return;
     }
     if (communityPostKind === 'fecha' && !communityPostDate.trim()) {
@@ -2945,7 +4438,7 @@ function ProfileScreen({
     }
     const { error } = await createCommunityPublication({
       kind: communityPostKind,
-      title: communityPostTitle.trim(),
+      title: communityPostTitle.trim() || 'Aviso comunitario',
       body: communityPostBody.trim(),
       eventDate: communityPostKind === 'fecha' ? communityPostDate.trim() : null,
       visibility,
@@ -2959,10 +4452,50 @@ function ProfileScreen({
     setCommunityPostBody('');
     setCommunityPostDate('');
     setCommunityPollOptions('');
-    setAuthMessage('Publicacion enviada a la comunidad.');
-    const updatedItems = await fetchCommunityPublications(session);
-    setMyCommunityPublications(updatedItems.filter((item) => item.communityName === session.communityOfOrigin));
+    setAuthMessage(changeDone('Publicacion enviada a la comunidad.'));
+    await refreshCommunityForum();
     await onContentChanged();
+  }
+
+  function startEditCommunityPublication(item: CommunityPublication) {
+    setEditingCommunityPublicationId(item.id ?? null);
+    setEditingCommunityPublicationTitle(item.title);
+    setEditingCommunityPublicationBody(item.body);
+  }
+
+  async function saveCommunityPublicationEdit(status: 'activo' | 'cerrado' = 'activo') {
+    if (!editingCommunityPublicationId) {
+      return;
+    }
+    if (!editingCommunityPublicationTitle.trim() || !editingCommunityPublicationBody.trim()) {
+      setAuthMessage('Completa titulo y contenido del aviso.');
+      return;
+    }
+    const { error } = await updateCommunityPublication({
+      publicationId: editingCommunityPublicationId,
+      title: editingCommunityPublicationTitle.trim(),
+      body: editingCommunityPublicationBody.trim(),
+      status
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setEditingCommunityPublicationId(null);
+    setEditingCommunityPublicationTitle('');
+    setEditingCommunityPublicationBody('');
+    setAuthMessage(changeDone(status === 'cerrado' ? 'Aviso cerrado.' : 'Aviso actualizado.'));
+    await refreshCommunityForum();
+  }
+
+  async function removeCommunityPublication(publicationId: string) {
+    const { error } = await archiveCommunityPublication(publicationId);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Aviso eliminado.'));
+    await refreshCommunityForum();
   }
 
   async function votePoll(publication: CommunityPublication, option: string) {
@@ -2975,13 +4508,99 @@ function ProfileScreen({
       return;
     }
     setLocalPollVotes((current) => ({ ...current, [publication.id]: option }));
-    const updatedItems = await fetchCommunityPublications(session);
-    setMyCommunityPublications(updatedItems.filter((item) => item.communityName === session?.communityOfOrigin));
+    await refreshCommunityForum();
+  }
+
+  async function submitForumComment(publicationId: string) {
+    const body = (forumCommentDrafts[publicationId] ?? '').trim();
+    if (!body) {
+      setAuthMessage('Escribi un comentario antes de publicar.');
+      return;
+    }
+    const { error } = await createPublicationComment(publicationId, body);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setForumCommentDrafts((current) => ({ ...current, [publicationId]: '' }));
+    setAuthMessage(changeDone('Comentario publicado.'));
+    await refreshCommunityForum();
+  }
+
+  async function submitForumReaction(publicationId: string) {
+    const { error } = await reactToPublication(publicationId, 'amen');
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Reaccion registrada.'));
+  }
+
+  async function submitForumReport(publicationId: string) {
+    const reason = (forumReportDrafts[publicationId] ?? '').trim();
+    if (!reason) {
+      setAuthMessage('Escribi un motivo para reportar.');
+      return;
+    }
+    const { error } = await reportPublication(publicationId, reason);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setForumReportDrafts((current) => ({ ...current, [publicationId]: '' }));
+    setAuthMessage(changeDone('Reporte enviado para moderacion.'));
+  }
+
+  async function openPublicProfile(profile: PublicProfilePreview) {
+    setSelectedPublicProfile(profile);
+    if (!profile.id) {
+      return;
+    }
+    const remoteProfile = await fetchPublicProfile(profile.id);
+    if (!remoteProfile) {
+      return;
+    }
+    setSelectedPublicProfile((current) => {
+      if (!current || current.id !== profile.id) {
+        return current;
+      }
+      return {
+        ...current,
+        fullName: remoteProfile.full_name ?? current.fullName,
+        role: (remoteProfile.role || current.role) as Role,
+        province: remoteProfile.province ?? current.province,
+        communityName: remoteProfile.community_name ?? current.communityName,
+        contact: remoteProfile.phone ?? current.contact,
+        avatarUrl: remoteProfile.avatar_url ?? current.avatarUrl
+      };
+    });
   }
 
   return (
     <View style={styles.stack}>
       <SectionTitle title={`${tabLabel('perfil')} y acceso`} />
+      <Modal visible={Boolean(selectedPublicProfile)} transparent animationType="fade" onRequestClose={() => setSelectedPublicProfile(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalPanel}>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedPublicProfile(null)} activeOpacity={0.8}>
+              <Ionicons name="close" size={19} color={palette.red} />
+            </TouchableOpacity>
+            {selectedPublicProfile ? (
+              <View style={styles.publicProfilePanel}>
+                <View style={styles.publicProfileAvatar}>
+                  {selectedPublicProfile.avatarUrl ? <Image source={{ uri: selectedPublicProfile.avatarUrl }} style={styles.publicProfileAvatarImage} /> : <Ionicons name="person-outline" size={28} color={palette.red} />}
+                </View>
+                <Text style={styles.cardEyebrow}>Perfil palestrista</Text>
+                <Text style={styles.cardTitle}>{selectedPublicProfile.fullName}</Text>
+                <Text style={styles.cardText}>{roleLabel(selectedPublicProfile.role)}</Text>
+                {selectedPublicProfile.communityName ? <Text style={styles.cardText}>Comunidad: {selectedPublicProfile.communityName}</Text> : null}
+                {selectedPublicProfile.province ? <Text style={styles.cardText}>Provincia: {selectedPublicProfile.province}</Text> : null}
+                {selectedPublicProfile.contact ? <Text style={styles.cardText}>Contacto: {selectedPublicProfile.contact}</Text> : null}
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
       {session ? (
         <View style={styles.profileShell}>
           <View style={styles.profileTopRow}>
@@ -3004,7 +4623,8 @@ function ProfileScreen({
               {[
                 { icon: 'person-outline', label: 'Mi perfil', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); } },
                 { icon: 'create-outline', label: 'Editar perfil', action: () => { setProfilePanel('editar'); setShowCommunity(false); setShowCommunityManagement(false); } },
-                { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); setShowCommunity(false); setShowCommunityManagement(false); } },
+                { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); setShowCommunity(false); setShowCommunityManagement(false); refreshCommunityForum(); } },
+                { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowCommunity(false); setShowCommunityManagement(false); refreshMailbox(); } },
                 { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowCommunity(false); setShowCommunityManagement(false); } },
               ].map((item) => (
                 <TouchableOpacity key={item.label} style={styles.accountMenuItem} onPress={() => { item.action(); setShowAccountMenu(false); }}>
@@ -3056,6 +4676,12 @@ function ProfileScreen({
           {profilePanel === 'vista' && roleInfo ? <Text style={styles.cardText}>{roleInfo.description}</Text> : null}
           {profilePanel === 'editar' ? <View style={styles.profileCommunityPanel}>
             <Text style={styles.cardEyebrow}>Editar perfil</Text>
+            {isMissingProfileScope(session) ? (
+              <View style={styles.completionNotice}>
+                <Ionicons name="alert-circle-outline" size={20} color={palette.red} />
+                <Text style={styles.completionNoticeText}>Completa provincia y comunidad para usar normalmente la app.</Text>
+              </View>
+            ) : null}
             <Text style={styles.cardText}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
             <TextInput style={styles.input} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName} />
             <TextInput style={styles.input} placeholder="Contacto" value={editContact} onChangeText={setEditContact} />
@@ -3150,24 +4776,16 @@ function ProfileScreen({
                 {['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? ' Este rango supervisa animadores y coordinadores de comunidad de su provincia.' : ''}
                 {['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ' Este rango supervisa estructura nacional y provincias.' : ''}
               </Text>
-              <SectionTitle title="Mensajes" />
-              {internalMessages.filter((item) => item.from !== 'Vocalia').map((item, index) => (
-                <View key={`${item.title}-${index}`} style={styles.innerNewsCard}>
-                  <Text style={styles.cardEyebrow}>{item.from}</Text>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <Text style={styles.cardText}>{item.body}</Text>
+              {isCommunityLeader ? (
+                <View style={styles.inlineEditorPanel}>
+                  <Text style={styles.cardEyebrow}>Nuevo aviso comunitario</Text>
+                  <TextInput style={styles.input} placeholder="Titulo opcional del aviso" value={communityPostTitle} onChangeText={setCommunityPostTitle} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje para la comunidad" value={communityPostBody} onChangeText={setCommunityPostBody} multiline />
+                  <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
+                    <Text style={styles.primaryButtonText}>Enviar mensaje a comunidad</Text>
+                  </TouchableOpacity>
                 </View>
-              ))}
-              {hasPermission(session, 'ver_noticias_comunidad') ? (
-                profileNews.length > 0 ? profileNews.map((item, index) => (
-                  <View key={`${item.title}-${index}`} style={styles.innerNewsCard}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.cardText}>{item.body}</Text>
-                  </View>
-                )) : <Text style={styles.cardText}>Todavia no hay noticias cargadas para esta comunidad.</Text>
-              ) : (
-                <Text style={styles.cardText}>Tu rango actual no permite ver noticias internas de comunidad.</Text>
-              )}
+              ) : null}
               <SectionTitle title="Miembros" />
               {communityMembers.length === 0 ? (
                 <TouchableOpacity style={styles.secondaryButton} onPress={async () => setCommunityMembers(await fetchMyCommunityMembers())}>
@@ -3177,21 +4795,74 @@ function ProfileScreen({
                 <View key={member.id} style={styles.innerNewsCard}>
                   <Text style={styles.cardTitle}>{member.full_name ?? member.email}</Text>
                   <Text style={styles.cardText}>{roleLabel((member.role || 'palestrista') as Role)}</Text>
+                  <TouchableOpacity
+                    style={styles.actionPill}
+                    onPress={() => openPublicProfile({
+                      id: member.id,
+                      fullName: member.full_name ?? member.email ?? 'Palestrista',
+                      role: (member.role || 'palestrista') as Role,
+                      province: member.province,
+                      communityName: member.community_name,
+                      contact: member.email,
+                      avatarUrl: member.avatar_url
+                    })}
+                  >
+                    <Ionicons name="person-circle-outline" size={16} color={palette.red} />
+                    <Text style={styles.actionPillText}>Ver perfil</Text>
+                  </TouchableOpacity>
                 </View>
               ))}
               <SectionTitle title="Encargados" />
               {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).map((member) => (
-                <Text key={`leader-${member.id}`} style={styles.cardText}>{member.full_name ?? member.email} - {roleLabel(member.role as Role)}</Text>
+                <View key={`leader-${member.id}`} style={styles.innerNewsCard}>
+                  <Text style={styles.cardText}>{member.full_name ?? member.email} - {roleLabel(member.role as Role)}</Text>
+                  <TouchableOpacity
+                    style={styles.actionPill}
+                    onPress={() => openPublicProfile({
+                      id: member.id,
+                      fullName: member.full_name ?? member.email ?? 'Palestrista',
+                      role: member.role as Role,
+                      province: member.province,
+                      communityName: member.community_name,
+                      contact: member.email,
+                      avatarUrl: member.avatar_url
+                    })}
+                  >
+                    <Ionicons name="person-circle-outline" size={16} color={palette.red} />
+                    <Text style={styles.actionPillText}>Ver perfil</Text>
+                  </TouchableOpacity>
+                </View>
               ))}
               <SectionTitle title="Publicado por mi comunidad" />
-              {myCommunityPublications.length === 0 ? <Text style={styles.cardText}>Todavia no hay publicaciones de tu animador o coordinador.</Text> : null}
+              <TouchableOpacity style={styles.actionPill} onPress={refreshCommunityForum} activeOpacity={0.85}>
+                <Ionicons name="refresh-outline" size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>Actualizar avisos</Text>
+              </TouchableOpacity>
+              {myCommunityPublications.length === 0 ? <Text style={styles.cardText}>No hay avisos para tu comunidad actualmente</Text> : null}
               {myCommunityPublications.map((item, index) => {
                 const results = Object.entries(item.pollResults ?? {}).sort((a, b) => Number(b[1]) - Number(a[1]));
+                const publicationId = item.id ?? '';
+                const isExpandedForumItem = expandedForumItem === publicationId;
                 return (
-                  <View key={`${item.id ?? item.title}-${index}`} style={styles.innerNewsCard}>
-                    <Text style={styles.cardEyebrow}>{item.kind} - {item.visibility}</Text>
+                  <View key={`${publicationId || item.title}-${index}`} style={styles.innerNewsCard}>
+                    <Text style={styles.cardEyebrow}>{item.kind} - {item.visibility} - {item.status ?? 'activo'}</Text>
                     <Text style={styles.cardTitle}>{item.title}</Text>
                     <Text style={styles.cardText}>{item.body}</Text>
+                    <Text style={styles.feedMeta}>Por {item.authorName ?? 'Palestrista'}</Text>
+                    {editingCommunityPublicationId === publicationId ? (
+                      <View style={styles.inlineEditorPanel}>
+                        <TextInput style={styles.input} placeholder="Titulo del aviso" value={editingCommunityPublicationTitle} onChangeText={setEditingCommunityPublicationTitle} />
+                        <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido del aviso" value={editingCommunityPublicationBody} onChangeText={setEditingCommunityPublicationBody} multiline />
+                        <View style={styles.inlineActions}>
+                          <TouchableOpacity style={styles.primaryButton} onPress={() => saveCommunityPublicationEdit('activo')}>
+                            <Text style={styles.primaryButtonText}>Guardar</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.secondaryButton} onPress={() => saveCommunityPublicationEdit('cerrado')}>
+                            <Text style={styles.secondaryButtonText}>Cerrar aviso</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : null}
                     {item.kind === 'encuesta' ? (
                       <View style={styles.profileCommunityPanel}>
                         <Text style={styles.cardEyebrow}>Opciones</Text>
@@ -3206,9 +4877,292 @@ function ProfileScreen({
                         ))}
                       </View>
                     ) : null}
+                    {publicationId ? (
+                      <View style={styles.inlineActions}>
+                        <TouchableOpacity style={styles.actionPill} onPress={() => setExpandedForumItem(isExpandedForumItem ? null : publicationId)}>
+                          <Ionicons name="chatbubble-outline" size={16} color={palette.red} />
+                          <Text style={styles.actionPillText}>{isExpandedForumItem ? 'Ocultar foro' : 'Comentar'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.actionPill} onPress={() => submitForumReaction(publicationId)}>
+                          <Ionicons name="heart-outline" size={16} color={palette.red} />
+                          <Text style={styles.actionPillText}>Acompaño</Text>
+                        </TouchableOpacity>
+                        {(item.createdBy === session.id || roleRank(session.role) >= roleRank('vocal')) ? (
+                          <>
+                            <TouchableOpacity style={styles.actionPill} onPress={() => startEditCommunityPublication(item)}>
+                              <Ionicons name="create-outline" size={16} color={palette.red} />
+                              <Text style={styles.actionPillText}>Editar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionPill} onPress={() => removeCommunityPublication(publicationId)}>
+                              <Ionicons name="trash-outline" size={16} color={palette.red} />
+                              <Text style={styles.actionPillText}>Eliminar</Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : null}
+                      </View>
+                    ) : null}
+                    {publicationId && isExpandedForumItem ? (
+                      <View style={styles.profileCommunityPanel}>
+                        <Text style={styles.cardEyebrow}>Comentarios</Text>
+                        {(forumComments[publicationId] ?? []).length === 0 ? <Text style={styles.cardText}>Se el primero en comentar con respeto y sentido comunitario.</Text> : null}
+                        {(forumComments[publicationId] ?? []).map((comment) => (
+                          <View key={comment.id} style={styles.innerNewsCard}>
+                            <Text style={styles.cardEyebrow}>{comment.authorName} - {roleLabel((comment.authorRole || 'palestrista') as Role)}</Text>
+                            <Text style={styles.cardText}>{comment.body}</Text>
+                            <TouchableOpacity
+                              style={styles.actionPill}
+                              onPress={() => openPublicProfile({
+                                id: comment.userId,
+                                fullName: comment.authorName,
+                                role: (comment.authorRole || 'palestrista') as Role,
+                                province: comment.authorProvince,
+                                communityName: comment.authorCommunity,
+                                avatarUrl: comment.authorAvatarUrl
+                              })}
+                            >
+                              <Ionicons name="person-circle-outline" size={16} color={palette.red} />
+                              <Text style={styles.actionPillText}>Ver perfil</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                        <TextInput
+                          style={[styles.input, styles.textArea]}
+                          placeholder="Escribir comentario"
+                          value={forumCommentDrafts[publicationId] ?? ''}
+                          onChangeText={(value) => setForumCommentDrafts((current) => ({ ...current, [publicationId]: value.slice(0, 500) }))}
+                          multiline
+                        />
+                        <TouchableOpacity style={styles.primaryButton} onPress={() => submitForumComment(publicationId)}>
+                          <Text style={styles.primaryButtonText}>Publicar comentario</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.cardEyebrow}>Reportar</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Motivo del reporte"
+                          value={forumReportDrafts[publicationId] ?? ''}
+                          onChangeText={(value) => setForumReportDrafts((current) => ({ ...current, [publicationId]: value.slice(0, 300) }))}
+                        />
+                        <TouchableOpacity style={styles.secondaryButton} onPress={() => submitForumReport(publicationId)}>
+                          <Text style={styles.secondaryButtonText}>Enviar reporte</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
                   </View>
                 );
               })}
+            </View>
+          ) : null}
+          {profilePanel === 'buzon' ? (
+            <View style={styles.profileCommunityPanel}>
+              <SectionTitle title="Buzon de mensajes" />
+              <Text style={styles.cardText}>Consultas enviadas y mensajes recibidos por tu comunidad o jurisdiccion.</Text>
+              <TouchableOpacity style={styles.secondaryButton} onPress={refreshMailbox}>
+                <Ionicons name="refresh-outline" size={17} color={palette.red} />
+                <Text style={styles.secondaryButtonText}>Actualizar buzon</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => setShowMailboxComposer(!showMailboxComposer)}>
+                <Ionicons name="create-outline" size={17} color={palette.white} />
+                <Text style={styles.primaryButtonText}>Nuevo Mensaje</Text>
+              </TouchableOpacity>
+              {showMailboxComposer ? (
+                <View style={styles.inlineEditorPanel}>
+                  <Text style={styles.cardEyebrow}>Nuevo mensaje</Text>
+                  <Text style={styles.inputLabel}>Destino</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                    {session.role === 'administrador' ? ([
+                      ['user', 'Usuario'],
+                      ['role', 'Rango'],
+                      ['province', 'Provincia'],
+                      ['role_province', 'Rango + provincia'],
+                      ['all', 'Todos']
+                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
+                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
+                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    )) : ['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ([
+                      ['diocesan_leadership', 'Dirigencia diocesana']
+                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
+                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
+                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    )) : ['vocal', 'coordinador_diocesano'].includes(session.role) ? ([
+                      ['community', 'Comunidad'],
+                      ['province_communities', 'Todas de mi provincia']
+                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
+                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
+                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    )) : (
+                      <TouchableOpacity style={[styles.filterChip, styles.filterChipActive]} onPress={() => setMailboxTargetMode('my_community')}>
+                        <Text style={[styles.filterChipText, styles.filterChipTextActive]}>Responsables de mi comunidad</Text>
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                  {['community', 'my_community'].includes(mailboxTargetMode) ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                      {mailboxCommunityOptions.map((community) => (
+                        <TouchableOpacity key={community.id} style={[styles.filterChip, (mailboxTargetCommunityId || mailboxCommunityOptions[0]?.id) === community.id && styles.filterChipActive]} onPress={() => setMailboxTargetCommunityId(community.id ?? '')}>
+                          <Text style={[styles.filterChipText, (mailboxTargetCommunityId || mailboxCommunityOptions[0]?.id) === community.id && styles.filterChipTextActive]}>{community.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  {['province', 'role_province', 'diocesan_leadership'].includes(mailboxTargetMode) && (session.role === 'administrador' || ['vocal_nacional', 'coordinador_nacional'].includes(session.role)) ? (
+                    <>
+                      <Text style={styles.inputLabel}>Provincia</Text>
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxProvinceDropdownOpen(!mailboxProvinceDropdownOpen)}>
+                        <Text style={styles.dropdownButtonText}>{mailboxTargetProvince || 'Todas / seleccionar provincia'}</Text>
+                        <Ionicons name={mailboxProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {mailboxProvinceDropdownOpen ? (
+                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                          {mailboxTargetMode === 'diocesan_leadership' ? (
+                            <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMailboxTargetProvince(''); setMailboxProvinceDropdownOpen(false); }}>
+                              <Text style={styles.dropdownItemText}>Todas las provincias</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                          {mailboxProvinceOptions.map((province) => (
+                            <TouchableOpacity key={province} style={styles.dropdownItem} onPress={() => { setMailboxTargetProvince(province); setMailboxProvinceDropdownOpen(false); }}>
+                              <Text style={styles.dropdownItemText}>{province}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {['role', 'role_province'].includes(mailboxTargetMode) ? (
+                    <>
+                      <Text style={styles.inputLabel}>Rango</Text>
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxRoleDropdownOpen(!mailboxRoleDropdownOpen)}>
+                        <Text style={styles.dropdownButtonText}>{roleLabel(mailboxTargetRole)}</Text>
+                        <Ionicons name={mailboxRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {mailboxRoleDropdownOpen ? (
+                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                          {visibleHierarchyFor(session).filter((item) => !['invitado', 'administrador'].includes(item.role)).map((item) => (
+                            <TouchableOpacity key={item.role} style={styles.dropdownItem} onPress={() => { setMailboxTargetRole(item.role); setMailboxRoleDropdownOpen(false); }}>
+                              <Text style={styles.dropdownItemText}>{item.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {mailboxTargetMode === 'user' ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.inputLabel}>Buscar usuario</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Buscar por nombre, mail, provincia, comunidad o rango"
+                        value={mailboxRecipientSearch}
+                        onChangeText={setMailboxRecipientSearch}
+                      />
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxUserDropdownOpen(!mailboxUserDropdownOpen)}>
+                        <Text style={styles.dropdownButtonText}>{mailboxSelectedUserIds.length} usuario/s seleccionado/s</Text>
+                        <Ionicons name={mailboxUserDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {mailboxUserDropdownOpen ? (
+                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                          {filteredMailboxUserOptions.length === 0 ? <Text style={styles.dropdownItemText}>Sin resultados</Text> : null}
+                          {filteredMailboxUserOptions.slice(0, 60).map((user) => {
+                            const selectedUser = mailboxSelectedUserIds.includes(user.id);
+                            return (
+                              <TouchableOpacity key={user.id} style={styles.dropdownItem} onPress={() => toggleMailboxUser(user.id)}>
+                                <Ionicons name={selectedUser ? 'checkbox-outline' : 'square-outline'} size={18} color={selectedUser ? palette.red : palette.inkMuted} />
+                                <View style={styles.adminUserHeaderText}>
+                                  <Text style={styles.dropdownItemText}>{user.full_name ?? user.email ?? 'Usuario'}</Text>
+                                  <Text style={styles.feedMeta}>{roleLabel((user.role || 'palestrista') as Role)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      ) : null}
+                      {selectedMailboxUsers.length > 0 ? (
+                        <View style={styles.chipRow}>
+                          {selectedMailboxUsers.slice(0, 8).map((user) => (
+                            <TouchableOpacity key={user.id} style={[styles.filterChip, styles.filterChipActive]} onPress={() => toggleMailboxUser(user.id)}>
+                              <Text style={[styles.filterChipText, styles.filterChipTextActive]}>{user.full_name ?? user.email}</Text>
+                            </TouchableOpacity>
+                          ))}
+                          {selectedMailboxUsers.length > 8 ? <Text style={styles.cardText}>+{selectedMailboxUsers.length - 8} mas</Text> : null}
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+                  <View style={styles.notice}>
+                    <Ionicons name="people-outline" size={18} color={palette.red} />
+                    <Text style={styles.noticeText}>Destinatarios estimados: {estimatedMailboxRecipients}</Text>
+                  </View>
+                  <Text style={styles.inputLabel}>Mensaje</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    placeholder="Escribe el mensaje para el buzon"
+                    value={mailboxDraft}
+                    onChangeText={(value) => setMailboxDraft(value.slice(0, 500))}
+                    multiline
+                  />
+                  <TouchableOpacity style={styles.primaryButton} onPress={submitNewMailboxMessage}>
+                    <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                {(['todos', 'enviados', 'recibidos', 'nuevo', 'respondido', 'cerrado'] as const).map((filter) => (
+                  <TouchableOpacity key={filter} style={[styles.filterChip, mailboxFilter === filter && styles.filterChipActive]} onPress={() => setMailboxFilter(filter)}>
+                    <Text style={[styles.filterChipText, mailboxFilter === filter && styles.filterChipTextActive]}>{filter}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              {visibleMailboxMessages.length === 0 ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>No tienes mensajes actualmente</Text>
+                </View>
+              ) : null}
+              {visibleMailboxMessages.map((message) => (
+                <View key={message.id} style={styles.innerNewsCard}>
+                  <Text style={styles.cardEyebrow}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
+                  <Text style={styles.cardTitle}>{message.sender_name ?? 'Consulta externa'}</Text>
+                  {message.sender_contact ? <Text style={styles.cardText}>Contacto: {message.sender_contact}</Text> : null}
+                  <Text style={styles.feedMeta}>{new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
+                  <Text style={styles.cardText}>{message.message}</Text>
+                  {message.response ? (
+                    <View style={styles.notice}>
+                      <Ionicons name="return-up-forward-outline" size={18} color={palette.red} />
+                      <Text style={styles.noticeText}>{message.response}</Text>
+                    </View>
+                  ) : null}
+                  {message.can_respond && message.status !== 'cerrado' && message.status !== 'archivado' ? (
+                    <View style={styles.inlineEditorPanel}>
+                      <Text style={styles.inputLabel}>Respuesta</Text>
+                      <TextInput
+                        style={[styles.input, styles.textArea]}
+                        placeholder="Escribe una respuesta clara"
+                        value={mailboxResponses[message.id] ?? ''}
+                        onChangeText={(value) => setMailboxResponses((current) => ({ ...current, [message.id]: value.slice(0, 1000) }))}
+                        multiline
+                      />
+                      <TouchableOpacity style={styles.primaryButton} onPress={() => submitMailboxResponse(message.id)}>
+                        <Text style={styles.primaryButtonText}>Responder</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.actionPill} onPress={() => updateMailboxStatus(message.id, 'leido')}>
+                      <Ionicons name="mail-open-outline" size={16} color={palette.red} />
+                      <Text style={styles.actionPillText}>Leido</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionPill} onPress={() => updateMailboxStatus(message.id, 'nuevo')}>
+                      <Ionicons name="mail-unread-outline" size={16} color={palette.red} />
+                      <Text style={styles.actionPillText}>No leido</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionPill} onPress={() => updateMailboxStatus(message.id, 'cerrado')}>
+                      <Ionicons name="checkmark-done-outline" size={16} color={palette.red} />
+                      <Text style={styles.actionPillText}>Cerrar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
             </View>
           ) : null}
           {profilePanel === 'vista' ? <View style={styles.profileCommunityPanel}>
@@ -3270,13 +5224,18 @@ function ProfileScreen({
                       <Text style={styles.cardText}>Respondio: {item.resolvedBy ?? 'Pendiente'}</Text>
                       <Text style={styles.cardText}>Fecha de resolucion: {item.resolvedAt ? new Date(item.resolvedAt).toLocaleString('es-AR') : 'Pendiente'}</Text>
                       <Text style={styles.cardText}>Mensaje: {item.message ?? 'Sin mensaje todavia'}</Text>
+                      {['Propuesta Coordinador Diocesano', 'Propuesta Coordinador Nacional'].includes(item.title) && item.status === 'pendiente' && item.targetUserId === session.id ? (
+                        <TouchableOpacity style={styles.primaryButton} onPress={() => acceptDiocesanRequest(item.id)}>
+                          <Text style={styles.primaryButtonText}>Aceptar rango {roleLabel((item.targetRole ?? 'coordinador_diocesano') as Role)}</Text>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
                   ) : null}
                 </View>
               ))}
             </View>
           ) : null}
-          {(hasPermission(session, 'gestionar_sistema') || hasPermission(session, 'gestionar_comunidad') || hasPermission(session, 'gestionar_contenido') || hasPermission(session, 'gestionar_permisos') || canReviewLeadershipRequests) ? (
+          {(hasPermission(session, 'gestionar_sistema') || canAdministrateCommunities || hasPermission(session, 'gestionar_contenido') || hasPermission(session, 'gestionar_permisos') || canReviewLeadershipRequests || isCommunityLeader) ? (
             <View style={styles.adminPanel}>
               <Text style={styles.cardEyebrow}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
               <Text style={styles.cardTitle}>{session.role === 'administrador' ? 'Panel tecnico global' : 'Panel diocesano'}</Text>
@@ -3317,19 +5276,21 @@ function ProfileScreen({
                   <Text style={styles.cardEyebrow}>Accesos rapidos</Text>
                   <View style={styles.adminQuickGrid}>
                     {[
-                      { label: 'Nueva noticia', module: 'noticias', icon: 'add-circle-outline' },
-                      { label: 'Subir material', module: 'descargas', icon: 'cloud-upload-outline' },
+                      { label: isCommunityLeader ? 'Nuevo aviso comunitario' : 'Nueva noticia', module: isCommunityLeader ? 'muro_comunitario' : 'noticias', icon: 'add-circle-outline' },
                       { label: 'Crear comunidad', module: 'comunidades', icon: 'location-outline' },
                       { label: 'Revisar usuarios', module: 'usuarios', icon: 'people-outline' }
-                    ].map((item) => (
-                      <TouchableOpacity key={item.label} style={styles.adminQuickAction} onPress={() => setAdminModule(item.module as AdminModule)}>
+                    ].filter((item) => (
+                      (item.module !== 'usuarios' || session.role === 'administrador')
+                      && (item.module !== 'comunidades' || canAdministrateCommunities)
+                    )).map((item) => (
+                      <TouchableOpacity key={item.label} style={styles.adminQuickAction} onPress={() => item.module === 'muro_comunitario' ? setProfilePanel('comunidad') : setAdminModule(item.module as AdminModule)}>
                         <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={20} color={palette.red} />
                         <Text style={styles.adminQuickText}>{item.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                   <Text style={styles.cardEyebrow}>Arquitectura editable</Text>
-                  <Text style={styles.cardText}>Identidad, home, contacto, periodo motivador y configuracion ya estan centralizados en un objeto de configuracion local. Noticias, usuarios, pestañas, contenido y comunidades siguen usando las funciones reales existentes.</Text>
+                  <Text style={styles.cardText}>Panel reducido para Beta: identidad, home, noticias, contacto, periodo motivador, usuarios, comunidades y configuracion real.</Text>
                 </View>
               ) : null}
 
@@ -3397,7 +5358,9 @@ function ProfileScreen({
                     file_path: null,
                     sort_order: index,
                     archived_at: null,
-                    created_at: null
+                    created_at: null,
+                    created_by: null,
+                    province_id: null
                   } as AppMaterialRecord))).map((material) => (
                     <View key={material.id} style={styles.adminListRow}>
                       <Ionicons name="document-text-outline" size={19} color={palette.red} />
@@ -3457,23 +5420,82 @@ function ProfileScreen({
 
               {adminModule === 'contacto_admin' ? (
                 <View style={styles.adminWorkspace}>
-                  <Text style={styles.cardTitle}>Contacto oficial</Text>
-                  <Text style={styles.cardText}>Datos y textos institucionales que luego se persistiran como configuracion global.</Text>
+                  <Text style={styles.cardTitle}>Contacto modular</Text>
+                  <Text style={styles.cardText}>Configura canales nacionales, Instagram por provincia y bloques dinamicos visibles en Contacto.</Text>
                   {session?.role === 'administrador' ? (
                     <>
-                      <TextInput style={styles.input} placeholder="Mail oficial" value={adminConfigDraft.contact.email} onChangeText={(value) => updateAdminConfigSection('contact', { email: value })} />
-                      <TextInput style={styles.input} placeholder="Telefono" value={adminConfigDraft.contact.phone} onChangeText={(value) => updateAdminConfigSection('contact', { phone: value })} />
+                      <TextInput style={styles.input} placeholder="Correo electronico oficial. Ej: contacto@palestra.org.ar" value={adminConfigDraft.contact.email} onChangeText={(value) => updateAdminConfigSection('contact', { email: value })} />
+                      <TextInput style={styles.input} placeholder="Numero telefonico oficial. Ej: +54 351 000-0000" value={adminConfigDraft.contact.phone} onChangeText={(value) => updateAdminConfigSection('contact', { phone: value })} />
                     </>
                   ) : null}
-                  <Text style={styles.cardEyebrow}>Instagram oficial</Text>
-                  <TextInput style={styles.input} placeholder="Instagram" value={adminConfigDraft.contact.instagram} onChangeText={(value) => updateAdminConfigSection('contact', { instagram: value })} />
+                  <Text style={styles.cardEyebrow}>Instagram nacional</Text>
+                  <TextInput style={styles.input} placeholder="URL o usuario de Instagram nacional" value={adminConfigDraft.contact.instagram} onChangeText={(value) => updateAdminConfigSection('contact', { instagram: value })} />
                   <TouchableOpacity style={styles.primaryButton} onPress={saveInstagramConfigDraft}>
                     <Text style={styles.primaryButtonText}>Guardar Instagram</Text>
                   </TouchableOpacity>
                   {session?.role === 'administrador' ? (
                     <>
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de ayuda" value={adminConfigDraft.contact.helpText} onChangeText={(value) => updateAdminConfigSection('contact', { helpText: value })} multiline />
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de donaciones" value={adminConfigDraft.contact.donationText} onChangeText={(value) => updateAdminConfigSection('contact', { donationText: value })} multiline />
+                      <Text style={styles.cardEyebrow}>Instagram por provincia</Text>
+                      {Object.keys(defaultAdminConfig.contact.provinceInstagram).map((province) => (
+                        <TextInput
+                          key={province}
+                          style={styles.input}
+                          placeholder={`Instagram de ${province}`}
+                          value={adminConfigDraft.contact.provinceInstagram?.[province] ?? ''}
+                          onChangeText={(value) => updateAdminConfigSection('contact', {
+                            provinceInstagram: { ...(adminConfigDraft.contact.provinceInstagram ?? {}), [province]: value }
+                          })}
+                          autoCapitalize="none"
+                        />
+                      ))}
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de ayuda para orientar a quien visita Contacto" value={adminConfigDraft.contact.helpText} onChangeText={(value) => updateAdminConfigSection('contact', { helpText: value })} multiline />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto opcional de donaciones o colaboracion" value={adminConfigDraft.contact.donationText} onChangeText={(value) => updateAdminConfigSection('contact', { donationText: value })} multiline />
+                      <Text style={styles.cardEyebrow}>Bloques dinamicos</Text>
+                      {(adminConfigDraft.contact.blocks ?? []).map((block, index) => (
+                        <View key={block.id} style={styles.innerNewsCard}>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Titulo o etiqueta del bloque"
+                            value={block.label}
+                            onChangeText={(value) => {
+                              const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
+                              blocks[index] = { ...block, label: value };
+                              updateAdminConfigSection('contact', { blocks });
+                            }}
+                          />
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                            {(['texto', 'telefono', 'email', 'imagen', 'direccion', 'enlace', 'boton', 'red_social'] as ContactBlock['type'][]).map((type) => (
+                              <TouchableOpacity key={type} style={[styles.filterChip, block.type === type && styles.filterChipActive]} onPress={() => {
+                                const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
+                                blocks[index] = { ...block, type };
+                                updateAdminConfigSection('contact', { blocks });
+                              }}>
+                                <Text style={[styles.filterChipText, block.type === type && styles.filterChipTextActive]}>{type}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                          <TextInput
+                            style={[styles.input, styles.textArea]}
+                            placeholder="Contenido, URL, telefono, email o direccion"
+                            value={block.value}
+                            onChangeText={(value) => {
+                              const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
+                              blocks[index] = { ...block, value };
+                              updateAdminConfigSection('contact', { blocks });
+                            }}
+                            multiline
+                          />
+                          <TouchableOpacity style={styles.secondaryButton} onPress={() => updateAdminConfigSection('contact', { blocks: (adminConfigDraft.contact.blocks ?? []).filter((item) => item.id !== block.id) })}>
+                            <Text style={styles.secondaryButtonText}>Eliminar bloque</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                      <TouchableOpacity style={styles.secondaryButton} onPress={() => updateAdminConfigSection('contact', {
+                        blocks: [...(adminConfigDraft.contact.blocks ?? []), { id: `contact-${Date.now()}`, type: 'texto', label: '', value: '' }]
+                      })}>
+                        <Ionicons name="add-circle-outline" size={17} color={palette.red} />
+                        <Text style={styles.secondaryButtonText}>Agregar bloque</Text>
+                      </TouchableOpacity>
                       <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Contacto')}>
                         <Text style={styles.primaryButtonText}>Guardar contacto completo</Text>
                       </TouchableOpacity>
@@ -3485,18 +5507,152 @@ function ProfileScreen({
               {adminModule === 'periodo_motivador' ? (
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Periodo Motivador</Text>
-                  <Text style={styles.cardText}>Seccion preparada para activar/desactivar, editar portada, titulo, textos y materiales asociados.</Text>
-                  <View style={styles.filterRow}>
-                    <TouchableOpacity style={[styles.filterChip, adminConfigDraft.periodoMotivador.active && styles.filterChipActive]} onPress={() => updateAdminConfigSection('periodoMotivador', { active: !adminConfigDraft.periodoMotivador.active })}>
-                      <Text style={[styles.filterChipText, adminConfigDraft.periodoMotivador.active && styles.filterChipTextActive]}>{adminConfigDraft.periodoMotivador.active ? 'Activo' : 'Inactivo'}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TextInput style={styles.input} placeholder="Titulo" value={adminConfigDraft.periodoMotivador.title} onChangeText={(value) => updateAdminConfigSection('periodoMotivador', { title: value })} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido" value={adminConfigDraft.periodoMotivador.body} onChangeText={(value) => updateAdminConfigSection('periodoMotivador', { body: value })} multiline />
-                  <TextInput style={styles.input} placeholder="URL de imagen principal" value={adminConfigDraft.periodoMotivador.imageUrl} onChangeText={(value) => updateAdminConfigSection('periodoMotivador', { imageUrl: value })} />
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Periodo Motivador')}>
-                    <Text style={styles.primaryButtonText}>Guardar periodo</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.cardText}>Gestion real de PM por provincia. Solo Vocal Diocesano, Coordinador Diocesano y Administrador pueden administrar esta seccion.</Text>
+                  {!canManageMotivadorPanel(session) ? (
+                    <View style={styles.notice}>
+                      <Ionicons name="lock-closed-outline" size={20} color={palette.red} />
+                      <Text style={styles.noticeText}>No tenes permisos para gestionar Periodos Motivadores.</Text>
+                    </View>
+                  ) : null}
+                  {canManageMotivadorPanel(session) ? (
+                    <>
+                      <View style={styles.inlineEditorPanel}>
+                        <Text style={styles.cardEyebrow}>{pmEditingId ? 'Editar PM' : 'Nuevo PM'}</Text>
+                        <View style={styles.filterRow}>
+                          {(['masculino', 'femenino'] as const).map((item) => (
+                            <TouchableOpacity key={item} style={[styles.filterChip, pmGender === item && styles.filterChipActive]} onPress={() => setPmGender(item)}>
+                              <Text style={[styles.filterChipText, pmGender === item && styles.filterChipTextActive]}>PM {item === 'masculino' ? 'Masculino' : 'Femenino'}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TextInput style={styles.input} placeholder="Numero de PM" value={pmNumber} onChangeText={setPmNumber} keyboardType="numeric" />
+                        <Text style={styles.cardEyebrow}>Provincia</Text>
+                        <View style={styles.filterRow}>
+                          {motivadorProvinceOptions.map((province) => (
+                            <TouchableOpacity
+                              key={province}
+                              style={[styles.filterChip, pmProvince === province && styles.filterChipActive]}
+                              onPress={() => session?.role === 'administrador' ? setPmProvince(province) : undefined}
+                              disabled={session?.role !== 'administrador'}
+                            >
+                              <Text style={[styles.filterChipText, pmProvince === province && styles.filterChipTextActive]}>{province}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={() => setPmCalendarOpen(!pmCalendarOpen)}>
+                          <Ionicons name="calendar-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>Seleccionar fechas</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.cardText}>{selectedDatesSummary(pmSelectedDates)}</Text>
+                        {pmCalendarOpen ? (
+                          <View style={styles.pmCalendarPanel}>
+                            <View style={styles.pmCalendarHeader}>
+                              <TouchableOpacity style={styles.pmCalendarNavButton} onPress={() => setPmCalendarMonth(new Date(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth() - 1, 1))}>
+                                <Text style={styles.pmCalendarNavText}>←</Text>
+                              </TouchableOpacity>
+                              <Text style={styles.pmCalendarTitle}>{pmCalendarMonth.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</Text>
+                              <TouchableOpacity style={styles.pmCalendarNavButton} onPress={() => setPmCalendarMonth(new Date(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth() + 1, 1))}>
+                                <Text style={styles.pmCalendarNavText}>→</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <View style={styles.pmCalendarWeekRow}>
+                              {['DO', 'LU', 'MA', 'MI', 'JU', 'VI', 'SA'].map((day) => (
+                                <Text key={day} style={styles.pmWeekdayText}>{day}</Text>
+                              ))}
+                            </View>
+                            <View style={styles.pmCalendarGrid}>
+                              {Array.from({ length: new Date(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth(), 1).getDay() }, (_, index) => (
+                                <View key={`blank-${index}`} style={styles.pmDaySpacer} />
+                              ))}
+                              {Array.from({ length: new Date(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth() + 1, 0).getDate() }, (_, index) => {
+                                const day = index + 1;
+                                const date = isoDate(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth(), day);
+                                const selected = pmSelectedDates.includes(date);
+                                return (
+                                  <TouchableOpacity key={date} style={[styles.pmDayButton, selected && styles.pmDayButtonSelected]} onPress={() => togglePmDate(date)}>
+                                    <Text style={[styles.pmDayText, selected && styles.pmDayTextSelected]}>{day}</Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        ) : null}
+                        <TextInput style={styles.input} placeholder="Casa de retiro" value={pmRetreatHouse} onChangeText={setPmRetreatHouse} />
+                        <TextInput style={styles.input} placeholder="Direccion de la casa de retiro" value={pmAddress} onChangeText={setPmAddress} />
+                        <TextInput style={styles.input} placeholder="Horario estimado de apertura. Ej: Viernes 18:00" value={pmOpeningTime} onChangeText={setPmOpeningTime} />
+                        <TextInput style={styles.input} placeholder="Horario estimado de clausura. Ej: Domingo 17:00" value={pmClosingTime} onChangeText={setPmClosingTime} />
+                        <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion opcional" value={pmDescription} onChangeText={setPmDescription} multiline />
+                        <TextInput style={styles.input} placeholder="URL foto del lugar opcional" value={pmPlacePhotoUrl} onChangeText={setPmPlacePhotoUrl} autoCapitalize="none" />
+                        <TextInput style={styles.input} placeholder="URL flyer o invitacion opcional" value={pmFlyerUrl} onChangeText={setPmFlyerUrl} autoCapitalize="none" />
+                        <TouchableOpacity style={[styles.filterChip, pmVisibleToLowerRoles && styles.filterChipActive]} onPress={() => setPmVisibleToLowerRoles(!pmVisibleToLowerRoles)}>
+                          <Text style={[styles.filterChipText, pmVisibleToLowerRoles && styles.filterChipTextActive]}>{pmVisibleToLowerRoles ? 'Visible para inferiores a Sedimentador' : 'Invisible para inferiores a Sedimentador'}</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.cardEyebrow}>Estado</Text>
+                        <View style={styles.filterRow}>
+                          {(['activo', 'inactivo', 'borrador'] as const).map((status) => (
+                            <TouchableOpacity key={status} style={[styles.filterChip, pmStatus === status && styles.filterChipActive]} onPress={() => setPmStatus(status)}>
+                              <Text style={[styles.filterChipText, pmStatus === status && styles.filterChipTextActive]}>{status}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TouchableOpacity style={styles.primaryButton} onPress={submitMotivadorPeriod}>
+                          <Text style={styles.primaryButtonText}>{pmEditingId ? 'Guardar cambios' : 'Crear PM'}</Text>
+                        </TouchableOpacity>
+                        {pmEditingId ? (
+                          <TouchableOpacity style={styles.secondaryButton} onPress={resetMotivadorForm}>
+                            <Text style={styles.secondaryButtonText}>Cancelar edicion</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                      <SectionTitle title="PM cargados" />
+                      <View style={styles.filterRow}>
+                        {session?.role === 'administrador' ? [''].concat(motivadorProvinceOptions).map((province) => (
+                          <TouchableOpacity key={province || 'todas'} style={[styles.filterChip, pmProvinceFilter === province && styles.filterChipActive]} onPress={() => setPmProvinceFilter(province)}>
+                            <Text style={[styles.filterChipText, pmProvinceFilter === province && styles.filterChipTextActive]}>{province || 'Todas'}</Text>
+                          </TouchableOpacity>
+                        )) : null}
+                        {(['todos', 'masculino', 'femenino'] as const).map((gender) => (
+                          <TouchableOpacity key={gender} style={[styles.filterChip, pmGenderFilter === gender && styles.filterChipActive]} onPress={() => setPmGenderFilter(gender)}>
+                            <Text style={[styles.filterChipText, pmGenderFilter === gender && styles.filterChipTextActive]}>{gender}</Text>
+                          </TouchableOpacity>
+                        ))}
+                        {(['todos', 'activo', 'inactivo', 'borrador'] as const).map((status) => (
+                          <TouchableOpacity key={status} style={[styles.filterChip, pmStatusFilter === status && styles.filterChipActive]} onPress={() => setPmStatusFilter(status)}>
+                            <Text style={[styles.filterChipText, pmStatusFilter === status && styles.filterChipTextActive]}>{status}</Text>
+                          </TouchableOpacity>
+                        ))}
+                        {(['todos', 'proximos', 'pasados'] as const).map((period) => (
+                          <TouchableOpacity key={period} style={[styles.filterChip, pmTimeFilter === period && styles.filterChipActive]} onPress={() => setPmTimeFilter(period)}>
+                            <Text style={[styles.filterChipText, pmTimeFilter === period && styles.filterChipTextActive]}>{period}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      {filteredMotivadorPeriods.length === 0 ? <Text style={styles.cardText}>No hay PM cargados para los filtros seleccionados.</Text> : null}
+                      {filteredMotivadorPeriods.map((period) => (
+                        <View key={period.id} style={styles.adminListRow}>
+                          <Ionicons name="flame-outline" size={20} color={palette.red} />
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.cardTitle}>PM {period.gender === 'femenino' ? 'Femenino' : 'Masculino'} {period.pm_number} - {period.province}</Text>
+                            <Text style={styles.cardText}>Fechas: {selectedDatesSummary(period.selected_dates?.map((date) => String(date).slice(0, 10)) ?? [period.starts_on, period.ends_on])}</Text>
+                            <Text style={styles.cardText}>Casa: {period.retreat_house}. Direccion: {period.address}</Text>
+                            <Text style={styles.cardText}>Apertura: {period.opening_time ?? 'Sin horario'} - Clausura: {period.closing_time ?? 'Sin horario'}</Text>
+                            <Text style={styles.cardText}>Estado: {period.status}. Ultima edicion: {period.updated_by_name ?? 'Sin registro'}</Text>
+                            <View style={styles.inlineActions}>
+                              <TouchableOpacity style={styles.secondaryButton} onPress={() => editMotivadorPeriod(period)}>
+                                <Text style={styles.secondaryButtonText}>Editar</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity style={styles.secondaryButton} onPress={() => updateMotivadorStatus(period.id, period.status === 'activo' ? 'inactivo' : 'activo')}>
+                                <Text style={styles.secondaryButtonText}>{period.status === 'activo' ? 'Inhabilitar' : 'Habilitar'}</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity style={styles.secondaryButton} onPress={() => updateMotivadorStatus(period.id, 'archivado')}>
+                                <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </>
+                  ) : null}
                 </View>
               ) : null}
 
@@ -3504,11 +5660,10 @@ function ProfileScreen({
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Configuracion general</Text>
                   <Text style={styles.cardText}>Base para mantenimiento, aviso global, permisos, modulos activos, foro y chat.</Text>
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje global" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje visible durante mantenimiento" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline />
                   {[
                     { key: 'maintenanceMode', label: 'Modo mantenimiento' },
-                    { key: 'futureForumEnabled', label: 'Preparar foro' },
-                    { key: 'futureChatEnabled', label: 'Preparar chat' }
+                    { key: 'futureForumEnabled', label: 'Preparar foro' }
                   ].map((item) => {
                     const key = item.key as keyof AppAdminConfig['settings'];
                     const active = Boolean(adminConfigDraft.settings[key]);
@@ -3530,10 +5685,44 @@ function ProfileScreen({
               {adminModule === 'usuarios' ? (
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Usuarios registrados</Text>
+                  {session.role !== 'administrador' ? (
+                    <Text style={styles.cardText}>Solo el Administrador puede crear y gestionar usuarios desde esta pestaña.</Text>
+                  ) : (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Crear usuario basico</Text>
+                      <Text style={styles.cardText}>Crea una cuenta habilitada con mail y contrasena. Al ingresar, el usuario debera completar provincia y comunidad.</Text>
+                      <Text style={styles.inputLabel}>Mail</Text>
+                      <TextInput style={styles.input} placeholder="Ingresa el correo electronico" value={adminCreateEmail} onChangeText={setAdminCreateEmail} autoCapitalize="none" keyboardType="email-address" />
+                      <Text style={styles.inputLabel}>Contrasena</Text>
+                      <View style={styles.passwordInputWrap}>
+                        <TextInput
+                          style={[styles.input, styles.inputWithIcon]}
+                          placeholder="Minimo 6 caracteres"
+                          value={adminCreatePassword}
+                          onChangeText={setAdminCreatePassword}
+                          secureTextEntry={!adminCreatePasswordVisible}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          returnKeyType="done"
+                        />
+                        <TouchableOpacity style={styles.passwordEyeButton} onPress={() => setAdminCreatePasswordVisible(!adminCreatePasswordVisible)} activeOpacity={0.82}>
+                          <Ionicons name={adminCreatePasswordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
+                        </TouchableOpacity>
+                      </View>
+                      <TouchableOpacity style={styles.primaryButton} onPress={createBasicAdminUser}>
+                        <Text style={styles.primaryButtonText}>Crear usuario</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   <TextInput style={styles.input} placeholder="Buscar por nombre, mail, provincia, comunidad o rol" value={adminUserSearch} onChangeText={setAdminUserSearch} />
                   <TouchableOpacity style={styles.primaryButton} onPress={loadAdminUsers}>
                     <Text style={styles.primaryButtonText}>Cargar todos los usuarios</Text>
                   </TouchableOpacity>
+                  <View style={styles.profileCommunityPanel}>
+                    <Text style={styles.cardEyebrow}>Coordinaciones activas</Text>
+                    <Text style={styles.cardText}>Coordinador Nacional: {activeNationalCoordinator?.full_name ?? activeNationalCoordinator?.email ?? 'Sin coordinador activo cargado'}</Text>
+                    {selectedUsersProvince ? <Text style={styles.cardText}>Coordinador Diocesano en {selectedUsersProvince}: {activeDiocesanCoordinator?.full_name ?? activeDiocesanCoordinator?.email ?? 'Sin coordinador activo'}</Text> : null}
+                  </View>
                   {adminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios cargados.</Text> : null}
                   {userProvinceOptions.length > 0 ? (
                     <>
@@ -3553,9 +5742,10 @@ function ProfileScreen({
                       {visibleAdminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios para esta provincia.</Text> : null}
                       {visibleAdminUsers.map((user) => {
                         const selected = selectedAdminUserId === user.id;
+                        const canEditThisUser = canEditAdminUser(session, user);
                         return (
                           <View key={user.id}>
-                            <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedAdminUserId(selected ? '' : user.id)}>
+                            <TouchableOpacity style={[styles.innerNewsCard, !canEditThisUser && styles.lockedCard]} onPress={() => canEditThisUser ? setSelectedAdminUserId(selected ? '' : user.id) : setAuthMessage('No podes editar administradores, usuarios superiores o usuarios fuera de tu alcance.')}>
                               <View style={styles.adminUserHeader}>
                                 <View style={styles.adminUserAvatar}>
                                   {user.avatar_url ? <Image source={{ uri: user.avatar_url }} style={styles.adminUserAvatarImage} /> : <Ionicons name="person-outline" size={20} color={palette.red} />}
@@ -3566,7 +5756,22 @@ function ProfileScreen({
                                 </View>
                               </View>
                               <Text style={styles.cardText}>Email: {user.email_confirmed_at ? 'confirmado' : 'sin confirmar'}</Text>
-                              <Text style={styles.expandHint}>{selected ? 'Cerrar edicion' : 'Editar usuario'}</Text>
+                              <TouchableOpacity
+                                style={styles.actionPill}
+                                onPress={() => openPublicProfile({
+                                  id: user.id,
+                                  fullName: user.full_name ?? user.email ?? 'Usuario sin nombre',
+                                  role: (user.role || 'palestrista') as Role,
+                                  province: user.province,
+                                  communityName: user.community_name,
+                                  avatarUrl: user.avatar_url,
+                                  contact: user.phone ?? user.email
+                                })}
+                              >
+                                <Ionicons name="person-circle-outline" size={16} color={palette.red} />
+                                <Text style={styles.actionPillText}>Ver perfil</Text>
+                              </TouchableOpacity>
+                              <Text style={styles.expandHint}>{canEditThisUser ? (selected ? 'Cerrar edicion' : 'Editar usuario') : 'Edicion bloqueada por jerarquia'}</Text>
                             </TouchableOpacity>
                             {selected ? (
                               <View style={styles.adminInlineEditor}>
@@ -3621,7 +5826,7 @@ function ProfileScreen({
                                 </TouchableOpacity>
                                 {adminUserRoleDropdownOpen ? (
                                   <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                                    {roleDefinitions.filter((role) => role.role === selectedAdminUser?.role || assignableRoles.some((item) => item.role === role.role)).map((role) => (
+                                    {roleDefinitions.filter((role) => role.role !== 'administrador' && (role.role === selectedAdminUser?.role || assignableRoles.some((item) => item.role === role.role))).map((role) => (
                                       <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setAdminUserRole(role.role as Role); setAdminUserRoleDropdownOpen(false); }}>
                                         <Text style={styles.dropdownItemText}>{role.label}</Text>
                                       </TouchableOpacity>
@@ -3736,17 +5941,11 @@ function ProfileScreen({
               {adminModule === 'noticias' ? (
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Noticias</Text>
-                  <Text style={styles.cardText}>Crear, preparar borradores y marcar publicaciones destacadas. La publicacion real reutiliza la funcion existente.</Text>
-                  <View style={styles.filterRow}>
-                    {['General', 'Agenda', 'Formacion', 'Comunidad'].map((item, index) => (
-                      <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, adminNewsCategory === item && styles.filterChipActive]} onPress={() => setAdminNewsCategory(item)}>
-                        <Text style={[styles.filterChipText, adminNewsCategory === item && styles.filterChipTextActive]}>{item}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <TextInput style={styles.input} placeholder="Titulo" value={adminNewsTitle} onChangeText={setAdminNewsTitle} />
-                  <TextInput style={styles.input} placeholder="URL de imagen" value={adminNewsImage} onChangeText={setAdminNewsImage} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto" value={adminNewsBody} onChangeText={setAdminNewsBody} multiline />
+                  <Text style={styles.cardText}>Crear noticias generales, preparar borradores y marcar publicaciones destacadas.</Text>
+                  <Text style={styles.cardEyebrow}>Categoria: General</Text>
+                  <TextInput style={styles.input} placeholder="Titulo de la noticia" value={adminNewsTitle} onChangeText={setAdminNewsTitle} />
+                  <TextInput style={styles.input} placeholder="Bajada o resumen breve" value={adminNewsImage} onChangeText={setAdminNewsImage} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo de la noticia" value={adminNewsBody} onChangeText={setAdminNewsBody} multiline />
                   <View style={styles.filterRow}>
                     <TouchableOpacity style={[styles.filterChip, adminNewsDraft && styles.filterChipActive]} onPress={() => setAdminNewsDraft(!adminNewsDraft)}>
                       <Text style={[styles.filterChipText, adminNewsDraft && styles.filterChipTextActive]}>{adminNewsDraft ? 'Borrador' : 'Publicar'}</Text>
@@ -3792,8 +5991,8 @@ function ProfileScreen({
 
               {adminModule === 'comunidades' ? (
                 <View style={styles.adminWorkspace}>
-                  <Text style={styles.cardTitle}>Editar comunidades</Text>
-                  <Text style={styles.cardText}>Seleccionar provincia y comunidad. Los cambios se guardan en Supabase.</Text>
+                  <Text style={styles.cardTitle}>Gestionar comunidades</Text>
+                  <Text style={styles.cardText}>Crear, editar, habilitar, deshabilitar o archivar comunidades segun tu jurisdiccion.</Text>
                   <Text style={styles.cardEyebrow}>Provincia</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
                     {manageableCommunities.map((item) => (
@@ -3809,13 +6008,41 @@ function ProfileScreen({
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
+                  {canAdministrateCommunities && selectedAdminProvince ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Crear comunidad</Text>
+                      <TextInput style={styles.input} placeholder="Nombre de comunidad" value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityName(value); }} />
+                      <View style={styles.filterRow}>
+                        {[
+                          { key: 'jovenes', label: 'Jovenes' },
+                          { key: 'adultos', label: 'Adultos' }
+                        ].map((item) => (
+                          <TouchableOpacity key={item.key} style={[styles.filterChip, adminCommunityGroupType === item.key && styles.filterChipActive]} onPress={() => setAdminCommunityGroupType(item.key as typeof adminCommunityGroupType)}>
+                            <Text style={[styles.filterChipText, adminCommunityGroupType === item.key && styles.filterChipTextActive]}>{item.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <TextInput style={styles.input} placeholder="Localidad, zona o direccion" value={adminCommunityId ? '' : adminCommunityAddress} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityAddress(value); }} />
+                      <TextInput style={styles.input} placeholder="Contacto opcional" value={adminCommunityId ? '' : adminCommunityPhone} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityPhone(value); }} />
+                      <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityId ? '' : adminCommunityDay} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDay(value); }} />
+                      <TextInput style={styles.input} placeholder="Horario" value={adminCommunityId ? '' : adminCommunityTime} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityTime(value); }} />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={adminCommunityId ? '' : adminCommunityDescription} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDescription(value); }} multiline />
+                      <TouchableOpacity style={[styles.filterChip, adminCommunityIsActive && styles.filterChipActive]} onPress={() => setAdminCommunityIsActive(!adminCommunityIsActive)}>
+                        <Text style={[styles.filterChipText, adminCommunityIsActive && styles.filterChipTextActive]}>{adminCommunityIsActive ? 'Activa' : 'Inactiva'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.primaryButton} onPress={adminCreateCommunity}>
+                        <Text style={styles.primaryButtonText}>Crear comunidad</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
                   {selectedAdminProvince ? (
                     <>
-                      <Text style={styles.cardEyebrow}>Comunidad</Text>
+                      <Text style={styles.cardEyebrow}>Comunidades existentes</Text>
                       <ScrollView style={styles.dropdownList} nestedScrollEnabled>
                         {selectedAdminProvince.locations.map((item) => {
                           const itemKey = item.id ?? item.name;
                           const selected = adminCommunityId === itemKey;
+                          const isActive = !('isActive' in item) || Boolean(item.isActive);
                           return (
                             <View key={itemKey}>
                               <TouchableOpacity
@@ -3832,6 +6059,14 @@ function ProfileScreen({
                                   <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay} />
                                   <TextInput style={styles.input} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime} />
                                   <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline />
+                                  <View style={styles.filterRow}>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={() => adminToggleCommunityStatus(itemKey, !isActive)}>
+                                      <Text style={styles.secondaryButtonText}>{isActive ? 'Deshabilitar' : 'Habilitar'}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={() => adminArchiveCommunity(itemKey)}>
+                                      <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                                    </TouchableOpacity>
+                                  </View>
                                   <TouchableOpacity style={styles.primaryButton} onPress={adminSaveCommunity}>
                                     <Text style={styles.primaryButtonText}>Guardar comunidad</Text>
                                   </TouchableOpacity>
@@ -3985,13 +6220,24 @@ function ProfileScreen({
             <>
               <SectionTitle title="Queres ser parte de Palestra?" />
               <Text style={styles.cardText}>Registrate como Palestrista. Tu perfil queda pendiente hasta que un dirigente lo apruebe.</Text>
-              <TextInput style={styles.input} placeholder="Nombre y apellido" value={registerFullName} onChangeText={setRegisterFullName} />
-              <TextInput style={styles.input} placeholder="Contacto" value={registerContact} onChangeText={setRegisterContact} />
-              <Text style={styles.cardEyebrow}>Provincia</Text>
+              <Text style={styles.inputLabel}>Nombre completo</Text>
+              <TextInput
+                style={[styles.input, authFocusedField === 'fullName' && styles.inputFocused, authErrors.fullName && styles.inputError]}
+                placeholder="Ej: Juan Perez"
+                value={registerFullName}
+                onChangeText={(value) => { setRegisterFullName(value); setAuthErrors((current) => ({ ...current, fullName: '' })); }}
+                onFocus={() => setAuthFocusedField('fullName')}
+                onBlur={() => setAuthFocusedField('')}
+              />
+              {authErrors.fullName ? <Text style={styles.formErrorText}>{authErrors.fullName}</Text> : null}
+              <Text style={styles.inputLabel}>Contacto</Text>
+              <TextInput style={[styles.input, authFocusedField === 'contact' && styles.inputFocused]} placeholder="Telefono o contacto opcional" value={registerContact} onChangeText={setRegisterContact} onFocus={() => setAuthFocusedField('contact')} onBlur={() => setAuthFocusedField('')} />
+              <Text style={styles.inputLabel}>Provincia</Text>
               <TouchableOpacity style={styles.dropdownButton} onPress={() => setProvinceDropdownOpen(!provinceDropdownOpen)}>
-                <Text style={styles.dropdownButtonText}>{registerProvince || 'Seleccionar provincia'}</Text>
+                <Text style={styles.dropdownButtonText}>{registerProvince || 'Selecciona tu provincia'}</Text>
                 <Ionicons name={provinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
               </TouchableOpacity>
+              {authErrors.province ? <Text style={styles.formErrorText}>{authErrors.province}</Text> : null}
               {provinceDropdownOpen ? (
                 <ScrollView style={styles.dropdownList} nestedScrollEnabled>
                   {registrationCommunities.map((item) => (
@@ -4001,6 +6247,7 @@ function ProfileScreen({
                       onPress={() => {
                         setRegisterProvince(item.province);
                         setRegisterCommunity('');
+                        setAuthErrors((current) => ({ ...current, province: '', community: '' }));
                         setProvinceDropdownOpen(false);
                       }}
                     >
@@ -4011,15 +6258,16 @@ function ProfileScreen({
               ) : null}
               {selectedRegistrationProvince ? (
                 <>
-                  <Text style={styles.cardEyebrow}>Comunidad de origen</Text>
+                  <Text style={styles.inputLabel}>Comunidad</Text>
                   <TouchableOpacity style={styles.dropdownButton} onPress={() => setCommunityDropdownOpen(!communityDropdownOpen)}>
-                    <Text style={styles.dropdownButtonText}>{registerCommunity || 'Seleccionar comunidad'}</Text>
+                    <Text style={styles.dropdownButtonText}>{registerCommunity || 'Selecciona tu comunidad'}</Text>
                     <Ionicons name={communityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
                   </TouchableOpacity>
+                  {authErrors.community ? <Text style={styles.formErrorText}>{authErrors.community}</Text> : null}
                   {communityDropdownOpen ? (
                     <ScrollView style={styles.dropdownList} nestedScrollEnabled>
                       {selectedRegistrationProvince.locations.map((item) => (
-                        <TouchableOpacity key={item.name} style={styles.dropdownItem} onPress={() => { setRegisterCommunity(item.name); setCommunityDropdownOpen(false); }}>
+                        <TouchableOpacity key={item.name} style={styles.dropdownItem} onPress={() => { setRegisterCommunity(item.name); setAuthErrors((current) => ({ ...current, community: '' })); setCommunityDropdownOpen(false); }}>
                           <Text style={styles.dropdownItemText}>{item.name}</Text>
                         </TouchableOpacity>
                       ))}
@@ -4029,8 +6277,63 @@ function ProfileScreen({
               ) : null}
             </>
           ) : null}
-          <TextInput style={styles.input} placeholder="Email" value={authEmail} onChangeText={setAuthEmail} autoCapitalize="none" keyboardType="email-address" />
-          <TextInput style={styles.input} placeholder="Contrasena" value={authPassword} onChangeText={setAuthPassword} secureTextEntry />
+          <Text style={styles.inputLabel}>Mail</Text>
+          <TextInput
+            style={[styles.input, authFocusedField === 'email' && styles.inputFocused, authErrors.email && styles.inputError]}
+            placeholder={authMode === 'register' ? 'Ej: nombre@email.com' : 'Ingresa tu correo electronico'}
+            value={authEmail}
+            onChangeText={(value) => { setAuthEmail(value); setAuthErrors((current) => ({ ...current, email: '' })); }}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            onFocus={() => setAuthFocusedField('email')}
+            onBlur={() => setAuthFocusedField('')}
+          />
+          {authErrors.email ? <Text style={styles.formErrorText}>{authErrors.email}</Text> : null}
+          <Text style={styles.inputLabel}>Contrasena</Text>
+          <View style={styles.passwordInputWrap}>
+            <TextInput
+              style={[
+                styles.input,
+                styles.inputWithIcon,
+                authFocusedField === 'password' && styles.inputFocused,
+                authErrors.password && styles.inputError
+              ]}
+              placeholder={authMode === 'register' ? 'Minimo 6 caracteres' : 'Ingresa tu contrasena'}
+              value={authPassword}
+              onChangeText={(value) => {
+                setAuthPassword(value);
+                setAuthErrors((current) => ({
+                  ...current,
+                  password: '',
+                  confirm: ''
+                }));
+              }}
+              secureTextEntry={!authPasswordVisible}
+              onFocus={() => setAuthFocusedField('password')}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
+            />
+            <TouchableOpacity style={styles.passwordEyeButton} onPress={() => setAuthPasswordVisible(!authPasswordVisible)} activeOpacity={0.82}>
+              <Ionicons name={authPasswordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
+            </TouchableOpacity>
+          </View>
+          {authErrors.password ? <Text style={styles.formErrorText}>{authErrors.password}</Text> : null}
+          {authMode === 'register' ? (
+            <>
+              <Text style={styles.inputLabel}>Confirmar contrasena</Text>
+              <TextInput
+                style={[styles.input, authFocusedField === 'confirm' && styles.inputFocused, authErrors.confirm && styles.inputError]}
+                placeholder="Repite tu contrasena"
+                value={authPasswordConfirm}
+                onChangeText={(value) => { setAuthPasswordConfirm(value); setAuthErrors((current) => ({ ...current, confirm: '' })); }}
+                secureTextEntry={!authPasswordVisible}
+                onFocus={() => setAuthFocusedField('confirm')}
+                onBlur={() => setAuthFocusedField('')}
+              />
+              {authErrors.confirm ? <Text style={styles.formErrorText}>{authErrors.confirm}</Text> : null}
+            </>
+          ) : null}
           {authMode === 'register' ? (
             <DemoButton label="Registrarme" onPress={registerReal} />
           ) : (
@@ -4212,6 +6515,32 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center'
   },
+  maintenancePanel: {
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 26,
+    padding: 24,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2
+  },
+  maintenanceTitle: {
+    color: palette.ink,
+    fontSize: 26,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
+  maintenanceText: {
+    color: palette.ink,
+    fontSize: 16,
+    lineHeight: 23,
+    textAlign: 'center',
+    fontWeight: '700'
+  },
   sessionBadge: {
     backgroundColor: 'rgba(45, 141, 200, 0.12)',
     paddingHorizontal: 12,
@@ -4224,6 +6553,18 @@ const styles = StyleSheet.create({
     color: palette.blueDeep,
     fontSize: 12,
     fontWeight: '700'
+  },
+  headerStatusColumn: {
+    alignItems: 'flex-end',
+    gap: 4,
+    maxWidth: 156
+  },
+  headerDateTime: {
+    color: palette.inkMuted,
+    fontSize: 10,
+    fontWeight: '800',
+    textAlign: 'right',
+    lineHeight: 13
   },
   headerActions: {
     flexDirection: 'row',
@@ -4741,6 +7082,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 18
   },
+  modalKeyboardAvoider: {
+    width: '100%',
+    maxWidth: 520,
+    maxHeight: '90%'
+  },
   modalCloseButton: {
     position: 'absolute',
     top: 10,
@@ -4758,6 +7104,26 @@ const styles = StyleSheet.create({
   modalItem: {
     gap: 6,
     paddingTop: 6
+  },
+  publicProfilePanel: {
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 18
+  },
+  publicProfileAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: palette.whiteSoft,
+    borderColor: palette.line,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
+  publicProfileAvatarImage: {
+    width: '100%',
+    height: '100%'
   },
   communityModalPanel: {
     maxHeight: '86%',
@@ -4854,6 +7220,328 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 27,
     textAlign: 'center'
+  },
+  flexOne: {
+    flex: 1
+  },
+  libraryHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  libraryPlainPanel: {
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.1)',
+    borderRadius: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    gap: 4
+  },
+  libraryVisualPanel: {
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderRadius: 24,
+    padding: 14,
+    gap: 10,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2
+  },
+  libraryPlainTitle: {
+    color: palette.ink,
+    fontSize: 18,
+    fontWeight: '900'
+  },
+  libraryVisualTitle: {
+    color: palette.ink,
+    fontSize: 22,
+    fontWeight: '900'
+  },
+  iconActionButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: palette.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 2
+  },
+  locationIconButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: palette.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 2
+  },
+  libraryEditor: {
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderRadius: 20,
+    padding: 12,
+    marginTop: 10,
+    backgroundColor: palette.whiteSoft
+  },
+  libraryBodyInput: {
+    minHeight: 170
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8
+  },
+  emptyLibraryState: {
+    paddingVertical: 22,
+    gap: 6
+  },
+  prayerListRow: {
+    minHeight: 58,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(23, 55, 71, 0.12)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12
+  },
+  prayerListTitle: {
+    color: palette.ink,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24
+  },
+  songListRow: {
+    minHeight: 78,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(23, 55, 71, 0.12)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12
+  },
+  songThumb: {
+    width: 58,
+    height: 58,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(45, 141, 200, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  songThumbImage: {
+    width: '100%',
+    height: '100%'
+  },
+  songListTitle: {
+    color: palette.ink,
+    fontSize: 20,
+    fontWeight: '900',
+    lineHeight: 25
+  },
+  libraryMeta: {
+    color: palette.inkMuted,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 3
+  },
+  draftBadge: {
+    alignSelf: 'flex-start',
+    color: palette.red,
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 5,
+    textTransform: 'uppercase'
+  },
+  libraryActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  tinyIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  prayerReader: {
+    backgroundColor: palette.white,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 28,
+    gap: 16,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    elevation: 2
+  },
+  prayerReaderTitle: {
+    color: palette.ink,
+    fontSize: 24,
+    lineHeight: 31,
+    fontWeight: '800',
+    textAlign: 'center'
+  },
+  prayerReaderSubtitle: {
+    color: palette.inkMuted,
+    fontSize: 15,
+    lineHeight: 21,
+    textAlign: 'center',
+    fontWeight: '700'
+  },
+  prayerDivider: {
+    width: 110,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: 'rgba(23, 55, 71, 0.13)',
+    alignSelf: 'center',
+    marginVertical: 8
+  },
+  prayerParagraph: {
+    color: '#111827',
+    fontSize: 17,
+    lineHeight: 27,
+    textAlign: 'left'
+  },
+  songReader: {
+    backgroundColor: palette.white,
+    borderRadius: 24,
+    padding: 16,
+    gap: 16,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.09,
+    shadowRadius: 16,
+    elevation: 2
+  },
+  songHeroImage: {
+    width: '100%',
+    height: 220,
+    borderRadius: 18,
+    backgroundColor: palette.whiteSoft
+  },
+  songReaderTitle: {
+    color: palette.ink,
+    fontSize: 28,
+    lineHeight: 35,
+    fontWeight: '900'
+  },
+  songReaderSubtitle: {
+    color: palette.inkMuted,
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: '800'
+  },
+  songDivider: {
+    width: 118,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: 'rgba(45, 141, 200, 0.22)',
+    marginVertical: 4
+  },
+  songStanza: {
+    color: '#111827',
+    fontSize: 17,
+    lineHeight: 27
+  },
+  librarySource: {
+    color: palette.inkMuted,
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 8
+  },
+  pmCalendarPanel: {
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.08)',
+    borderTopWidth: 3,
+    borderTopColor: palette.green,
+    borderRadius: 4,
+    paddingHorizontal: 22,
+    paddingTop: 24,
+    paddingBottom: 18,
+    marginTop: 10,
+    backgroundColor: palette.white
+  },
+  pmCalendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 24
+  },
+  pmCalendarNavButton: {
+    width: 36,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  pmCalendarNavText: {
+    color: '#666666',
+    fontSize: 16,
+    fontWeight: '500'
+  },
+  pmCalendarTitle: {
+    color: '#3F3F3F',
+    fontSize: 15,
+    fontWeight: '500',
+    textTransform: 'capitalize'
+  },
+  pmCalendarWeekRow: {
+    flexDirection: 'row',
+    marginBottom: 12
+  },
+  pmWeekdayText: {
+    width: `${100 / 7}%`,
+    color: '#A7A7A7',
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center'
+  },
+  pmCalendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: 12
+  },
+  pmDaySpacer: {
+    width: `${100 / 7}%`,
+    height: 25
+  },
+  pmDayButton: {
+    width: `${100 / 7}%`,
+    height: 25,
+    borderRadius: 13,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  pmDayButtonSelected: {
+    backgroundColor: palette.red,
+    borderColor: palette.red
+  },
+  pmDayText: {
+    color: '#777777',
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  pmDayTextSelected: {
+    color: palette.white
   },
   calendarCard: {
     backgroundColor: palette.white,
@@ -5574,6 +8262,89 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: palette.ink,
     backgroundColor: palette.white
+  },
+  inputFocused: {
+    borderColor: palette.red,
+    shadowColor: palette.red,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 1
+  },
+  inputError: {
+    borderColor: 'rgba(209, 71, 71, 0.82)',
+    backgroundColor: 'rgba(255, 246, 246, 0.96)'
+  },
+  inputLabel: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 12,
+    marginBottom: 0
+  },
+  formErrorText: {
+    color: '#B93232',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 5
+  },
+  passwordField: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 18,
+    paddingLeft: 14,
+    paddingRight: 8,
+    marginTop: 10,
+    backgroundColor: palette.white,
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  passwordInput: {
+    flex: 1,
+    minHeight: 46,
+    color: palette.ink
+  },
+  passwordToggle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  passwordInputWrap: {
+    position: 'relative',
+    justifyContent: 'center'
+  },
+  inputWithIcon: {
+    paddingRight: 52
+  },
+  passwordEyeButton: {
+    position: 'absolute',
+    right: 8,
+    top: 15,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.75)'
+  },
+  completionNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(207, 52, 49, 0.24)',
+    backgroundColor: 'rgba(255, 246, 246, 0.9)',
+    borderRadius: 16,
+    padding: 12
+  },
+  completionNoticeText: {
+    flex: 1,
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20
   },
   textArea: {
     minHeight: 110,

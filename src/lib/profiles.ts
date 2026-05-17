@@ -37,7 +37,38 @@ export type CommunityMember = {
   role: string;
   community_name: string | null;
   province: string | null;
+  avatar_url?: string | null;
 };
+
+export type PublicProfileRecord = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+  province: string | null;
+  community_name: string | null;
+  role: string;
+};
+
+export type MailboxMessageRecord = {
+  id: string;
+  community_id: string | null;
+  community_name: string;
+  province: string | null;
+  sender_id: string | null;
+  sender_name: string | null;
+  sender_contact: string | null;
+  message: string;
+  response: string | null;
+  status: 'nuevo' | 'leido' | 'respondido' | 'cerrado' | 'archivado';
+  created_at: string;
+  responded_at: string | null;
+  read_at: string | null;
+  closed_at: string | null;
+  can_respond: boolean;
+};
+
+export type MailboxTargetMode = 'my_community' | 'community' | 'province_communities' | 'diocesan_leadership' | 'all' | 'user' | 'role' | 'province' | 'role_province';
 
 export async function fetchPendingProfiles(): Promise<PendingProfile[]> {
   const { data, error } = await supabase.rpc('admin_get_pending_profiles');
@@ -92,6 +123,17 @@ export async function updateAdminUser(values: {
       p_community_name: values.communityName,
       p_status: values.status,
       p_role: values.role
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function createAdminBasicUser(email: string, password: string) {
+  try {
+    return await supabase.rpc('admin_create_basic_user', {
+      p_email: email,
+      p_password: password
     });
   } catch (error) {
     return networkError(error);
@@ -186,6 +228,105 @@ export async function resolveUserRequest(requestId: string, status: 'aprobada' |
       p_status: status,
       p_admin_message: message,
       p_assign_role: assignRole ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchPublicProfile(profileId: string): Promise<PublicProfileRecord | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_public_profile', {
+      p_profile_id: profileId
+    });
+    if (error || !data) {
+      return null;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    return (row as PublicProfileRecord | undefined) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function createCommunityContactMessage(values: {
+  communityId: string;
+  senderName: string;
+  senderContact: string;
+  message: string;
+}) {
+  try {
+    return await supabase.rpc('create_community_contact_message', {
+      p_community_id: values.communityId,
+      p_sender_name: values.senderName,
+      p_sender_contact: values.senderContact,
+      p_message: values.message
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function createMailboxMessage(values: {
+  targetMode: MailboxTargetMode;
+  message: string;
+  communityId?: string | null;
+  province?: string | null;
+  role?: string | null;
+  userId?: string | null;
+}) {
+  try {
+    return await supabase.rpc('create_mailbox_message', {
+      p_target_mode: values.targetMode,
+      p_message: values.message,
+      p_community_id: values.communityId ?? null,
+      p_province: values.province ?? null,
+      p_role: values.role ?? null,
+      p_user_id: values.userId ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchMailboxMessages(): Promise<MailboxMessageRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_my_mailbox_messages');
+    if (error || !data) {
+      return [];
+    }
+    return data as MailboxMessageRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function respondMailboxMessage(messageId: string, response: string) {
+  try {
+    return await supabase.rpc('respond_community_contact_message', {
+      p_message_id: messageId,
+      p_response: response
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function setMailboxMessageStatus(messageId: string, status: MailboxMessageRecord['status']) {
+  try {
+    return await supabase.rpc('set_community_contact_message_status', {
+      p_message_id: messageId,
+      p_status: status
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function acceptDiocesanCoordinatorRequest(requestId: string) {
+  try {
+    return await supabase.rpc('accept_coordinator_request', {
+      p_request_id: requestId
     });
   } catch (error) {
     return networkError(error);
@@ -325,6 +466,8 @@ export type AppMaterialRecord = {
   sort_order: number | null;
   archived_at: string | null;
   created_at: string | null;
+  created_by: string | null;
+  province_id: string | null;
 };
 
 export type NewsDraftRecord = {
@@ -335,6 +478,31 @@ export type NewsDraftRecord = {
   image_url: string | null;
   is_featured: boolean;
   status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MotivadorPeriodRecord = {
+  id: string;
+  province: string | null;
+  gender: 'masculino' | 'femenino';
+  pm_number: number;
+  selected_dates: string[] | null;
+  starts_on: string;
+  ends_on: string;
+  retreat_house: string;
+  address: string;
+  opening_time: string | null;
+  closing_time: string | null;
+  description: string | null;
+  place_photo_url: string | null;
+  flyer_url: string | null;
+  visible_to_lower_roles: boolean;
+  status: 'activo' | 'inactivo' | 'borrador' | 'archivado';
+  created_by: string | null;
+  created_by_name: string | null;
+  updated_by: string | null;
+  updated_by_name: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -375,7 +543,7 @@ export async function fetchAppMaterials(): Promise<AppMaterialRecord[]> {
   try {
     const { data, error } = await supabase
       .from('materials')
-      .select('id, title, description, category, visibility, required_permission, file_url, file_path, sort_order, archived_at, created_at')
+      .select('id, title, description, category, visibility, required_permission, file_url, file_path, sort_order, archived_at, created_at, created_by, province_id')
       .is('archived_at', null)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
@@ -420,6 +588,67 @@ export async function archiveAppMaterial(id: string) {
   try {
     return await supabase.rpc('admin_archive_material', {
       p_id: id
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchAdminMotivadorPeriods(): Promise<MotivadorPeriodRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('admin_get_motivador_periods');
+    if (error || !data) {
+      return [];
+    }
+    return data as MotivadorPeriodRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveMotivadorPeriod(values: {
+  id?: string | null;
+  province: string;
+  gender: 'masculino' | 'femenino';
+  pmNumber: number;
+  selectedDates: string[];
+  retreatHouse: string;
+  address: string;
+  openingTime: string;
+  closingTime: string;
+  description?: string | null;
+  placePhotoUrl?: string | null;
+  flyerUrl?: string | null;
+  visibleToLowerRoles: boolean;
+  status: 'activo' | 'inactivo' | 'borrador' | 'archivado';
+}) {
+  try {
+    return await supabase.rpc('admin_upsert_motivador_period', {
+      p_id: values.id ?? null,
+      p_province: values.province,
+      p_gender: values.gender,
+      p_pm_number: values.pmNumber,
+      p_selected_dates: values.selectedDates,
+      p_retreat_house: values.retreatHouse,
+      p_address: values.address,
+      p_opening_time: values.openingTime,
+      p_closing_time: values.closingTime,
+      p_description: values.description ?? null,
+      p_place_photo_url: values.placePhotoUrl ?? null,
+      p_flyer_url: values.flyerUrl ?? null,
+      p_visible_to_lower_roles: values.visibleToLowerRoles,
+      p_status: values.status
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function setMotivadorPeriodStatus(id: string, status: 'activo' | 'inactivo' | 'borrador' | 'archivado') {
+  try {
+    return await supabase.rpc('admin_set_motivador_period_status', {
+      p_id: id,
+      p_status: status
     });
   } catch (error) {
     return networkError(error);
@@ -504,6 +733,55 @@ export async function updateCommunity(id: string, values: {
       p_meeting_day: values.meeting_day ?? null,
       p_meeting_time: values.meeting_time ?? null,
       p_description: values.description ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function createCommunity(values: {
+  province: string;
+  name: string;
+  groupType: 'jovenes' | 'adultos';
+  address: string;
+  phone: string;
+  meetingDay: string;
+  meetingTime: string;
+  description: string;
+  isActive: boolean;
+}) {
+  try {
+    return await supabase.rpc('admin_create_community', {
+      p_province: values.province,
+      p_name: values.name,
+      p_group_type: values.groupType,
+      p_address: values.address,
+      p_phone: values.phone,
+      p_meeting_day: values.meetingDay,
+      p_meeting_time: values.meetingTime,
+      p_description: values.description,
+      p_is_active: values.isActive
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function setCommunityStatus(id: string, isActive: boolean) {
+  try {
+    return await supabase.rpc('admin_set_community_status', {
+      p_community_id: id,
+      p_is_active: isActive
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function archiveCommunity(id: string) {
+  try {
+    return await supabase.rpc('admin_archive_community', {
+      p_community_id: id
     });
   } catch (error) {
     return networkError(error);

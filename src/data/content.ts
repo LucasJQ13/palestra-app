@@ -130,6 +130,7 @@ type CommunityLocation = {
   description: string;
   imageUrl: string;
   group?: 'jovenes' | 'adultos';
+  isActive?: boolean;
 };
 
 type ProvinceCommunity = {

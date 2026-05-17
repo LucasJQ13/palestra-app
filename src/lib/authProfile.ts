@@ -32,6 +32,7 @@ export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ 
 
   return {
     session: {
+      id: row.user_id,
       fullName: row.full_name ?? row.email ?? fallbackEmail,
       email: row.email ?? fallbackEmail,
       avatarUrl: row.avatar_url,

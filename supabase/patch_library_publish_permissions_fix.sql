@@ -1,0 +1,237 @@
+create or replace function public.current_user_can_publish_library_item(p_section text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor_role text;
+begin
+  select profiles.role::text into actor_role
+  from public.profiles
+  where profiles.id = auth.uid()
+  and profiles.status = 'aprobado';
+
+  return actor_role in (
+    'sedimentador',
+    'animador_comunidad',
+    'coordinador_comunidad',
+    'vocal',
+    'asesor',
+    'coordinador_diocesano',
+    'vocal_nacional',
+    'coordinador_nacional',
+    'administrador'
+  );
+end;
+$$;
+
+grant execute on function public.current_user_can_publish_library_item(text) to authenticated;
+
+create or replace function public.current_user_can_edit_library_item(p_section text)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select public.current_user_can_publish_library_item(p_section);
+$$;
+
+grant execute on function public.current_user_can_edit_library_item(text) to authenticated;
+
+create or replace function public.current_user_can_manage_library_item(p_item_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor_role text;
+  target_author uuid;
+begin
+  select profiles.role::text into actor_role
+  from public.profiles
+  where profiles.id = auth.uid()
+  and profiles.status = 'aprobado';
+
+  select created_by into target_author
+  from public.app_library_items
+  where id = p_item_id
+  and archived_at is null;
+
+  if target_author = auth.uid() then
+    return true;
+  end if;
+
+  return actor_role in ('vocal', 'asesor', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador');
+end;
+$$;
+
+grant execute on function public.current_user_can_manage_library_item(uuid) to authenticated;
+
+create or replace function public.admin_upsert_library_item(
+  p_id uuid,
+  p_section text,
+  p_title text,
+  p_subtitle text,
+  p_body text,
+  p_image_url text,
+  p_category text,
+  p_source text,
+  p_item_date date,
+  p_status text,
+  p_sort_order integer
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  saved_id uuid;
+  target_exists boolean;
+  actor_role text;
+  actor_status text;
+begin
+  select profiles.role::text, profiles.status::text
+  into actor_role, actor_status
+  from public.profiles
+  where profiles.id = auth.uid();
+
+  if auth.uid() is null then
+    raise exception 'Tenes que iniciar sesion para publicar.';
+  end if;
+
+  if actor_role is null then
+    raise exception 'No existe un perfil asociado a esta sesion.';
+  end if;
+
+  if actor_status <> 'aprobado' then
+    raise exception 'Tu perfil debe estar aprobado para publicar.';
+  end if;
+
+  select exists (
+    select 1
+    from public.app_library_items
+    where id = p_id
+    and archived_at is null
+  ) into target_exists;
+
+  if target_exists then
+    if not public.current_user_can_manage_library_item(p_id) then
+      raise exception 'No tenes permisos para editar este contenido.';
+    end if;
+  elsif actor_role not in (
+    'sedimentador',
+    'animador_comunidad',
+    'coordinador_comunidad',
+    'vocal',
+    'asesor',
+    'coordinador_diocesano',
+    'vocal_nacional',
+    'coordinador_nacional',
+    'administrador'
+  ) then
+    raise exception 'No tenes permisos para publicar en esta seccion. Rol detectado: %, estado: %, seccion: %.', actor_role, actor_status, p_section;
+  end if;
+
+  if p_section not in ('oraciones', 'cancionero', 'himno') then
+    raise exception 'Seccion invalida.';
+  end if;
+
+  if nullif(trim(p_title), '') is null or nullif(trim(p_body), '') is null then
+    raise exception 'Titulo y contenido son obligatorios.';
+  end if;
+
+  insert into public.app_library_items (
+    id,
+    section,
+    title,
+    subtitle,
+    body,
+    image_url,
+    category,
+    source,
+    item_date,
+    status,
+    sort_order,
+    created_by,
+    updated_by,
+    updated_at,
+    archived_at
+  )
+  values (
+    coalesce(p_id, gen_random_uuid()),
+    p_section,
+    trim(p_title),
+    nullif(trim(coalesce(p_subtitle, '')), ''),
+    trim(p_body),
+    nullif(trim(coalesce(p_image_url, '')), ''),
+    null,
+    null,
+    null,
+    'publicado',
+    coalesce(p_sort_order, 100),
+    auth.uid(),
+    auth.uid(),
+    now(),
+    null
+  )
+  on conflict (id) do update set
+    section = excluded.section,
+    title = excluded.title,
+    subtitle = excluded.subtitle,
+    body = excluded.body,
+    image_url = excluded.image_url,
+    category = null,
+    source = null,
+    item_date = null,
+    status = 'publicado',
+    sort_order = excluded.sort_order,
+    updated_by = auth.uid(),
+    updated_at = now(),
+    archived_at = null
+  returning id into saved_id;
+
+  insert into public.audit_logs (actor_id, action, metadata)
+  values (
+    auth.uid(),
+    'admin_upsert_library_item',
+    jsonb_build_object('id', saved_id, 'section', p_section, 'title', p_title, 'status', 'publicado')
+  );
+
+  return saved_id;
+end;
+$$;
+
+grant execute on function public.admin_upsert_library_item(uuid, text, text, text, text, text, text, text, date, text, integer) to authenticated;
+
+drop function if exists public.debug_my_library_permission();
+
+create or replace function public.debug_my_library_permission()
+returns table (
+  auth_uid uuid,
+  email text,
+  profile_id uuid,
+  role text,
+  status text,
+  can_publish boolean
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    auth.uid(),
+    auth.users.email::text,
+    profiles.id,
+    profiles.role::text,
+    profiles.status::text,
+    public.current_user_can_publish_library_item('oraciones')
+  from auth.users
+  left join public.profiles on profiles.id = auth.users.id
+  where auth.users.id = auth.uid()
+  limit 1;
+$$;
+
+grant execute on function public.debug_my_library_permission() to authenticated;
