@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, resolveUserRequest, respondMailboxMessage, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, deleteAppTab, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -62,7 +62,7 @@ Notifications.setNotificationHandler({
 });
 
 type TabKey = string;
-type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general';
+type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'navegacion';
 type ContactBlock = { id: string; type: 'texto' | 'telefono' | 'email' | 'imagen' | 'direccion' | 'enlace' | 'boton' | 'red_social'; label: string; value: string };
 type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'buzon' | 'configuracion';
 type AppAdminConfig = {
@@ -204,6 +204,7 @@ const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof t
   { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
   { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
   { key: 'solicitudes', label: 'Solicitudes', icon: 'mail-unread-outline' },
+  { key: 'navegacion', label: 'Navegacion', icon: 'navigate-outline', systemOnly: true },
   { key: 'periodo_motivador', label: 'Periodo', icon: 'flame-outline', systemOnly: true },
   { key: 'configuracion', label: 'Config', icon: 'settings-outline', systemOnly: true }
 ];
@@ -243,6 +244,15 @@ type AppTabDisplay = {
 };
 
 const defaultTabByKey = new Map(defaultTabs.map((tab) => [tab.key, tab]));
+const protectedTabKeys = new Set(['inicio', 'perfil']);
+
+function isIoniconName(value?: string | null): value is keyof typeof Ionicons.glyphMap {
+  return Boolean(value && value in Ionicons.glyphMap);
+}
+
+function normalizeTabKey(value: string) {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
 
 const demoSessions: Record<string, Session> = {
   invitado: {
@@ -743,6 +753,7 @@ export default function App() {
         return {
           ...tab,
           label: setting?.label ?? tab.label,
+          icon: isIoniconName(setting?.icon_name) ? setting.icon_name : tab.icon,
           visible: setting?.is_visible ?? true,
           sortOrder: setting?.sort_order ?? 999,
           visibleRoles: setting?.visible_roles ?? null
@@ -753,7 +764,7 @@ export default function App() {
       .map((setting) => ({
         key: setting.key,
         label: setting.label,
-        icon: 'document-text-outline' as keyof typeof Ionicons.glyphMap,
+        icon: isIoniconName(setting.icon_name) ? setting.icon_name : 'document-text-outline' as keyof typeof Ionicons.glyphMap,
         visible: setting.is_visible,
         sortOrder: setting.sort_order,
         visibleRoles: setting.visible_roles ?? null
@@ -3381,8 +3392,10 @@ function ProfileScreen({
   const [adminCommunityDescription, setAdminCommunityDescription] = useState('');
   const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
   const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
-  const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; isVisible: boolean; visibleRoles: string[] | null }>>({});
+  const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; isVisible: boolean; visibleRoles: string[] | null }>>({});
   const [newTabLabel, setNewTabLabel] = useState('');
+  const [newTabKey, setNewTabKey] = useState('');
+  const [newTabIcon, setNewTabIcon] = useState('document-text-outline');
   const [newTabRoles, setNewTabRoles] = useState<string[]>(['sedimentador', 'coordinador_comunidad', 'animador_comunidad', 'vocal', 'coordinador_diocesano', 'asesor', 'vocal_nacional', 'coordinador_nacional', 'administrador']);
   const [selectedContentTab, setSelectedContentTab] = useState<TabKey>('inicio');
   const [contentTitle, setContentTitle] = useState('');
@@ -3595,6 +3608,9 @@ function ProfileScreen({
     return 0;
   })();
   const enabledAdminModules = adminModuleCatalog.filter((item) => {
+    if (item.key === 'navegacion') {
+      return session?.role === 'administrador';
+    }
     if (item.key === 'usuarios') {
       return session?.role === 'administrador';
     }
@@ -4722,8 +4738,16 @@ function ProfileScreen({
       return;
     }
     const tab = editableTabs.find((item) => item.key === key);
-    const draft = editingTabs[key] ?? { label: fallbackLabel, isVisible: true, visibleRoles: tab?.visibleRoles ?? null };
-    const { error } = await updateAppTab(key, draft.label || fallbackLabel, draft.isVisible, draft.visibleRoles);
+    const draft = editingTabs[key] ?? { label: fallbackLabel, iconName: tab?.icon ?? 'document-text-outline', isVisible: true, visibleRoles: tab?.visibleRoles ?? null };
+    if (!draft.label.trim()) {
+      setAuthMessage('El nombre visible no puede quedar vacio.');
+      return;
+    }
+    if (!isIoniconName(draft.iconName)) {
+      setAuthMessage(`El icono "${draft.iconName}" no existe en Ionicons.`);
+      return;
+    }
+    const { error } = await updateAppTab(key, draft.label.trim() || fallbackLabel, draft.isVisible, draft.visibleRoles, draft.iconName);
     setAuthMessage(error ? error.message : changeDone('Pestana actualizada.'));
     await onTabsChanged();
   }
@@ -4737,8 +4761,20 @@ function ProfileScreen({
       setAuthMessage('Escribir un nombre para la nueva pagina.');
       return;
     }
-    const key = newTabLabel.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-    const { error } = await createAppTab(key, newTabLabel.trim(), newTabRoles);
+    const key = normalizeTabKey(newTabKey || newTabLabel);
+    if (!key) {
+      setAuthMessage('La clave interna no puede quedar vacia.');
+      return;
+    }
+    if (editableTabs.some((item) => item.key === key)) {
+      setAuthMessage('Ya existe una seccion con esa clave interna.');
+      return;
+    }
+    if (!isIoniconName(newTabIcon)) {
+      setAuthMessage(`El icono "${newTabIcon}" no existe en Ionicons.`);
+      return;
+    }
+    const { error } = await createAppTab(key, newTabLabel.trim(), newTabRoles, newTabIcon);
     if (error) {
       setAuthMessage(error.message);
       return;
@@ -4748,6 +4784,8 @@ function ProfileScreen({
       { id: `texto-${Date.now()}`, type: 'texto', value: 'Contenido inicial de la pagina.' }
     ]);
     setNewTabLabel('');
+    setNewTabKey('');
+    setNewTabIcon('document-text-outline');
     await onTabsChanged();
     await onContentChanged();
     setAuthMessage(changeDone('Pagina creada con visibilidad por rol.'));
@@ -4770,13 +4808,14 @@ function ProfileScreen({
 
     setAuthMessage('Actualizando orden de accesos...');
     for (const [orderIndex, tab] of nextOrder.entries()) {
-      const draft = editingTabs[tab.key] ?? { label: tab.label, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
       const { error } = await updateAppTabPosition({
         key: tab.key,
         label: draft.label || tab.label,
         isVisible: draft.isVisible,
         sortOrder: (orderIndex + 1) * 10,
-        visibleRoles: draft.visibleRoles
+        visibleRoles: draft.visibleRoles,
+        iconName: draft.iconName || tab.icon
       });
       if (error) {
         setAuthMessage(error.message);
@@ -4789,7 +4828,7 @@ function ProfileScreen({
 
   function updateTabRole(key: string, role: Role, checked: boolean) {
     const tab = editableTabs.find((item) => item.key === key);
-    const currentDraft = editingTabs[key] ?? { label: tab?.label ?? key, isVisible: tab?.visible ?? true, visibleRoles: tab?.visibleRoles ?? null };
+    const currentDraft = editingTabs[key] ?? { label: tab?.label ?? key, iconName: tab?.icon ?? 'document-text-outline', isVisible: tab?.visible ?? true, visibleRoles: tab?.visibleRoles ?? null };
     const currentRoles = currentDraft.visibleRoles ?? roleDefinitions.map((item) => item.role);
     const nextRoles = checked ? Array.from(new Set([...currentRoles, role])) : currentRoles.filter((item) => item !== role);
     setEditingTabs((current) => ({ ...current, [key]: { ...currentDraft, visibleRoles: nextRoles } }));
@@ -4797,6 +4836,62 @@ function ProfileScreen({
 
   function toggleNewTabRole(role: Role) {
     setNewTabRoles((current) => current.includes(role) ? current.filter((item) => item !== role) : [...current, role]);
+  }
+
+  async function adminDeleteTab(key: string) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede eliminar secciones.');
+      return;
+    }
+    if (protectedTabKeys.has(key) || defaultTabByKey.has(key)) {
+      setAuthMessage('Esta seccion es critica o propia de la app. Podes ocultarla, pero no eliminarla.');
+      return;
+    }
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm('¿Seguro que deseas eliminar esta seccion? Tambien se puede perder contenido asociado.'))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Eliminar seccion', '¿Seguro que deseas eliminar esta seccion? Tambien se puede perder contenido asociado.', [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await deleteAppTab(key);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await onTabsChanged();
+    await onContentChanged();
+    setAuthMessage(changeDone('Seccion eliminada.'));
+  }
+
+  async function adminRestoreDefaultNavigation() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede restaurar navegacion.');
+      return;
+    }
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm('¿Restaurar la navegacion predeterminada? Se reemplazaran nombres, iconos, orden y visibilidad base.'))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Restaurar navegacion', '¿Restaurar la navegacion predeterminada? Se reemplazaran nombres, iconos, orden y visibilidad base.', [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Restaurar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await restoreDefaultAppTabs();
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setEditingTabs({});
+    await onTabsChanged();
+    setAuthMessage(changeDone('Navegacion predeterminada restaurada.'));
   }
 
   async function adminSaveContent() {
@@ -6783,6 +6878,122 @@ function ProfileScreen({
                 </View>
               ) : null}
 
+              {adminModule === 'navegacion' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Gestor de navegacion inferior</Text>
+                  <Text style={styles.cardText}>Administra nombres, iconos, orden, visibilidad y roles de cada seccion. Los cambios se guardan en Supabase y se reflejan al refrescar la app, sin recompilar APK.</Text>
+                  <Text style={styles.cardEyebrow}>Previsualizacion</Text>
+                  <View style={styles.navPreviewBar}>
+                    {editableTabs.filter((tab) => tab.key !== 'perfil').slice(0, 6).map((tab) => {
+                      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                      const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
+                      return (
+                        <View key={`preview-${tab.key}`} style={[styles.navPreviewItem, !draft.isVisible && styles.navPreviewItemHidden]}>
+                          <Ionicons name={iconName} size={18} color={draft.isVisible ? palette.red : palette.inkMuted} />
+                          <Text numberOfLines={1} style={styles.navPreviewText}>{draft.label || tab.label}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  <View style={styles.adminPreviewPane}>
+                    <Text style={styles.cardEyebrow}>Agregar nueva seccion</Text>
+                    <TextInput style={styles.input} placeholder="Nombre visible. Ej: Noticias" value={newTabLabel} onChangeText={setNewTabLabel} />
+                    <TextInput style={styles.input} placeholder="Clave interna. Ej: noticias" value={newTabKey} onChangeText={(value) => setNewTabKey(normalizeTabKey(value))} autoCapitalize="none" />
+                    <TextInput style={styles.input} placeholder="Icono. Ej: newspaper-outline" value={newTabIcon} onChangeText={setNewTabIcon} autoCapitalize="none" />
+                    <Text style={styles.cardText}>Roles visibles: selecciona los rangos que podran ver esta seccion.</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                      {visibleHierarchyFor(session).map((role) => (
+                        <TouchableOpacity key={role.role} style={[styles.filterChip, newTabRoles.includes(role.role as Role) && styles.filterChipActive]} onPress={() => toggleNewTabRole(role.role as Role)}>
+                          <Text style={[styles.filterChipText, newTabRoles.includes(role.role as Role) && styles.filterChipTextActive]}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <TouchableOpacity style={styles.primaryButton} onPress={adminCreatePage}>
+                      <Ionicons name="add-circle-outline" size={17} color={palette.white} />
+                      <Text style={styles.primaryButtonText}>Agregar seccion</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {editableTabs.map((tab, index) => {
+                    const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                    const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
+                    const canDeleteTab = !protectedTabKeys.has(tab.key) && !defaultTabByKey.has(tab.key);
+                    return (
+                      <View key={`nav-${tab.key}`} style={styles.navigationEditorCard}>
+                        <View style={styles.navigationEditorHeader}>
+                          <View style={styles.navEditorIcon}>
+                            <Ionicons name={iconName} size={22} color={palette.red} />
+                          </View>
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.cardTitle}>{draft.label || tab.label}</Text>
+                            <Text style={styles.feedMeta}>Clave interna: {tab.key}</Text>
+                            <Text style={styles.feedMeta}>Orden actual: {tab.sortOrder}</Text>
+                          </View>
+                        </View>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Nombre visible. Ej: Noticias"
+                          value={draft.label}
+                          onChangeText={(value) => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, label: value } }))}
+                        />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Icono. Ej: newspaper-outline"
+                          value={draft.iconName}
+                          onChangeText={(value) => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, iconName: value } }))}
+                          autoCapitalize="none"
+                        />
+                        <View style={styles.inlineActions}>
+                          <TouchableOpacity style={styles.secondaryButton} onPress={() => adminMoveTab(tab.key, -1)} disabled={index === 0}>
+                            <Ionicons name="arrow-up-outline" size={16} color={palette.red} />
+                            <Text style={styles.secondaryButtonText}>Subir</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.secondaryButton} onPress={() => adminMoveTab(tab.key, 1)} disabled={index === editableTabs.length - 1}>
+                            <Ionicons name="arrow-down-outline" size={16} color={palette.red} />
+                            <Text style={styles.secondaryButtonText}>Bajar</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.secondaryButton, draft.isVisible && styles.filterChipActive]}
+                            onPress={() => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, isVisible: !draft.isVisible } }))}
+                          >
+                            <Ionicons name={draft.isVisible ? 'eye-outline' : 'eye-off-outline'} size={16} color={draft.isVisible ? palette.white : palette.red} />
+                            <Text style={[styles.secondaryButtonText, draft.isVisible && styles.filterChipTextActive]}>{draft.isVisible ? 'Visible' : 'Oculta'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <Text style={styles.cardEyebrow}>Roles visibles</Text>
+                        <Text style={styles.cardText}>Selecciona los rangos que podran ver esta seccion.</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                          {visibleHierarchyFor(session).map((role) => {
+                            const roles = draft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role);
+                            const checked = roles.includes(role.role);
+                            return (
+                              <TouchableOpacity key={role.role} style={[styles.filterChip, checked && styles.filterChipActive]} onPress={() => updateTabRole(tab.key, role.role as Role, !checked)}>
+                                <Text style={[styles.filterChipText, checked && styles.filterChipTextActive]}>{role.label}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                        <View style={styles.inlineActions}>
+                          <TouchableOpacity style={styles.primaryButton} onPress={() => adminSaveTab(tab.key, tab.label)}>
+                            <Ionicons name="save-outline" size={17} color={palette.white} />
+                            <Text style={styles.primaryButtonText}>Guardar cambios</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.secondaryButton} onPress={() => adminDeleteTab(tab.key)}>
+                            <Ionicons name="trash-outline" size={17} color={palette.red} />
+                            <Text style={styles.secondaryButtonText}>{canDeleteTab ? 'Eliminar' : 'No eliminable'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })}
+                  <TouchableOpacity style={styles.secondaryButton} onPress={adminRestoreDefaultNavigation}>
+                    <Ionicons name="refresh-circle-outline" size={17} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>Restaurar navegacion predeterminada</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
               {adminModule === 'contenido_general' ? (
                 <View style={styles.adminWorkspace}>
                 <Text style={styles.cardTitle}>Contenido General</Text>
@@ -6804,7 +7015,7 @@ function ProfileScreen({
                     </TouchableOpacity>
                     <Text style={styles.cardEyebrow}>Accesos, orden y visibilidad</Text>
                     {editableTabs.map((tab, index) => {
-                      const draft = editingTabs[tab.key] ?? { label: tab.label, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
                       return (
                         <View key={tab.key} style={styles.tabEditorRow}>
                           <Text style={styles.cardEyebrow}>{tab.key}</Text>
@@ -8697,6 +8908,8 @@ const styles = StyleSheet.create({
     backgroundColor: palette.red,
     minHeight: 48,
     borderRadius: 18,
+    flexDirection: 'row',
+    gap: 7,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
@@ -9440,6 +9653,54 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(45, 141, 200, 0.14)',
     paddingTop: 10,
     marginTop: 8
+  },
+  navPreviewBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 24,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.86)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)'
+  },
+  navPreviewItem: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 4,
+    opacity: 1
+  },
+  navPreviewItemHidden: {
+    opacity: 0.42
+  },
+  navPreviewText: {
+    color: palette.ink,
+    fontSize: 9,
+    fontWeight: '800',
+    textAlign: 'center'
+  },
+  navigationEditorCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderRadius: 20,
+    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    gap: 10
+  },
+  navigationEditorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  navEditorIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45, 141, 200, 0.1)'
   }
 });
 
