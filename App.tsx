@@ -112,7 +112,7 @@ type NotilestraItem = (typeof notilestra)[number];
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 type NewsFeedItem = (typeof news)[number] & { id?: string; source?: 'news'; province?: string };
 type HomeFeedItem = NewsFeedItem | CommunityPublication;
-type AgendaItem = NotilestraItem & Partial<Pick<RemoteAgendaItem, 'id' | 'source' | 'imageUrl' | 'mapUrl' | 'province'>>;
+type AgendaItem = NotilestraItem & Partial<Pick<RemoteAgendaItem, 'id' | 'source' | 'imageUrl' | 'mapUrl' | 'province' | 'dateGroupKey'>>;
 function isRemoteNewsItem(item: HomeFeedItem): item is NewsFeedItem & { id: string; source: 'news' } {
   return Boolean((item as NewsFeedItem).id && (item as NewsFeedItem).source === 'news');
 }
@@ -400,6 +400,33 @@ function splitAgendaPreferences(records: UserAgendaPreferenceRecord[]) {
     favorites: records.filter((item) => item.preference_type === 'favorite').map((item) => item.item_key),
     reminders: records.filter((item) => item.preference_type === 'reminder').map((item) => item.item_key)
   };
+}
+
+function groupMotivadorFeedItems(items: AgendaItem[]) {
+  const grouped = new Map<string, AgendaItem>();
+  const output: AgendaItem[] = [];
+
+  items.forEach((item) => {
+    if (item.source !== 'motivador') {
+      output.push(item);
+      return;
+    }
+
+    const groupKey = item.dateGroupKey ?? item.id ?? `${item.title}-${item.scope}`;
+    const current = grouped.get(groupKey);
+    if (!current) {
+      const feedItem = { ...item, id: `${groupKey}-feed`, dateGroupKey: groupKey };
+      grouped.set(groupKey, feedItem);
+      output.push(feedItem);
+      return;
+    }
+
+    if (Date.parse(item.date) < Date.parse(current.date)) {
+      current.date = item.date;
+    }
+  });
+
+  return output.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
 }
 
 function notificationPermissionLabel(session: Session | null) {
@@ -1614,8 +1641,9 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     const canSee = !('requiredPermission' in item) || hasPermission(session, item.requiredPermission as Permission);
     return canSee && itemDate.getFullYear() === baseDate.getFullYear() && itemDate.getMonth() === baseDate.getMonth();
   });
-  const favoriteItems = notilestraItems.filter((item) => favorites.includes(agendaPreferenceKey(item)));
-  const reminderItems = notilestraItems.filter((item) => reminders.includes(agendaPreferenceKey(item)));
+  const feedItems = useMemo(() => groupMotivadorFeedItems(notilestraItems), [notilestraItems]);
+  const favoriteItems = feedItems.filter((item) => favorites.includes(agendaPreferenceKey(item)));
+  const reminderItems = feedItems.filter((item) => reminders.includes(agendaPreferenceKey(item)));
   const dueReminderItems = reminderItems.filter((item) => {
     const eventDate = new Date(`${item.date}T00:00:00`);
     const tomorrow = new Date();
@@ -1828,7 +1856,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
           </View>
         </View>
       </Modal>
-      {subtab === 'noticias' ? notilestraItems.map((item, index) => (
+      {subtab === 'noticias' ? feedItems.map((item, index) => (
         <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
           <TouchableOpacity activeOpacity={0.86} onPress={() => {
             if (!(notilestraEditId && item.id === notilestraEditId)) {
@@ -2314,12 +2342,6 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
   }
 
-  function openCommunityContact(locationName: string) {
-    setSelectedCommunity(locationName);
-    setShowContactBox(true);
-    setContactStatus('');
-  }
-
   function openCommunityPresentation(locationName: string) {
     setShowContactBox(false);
     setContactStatus('');
@@ -2343,15 +2365,6 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
             <Text style={styles.cardText}>Reunion: {location.meetingDay} - {location.meetingTime}</Text>
             <Text style={styles.expandHint}>Tocar para ver presentacion</Text>
           </TouchableOpacity>
-          <View style={styles.communityQuickActions}>
-            <TouchableOpacity style={styles.locationIconButtonSmall} onPress={() => openCommunityLocation(location)} accessibilityLabel="Abrir ubicacion">
-              <Ionicons name="location-outline" size={19} color={palette.white} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.communityContactButton} onPress={() => openCommunityContact(location.name)}>
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color={palette.red} />
-              <Text style={styles.communityContactButtonText}>Contactar</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
     );
@@ -2468,12 +2481,11 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                   <Text style={styles.cardText}>{community.address}</Text>
                   <Text style={styles.cardText}>{community.description}</Text>
                   <View style={styles.inlineActions}>
-                    <TouchableOpacity style={styles.locationIconButton} onPress={() => openCommunityLocation(community)}>
+                    <TouchableOpacity style={styles.locationIconButton} onPress={() => openCommunityLocation(community)} accessibilityLabel="Abrir ubicacion">
                       <Ionicons name="location-outline" size={22} color={palette.white} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.secondaryButton} onPress={() => { setShowContactBox(!showContactBox); setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 120); }}>
-                      <Ionicons name="chatbubble-ellipses-outline" size={17} color={palette.red} />
-                      <Text style={styles.secondaryButtonText}>Contactar</Text>
+                    <TouchableOpacity style={styles.locationIconButton} onPress={() => { setShowContactBox(!showContactBox); setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 120); }} accessibilityLabel="Enviar mensaje">
+                      <Ionicons name="chatbubble-outline" size={22} color={palette.white} />
                     </TouchableOpacity>
                   </View>
                   {showContactBox ? (
