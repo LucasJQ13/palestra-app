@@ -70,6 +70,15 @@ export type MailboxMessageRecord = {
 
 export type MailboxTargetMode = 'my_community' | 'community' | 'province_communities' | 'diocesan_leadership' | 'all' | 'user' | 'role' | 'province' | 'role_province';
 
+export type UserAgendaPreferenceRecord = {
+  item_key: string;
+  preference_type: 'favorite' | 'reminder';
+  item_title: string | null;
+  item_date: string | null;
+  item_source: string | null;
+  created_at: string;
+};
+
 export async function fetchPendingProfiles(): Promise<PendingProfile[]> {
   const { data, error } = await supabase.rpc('admin_get_pending_profiles');
 
@@ -361,6 +370,69 @@ export async function updateMyAvatar(avatarUrl: string) {
   try {
     return await supabase.rpc('update_my_avatar', {
       p_avatar_url: avatarUrl
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchUserAgendaPreferences(): Promise<UserAgendaPreferenceRecord[]> {
+  try {
+    const { data, error } = await supabase
+      .from('user_agenda_preferences')
+      .select('item_key, preference_type, item_title, item_date, item_source, created_at')
+      .order('created_at', { ascending: false });
+    if (error || !data) {
+      return [];
+    }
+    return data as UserAgendaPreferenceRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function setUserAgendaPreference(values: {
+  itemKey: string;
+  preferenceType: 'favorite' | 'reminder';
+  enabled: boolean;
+  itemTitle?: string | null;
+  itemDate?: string | null;
+  itemSource?: string | null;
+}) {
+  try {
+    if (!values.enabled) {
+      return await supabase
+        .from('user_agenda_preferences')
+        .delete()
+        .eq('item_key', values.itemKey)
+        .eq('preference_type', values.preferenceType);
+    }
+    return await supabase
+      .from('user_agenda_preferences')
+      .upsert({
+        item_key: values.itemKey,
+        preference_type: values.preferenceType,
+        item_title: values.itemTitle ?? null,
+        item_date: values.itemDate ?? null,
+        item_source: values.itemSource ?? null
+      }, { onConflict: 'user_id,item_key,preference_type' });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function registerPushToken(values: {
+  token: string;
+  platform: string;
+  deviceName?: string | null;
+  appVersion?: string | null;
+}) {
+  try {
+    return await supabase.rpc('register_push_token', {
+      p_expo_push_token: values.token,
+      p_platform: values.platform,
+      p_device_name: values.deviceName ?? null,
+      p_app_version: values.appVersion ?? null
     });
   } catch (error) {
     return networkError(error);

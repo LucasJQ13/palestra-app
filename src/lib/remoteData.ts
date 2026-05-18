@@ -1,7 +1,7 @@
 import { communities as fallbackCommunities } from '../data/content';
 import { news as fallbackNews, notilestra as fallbackNotilestra } from '../data/content';
 import { Session } from '../types/auth';
-import { canAccessProvince } from './roles';
+import { canAccessProvince, roleRank } from './roles';
 import { supabase } from './supabase';
 
 type RemoteCommunityRow = {
@@ -471,7 +471,11 @@ export async function fetchMotivadorPeriods(session?: Session | null): Promise<R
   }
 
   return (data as any[])
-    .filter((item) => canAccessProvince(session ?? null, item.provinces?.name ?? 'Nacional'))
+    .filter((item) => {
+      const currentRole = session?.role ?? 'invitado';
+      const minimumRole = item.visible_to_lower_roles ? 'palestrista' : 'sedimentador';
+      return canAccessProvince(session ?? null, item.provinces?.name ?? 'Nacional') && roleRank(currentRole) >= roleRank(minimumRole);
+    })
     .map((item) => {
       const province = item.provinces?.name ?? 'Nacional';
       const genderLabel = item.gender === 'femenino' ? 'Femenino' : 'Masculino';

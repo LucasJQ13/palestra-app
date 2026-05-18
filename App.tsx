@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
 import { AppTheme, ThemeName, themePresets } from './src/theme/themes';
@@ -11,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createUserRequest, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, PendingProfile, resolveUserRequest, respondMailboxMessage, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createUserRequest, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, resolveUserRequest, respondMailboxMessage, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -358,6 +360,48 @@ function roleLabel(role: Role) {
   return roleDefinitions.find((item) => item.role === role)?.label ?? role;
 }
 
+function roleShortLabel(role: Role) {
+  const labels: Record<Role, string> = {
+    invitado: 'Invitado',
+    palestrista: 'Palestrista',
+    sedimentador: 'Sedimentador',
+    animador_comunidad: 'Animador',
+    coordinador_comunidad: 'Coord. Comunidad',
+    vocal: 'Vocal Dioc.',
+    asesor: 'Asesor',
+    coordinador_diocesano: 'Coord. Dioc.',
+    vocal_nacional: 'Vocal Nac.',
+    coordinador_nacional: 'Coord. Nacional',
+    administrador: 'Admin'
+  };
+  return labels[role] ?? roleLabel(role);
+}
+
+function tabShortLabel(label: string) {
+  const normalized = label.toLowerCase();
+  if (normalized.includes('notilestra') || normalized.includes('noticia')) return 'Noticias';
+  if (normalized.includes('material')) return 'Descargas';
+  if (normalized.includes('comunidad')) return 'Comunid.';
+  if (normalized.includes('historia')) return 'Historia';
+  if (normalized.includes('contacto')) return 'Contacto';
+  if (normalized.includes('motivador')) return 'PM';
+  return label.length > 10 ? `${label.slice(0, 9)}.` : label;
+}
+
+function agendaPreferenceKey(item: AgendaItem) {
+  if (item.id) {
+    return `${item.source ?? 'agenda'}:${item.id}`;
+  }
+  return `local:${item.date}:${item.title}`;
+}
+
+function splitAgendaPreferences(records: UserAgendaPreferenceRecord[]) {
+  return {
+    favorites: records.filter((item) => item.preference_type === 'favorite').map((item) => item.item_key),
+    reminders: records.filter((item) => item.preference_type === 'reminder').map((item) => item.item_key)
+  };
+}
+
 function statusLabel(status: UserStatus) {
   if (status === 'aprobado') {
     return 'Aprobado';
@@ -499,6 +543,9 @@ export default function App() {
   const touchPointerOpacity = useRef(new Animated.Value(0)).current;
   const appTheme = themePresets[themeName] ?? themePresets.default;
   const isDarkTheme = appTheme.mode === 'dark';
+  const { width: viewportWidth } = useWindowDimensions();
+  const compactViewport = viewportWidth < 390;
+  const veryCompactViewport = viewportWidth < 340;
 
   const currentDateTimeLabel = useMemo(() => {
     const date = currentDateTime
@@ -802,6 +849,50 @@ export default function App() {
   }, [session, activeTab]);
 
   useEffect(() => {
+    let alive = true;
+
+    async function registerDeviceForPushNotifications() {
+      if (!session?.id || Platform.OS === 'web') {
+        return;
+      }
+      try {
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('default', {
+            name: 'default',
+            importance: Notifications.AndroidImportance.DEFAULT
+          });
+        }
+        const currentPermission = await Notifications.getPermissionsAsync();
+        let finalStatus = currentPermission.status;
+        if (currentPermission.status !== 'granted') {
+          const requestedPermission = await Notifications.requestPermissionsAsync();
+          finalStatus = requestedPermission.status;
+        }
+        if (!alive || finalStatus !== 'granted') {
+          return;
+        }
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+        const tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+        if (!alive || !tokenResult.data) {
+          return;
+        }
+        await registerPushToken({
+          token: tokenResult.data,
+          platform: Platform.OS,
+          appVersion: demoVersionLabel
+        });
+      } catch (error) {
+        console.error('register push token', error);
+      }
+    }
+
+    registerDeviceForPushNotifications();
+    return () => {
+      alive = false;
+    };
+  }, [session?.id]);
+
+  useEffect(() => {
     screenOpacity.setValue(0.88);
     Animated.timing(screenOpacity, {
       toValue: 1,
@@ -903,22 +994,22 @@ export default function App() {
             <View style={styles.brandLogo}>
               <Image source={palestraLogo} style={styles.brandLogoImage} />
             </View>
-            <View>
-              <Text style={styles.brand}>{adminConfig.identity.appName}</Text>
-              <Text style={styles.subtitle}>{adminConfig.identity.subtitle}</Text>
-              <Text style={styles.demoLabel}>{demoVersionLabel}</Text>
+            <View style={styles.brandTextBlock}>
+              <Text numberOfLines={1} style={styles.brand}>{adminConfig.identity.appName}</Text>
+              <Text numberOfLines={1} style={styles.subtitle}>{adminConfig.identity.subtitle}</Text>
+              <Text numberOfLines={1} style={styles.demoLabel}>{demoVersionLabel}</Text>
             </View>
           </View>
           <View style={styles.headerActions}>
             <View style={styles.headerStatusColumn}>
               <View style={styles.sessionBadge}>
-                <Text style={styles.sessionBadgeText}>{session ? roleLabel(session.role) : 'Invitado'}</Text>
+                <Text numberOfLines={1} style={styles.sessionBadgeText}>{session ? (compactViewport ? roleShortLabel(session.role) : roleLabel(session.role)) : 'Invitado'}</Text>
               </View>
-              <Text style={styles.headerDateTime}>{currentDateTimeLabel}</Text>
+              {!veryCompactViewport ? <Text numberOfLines={1} style={styles.headerDateTime}>{currentDateTimeLabel}</Text> : null}
             </View>
             <TouchableOpacity style={styles.headerProfileButton} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
               <Ionicons name="person-circle-outline" size={17} color={palette.red} />
-              <Text style={styles.headerProfileButtonText}>Mi Perfil</Text>
+              {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>Mi Perfil</Text> : null}
             </TouchableOpacity>
           </View>
         </View>
@@ -944,15 +1035,15 @@ export default function App() {
             {screen}
           </Animated.View>
         </ScrollView>
-        <View style={[styles.tabBar, isDarkTheme && styles.tabBarDark]}>
+        <View style={[styles.tabBar, compactViewport && styles.tabBarCompact, isDarkTheme && styles.tabBarDark]}>
           {visibleTabs.map((tab) => {
             const selected = activeTab === tab.key;
             return (
-              <TouchableOpacity key={`${tab.key}-${tab.sortOrder}`} style={styles.tabButton} onPress={() => navigateToTab(tab.key)} activeOpacity={0.8}>
-                <View style={[styles.tabIconFrame, selected && styles.tabIconFrameActive]}>
-                  <Ionicons name={tab.icon} size={20} color={selected ? palette.white : palette.red} />
+              <TouchableOpacity key={`${tab.key}-${tab.sortOrder}`} style={[styles.tabButton, compactViewport && styles.tabButtonCompact]} onPress={() => navigateToTab(tab.key)} activeOpacity={0.8}>
+                <View style={[styles.tabIconFrame, compactViewport && styles.tabIconFrameCompact, selected && styles.tabIconFrameActive]}>
+                  <Ionicons name={tab.icon} size={compactViewport ? 18 : 20} color={selected ? palette.white : palette.red} />
                 </View>
-                <Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>{tab.label}</Text>
+                {!veryCompactViewport ? <Text numberOfLines={1} style={[styles.tabLabel, compactViewport && styles.tabLabelCompact, selected && styles.tabLabelActive]}>{compactViewport ? tabShortLabel(tab.label) : tab.label}</Text> : null}
                 {selected ? <View style={styles.tabActiveDot} /> : null}
               </TouchableOpacity>
             );
@@ -1440,6 +1531,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
   const [notilestraActionMessage, setNotilestraActionMessage] = useState('');
   const canManageNotilestraEntries = canManageNationalPublishedContent(session);
   const [monthOffset, setMonthOffset] = useState(0);
+  const preferenceStorageKey = useMemo(() => `palestra.notilestra.preferences.${session?.id ?? session?.email ?? 'guest'}`, [session?.id, session?.email]);
   const baseDate = new Date(2026, 4 + monthOffset, 1);
   const monthLabel = baseDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
   const daysInMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).getDate();
@@ -1456,6 +1548,44 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     };
   }, [refreshKey, notilestraRefreshKey, session?.province, session?.role]);
 
+  useEffect(() => {
+    let alive = true;
+
+    async function loadPreferences() {
+      try {
+        const raw = await AsyncStorage.getItem(preferenceStorageKey);
+        if (alive && raw) {
+          const parsed = JSON.parse(raw) as { favorites?: string[]; reminders?: string[] };
+          setFavorites(Array.isArray(parsed.favorites) ? parsed.favorites : []);
+          setReminders(Array.isArray(parsed.reminders) ? parsed.reminders : []);
+        }
+      } catch (error) {
+        console.error('load notilestra preferences', error);
+      }
+
+      if (!session?.id) {
+        return;
+      }
+      const remotePreferences = await fetchUserAgendaPreferences();
+      if (!alive || remotePreferences.length === 0) {
+        return;
+      }
+      const next = splitAgendaPreferences(remotePreferences);
+      setFavorites(next.favorites);
+      setReminders(next.reminders);
+      try {
+        await AsyncStorage.setItem(preferenceStorageKey, JSON.stringify(next));
+      } catch (error) {
+        console.error('cache notilestra preferences', error);
+      }
+    }
+
+    loadPreferences();
+    return () => {
+      alive = false;
+    };
+  }, [preferenceStorageKey, session?.id]);
+
   const eventDays = notilestraItems
     .filter((item) => {
       const itemDate = new Date(`${item.date}T00:00:00`);
@@ -1467,8 +1597,8 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     const canSee = !('requiredPermission' in item) || hasPermission(session, item.requiredPermission as Permission);
     return canSee && itemDate.getFullYear() === baseDate.getFullYear() && itemDate.getMonth() === baseDate.getMonth();
   });
-  const favoriteItems = notilestraItems.filter((item) => favorites.includes(item.title));
-  const reminderItems = notilestraItems.filter((item) => reminders.includes(item.title));
+  const favoriteItems = notilestraItems.filter((item) => favorites.includes(agendaPreferenceKey(item)));
+  const reminderItems = notilestraItems.filter((item) => reminders.includes(agendaPreferenceKey(item)));
   const dueReminderItems = reminderItems.filter((item) => {
     const eventDate = new Date(`${item.date}T00:00:00`);
     const tomorrow = new Date();
@@ -1494,12 +1624,48 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     setSelectedCalendarItems([...newsForDay, ...activitiesForDay]);
   }
 
-  function toggleFavorite(title: string) {
-    setFavorites((current) => current.includes(title) ? current.filter((item) => item !== title) : [...current, title]);
+  async function persistNotilestraPreferences(nextFavorites: string[], nextReminders: string[]) {
+    try {
+      await AsyncStorage.setItem(preferenceStorageKey, JSON.stringify({ favorites: nextFavorites, reminders: nextReminders }));
+    } catch (error) {
+      console.error('save notilestra preferences', error);
+    }
   }
 
-  function toggleReminder(title: string) {
-    setReminders((current) => current.includes(title) ? current.filter((item) => item !== title) : [...current, title]);
+  function toggleFavorite(item: AgendaItem) {
+    const itemKey = agendaPreferenceKey(item);
+    const enabled = !favorites.includes(itemKey);
+    const nextFavorites = enabled ? [...favorites, itemKey] : favorites.filter((key) => key !== itemKey);
+    setFavorites(nextFavorites);
+    persistNotilestraPreferences(nextFavorites, reminders);
+    if (session?.id) {
+      setUserAgendaPreference({
+        itemKey,
+        preferenceType: 'favorite',
+        enabled,
+        itemTitle: item.title,
+        itemDate: item.date,
+        itemSource: item.source ?? 'local'
+      }).catch((error) => console.error('remote favorite preference', error));
+    }
+  }
+
+  function toggleReminder(item: AgendaItem) {
+    const itemKey = agendaPreferenceKey(item);
+    const enabled = !reminders.includes(itemKey);
+    const nextReminders = enabled ? [...reminders, itemKey] : reminders.filter((key) => key !== itemKey);
+    setReminders(nextReminders);
+    persistNotilestraPreferences(favorites, nextReminders);
+    if (session?.id) {
+      setUserAgendaPreference({
+        itemKey,
+        preferenceType: 'reminder',
+        enabled,
+        itemTitle: item.title,
+        itemDate: item.date,
+        itemSource: item.source ?? 'local'
+      }).catch((error) => console.error('remote reminder preference', error));
+    }
   }
 
   function startNotilestraEdit(item: AgendaItem) {
@@ -1679,13 +1845,13 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
             )}
           </TouchableOpacity>
           <View style={styles.inlineActions}>
-            <TouchableOpacity style={[styles.actionPill, favorites.includes(item.title) && styles.actionPillActive]} onPress={() => toggleFavorite(item.title)}>
-              <Ionicons name={favorites.includes(item.title) ? 'star' : 'star-outline'} size={16} color={favorites.includes(item.title) ? palette.white : palette.red} />
-              <Text style={[styles.actionPillText, favorites.includes(item.title) && styles.actionPillTextActive]}>Favorito</Text>
+            <TouchableOpacity style={[styles.actionPill, favorites.includes(agendaPreferenceKey(item)) && styles.actionPillActive]} onPress={() => toggleFavorite(item)}>
+              <Ionicons name={favorites.includes(agendaPreferenceKey(item)) ? 'star' : 'star-outline'} size={16} color={favorites.includes(agendaPreferenceKey(item)) ? palette.white : palette.red} />
+              <Text style={[styles.actionPillText, favorites.includes(agendaPreferenceKey(item)) && styles.actionPillTextActive]}>Favorito</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionPill, reminders.includes(item.title) && styles.actionPillActive]} onPress={() => toggleReminder(item.title)}>
-              <Ionicons name={reminders.includes(item.title) ? 'notifications' : 'notifications-outline'} size={16} color={reminders.includes(item.title) ? palette.white : palette.red} />
-              <Text style={[styles.actionPillText, reminders.includes(item.title) && styles.actionPillTextActive]}>Recordar</Text>
+            <TouchableOpacity style={[styles.actionPill, reminders.includes(agendaPreferenceKey(item)) && styles.actionPillActive]} onPress={() => toggleReminder(item)}>
+              <Ionicons name={reminders.includes(agendaPreferenceKey(item)) ? 'notifications' : 'notifications-outline'} size={16} color={reminders.includes(agendaPreferenceKey(item)) ? palette.white : palette.red} />
+              <Text style={[styles.actionPillText, reminders.includes(agendaPreferenceKey(item)) && styles.actionPillTextActive]}>Recordar</Text>
             </TouchableOpacity>
             {canManageNotilestraEntries && item.id && item.source === 'event' ? (
               <>
@@ -2121,6 +2287,46 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
   const province = visibleCommunityData.find((item) => item.province === selectedProvince);
   const community = province?.locations.find((item) => item.name === selectedCommunity);
 
+  function openCommunityLocation(location: AppCommunity['locations'][number]) {
+    const query = `${location.address}, ${province?.province ?? ''}, Argentina`;
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
+  }
+
+  function openCommunityContact(locationName: string) {
+    setSelectedCommunity(locationName);
+    setShowContactBox(true);
+  }
+
+  function openCommunityPresentation(locationName: string) {
+    setShowContactBox(false);
+    setSelectedCommunity(locationName);
+  }
+
+  function renderCommunityRow(location: AppCommunity['locations'][number], keyPrefix = 'community') {
+    return (
+      <View key={`${keyPrefix}-${location.name}`} style={[styles.card, styles.communityCard]}>
+        <View style={styles.communityRowHeader}>
+          <TouchableOpacity style={styles.communityRowBody} activeOpacity={0.86} onPress={() => openCommunityPresentation(location.name)}>
+            <Text style={styles.cardTitle}>{location.name}</Text>
+            <Text style={styles.cardText}>{location.address}</Text>
+            <Text style={styles.cardText}>Contacto: {location.phone}</Text>
+            <Text style={styles.cardText}>Reunion: {location.meetingDay} - {location.meetingTime}</Text>
+            <Text style={styles.expandHint}>Tocar para ver presentacion</Text>
+          </TouchableOpacity>
+          <View style={styles.communityQuickActions}>
+            <TouchableOpacity style={styles.locationIconButtonSmall} onPress={() => openCommunityLocation(location)} accessibilityLabel="Abrir ubicacion">
+              <Ionicons name="location-outline" size={19} color={palette.white} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.communityContactButton} onPress={() => openCommunityContact(location.name)}>
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color={palette.red} />
+              <Text style={styles.communityContactButtonText}>Contactar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   useEffect(() => {
     let alive = true;
     fetchCommunities().then((items) => {
@@ -2200,9 +2406,9 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
         </Modal>
         <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={() => setSelectedCommunity(null)}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedCommunity(null)}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKeyboardAvoider}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0} style={styles.modalKeyboardAvoider}>
             <TouchableOpacity style={[styles.modalPanel, styles.communityModalPanel]} activeOpacity={1} onPress={() => undefined}>
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
               <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedCommunity(null)} activeOpacity={0.8}>
                 <Ionicons name="close" size={22} color={palette.red} />
               </TouchableOpacity>
@@ -2232,7 +2438,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                   <Text style={styles.cardText}>{community.address}</Text>
                   <Text style={styles.cardText}>{community.description}</Text>
                   <View style={styles.inlineActions}>
-                    <TouchableOpacity style={styles.locationIconButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(community.address)}`)}>
+                    <TouchableOpacity style={styles.locationIconButton} onPress={() => openCommunityLocation(community)}>
                       <Ionicons name="location-outline" size={22} color={palette.white} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowContactBox(!showContactBox)}>
@@ -2275,34 +2481,12 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
         {(province.province === 'Tucuman' || province.province === 'Catamarca') ? (
           <>
             <SectionTitle title="Comunidades de jovenes" />
-            {province.locations.filter((location) => location.group !== 'adultos').map((location) => (
-              <TouchableOpacity key={`young-${location.name}`} style={[styles.card, styles.communityCard]} activeOpacity={0.86} onPress={() => setSelectedCommunity(location.name)}>
-                <Text style={styles.cardTitle}>{location.name}</Text>
-                <Text style={styles.cardText}>{location.address}</Text>
-                <Text style={styles.cardText}>Contacto: {location.phone}</Text>
-                <Text style={styles.cardText}>Reunion: {location.meetingDay} - {location.meetingTime}</Text>
-                <Text style={styles.expandHint}>Tocar para ver presentacion</Text>
-              </TouchableOpacity>
-            ))}
+            {province.locations.filter((location) => location.group !== 'adultos').map((location) => renderCommunityRow(location, 'young'))}
             <SectionTitle title="Comunidades de adultos" />
-            {province.locations.filter((location) => location.group === 'adultos').map((location) => (
-              <TouchableOpacity key={`adult-${location.name}`} style={[styles.card, styles.communityCard]} activeOpacity={0.86} onPress={() => setSelectedCommunity(location.name)}>
-                <Text style={styles.cardTitle}>{location.name}</Text>
-                <Text style={styles.cardText}>{location.address}</Text>
-                <Text style={styles.cardText}>Contacto: {location.phone}</Text>
-                <Text style={styles.cardText}>Reunion: {location.meetingDay} - {location.meetingTime}</Text>
-                <Text style={styles.expandHint}>Tocar para ver presentacion</Text>
-              </TouchableOpacity>
-            ))}
+            {province.locations.filter((location) => location.group === 'adultos').map((location) => renderCommunityRow(location, 'adult'))}
           </>
         ) : province.locations.map((location) => (
-          <TouchableOpacity key={location.name} style={[styles.card, styles.communityCard]} activeOpacity={0.86} onPress={() => setSelectedCommunity(location.name)}>
-            <Text style={styles.cardTitle}>{location.name}</Text>
-            <Text style={styles.cardText}>{location.address}</Text>
-            <Text style={styles.cardText}>Contacto: {location.phone}</Text>
-            <Text style={styles.cardText}>Reunion: {location.meetingDay} - {location.meetingTime}</Text>
-            <Text style={styles.expandHint}>Tocar para ver presentacion</Text>
-          </TouchableOpacity>
+          renderCommunityRow(location)
         ))}
       </View>
     );
@@ -6772,7 +6956,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    flex: 1
+    flex: 1,
+    minWidth: 0
+  },
+  brandTextBlock: {
+    flex: 1,
+    minWidth: 0
   },
   brandLogo: {
     width: 46,
@@ -6863,12 +7052,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)'
+    borderColor: 'rgba(45, 141, 200, 0.18)',
+    maxWidth: 150
   },
   sessionBadgeText: {
     color: palette.blueDeep,
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '700',
+    flexShrink: 1
   },
   headerStatusColumn: {
     alignItems: 'flex-end',
@@ -6886,7 +7077,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flexShrink: 0
+    flexShrink: 1
   },
   headerProfileButton: {
     minHeight: 34,
@@ -7344,6 +7535,48 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 0
   },
+  communityRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12
+  },
+  communityRowBody: {
+    flex: 1,
+    minWidth: 0
+  },
+  communityQuickActions: {
+    alignItems: 'flex-end',
+    gap: 8,
+    maxWidth: 92
+  },
+  locationIconButtonSmall: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    backgroundColor: palette.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 2
+  },
+  communityContactButton: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 16,
+    paddingHorizontal: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.22)',
+    backgroundColor: palette.white
+  },
+  communityContactButtonText: {
+    color: palette.red,
+    fontSize: 11,
+    fontWeight: '900'
+  },
   lockedCard: {
     opacity: 0.72
   },
@@ -7441,6 +7674,10 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 520,
     maxHeight: '90%'
+  },
+  modalScrollContent: {
+    paddingBottom: 24,
+    gap: 10
   },
   modalCloseButton: {
     position: 'absolute',
@@ -8276,6 +8513,15 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
     elevation: 10
   },
+  tabBarCompact: {
+    left: 8,
+    right: 8,
+    bottom: 8,
+    borderRadius: 26,
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    paddingBottom: 7
+  },
   tabBarDark: {
     backgroundColor: 'rgba(16, 43, 56, 0.97)',
     shadowColor: '#000000'
@@ -8283,7 +8529,11 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: 'center',
-    gap: 3
+    gap: 3,
+    minWidth: 0
+  },
+  tabButtonCompact: {
+    gap: 2
   },
   tabIconFrame: {
     width: 38,
@@ -8296,6 +8546,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(45, 141, 200, 0.1)'
+  },
+  tabIconFrameCompact: {
+    width: 33,
+    height: 31,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 7,
+    borderBottomRightRadius: 13,
+    borderBottomLeftRadius: 8
   },
   viewAllButton: {
     width: 'auto',
@@ -8318,7 +8576,13 @@ const styles = StyleSheet.create({
   tabLabel: {
     color: palette.inkMuted,
     fontSize: 9,
-    fontWeight: '700'
+    fontWeight: '700',
+    maxWidth: 58,
+    textAlign: 'center'
+  },
+  tabLabelCompact: {
+    fontSize: 8,
+    maxWidth: 46
   },
   tabLabelActive: {
     color: palette.red
