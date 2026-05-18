@@ -391,6 +391,16 @@ export async function fetchUserAgendaPreferences(): Promise<UserAgendaPreference
   }
 }
 
+export async function softDeleteAdminUser(profileId: string) {
+  try {
+    return await supabase.rpc('admin_soft_delete_user', {
+      p_profile_id: profileId
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function setUserAgendaPreference(values: {
   itemKey: string;
   preferenceType: 'favorite' | 'reminder';

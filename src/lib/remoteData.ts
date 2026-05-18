@@ -277,6 +277,7 @@ export async function fetchCommunityPublications(session?: Session | null) {
       pollResults: item.poll_results ?? {},
       status: item.status ?? 'activo',
       createdBy: item.created_by ?? null,
+      createdAt: item.created_at ?? null,
       authorName: item.profiles?.full_name ?? 'Palestrista',
       authorRole: item.profiles?.role ?? 'palestrista',
       scope: `${item.kind} - ${item.communities?.name ?? 'Comunidad'}`,
