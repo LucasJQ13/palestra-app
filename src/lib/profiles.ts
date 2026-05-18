@@ -439,6 +439,30 @@ export async function registerPushToken(values: {
   }
 }
 
+export async function createNotificationIntent(values: {
+  notificationType: string;
+  title: string;
+  body: string;
+  targetKind: string;
+  targetValue?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+}) {
+  try {
+    return await supabase.rpc('create_notification_intent', {
+      p_notification_type: values.notificationType,
+      p_title: values.title,
+      p_body: values.body,
+      p_target_kind: values.targetKind,
+      p_target_value: values.targetValue ?? null,
+      p_source_type: values.sourceType ?? null,
+      p_source_id: values.sourceId ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function createNews(title: string, body: string, isPublic: boolean) {
   return supabase.rpc('admin_create_news', {
     p_title: title,

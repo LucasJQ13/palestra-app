@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createUserRequest, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, resolveUserRequest, respondMailboxMessage, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, resolveUserRequest, respondMailboxMessage, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -402,6 +402,13 @@ function splitAgendaPreferences(records: UserAgendaPreferenceRecord[]) {
   };
 }
 
+function notificationPermissionLabel(session: Session | null) {
+  if (!session || (!hasPermission(session, 'enviar_notificaciones') && !['animador_comunidad', 'coordinador_comunidad'].includes(session.role))) {
+    return 'La notificacion quedara disponible solo para roles con permiso de enviar notificaciones.';
+  }
+  return 'Tambien se dejara preparada una notificacion push para los usuarios alcanzados.';
+}
+
 function statusLabel(status: UserStatus) {
   if (status === 'aprobado') {
     return 'Aprobado';
@@ -548,11 +555,9 @@ export default function App() {
   const veryCompactViewport = viewportWidth < 340;
 
   const currentDateTimeLabel = useMemo(() => {
-    const date = currentDateTime
-      .toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
-      .replace(',', '');
+    const date = currentDateTime.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const time = currentDateTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-    return `Hoy, ${date} · ${time}`;
+    return `${date} - ${time}`;
   }, [currentDateTime]);
 
   useEffect(() => {
@@ -1001,16 +1006,16 @@ export default function App() {
             </View>
           </View>
           <View style={styles.headerActions}>
-            <View style={styles.headerStatusColumn}>
+            <View style={styles.headerActionTop}>
               <View style={styles.sessionBadge}>
                 <Text numberOfLines={1} style={styles.sessionBadgeText}>{session ? (compactViewport ? roleShortLabel(session.role) : roleLabel(session.role)) : 'Invitado'}</Text>
               </View>
-              {!veryCompactViewport ? <Text numberOfLines={1} style={styles.headerDateTime}>{currentDateTimeLabel}</Text> : null}
+              <TouchableOpacity style={styles.headerProfileButton} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
+                <Ionicons name="person-circle-outline" size={17} color={palette.red} />
+                {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>Mi Perfil</Text> : null}
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.headerProfileButton} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
-              <Ionicons name="person-circle-outline" size={17} color={palette.red} />
-              {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>Mi Perfil</Text> : null}
-            </TouchableOpacity>
+            {!veryCompactViewport ? <Text numberOfLines={1} style={styles.headerDateTime}>{currentDateTimeLabel}</Text> : null}
           </View>
         </View>
         {appMessage ? (
@@ -1592,6 +1597,18 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
       return itemDate.getFullYear() === baseDate.getFullYear() && itemDate.getMonth() === baseDate.getMonth();
     })
     .map((item) => new Date(`${item.date}T00:00:00`).getDate());
+  const calendarItemsByDay = useMemo(() => {
+    const groups = new Map<number, AgendaItem[]>();
+    notilestraItems.forEach((item) => {
+      const itemDate = new Date(`${item.date}T00:00:00`);
+      if (itemDate.getFullYear() !== baseDate.getFullYear() || itemDate.getMonth() !== baseDate.getMonth()) {
+        return;
+      }
+      const day = itemDate.getDate();
+      groups.set(day, [...(groups.get(day) ?? []), item]);
+    });
+    return groups;
+  }, [notilestraItems, baseDate.getFullYear(), baseDate.getMonth()]);
   const activityDays = calendarActivities.filter((item) => {
     const itemDate = new Date(`${item.date}T00:00:00`);
     const canSee = !('requiredPermission' in item) || hasPermission(session, item.requiredPermission as Permission);
@@ -1772,12 +1789,16 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
           {Array.from({ length: firstDay }).map((_, index) => <View key={`empty-${index}`} style={styles.calendarDay} />)}
           {Array.from({ length: daysInMonth }).map((_, index) => {
             const day = index + 1;
+            const dayItems = calendarItemsByDay.get(day) ?? [];
             const hasEvent = eventDays.includes(day);
+            const hasMotivador = dayItems.some((item) => item.source === 'motivador');
+            const hasMultipleEvents = dayItems.length > 1;
             const activity = activityDays.find((item) => new Date(`${item.date}T00:00:00`).getDate() === day);
             const canOpenDay = hasEvent || Boolean(activity);
             return (
-              <TouchableOpacity key={day} style={[styles.calendarDay, hasEvent && styles.calendarEventDay, activity && styles.calendarActivityDay]} activeOpacity={canOpenDay ? 0.75 : 1} onPress={() => canOpenDay && openCalendarDay(day)}>
+              <TouchableOpacity key={day} style={[styles.calendarDay, hasEvent && styles.calendarEventDay, hasMotivador && styles.calendarMotivadorDay, activity && styles.calendarActivityDay]} activeOpacity={canOpenDay ? 0.75 : 1} onPress={() => canOpenDay && openCalendarDay(day)}>
                 <Text style={[styles.calendarDayText, hasEvent && styles.calendarEventText, activity && styles.calendarActivityText]}>{day}</Text>
+                {hasMultipleEvents ? <View style={styles.calendarMultiDot} /> : null}
               </TouchableOpacity>
             );
           })}
@@ -2283,6 +2304,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
   const [contactName, setContactName] = useState(session?.fullName ?? '');
   const [contactInfoValue, setContactInfoValue] = useState(session?.email ?? '');
   const [contactStatus, setContactStatus] = useState('');
+  const contactScrollRef = useRef<ScrollView | null>(null);
   const visibleCommunityData = communityData;
   const province = visibleCommunityData.find((item) => item.province === selectedProvince);
   const community = province?.locations.find((item) => item.name === selectedCommunity);
@@ -2295,11 +2317,19 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
   function openCommunityContact(locationName: string) {
     setSelectedCommunity(locationName);
     setShowContactBox(true);
+    setContactStatus('');
   }
 
   function openCommunityPresentation(locationName: string) {
     setShowContactBox(false);
+    setContactStatus('');
     setSelectedCommunity(locationName);
+  }
+
+  function closeCommunityModal() {
+    setSelectedCommunity(null);
+    setShowContactBox(false);
+    setContactStatus('');
   }
 
   function renderCommunityRow(location: AppCommunity['locations'][number], keyPrefix = 'community') {
@@ -2404,12 +2434,12 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
             </View>
           </TouchableOpacity>
         </Modal>
-        <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={() => setSelectedCommunity(null)}>
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedCommunity(null)}>
+        <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={closeCommunityModal}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeCommunityModal}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0} style={styles.modalKeyboardAvoider}>
             <TouchableOpacity style={[styles.modalPanel, styles.communityModalPanel]} activeOpacity={1} onPress={() => undefined}>
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
-              <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedCommunity(null)} activeOpacity={0.8}>
+              <ScrollView ref={contactScrollRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+              <TouchableOpacity style={styles.modalCloseButton} onPress={closeCommunityModal} activeOpacity={0.8}>
                 <Ionicons name="close" size={22} color={palette.red} />
               </TouchableOpacity>
               {community ? (
@@ -2441,7 +2471,8 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                     <TouchableOpacity style={styles.locationIconButton} onPress={() => openCommunityLocation(community)}>
                       <Ionicons name="location-outline" size={22} color={palette.white} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowContactBox(!showContactBox)}>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => { setShowContactBox(!showContactBox); setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 120); }}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={17} color={palette.red} />
                       <Text style={styles.secondaryButtonText}>Contactar</Text>
                     </TouchableOpacity>
                   </View>
@@ -2451,9 +2482,9 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                       {!session ? (
                         <>
                           <Text style={styles.inputLabel}>Nombre</Text>
-                          <TextInput style={styles.input} placeholder="Ej: Juan Perez" value={contactName} onChangeText={setContactName} />
+                          <TextInput style={styles.input} placeholder="Ej: Juan Perez" value={contactName} onChangeText={setContactName} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} />
                           <Text style={styles.inputLabel}>Contacto</Text>
-                          <TextInput style={styles.input} placeholder="Ej: nombre@email.com o telefono" value={contactInfoValue} onChangeText={setContactInfoValue} />
+                          <TextInput style={styles.input} placeholder="Ej: nombre@email.com o telefono" value={contactInfoValue} onChangeText={setContactInfoValue} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} />
                         </>
                       ) : null}
                       <Text style={styles.inputLabel}>Mensaje</Text>
@@ -2462,6 +2493,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                         placeholder="Escribi tu consulta para la comunidad"
                         value={contactMessage}
                         onChangeText={(value) => setContactMessage(value.slice(0, 500))}
+                        onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)}
                         multiline
                       />
                       <Text style={styles.cardText}>{contactMessage.length}/500</Text>
@@ -3246,6 +3278,7 @@ function ProfileScreen({
   const [adminNewsImage, setAdminNewsImage] = useState('');
   const [adminNewsDraft, setAdminNewsDraft] = useState(false);
   const [adminNewsFeatured, setAdminNewsFeatured] = useState(false);
+  const [adminNewsNotify, setAdminNewsNotify] = useState(false);
   const [newsDrafts, setNewsDrafts] = useState<NewsDraftRecord[]>([]);
   const [adminMaterials, setAdminMaterials] = useState<AppMaterialRecord[]>([]);
   const [materialTitle, setMaterialTitle] = useState('');
@@ -3257,6 +3290,7 @@ function ProfileScreen({
   const [adminEventTitle, setAdminEventTitle] = useState('');
   const [adminEventBody, setAdminEventBody] = useState('');
   const [adminEventDate, setAdminEventDate] = useState('');
+  const [adminEventNotify, setAdminEventNotify] = useState(false);
   const [adminEventCalendarOpen, setAdminEventCalendarOpen] = useState(false);
   const [adminEventCalendarMonth, setAdminEventCalendarMonth] = useState(new Date());
   const [adminMotivadorPeriods, setAdminMotivadorPeriods] = useState<MotivadorPeriodRecord[]>([]);
@@ -3313,6 +3347,7 @@ function ProfileScreen({
   const [communityPostBody, setCommunityPostBody] = useState('');
   const [communityPostDate, setCommunityPostDate] = useState('');
   const [communityPollOptions, setCommunityPollOptions] = useState('');
+  const [communityPostNotify, setCommunityPostNotify] = useState(false);
   const [editingCommunityPublicationId, setEditingCommunityPublicationId] = useState<string | null>(null);
   const [editingCommunityPublicationTitle, setEditingCommunityPublicationTitle] = useState('');
   const [editingCommunityPublicationBody, setEditingCommunityPublicationBody] = useState('');
@@ -4383,6 +4418,26 @@ function ProfileScreen({
     setAuthMessage('Cambios realizados');
   }
 
+  async function queueNotificationIfRequested(enabled: boolean, values: {
+    notificationType: string;
+    title: string;
+    body: string;
+    targetKind: string;
+    targetValue?: string | null;
+    sourceType?: string | null;
+    sourceId?: string | null;
+  }) {
+    if (!enabled) {
+      return null;
+    }
+    const canNotify = hasPermission(session, 'enviar_notificaciones') || (values.targetKind === 'comunidad' && Boolean(session && ['animador_comunidad', 'coordinador_comunidad'].includes(session.role)));
+    if (!canNotify) {
+      return 'El aviso se publico, pero tu rango no tiene permiso para notificar usuarios.';
+    }
+    const { error } = await createNotificationIntent(values);
+    return error ? `El aviso se publico, pero no pude preparar la notificacion: ${error.message}` : null;
+  }
+
   async function adminCreateNews() {
     if (!adminNewsTitle.trim() || !adminNewsBody.trim()) {
       setAuthMessage('Completa titulo y texto antes de publicar la noticia.');
@@ -4391,13 +4446,21 @@ function ProfileScreen({
 
     setAuthMessage('Publicando noticia...');
     const { error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true);
-    setAuthMessage(error ? error.message : changeDone('Noticia creada.'));
+    const notificationWarning = !error ? await queueNotificationIfRequested(adminNewsNotify, {
+      notificationType: 'aviso_dirigencial',
+      title: adminNewsTitle.trim(),
+      body: adminNewsBody.trim(),
+      targetKind: 'nacional',
+      sourceType: 'news'
+    }) : null;
+    setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminNewsNotify ? 'Noticia creada y notificacion preparada.' : 'Noticia creada.'));
     if (!error) {
       setAdminNewsTitle('');
       setAdminNewsBody('');
       setAdminNewsImage('');
       setAdminNewsDraft(false);
       setAdminNewsFeatured(false);
+      setAdminNewsNotify(false);
       await onContentChanged();
     }
   }
@@ -4493,11 +4556,19 @@ function ProfileScreen({
 
     setAuthMessage('Publicando evento...');
     const { error } = await createEvent(adminEventTitle.trim(), adminEventBody.trim(), adminEventDate.trim(), true);
-    setAuthMessage(error ? error.message : changeDone('Evento creado.'));
+    const notificationWarning = !error ? await queueNotificationIfRequested(adminEventNotify, {
+      notificationType: 'recordatorio_evento',
+      title: adminEventTitle.trim(),
+      body: adminEventBody.trim(),
+      targetKind: 'nacional',
+      sourceType: 'event'
+    }) : null;
+    setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminEventNotify ? 'Evento creado y notificacion preparada.' : 'Evento creado.'));
     if (!error) {
       setAdminEventTitle('');
       setAdminEventBody('');
       setAdminEventDate('');
+      setAdminEventNotify(false);
       await onContentChanged();
     }
   }
@@ -4898,11 +4969,20 @@ function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
+    const notificationWarning = await queueNotificationIfRequested(communityPostNotify, {
+      notificationType: 'mensaje_comunidad',
+      title: communityPostTitle.trim() || 'Aviso comunitario',
+      body: communityPostBody.trim(),
+      targetKind: 'comunidad',
+      targetValue: session.communityOfOrigin,
+      sourceType: 'community_publication'
+    });
     setCommunityPostTitle('');
     setCommunityPostBody('');
     setCommunityPostDate('');
     setCommunityPollOptions('');
-    setAuthMessage(changeDone('Publicacion enviada a la comunidad.'));
+    setCommunityPostNotify(false);
+    setAuthMessage(notificationWarning ?? changeDone(communityPostNotify ? 'Publicacion enviada y notificacion preparada.' : 'Publicacion enviada a la comunidad.'));
     await refreshCommunityForum();
     await onContentChanged();
   }
@@ -5236,6 +5316,13 @@ function ProfileScreen({
                   <Text style={styles.cardEyebrow}>Nuevo aviso comunitario</Text>
                   <TextInput style={styles.input} placeholder="Titulo opcional del aviso" value={communityPostTitle} onChangeText={setCommunityPostTitle} />
                   <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje para la comunidad" value={communityPostBody} onChangeText={setCommunityPostBody} multiline />
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingRowText}>
+                      <Text style={styles.cardTitle}>Notificar usuarios</Text>
+                      <Text style={styles.cardText}>Preparar aviso push para los miembros alcanzados por este mensaje.</Text>
+                    </View>
+                    <Switch value={communityPostNotify} onValueChange={setCommunityPostNotify} />
+                  </View>
                   <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
                     <Text style={styles.primaryButtonText}>Enviar mensaje a comunidad</Text>
                   </TouchableOpacity>
@@ -6409,6 +6496,13 @@ function ProfileScreen({
                       <Text style={[styles.filterChipText, adminNewsFeatured && styles.filterChipTextActive]}>Destacada</Text>
                     </TouchableOpacity>
                   </View>
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingRowText}>
+                      <Text style={styles.cardTitle}>Notificar usuarios</Text>
+                      <Text style={styles.cardText}>{notificationPermissionLabel(session)}</Text>
+                    </View>
+                    <Switch value={adminNewsNotify} onValueChange={setAdminNewsNotify} />
+                  </View>
                   <View style={styles.adminPreviewPane}>
                     <Text style={styles.cardEyebrow}>{adminNewsCategory}{adminNewsFeatured ? ' - destacada' : ''}</Text>
                     <Text style={styles.cardTitle}>{adminNewsTitle || 'Titulo de noticia'}</Text>
@@ -6475,6 +6569,13 @@ function ProfileScreen({
                   </View>
                 ) : null}
                 <TextInput style={styles.input} placeholder="Fecha y hora del evento. Ej: 2026-05-28T21:00:00-03:00" value={adminEventDate} onChangeText={setAdminEventDate} />
+                <View style={styles.settingRow}>
+                  <View style={styles.settingRowText}>
+                    <Text style={styles.cardTitle}>Notificar usuarios</Text>
+                    <Text style={styles.cardText}>{notificationPermissionLabel(session)}</Text>
+                  </View>
+                  <Switch value={adminEventNotify} onValueChange={setAdminEventNotify} />
+                </View>
                 <TouchableOpacity style={styles.primaryButton} onPress={adminCreateEvent}>
                   <Text style={styles.primaryButtonText}>Publicar evento</Text>
                 </TouchableOpacity>
@@ -7070,14 +7171,19 @@ const styles = StyleSheet.create({
     color: palette.inkMuted,
     fontSize: 10,
     fontWeight: '800',
-    textAlign: 'right',
+    textAlign: 'center',
     lineHeight: 13
   },
   headerActions: {
+    alignItems: 'stretch',
+    gap: 4,
+    flexShrink: 1
+  },
+  headerActionTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flexShrink: 1
+    justifyContent: 'flex-end',
+    gap: 8
   },
   headerProfileButton: {
     minHeight: 34,
@@ -8189,6 +8295,12 @@ const styles = StyleSheet.create({
     backgroundColor: palette.goldSoft,
     borderRadius: 12
   },
+  calendarMotivadorDay: {
+    backgroundColor: 'rgba(37, 161, 123, 0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 161, 123, 0.42)',
+    borderRadius: 12
+  },
   calendarActivityDay: {
     backgroundColor: palette.red,
     borderRadius: 12
@@ -8204,6 +8316,14 @@ const styles = StyleSheet.create({
   calendarActivityText: {
     color: palette.white,
     fontWeight: '900'
+  },
+  calendarMultiDot: {
+    position: 'absolute',
+    bottom: 5,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: palette.blueDeep
   },
   notice: {
     flexDirection: 'row',
@@ -8486,6 +8606,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(45, 141, 200, 0.32)',
     minHeight: 48,
     borderRadius: 18,
+    flexDirection: 'row',
+    gap: 7,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 14,

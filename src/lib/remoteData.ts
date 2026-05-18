@@ -29,6 +29,7 @@ export type RemoteAgendaItem = {
   scope: string;
   province?: string;
   date: string;
+  dateGroupKey?: string;
   title: string;
   body: string;
   imageUrl?: string;
@@ -457,7 +458,7 @@ export async function fetchMotivadorPeriods(session?: Session | null): Promise<R
   try {
     result = await supabase
       .from('motivador_periods')
-      .select('gender, pm_number, selected_dates, starts_on, ends_on, retreat_house, address, opening_time, closing_time, description, place_photo_url, flyer_url, visible_to_lower_roles, status, provinces(name)')
+      .select('id, gender, pm_number, selected_dates, starts_on, ends_on, retreat_house, address, opening_time, closing_time, description, place_photo_url, flyer_url, visible_to_lower_roles, status, provinces(name)')
       .eq('is_visible', true)
       .eq('status', 'activo')
       .order('starts_on', { ascending: true });
@@ -476,27 +477,43 @@ export async function fetchMotivadorPeriods(session?: Session | null): Promise<R
       const minimumRole = item.visible_to_lower_roles ? 'palestrista' : 'sedimentador';
       return canAccessProvince(session ?? null, item.provinces?.name ?? 'Nacional') && roleRank(currentRole) >= roleRank(minimumRole);
     })
-    .map((item) => {
+    .flatMap((item) => {
       const province = item.provinces?.name ?? 'Nacional';
       const genderLabel = item.gender === 'femenino' ? 'Femenino' : 'Masculino';
       const startsOn = String(item.starts_on).slice(0, 10);
       const endsOn = String(item.ends_on).slice(0, 10);
-      const selectedDates = Array.isArray(item.selected_dates) && item.selected_dates.length > 0
-        ? item.selected_dates.map((date: string) => String(date).slice(0, 10)).join(', ')
-        : startsOn === endsOn ? startsOn : `${startsOn} al ${endsOn}`;
+      const selectedDateList = Array.isArray(item.selected_dates) && item.selected_dates.length > 0
+        ? item.selected_dates.map((date: string) => String(date).slice(0, 10))
+        : startsOn === endsOn ? [startsOn] : buildDateRange(startsOn, endsOn);
+      const selectedDates = selectedDateList.join(', ');
       const description = item.description ? ` ${item.description}` : '';
       const address = item.address ?? 'Direccion a confirmar';
       const opening = item.opening_time ? ` Apertura: ${item.opening_time}.` : '';
       const closing = item.closing_time ? ` Clausura: ${item.closing_time}.` : '';
+      const periodId = item.id ?? `${province}-${item.gender}-${item.pm_number}`;
 
-      return {
+      return selectedDateList.map((date: string) => ({
+        id: `${periodId}-${date}`,
+        source: 'motivador' as const,
+        dateGroupKey: periodId,
         scope: `PM - ${province}`,
         province,
-        date: startsOn,
+        date,
         title: `PM ${genderLabel} ${item.pm_number}`,
         body: `Dias: ${selectedDates}. Casa de retiro: ${item.retreat_house}. Direccion: ${address}.${opening}${closing}${description}`,
         imageUrl: item.flyer_url ?? item.place_photo_url ?? undefined,
         mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
-      };
+      }));
     });
+}
+
+function buildDateRange(startsOn: string, endsOn: string) {
+  const dates: string[] = [];
+  const cursor = new Date(`${startsOn}T00:00:00`);
+  const end = new Date(`${endsOn}T00:00:00`);
+  while (!Number.isNaN(cursor.getTime()) && cursor <= end && dates.length < 15) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates.length > 0 ? dates : [startsOn];
 }
