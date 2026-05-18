@@ -24,6 +24,8 @@ type RemoteCommunityRow = {
 
 export type AppCommunity = (typeof fallbackCommunities)[number];
 export type RemoteAgendaItem = {
+  id?: string;
+  source?: 'event' | 'motivador';
   scope: string;
   province?: string;
   date: string;
@@ -100,7 +102,8 @@ export async function fetchNews(session?: Session | null) {
   try {
     result = await supabase
       .from('news')
-      .select('title, body, is_public, created_at, provinces(name)')
+      .select('id, title, body, is_public, created_at, archived_at, provinces(name)')
+      .is('archived_at', null)
       .order('created_at', { ascending: false })
       .limit(20);
   } catch {
@@ -115,12 +118,47 @@ export async function fetchNews(session?: Session | null) {
   return data
     .filter((item: any) => canAccessProvince(session ?? null, item.provinces?.name ?? 'Nacional'))
     .map((item: any) => ({
+    id: item.id,
+    source: 'news' as const,
     scope: item.provinces?.name ? `${item.is_public ? 'Publico' : 'Interno'} - ${item.provinces.name}` : item.is_public ? 'Publico nacional' : 'Interno nacional',
     title: item.title,
     body: item.body,
     province: item.provinces?.name ?? 'Nacional',
     imageUrl: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
   }));
+}
+
+export async function updateNewsEntry(values: { id: string; title: string; body: string; isPublic?: boolean }) {
+  try {
+    return await supabase.rpc('admin_update_news', {
+      p_news_id: values.id,
+      p_title: values.title,
+      p_body: values.body,
+      p_is_public: values.isPublic ?? true
+    });
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message: error instanceof Error ? error.message : 'No se pudo actualizar la noticia.'
+      }
+    };
+  }
+}
+
+export async function archiveNewsEntry(newsId: string) {
+  try {
+    return await supabase.rpc('admin_archive_news', {
+      p_news_id: newsId
+    });
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message: error instanceof Error ? error.message : 'No se pudo eliminar la noticia.'
+      }
+    };
+  }
 }
 
 export async function createCommunityPublication(values: {
@@ -354,7 +392,8 @@ export async function fetchNotilestra(session?: Session | null) {
   try {
     result = await supabase
       .from('events')
-      .select('title, description, starts_at, is_public, provinces(name)')
+      .select('id, title, description, starts_at, is_public, archived_at, provinces(name)')
+      .is('archived_at', null)
       .order('starts_at', { ascending: true })
       .limit(30);
   } catch {
@@ -369,12 +408,48 @@ export async function fetchNotilestra(session?: Session | null) {
   return data
     .filter((item: any) => canAccessProvince(session ?? null, item.provinces?.name ?? 'Nacional'))
     .map((item: any) => ({
+    id: item.id,
+    source: 'event' as const,
     scope: item.provinces?.name ? `${item.is_public ? 'Agenda' : 'Privado'} - ${item.provinces.name}` : item.is_public ? 'Agenda nacional' : 'Privado nacional',
     province: item.provinces?.name ?? 'Nacional',
     date: String(item.starts_at).slice(0, 10),
     title: item.title,
     body: item.description
   }));
+}
+
+export async function updateAgendaEvent(values: { id: string; title: string; body: string; startsAt: string; isPublic?: boolean }) {
+  try {
+    return await supabase.rpc('admin_update_event', {
+      p_event_id: values.id,
+      p_title: values.title,
+      p_description: values.body,
+      p_starts_at: values.startsAt,
+      p_is_public: values.isPublic ?? true
+    });
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message: error instanceof Error ? error.message : 'No se pudo actualizar el evento.'
+      }
+    };
+  }
+}
+
+export async function archiveAgendaEvent(eventId: string) {
+  try {
+    return await supabase.rpc('admin_archive_event', {
+      p_event_id: eventId
+    });
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message: error instanceof Error ? error.message : 'No se pudo eliminar el evento.'
+      }
+    };
+  }
 }
 
 export async function fetchMotivadorPeriods(session?: Session | null): Promise<RemoteAgendaItem[]> {

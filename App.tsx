@@ -6,10 +6,11 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
+import { AppTheme, ThemeName, themePresets } from './src/theme/themes';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, demoRequests, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
-import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveCommunityPublication, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateCommunityPublication, voteCommunityPoll } from './src/lib/remoteData';
+import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
 import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createUserRequest, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, PendingProfile, resolveUserRequest, respondMailboxMessage, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
@@ -26,9 +27,26 @@ const provinceLogos: Record<string, any> = {
   Cordoba: require('./assets/logo-provincia-cordoba.png'),
   'San Luis': require('./assets/logo-provincia-san-luis.png')
 };
+const provinceDisplayNames: Record<string, string> = {
+  Cordoba: 'Córdoba',
+  Tucuman: 'Tucumán',
+  Catamarca: 'Catamarca',
+  Salta: 'Salta',
+  Jujuy: 'Jujuy',
+  'San Luis': 'San Luis'
+};
 const demoVersionLabel = 'DEMO 0.1.0';
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
+const themePreferenceKey = 'palestra.themePreference';
 const officialInstagramUrl = 'https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA==';
+const defaultProvinceInstagram: Record<string, string> = {
+  Cordoba: 'https://www.instagram.com/infopalestra.cordoba?igsh=MXd2aTcwcmo4bzEwZw==',
+  Catamarca: 'https://www.instagram.com/infopalestra.catamarca?igsh=MTB6ZXd0YWo1em4xdg==',
+  Salta: 'https://www.instagram.com/palestrasaltaoficial?igsh=cGljYW51ajdqbTFn',
+  'San Luis': 'https://www.instagram.com/infopalestra.sanluis?igsh=ZmJyZ2M0N2p5MDhv',
+  Jujuy: 'https://www.instagram.com/infopalestra.jujuy?igsh=eGI4bnYyMnNlNXZn',
+  Tucuman: 'https://www.instagram.com/infopalestra.tucuman?igsh=MTE5YzNqbXN1ZXdrag=='
+};
 
 type TabKey = string;
 type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general';
@@ -90,7 +108,12 @@ type AdminRequest = {
 
 type NotilestraItem = (typeof notilestra)[number];
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
-type AgendaItem = NotilestraItem & Partial<Pick<RemoteAgendaItem, 'imageUrl' | 'mapUrl' | 'province'>>;
+type NewsFeedItem = (typeof news)[number] & { id?: string; source?: 'news'; province?: string };
+type HomeFeedItem = NewsFeedItem | CommunityPublication;
+type AgendaItem = NotilestraItem & Partial<Pick<RemoteAgendaItem, 'id' | 'source' | 'imageUrl' | 'mapUrl' | 'province'>>;
+function isRemoteNewsItem(item: HomeFeedItem): item is NewsFeedItem & { id: string; source: 'news' } {
+  return Boolean((item as NewsFeedItem).id && (item as NewsFeedItem).source === 'news');
+}
 type PublicProfilePreview = {
   id?: string | null;
   fullName: string;
@@ -121,14 +144,7 @@ const defaultAdminConfig: AppAdminConfig = {
     email: contactInfo.email,
     phone: contactInfo.phone,
     instagram: officialInstagramUrl,
-    provinceInstagram: {
-      Cordoba: '',
-      Salta: '',
-      Tucuman: '',
-      Jujuy: '',
-      Catamarca: '',
-      'San Luis': ''
-    },
+    provinceInstagram: defaultProvinceInstagram,
     blocks: [],
     helpText: contactInfo.helpText,
     donationText: contactInfo.donationText
@@ -160,7 +176,7 @@ function normalizeAdminConfig(config?: Partial<AppAdminConfig> | null): AppAdmin
   if (!merged.contact.instagram || merged.contact.instagram === contactInfo.instagram || merged.contact.instagram === '@palestra.argentina') {
     merged.contact.instagram = officialInstagramUrl;
   }
-  merged.contact.provinceInstagram = { ...defaultAdminConfig.contact.provinceInstagram, ...(config?.contact?.provinceInstagram ?? {}) };
+  merged.contact.provinceInstagram = { ...defaultProvinceInstagram, ...(config?.contact?.provinceInstagram ?? {}) };
   merged.contact.blocks = Array.isArray(config?.contact?.blocks) ? config.contact.blocks : [];
 
   return merged;
@@ -282,6 +298,10 @@ function hasPermission(session: Session | null, permission: Permission) {
 
 function canManagePublishedContent(session: Session | null) {
   return Boolean(session && roleRank(session.role) >= roleRank('vocal'));
+}
+
+function canManageNationalPublishedContent(session: Session | null) {
+  return Boolean(session && ['vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role));
 }
 
 function isCommunityLeaderRole(session: Session | null) {
@@ -465,6 +485,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [touchPointer, setTouchPointer] = useState<{ x: number; y: number } | null>(null);
   const [touchPointerEnabled, setTouchPointerEnabled] = useState(false);
+  const [themeName, setThemeName] = useState<ThemeName>('default');
   const [tabSettings, setTabSettings] = useState<AppTabSetting[]>([]);
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
   const [contentLoaded, setContentLoaded] = useState(false);
@@ -476,6 +497,8 @@ export default function App() {
   const lastBackPressRef = useRef(0);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const touchPointerOpacity = useRef(new Animated.Value(0)).current;
+  const appTheme = themePresets[themeName] ?? themePresets.default;
+  const isDarkTheme = appTheme.mode === 'dark';
 
   const currentDateTimeLabel = useMemo(() => {
     const date = currentDateTime
@@ -500,6 +523,27 @@ export default function App() {
       .then((value) => setTouchPointerEnabled(value === 'true'))
       .catch((error) => console.error('touch pointer preference', error));
   }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(themePreferenceKey)
+      .then((value) => {
+        if (value && value in themePresets) {
+          setThemeName(value as ThemeName);
+        }
+      })
+      .catch((error) => console.error('theme preference', error));
+  }, []);
+
+  async function updateThemePreference(nextTheme: ThemeName) {
+    setThemeName(nextTheme);
+    try {
+      await AsyncStorage.setItem(themePreferenceKey, nextTheme);
+    } catch (error) {
+      console.error('save theme preference', error);
+      setAppMessage('No pude guardar el tema visual.');
+      setTimeout(() => setAppMessage(''), 1800);
+    }
+  }
 
   async function updateTouchPointerPreference(value: boolean) {
     setTouchPointerEnabled(value);
@@ -807,13 +851,13 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} />;
-  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled]);
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} />;
+  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled, themeName, appTheme]);
 
   return (
     <SafeAreaProvider>
       <SafeAreaView
-        style={styles.safeArea}
+        style={[styles.safeArea, isDarkTheme && styles.safeAreaDark]}
         onTouchStart={(event) => {
           const { pageX, pageY } = event.nativeEvent;
           showTouchPointer(pageX, pageY);
@@ -853,8 +897,8 @@ export default function App() {
             ]}
           />
         ) : null}
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.header}>
+        <StatusBar barStyle={isDarkTheme ? 'light-content' : 'dark-content'} />
+        <View style={[styles.header, isDarkTheme && styles.headerDark]}>
           <View style={styles.brandBlock}>
             <View style={styles.brandLogo}>
               <Image source={palestraLogo} style={styles.brandLogoImage} />
@@ -884,7 +928,7 @@ export default function App() {
           </View>
         ) : null}
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, isDarkTheme && styles.contentDark]}
           keyboardShouldPersistTaps="handled"
           refreshControl={(
             <RefreshControl
@@ -900,7 +944,7 @@ export default function App() {
             {screen}
           </Animated.View>
         </ScrollView>
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, isDarkTheme && styles.tabBarDark]}>
           {visibleTabs.map((tab) => {
             const selected = activeTab === tab.key;
             return (
@@ -1145,8 +1189,14 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
 
 function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void; adminConfig: AppAdminConfig }) {
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
-  const [homeNews, setHomeNews] = useState(news);
+  const [homeNews, setHomeNews] = useState<HomeFeedItem[]>(news);
   const [communityAgenda, setCommunityAgenda] = useState<CommunityPublication[]>([]);
+  const [homeRefreshKey, setHomeRefreshKey] = useState(0);
+  const [homeEditId, setHomeEditId] = useState<string | null>(null);
+  const [homeEditTitle, setHomeEditTitle] = useState('');
+  const [homeEditBody, setHomeEditBody] = useState('');
+  const [homeActionMessage, setHomeActionMessage] = useState('');
+  const canManageHomeEntries = canManageNationalPublishedContent(session);
   const instagramUrl = adminConfig.contact.instagram?.startsWith('http') ? adminConfig.contact.instagram : `https://www.instagram.com/${adminConfig.contact.instagram.replace('@', '')}`;
   const instagramLabel = instagramUrl.includes('infopalestra.argentina') ? '@infopalestra.argentina' : adminConfig.contact.instagram;
   const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = [
@@ -1178,7 +1228,65 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
     return () => {
       alive = false;
     };
-  }, [refreshKey, session?.province, session?.role]);
+  }, [refreshKey, homeRefreshKey, session?.province, session?.role]);
+
+  function startHomeNewsEdit(item: HomeFeedItem) {
+    if (!isRemoteNewsItem(item)) {
+      return;
+    }
+    setHomeEditId(item.id);
+    setHomeEditTitle(item.title);
+    setHomeEditBody(item.body);
+    setHomeActionMessage('');
+  }
+
+  async function saveHomeNewsEdit() {
+    if (!homeEditId) {
+      return;
+    }
+    if (!homeEditTitle.trim() || !homeEditBody.trim()) {
+      setHomeActionMessage('Completa titulo y contenido.');
+      return;
+    }
+    const { error } = await updateNewsEntry({
+      id: homeEditId,
+      title: homeEditTitle.trim(),
+      body: homeEditBody.trim()
+    });
+    if (error) {
+      setHomeActionMessage(error.message);
+      return;
+    }
+    setHomeEditId(null);
+    setHomeEditTitle('');
+    setHomeEditBody('');
+    setHomeActionMessage(changeDone('Cambios realizados'));
+    setHomeRefreshKey((current) => current + 1);
+  }
+
+  async function removeHomeNews(item: HomeFeedItem) {
+    if (!isRemoteNewsItem(item)) {
+      return;
+    }
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm('¿Seguro que deseas eliminar esta publicacion de Inicio?'))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Eliminar publicacion', '¿Seguro que deseas eliminar esta publicacion de Inicio?', [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await archiveNewsEntry(item.id);
+    if (error) {
+      setHomeActionMessage(error.message);
+      return;
+    }
+    setHomeActionMessage(changeDone('Cambios realizados'));
+    setHomeRefreshKey((current) => current + 1);
+  }
 
   return (
     <View style={styles.stack}>
@@ -1247,8 +1355,13 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
       </View>
 
       <SectionTitle title="Info Palestrista" />
+      {homeActionMessage ? <Text style={styles.noticeText}>{homeActionMessage}</Text> : null}
       {homeNews.map((item, index) => (
-        <TouchableOpacity key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]} activeOpacity={0.86} onPress={() => setExpandedNews(expandedNews === item.title ? null : item.title)}>
+        <TouchableOpacity key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]} activeOpacity={0.86} onPress={() => {
+          if (!(homeEditId && isRemoteNewsItem(item) && item.id === homeEditId)) {
+            setExpandedNews(expandedNews === item.title ? null : item.title);
+          }
+        }}>
           <View style={styles.feedHeader}>
             <View style={styles.feedAvatar}>
               <Ionicons name="sparkles-outline" size={18} color={palette.red} />
@@ -1258,9 +1371,38 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
               <Text style={styles.feedMeta}>Comunidad Palestra</Text>
             </View>
           </View>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardText} numberOfLines={expandedNews === item.title ? undefined : 2}>{item.body}</Text>
+          {homeEditId && isRemoteNewsItem(item) && item.id === homeEditId ? (
+            <View style={styles.stackSmall}>
+              <TextInput style={styles.input} placeholder="Titulo de la publicacion" value={homeEditTitle} onChangeText={setHomeEditTitle} />
+              <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo" value={homeEditBody} onChangeText={setHomeEditBody} multiline />
+              <View style={styles.inlineActions}>
+                <TouchableOpacity style={styles.primaryButton} onPress={saveHomeNewsEdit}>
+                  <Text style={styles.primaryButtonText}>Guardar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => setHomeEditId(null)}>
+                  <Text style={styles.secondaryButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardText} numberOfLines={expandedNews === item.title ? undefined : 2}>{item.body}</Text>
+            </>
+          )}
           {expandedNews === item.title ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
+          {canManageHomeEntries && isRemoteNewsItem(item) ? (
+            <View style={styles.inlineActions}>
+              <TouchableOpacity style={styles.actionPill} onPress={() => startHomeNewsEdit(item)}>
+                <Ionicons name="create-outline" size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>Editar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionPill} onPress={() => removeHomeNews(item)}>
+                <Ionicons name="trash-outline" size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
           <View style={styles.feedFooter}>
             <Text style={styles.expandHint}>{expandedNews === item.title ? 'Tocar para contraer' : 'Tocar para leer mas'}</Text>
             <Ionicons name={expandedNews === item.title ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
@@ -1290,6 +1432,13 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
   const [reminders, setReminders] = useState<string[]>([]);
   const [subtab, setSubtab] = useState<'noticias' | 'favoritos' | 'recordatorios'>('noticias');
   const [notilestraItems, setNotilestraItems] = useState<AgendaItem[]>(notilestra);
+  const [notilestraRefreshKey, setNotilestraRefreshKey] = useState(0);
+  const [notilestraEditId, setNotilestraEditId] = useState<string | null>(null);
+  const [notilestraEditTitle, setNotilestraEditTitle] = useState('');
+  const [notilestraEditBody, setNotilestraEditBody] = useState('');
+  const [notilestraEditDate, setNotilestraEditDate] = useState('');
+  const [notilestraActionMessage, setNotilestraActionMessage] = useState('');
+  const canManageNotilestraEntries = canManageNationalPublishedContent(session);
   const [monthOffset, setMonthOffset] = useState(0);
   const baseDate = new Date(2026, 4 + monthOffset, 1);
   const monthLabel = baseDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
@@ -1305,7 +1454,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     return () => {
       alive = false;
     };
-  }, [refreshKey, session?.province, session?.role]);
+  }, [refreshKey, notilestraRefreshKey, session?.province, session?.role]);
 
   const eventDays = notilestraItems
     .filter((item) => {
@@ -1353,10 +1502,72 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     setReminders((current) => current.includes(title) ? current.filter((item) => item !== title) : [...current, title]);
   }
 
+  function startNotilestraEdit(item: AgendaItem) {
+    if (!item.id || item.source !== 'event') {
+      return;
+    }
+    setNotilestraEditId(item.id);
+    setNotilestraEditTitle(item.title);
+    setNotilestraEditBody(item.body);
+    setNotilestraEditDate(item.date);
+    setNotilestraActionMessage('');
+  }
+
+  async function saveNotilestraEdit() {
+    if (!notilestraEditId) {
+      return;
+    }
+    if (!notilestraEditTitle.trim() || !notilestraEditBody.trim() || !notilestraEditDate.trim()) {
+      setNotilestraActionMessage('Completa titulo, contenido y fecha.');
+      return;
+    }
+    const { error } = await updateAgendaEvent({
+      id: notilestraEditId,
+      title: notilestraEditTitle.trim(),
+      body: notilestraEditBody.trim(),
+      startsAt: `${notilestraEditDate}T09:00:00-03:00`
+    });
+    if (error) {
+      setNotilestraActionMessage(error.message);
+      return;
+    }
+    setNotilestraEditId(null);
+    setNotilestraEditTitle('');
+    setNotilestraEditBody('');
+    setNotilestraEditDate('');
+    setNotilestraActionMessage(changeDone('Cambios realizados'));
+    setNotilestraRefreshKey((current) => current + 1);
+  }
+
+  async function removeNotilestraItem(item: AgendaItem) {
+    if (!item.id || item.source !== 'event') {
+      return;
+    }
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm('¿Seguro que deseas eliminar esta entrada de Notilestra?'))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Eliminar entrada', '¿Seguro que deseas eliminar esta entrada de Notilestra?', [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await archiveAgendaEvent(item.id);
+    if (error) {
+      setNotilestraActionMessage(error.message);
+      return;
+    }
+    setNotilestraActionMessage(changeDone('Cambios realizados'));
+    setNotilestraRefreshKey((current) => current + 1);
+  }
+
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
+      {notilestraActionMessage ? <Text style={styles.noticeText}>{notilestraActionMessage}</Text> : null}
       <Modal visible={dueReminderItems.length > 0 && !dismissedReminderPopup} transparent animationType="fade" onRequestClose={() => setDismissedReminderPopup(true)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalPanel}>
@@ -1432,7 +1643,11 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
       </Modal>
       {subtab === 'noticias' ? notilestraItems.map((item, index) => (
         <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
-          <TouchableOpacity activeOpacity={0.86} onPress={() => setExpandedItem(expandedItem === item.title ? null : item.title)}>
+          <TouchableOpacity activeOpacity={0.86} onPress={() => {
+            if (!(notilestraEditId && item.id === notilestraEditId)) {
+              setExpandedItem(expandedItem === item.title ? null : item.title);
+            }
+          }}>
             <View style={styles.feedHeader}>
               <View style={styles.feedAvatar}>
                 <Ionicons name="megaphone-outline" size={18} color={palette.red} />
@@ -1442,8 +1657,26 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
                 <Text style={styles.feedMeta}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
               </View>
             </View>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardText} numberOfLines={expandedItem === item.title ? undefined : 2}>{item.body}</Text>
+            {notilestraEditId && item.id === notilestraEditId ? (
+              <View style={styles.stackSmall}>
+                <TextInput style={styles.input} placeholder="Titulo de la entrada" value={notilestraEditTitle} onChangeText={setNotilestraEditTitle} />
+                <TextInput style={styles.input} placeholder="Fecha del evento (AAAA-MM-DD)" value={notilestraEditDate} onChangeText={setNotilestraEditDate} />
+                <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo" value={notilestraEditBody} onChangeText={setNotilestraEditBody} multiline />
+                <View style={styles.inlineActions}>
+                  <TouchableOpacity style={styles.primaryButton} onPress={saveNotilestraEdit}>
+                    <Text style={styles.primaryButtonText}>Guardar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => setNotilestraEditId(null)}>
+                    <Text style={styles.secondaryButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                <Text style={styles.cardText} numberOfLines={expandedItem === item.title ? undefined : 2}>{item.body}</Text>
+              </>
+            )}
           </TouchableOpacity>
           <View style={styles.inlineActions}>
             <TouchableOpacity style={[styles.actionPill, favorites.includes(item.title) && styles.actionPillActive]} onPress={() => toggleFavorite(item.title)}>
@@ -1454,6 +1687,18 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
               <Ionicons name={reminders.includes(item.title) ? 'notifications' : 'notifications-outline'} size={16} color={reminders.includes(item.title) ? palette.white : palette.red} />
               <Text style={[styles.actionPillText, reminders.includes(item.title) && styles.actionPillTextActive]}>Recordar</Text>
             </TouchableOpacity>
+            {canManageNotilestraEntries && item.id && item.source === 'event' ? (
+              <>
+                <TouchableOpacity style={styles.actionPill} onPress={() => startNotilestraEdit(item)}>
+                  <Ionicons name="create-outline" size={16} color={palette.red} />
+                  <Text style={styles.actionPillText}>Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionPill} onPress={() => removeNotilestraItem(item)}>
+                  <Ionicons name="trash-outline" size={16} color={palette.red} />
+                  <Text style={styles.actionPillText}>Eliminar</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
           </View>
         </View>
       )) : null}
@@ -2113,6 +2358,8 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
   const shouldShowFallback = !content && !editor?.contentLoaded;
   const contactBlocks = adminConfig.contact.blocks ?? [];
   const provinceInstagram = adminConfig.contact.provinceInstagram ?? {};
+  const hasProvinceInstagram = Object.entries(provinceInstagram).some(([, value]) => value.trim());
+  const hasContactPanel = shouldShowFallback || contactBlocks.length > 0 || hasProvinceInstagram || Boolean(adminConfig.contact.email || adminConfig.contact.phone || adminConfig.contact.instagram || adminConfig.contact.helpText || adminConfig.contact.donationText);
   const openContactValue = (value: string) => {
     if (!value.trim()) {
       return;
@@ -2124,7 +2371,7 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      {shouldShowFallback || contactBlocks.length > 0 ? (
+      {hasContactPanel ? (
         <View style={styles.contentIntro}>
           <Text style={styles.cardTitle}>Encontrar una comunidad</Text>
           <Text style={styles.cardText}>{adminConfig.contact.helpText}</Text>
@@ -2136,12 +2383,19 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
               <Text style={styles.instagramButtonTitle}>Instagram nacional</Text>
             </TouchableOpacity>
           ) : null}
-          {Object.entries(provinceInstagram).some(([, value]) => value.trim()) ? (
-            <View style={styles.chipRow}>
+          {hasProvinceInstagram ? (
+            <View style={styles.provinceInstagramPanel}>
+              <Text style={styles.cardEyebrow}>Instagram por provincia</Text>
               {Object.entries(provinceInstagram).filter(([, value]) => value.trim()).map(([province, value]) => (
-                <TouchableOpacity key={province} style={styles.actionPill} onPress={() => openContactValue(value)}>
-                  <Ionicons name="logo-instagram" size={16} color={palette.red} />
-                  <Text style={styles.actionPillText}>{province}</Text>
+                <TouchableOpacity key={province} style={styles.provinceInstagramButton} onPress={() => openContactValue(value)} activeOpacity={0.86}>
+                  <View style={styles.provinceInstagramLogo}>
+                    {provinceLogos[province] ? <Image source={provinceLogos[province]} style={styles.provinceInstagramLogoImage} /> : <Text style={styles.provinceLogoMiniText}>{provinceDisplayNames[province]?.slice(0, 2).toUpperCase() ?? province.slice(0, 2).toUpperCase()}</Text>}
+                  </View>
+                  <View style={styles.adminUserHeaderText}>
+                    <Text style={styles.provinceInstagramName}>{provinceDisplayNames[province] ?? province}</Text>
+                    <Text style={styles.feedMeta}>Instagram oficial</Text>
+                  </View>
+                  <Ionicons name="logo-instagram" size={20} color={palette.red} />
                 </TouchableOpacity>
               ))}
             </View>
@@ -2726,6 +2980,9 @@ function ProfileScreen({
   adminConfig,
   touchPointerEnabled,
   onTouchPointerEnabledChange,
+  themeName,
+  appTheme,
+  onThemeChange,
   onAdminConfigChange,
   onTabsChanged,
   onContentChanged,
@@ -2739,6 +2996,9 @@ function ProfileScreen({
   adminConfig: AppAdminConfig;
   touchPointerEnabled: boolean;
   onTouchPointerEnabledChange: (value: boolean) => void;
+  themeName: ThemeName;
+  appTheme: AppTheme;
+  onThemeChange: (theme: ThemeName) => Promise<void>;
   onAdminConfigChange: (config: AppAdminConfig) => void;
   onTabsChanged: () => Promise<void>;
   onContentChanged: () => Promise<void>;
@@ -2752,7 +3012,6 @@ function ProfileScreen({
   const [userRequestText, setUserRequestText] = useState('');
   const [selectedSentRequestId, setSelectedSentRequestId] = useState('');
   const [profilePanel, setProfilePanel] = useState<ProfilePanel>(initialPanel);
-  const [themeMode, setThemeMode] = useState<'normal' | 'dark'>('normal');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -2814,6 +3073,8 @@ function ProfileScreen({
   const [adminEventTitle, setAdminEventTitle] = useState('');
   const [adminEventBody, setAdminEventBody] = useState('');
   const [adminEventDate, setAdminEventDate] = useState('');
+  const [adminEventCalendarOpen, setAdminEventCalendarOpen] = useState(false);
+  const [adminEventCalendarMonth, setAdminEventCalendarMonth] = useState(new Date());
   const [adminMotivadorPeriods, setAdminMotivadorPeriods] = useState<MotivadorPeriodRecord[]>([]);
   const [pmEditingId, setPmEditingId] = useState<string | null>(null);
   const [pmGender, setPmGender] = useState<'masculino' | 'femenino'>('masculino');
@@ -3197,6 +3458,11 @@ function ProfileScreen({
     setPmSelectedDates((current) => current.includes(date)
       ? current.filter((item) => item !== date)
       : [...current, date].sort());
+  }
+
+  function selectAdminEventDate(date: string) {
+    setAdminEventDate(`${date}T09:00:00-03:00`);
+    setAdminEventCalendarOpen(false);
   }
 
   async function loadMotivadorAdminPeriods() {
@@ -4748,16 +5014,21 @@ function ProfileScreen({
               <Text style={styles.cardText}>Esta opcion queda guardada en este dispositivo y por defecto permanece apagada.</Text>
               <View style={styles.settingRow}>
                 <View style={styles.settingRowText}>
-                  <Text style={styles.cardTitle}>Tema de la aplicacion</Text>
-                  <Text style={styles.cardText}>Modo visual para pruebas. La capa completa de colores queda lista para profundizarla.</Text>
+                  <Text style={styles.cardTitle}>Tema</Text>
+                  <Text style={styles.cardText}>Preferencia visual solo para este dispositivo: Predeterminado u Oscuro.</Text>
                 </View>
-                <Switch
-                  value={themeMode === 'dark'}
-                  onValueChange={(value) => setThemeMode(value ? 'dark' : 'normal')}
-                  trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
-                  thumbColor={themeMode === 'dark' ? palette.red : palette.white}
-                />
               </View>
+              <View style={styles.filterRow}>
+                {([
+                  ['default', 'Predeterminado'],
+                  ['dark', 'Oscuro']
+                ] as [ThemeName, string][]).map(([name, label]) => (
+                  <TouchableOpacity key={name} style={[styles.filterChip, themeName === name && styles.filterChipActive]} onPress={() => onThemeChange(name)}>
+                    <Text style={[styles.filterChipText, themeName === name && styles.filterChipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.cardText}>Tema activo: {appTheme.name === 'dark' ? 'Oscuro' : 'Predeterminado'}.</Text>
               <TextInput style={styles.input} placeholder="Nuevo mail" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none" />
               <TextInput style={styles.input} placeholder="Nueva contrasena" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
               <TouchableOpacity style={styles.primaryButton} onPress={saveAccountSettings}>
@@ -5980,9 +6251,46 @@ function ProfileScreen({
               {adminModule === 'eventos' ? (
                 <View style={styles.adminWorkspace}>
                 <Text style={styles.cardTitle}>Crear evento {tabLabel('notilestra')}</Text>
-                <TextInput style={styles.input} placeholder="Titulo" value={adminEventTitle} onChangeText={setAdminEventTitle} />
-                <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={adminEventBody} onChangeText={setAdminEventBody} multiline />
-                <TextInput style={styles.input} placeholder="Fecha ISO: 2026-05-28T21:00:00-03:00" value={adminEventDate} onChangeText={setAdminEventDate} />
+                <TextInput style={styles.input} placeholder="Titulo del evento" value={adminEventTitle} onChangeText={setAdminEventTitle} />
+                <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion o detalle del evento" value={adminEventBody} onChangeText={setAdminEventBody} multiline />
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminEventCalendarOpen(!adminEventCalendarOpen)}>
+                  <Ionicons name="calendar-outline" size={17} color={palette.red} />
+                  <Text style={styles.secondaryButtonText}>Seleccionar fecha</Text>
+                </TouchableOpacity>
+                {adminEventCalendarOpen ? (
+                  <View style={styles.pmCalendarPanel}>
+                    <View style={styles.pmCalendarHeader}>
+                      <TouchableOpacity style={styles.pmCalendarNavButton} onPress={() => setAdminEventCalendarMonth(new Date(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth() - 1, 1))}>
+                        <Text style={styles.pmCalendarNavText}>←</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.pmCalendarTitle}>{adminEventCalendarMonth.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</Text>
+                      <TouchableOpacity style={styles.pmCalendarNavButton} onPress={() => setAdminEventCalendarMonth(new Date(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth() + 1, 1))}>
+                        <Text style={styles.pmCalendarNavText}>→</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.pmCalendarWeekRow}>
+                      {['DO', 'LU', 'MA', 'MI', 'JU', 'VI', 'SA'].map((day) => (
+                        <Text key={day} style={styles.pmWeekdayText}>{day}</Text>
+                      ))}
+                    </View>
+                    <View style={styles.pmCalendarGrid}>
+                      {Array.from({ length: new Date(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth(), 1).getDay() }, (_, index) => (
+                        <View key={`event-blank-${index}`} style={styles.pmDaySpacer} />
+                      ))}
+                      {Array.from({ length: new Date(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth() + 1, 0).getDate() }, (_, index) => {
+                        const day = index + 1;
+                        const date = isoDate(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth(), day);
+                        const selected = adminEventDate.slice(0, 10) === date;
+                        return (
+                          <TouchableOpacity key={date} style={[styles.pmDayButton, selected && styles.pmDayButtonSelected]} onPress={() => selectAdminEventDate(date)}>
+                            <Text style={[styles.pmDayText, selected && styles.pmDayTextSelected]}>{day}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : null}
+                <TextInput style={styles.input} placeholder="Fecha y hora del evento. Ej: 2026-05-28T21:00:00-03:00" value={adminEventDate} onChangeText={setAdminEventDate} />
                 <TouchableOpacity style={styles.primaryButton} onPress={adminCreateEvent}>
                   <Text style={styles.primaryButtonText}>Publicar evento</Text>
                 </TouchableOpacity>
@@ -6377,6 +6685,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: palette.paper
   },
+  safeAreaDark: {
+    backgroundColor: themePresets.dark.colors.background
+  },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 100,
@@ -6451,6 +6762,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
+  },
+  headerDark: {
+    backgroundColor: '#0D2532',
+    borderBottomWidth: 1,
+    borderBottomColor: themePresets.dark.colors.border
   },
   brandBlock: {
     flexDirection: 'row',
@@ -6593,10 +6909,16 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 156
   },
+  contentDark: {
+    backgroundColor: themePresets.dark.colors.background
+  },
   stack: {
     gap: 18
   },
   stackTight: {
+    gap: 10
+  },
+  stackSmall: {
     gap: 10
   },
   hero: {
@@ -6929,6 +7251,39 @@ const styles = StyleSheet.create({
   provinceLogoMiniImage: {
     width: '100%',
     height: '100%'
+  },
+  provinceInstagramPanel: {
+    gap: 10,
+    marginTop: 10
+  },
+  provinceInstagramButton: {
+    minHeight: 66,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderRadius: 18,
+    padding: 10,
+    backgroundColor: palette.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  provinceInstagramLogo: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    overflow: 'hidden',
+    backgroundColor: palette.whiteSoft,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  provinceInstagramLogoImage: {
+    width: '100%',
+    height: '100%'
+  },
+  provinceInstagramName: {
+    color: palette.ink,
+    fontSize: 16,
+    fontWeight: '900'
   },
   provinceLogoLarge: {
     width: 86,
@@ -7920,6 +8275,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 22,
     elevation: 10
+  },
+  tabBarDark: {
+    backgroundColor: 'rgba(16, 43, 56, 0.97)',
+    shadowColor: '#000000'
   },
   tabButton: {
     flex: 1,

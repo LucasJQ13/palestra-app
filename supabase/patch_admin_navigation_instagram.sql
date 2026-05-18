@@ -81,9 +81,21 @@ grant execute on function public.admin_update_instagram(text) to authenticated;
 update public.admin_config
 set
   config = jsonb_set(
-    coalesce(config, '{}'::jsonb),
-    '{contact,instagram}',
-    to_jsonb('https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA=='::text),
+    jsonb_set(
+      coalesce(config, '{}'::jsonb),
+      '{contact,instagram}',
+      to_jsonb('https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA=='::text),
+      true
+    ),
+    '{contact,provinceInstagram}',
+    jsonb_build_object(
+      'Cordoba', 'https://www.instagram.com/infopalestra.cordoba?igsh=MXd2aTcwcmo4bzEwZw==',
+      'Catamarca', 'https://www.instagram.com/infopalestra.catamarca?igsh=MTB6ZXd0YWo1em4xdg==',
+      'Salta', 'https://www.instagram.com/palestrasaltaoficial?igsh=cGljYW51ajdqbTFn',
+      'San Luis', 'https://www.instagram.com/infopalestra.sanluis?igsh=ZmJyZ2M0N2p5MDhv',
+      'Jujuy', 'https://www.instagram.com/infopalestra.jujuy?igsh=eGI4bnYyMnNlNXZn',
+      'Tucuman', 'https://www.instagram.com/infopalestra.tucuman?igsh=MTE5YzNqbXN1ZXdrag=='
+    ),
     true
   ),
   updated_at = now()
