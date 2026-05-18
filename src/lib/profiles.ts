@@ -30,6 +30,27 @@ export type AdminUser = {
   email_confirmed_at: string | null;
 };
 
+export type AdminUserLoginDiagnostic = {
+  searched_email: string;
+  auth_exists: boolean;
+  auth_user_id: string | null;
+  email_confirmed_at: string | null;
+  profile_exists: boolean;
+  profile_id: string | null;
+  profile_user_id: string | null;
+  profile_email: string | null;
+  status: string | null;
+  role: string | null;
+  province: string | null;
+  community: string | null;
+  has_duplicates: boolean;
+  auth_count: number;
+  profile_count: number;
+  inconsistencies: string[];
+  possible_cause: string;
+  recommended_action: string;
+};
+
 export type CommunityMember = {
   id: string;
   full_name: string | null;
@@ -393,8 +414,40 @@ export async function fetchUserAgendaPreferences(): Promise<UserAgendaPreference
 
 export async function softDeleteAdminUser(profileId: string) {
   try {
-    return await supabase.rpc('admin_soft_delete_user', {
+    return await supabase.rpc('admin_delete_user_completely', {
       p_profile_id: profileId
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function diagnoseAdminUserLogin(email: string): Promise<{ data: AdminUserLoginDiagnostic | null; error: any }> {
+  try {
+    const { data, error } = await supabase.rpc('admin_diagnose_user_login', {
+      p_email: email
+    });
+    return { data: Array.isArray(data) ? (data[0] ?? null) : null, error };
+  } catch (error) {
+    return networkError(error) as { data: null; error: any };
+  }
+}
+
+export async function deleteAdminUserByEmail(email: string, reason?: string) {
+  try {
+    return await supabase.rpc('admin_delete_user_by_email', {
+      p_email: email,
+      p_reason: reason ?? 'Liberacion manual de correo desde panel administrador'
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function repairAdminUserLogin(email: string) {
+  try {
+    return await supabase.rpc('admin_repair_user_login', {
+      p_email: email
     });
   } catch (error) {
     return networkError(error);

@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, deleteAppTab, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, deleteAdminUserByEmail, deleteAppTab, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -3338,6 +3338,8 @@ function ProfileScreen({
   const [adminCreateEmail, setAdminCreateEmail] = useState('');
   const [adminCreatePassword, setAdminCreatePassword] = useState('');
   const [adminCreatePasswordVisible, setAdminCreatePasswordVisible] = useState(false);
+  const [adminDiagnosticEmail, setAdminDiagnosticEmail] = useState('lucas.lsd.13@gmail.com');
+  const [adminLoginDiagnostic, setAdminLoginDiagnostic] = useState<AdminUserLoginDiagnostic | null>(null);
   const [adminNewsTitle, setAdminNewsTitle] = useState('');
   const [adminNewsBody, setAdminNewsBody] = useState('');
   const [adminNewsCategory, setAdminNewsCategory] = useState('General');
@@ -4529,7 +4531,7 @@ function ProfileScreen({
       return;
     }
 
-    const message = '¿Seguro que deseas eliminar este usuario? Esta accion puede afectar su acceso, mensajes y registros asociados.';
+    const message = 'Esta accion eliminara el acceso del usuario y liberara su correo para reutilizarlo. Se guardara un backup interno antes de eliminar.';
     const confirmed = Platform.OS === 'web'
       ? (typeof window === 'undefined' ? true : window.confirm(message))
       : await new Promise<boolean>((resolve) => {
@@ -4550,7 +4552,71 @@ function ProfileScreen({
     }
     setSelectedAdminUserId('');
     await loadAdminUsers();
-    setAuthMessage(changeDone('Usuario bloqueado/eliminado de forma segura.'));
+    setAuthMessage(changeDone('Usuario eliminado y correo liberado correctamente.'));
+  }
+
+  async function diagnoseUserLogin() {
+    const email = adminDiagnosticEmail.trim();
+    if (!isValidEmail(email)) {
+      setAuthMessage('Ingresa un mail valido para diagnosticar.');
+      return;
+    }
+    setAuthMessage('Diagnosticando usuario...');
+    const { data, error } = await diagnoseAdminUserLogin(email);
+    if (error) {
+      setAuthMessage(error.message || 'No pude diagnosticar el usuario.');
+      return;
+    }
+    setAdminLoginDiagnostic(data);
+    setAuthMessage(data ? 'Diagnostico listo.' : 'No hubo respuesta de diagnostico.');
+  }
+
+  async function repairUserLogin() {
+    const email = adminDiagnosticEmail.trim();
+    if (!isValidEmail(email)) {
+      setAuthMessage('Ingresa un mail valido para reparar.');
+      return;
+    }
+    setAuthMessage('Reparando usuario...');
+    const { error } = await repairAdminUserLogin(email);
+    if (error) {
+      setAuthMessage(error.message || 'No pude reparar el usuario.');
+      return;
+    }
+    await diagnoseUserLogin();
+    await loadAdminUsers();
+    setAuthMessage(changeDone('Usuario reparado. Probalo iniciando sesion nuevamente.'));
+  }
+
+  async function deleteUserByDiagnosticEmail() {
+    const email = adminDiagnosticEmail.trim();
+    if (!isValidEmail(email)) {
+      setAuthMessage('Ingresa un mail valido para liberar.');
+      return;
+    }
+    const message = `Esta accion eliminara Auth/Profile/datos vinculados de ${email} y liberara el correo. Se guardara backup interno antes de eliminar.`;
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm(message))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Liberar correo', message, [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Eliminar y liberar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+
+    setAuthMessage('Liberando correo...');
+    const { error } = await deleteAdminUserByEmail(email, 'Liberacion manual de correo desde panel administrador');
+    if (error) {
+      setAuthMessage(error.message || 'No pude liberar el correo.');
+      return;
+    }
+    setSelectedAdminUserId('');
+    setAdminLoginDiagnostic(null);
+    await loadAdminUsers();
+    setAuthMessage(changeDone('Usuario eliminado y correo liberado correctamente.'));
   }
 
   async function queueNotificationIfRequested(enabled: boolean, values: {
@@ -6460,6 +6526,40 @@ function ProfileScreen({
                   <TouchableOpacity style={styles.primaryButton} onPress={loadAdminUsers}>
                     <Text style={styles.primaryButtonText}>Cargar todos los usuarios</Text>
                   </TouchableOpacity>
+                  {session.role === 'administrador' ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Diagnostico y liberacion de login</Text>
+                      <Text style={styles.cardText}>Usalo cuando un mail no puede ingresar, no aparece en usuarios o quedo atrapado en Auth/Profile.</Text>
+                      <TextInput style={styles.input} placeholder="Mail a diagnosticar" value={adminDiagnosticEmail} onChangeText={setAdminDiagnosticEmail} autoCapitalize="none" keyboardType="email-address" />
+                      <View style={styles.inlineActions}>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={diagnoseUserLogin}>
+                          <Ionicons name="search-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>Diagnosticar login</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={repairUserLogin}>
+                          <Ionicons name="construct-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>Reparar usuario</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={deleteUserByDiagnosticEmail}>
+                          <Ionicons name="trash-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>Eliminar y liberar mail</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {adminLoginDiagnostic ? (
+                        <View style={styles.innerNewsCard}>
+                          <Text style={styles.cardTitle}>Informe de {adminLoginDiagnostic.searched_email}</Text>
+                          <Text style={styles.cardText}>Auth: {adminLoginDiagnostic.auth_exists ? 'existe' : 'no existe'} ({adminLoginDiagnostic.auth_count})</Text>
+                          <Text style={styles.cardText}>Profile: {adminLoginDiagnostic.profile_exists ? 'existe' : 'no existe'} ({adminLoginDiagnostic.profile_count})</Text>
+                          <Text style={styles.cardText}>Confirmado: {adminLoginDiagnostic.email_confirmed_at ? 'si' : 'no'}</Text>
+                          <Text style={styles.cardText}>Estado/Rol: {adminLoginDiagnostic.status ?? 'sin estado'} - {adminLoginDiagnostic.role ?? 'sin rol'}</Text>
+                          <Text style={styles.cardText}>Provincia/Comunidad: {adminLoginDiagnostic.province ?? 'sin provincia'} - {adminLoginDiagnostic.community ?? 'sin comunidad'}</Text>
+                          <Text style={styles.cardText}>Inconsistencias: {adminLoginDiagnostic.inconsistencies?.length ? adminLoginDiagnostic.inconsistencies.join(' | ') : 'Sin inconsistencias evidentes'}</Text>
+                          <Text style={styles.cardText}>Causa probable: {adminLoginDiagnostic.possible_cause}</Text>
+                          <Text style={styles.cardText}>Accion recomendada: {adminLoginDiagnostic.recommended_action}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
                   <View style={styles.profileCommunityPanel}>
                     <Text style={styles.cardEyebrow}>Coordinaciones activas</Text>
                     <Text style={styles.cardText}>Coordinador Nacional: {activeNationalCoordinator?.full_name ?? activeNationalCoordinator?.email ?? 'Sin coordinador activo cargado'}</Text>
