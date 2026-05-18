@@ -454,6 +454,13 @@ export async function diagnoseAdminUserLogin(email: string): Promise<{ data: Adm
 
 export async function deleteAdminUserByEmail(email: string, reason?: string) {
   try {
+    const forced = await supabase.rpc('admin_force_release_user_email', {
+      p_email: email,
+      p_reason: reason ?? 'Liberacion manual de correo desde panel administrador'
+    });
+    if (!forced.error) {
+      return forced;
+    }
     return await supabase.rpc('admin_delete_user_by_email', {
       p_email: email,
       p_reason: reason ?? 'Liberacion manual de correo desde panel administrador'
