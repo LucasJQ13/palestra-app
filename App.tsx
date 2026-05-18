@@ -6579,10 +6579,15 @@ function ProfileScreen({
                         <View style={styles.innerNewsCard}>
                           <Text style={styles.cardTitle}>Informe de {adminLoginDiagnostic.searched_email}</Text>
                           <Text style={styles.cardText}>Auth: {adminLoginDiagnostic.auth_exists ? 'existe' : 'no existe'} ({adminLoginDiagnostic.auth_count})</Text>
+                          <Text style={styles.cardText}>Auth email: {adminLoginDiagnostic.auth_email ?? 'sin email'} - creado: {adminLoginDiagnostic.auth_created_at ? new Date(adminLoginDiagnostic.auth_created_at).toLocaleString('es-AR') : 'sin fecha'}</Text>
+                          <Text style={styles.cardText}>Identities: {adminLoginDiagnostic.identity_exists ? 'existe' : 'no existe'} ({adminLoginDiagnostic.identities_count ?? 0}) - {adminLoginDiagnostic.identities_provider ?? 'sin provider'}</Text>
                           <Text style={styles.cardText}>Profile: {adminLoginDiagnostic.profile_exists ? 'existe' : 'no existe'} ({adminLoginDiagnostic.profile_count})</Text>
                           <Text style={styles.cardText}>Confirmado: {adminLoginDiagnostic.email_confirmed_at ? 'si' : 'no'}</Text>
-                          <Text style={styles.cardText}>Estado/Rol: {adminLoginDiagnostic.status ?? 'sin estado'} - {adminLoginDiagnostic.role ?? 'sin rol'}</Text>
+                          <Text style={styles.cardText}>Estado/Rol: {adminLoginDiagnostic.profile_status ?? adminLoginDiagnostic.status ?? 'sin estado'} - {adminLoginDiagnostic.profile_role ?? adminLoginDiagnostic.role ?? 'sin rol'}</Text>
                           <Text style={styles.cardText}>Provincia/Comunidad: {adminLoginDiagnostic.province ?? 'sin provincia'} - {adminLoginDiagnostic.community ?? 'sin comunidad'}</Text>
+                          <Text style={styles.cardText}>Backups: {adminLoginDiagnostic.backups_exists ? `si (${adminLoginDiagnostic.backup_count ?? 0})` : 'no'}</Text>
+                          <Text style={styles.cardText}>Solicitudes/Tokens/Mensajes: {adminLoginDiagnostic.user_requests_exists ? 'solicitudes ' : ''}{adminLoginDiagnostic.device_push_tokens_exists ? 'tokens ' : ''}{adminLoginDiagnostic.internal_messages_exists ? 'mensajes' : ''}{(!adminLoginDiagnostic.user_requests_exists && !adminLoginDiagnostic.device_push_tokens_exists && !adminLoginDiagnostic.internal_messages_exists) ? 'sin relaciones visibles' : ''}</Text>
+                          <Text style={styles.cardText}>Tablas afectadas: {adminLoginDiagnostic.affected_tables?.length ? adminLoginDiagnostic.affected_tables.join(' | ') : 'sin tablas activas detectadas'}</Text>
                           <Text style={styles.cardText}>Inconsistencias: {adminLoginDiagnostic.inconsistencies?.length ? adminLoginDiagnostic.inconsistencies.join(' | ') : 'Sin inconsistencias evidentes'}</Text>
                           <Text style={styles.cardText}>Causa probable: {adminLoginDiagnostic.possible_cause}</Text>
                           <Text style={styles.cardText}>Accion recomendada: {adminLoginDiagnostic.recommended_action}</Text>
