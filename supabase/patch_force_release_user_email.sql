@@ -93,8 +93,8 @@ begin
       from information_schema.columns
       where table_schema = 'public'
         and table_name <> 'user_deletion_backups'
+        and data_type = 'uuid'
         and column_name in (
-          'id',
           'user_id',
           'sender_id',
           'created_by',
@@ -253,6 +253,7 @@ begin
       from information_schema.columns
       where table_schema = 'public'
         and table_name not in ('profiles', 'user_deletion_backups', 'audit_logs', 'communities')
+        and data_type = 'uuid'
         and column_name in (
           'user_id',
           'created_by',
@@ -294,6 +295,7 @@ begin
       from information_schema.columns
       where table_schema = 'auth'
         and table_name not in ('users', 'identities')
+        and data_type = 'uuid'
         and column_name = 'user_id'
     loop
       execute format('delete from auth.%I where %I = $1', ref.table_name, ref.column_name)
