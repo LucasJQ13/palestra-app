@@ -40,6 +40,7 @@ const provinceDisplayNames: Record<string, string> = {
 const demoVersionLabel = 'DEMO 0.1.0';
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
 const themePreferenceKey = 'palestra.themePreference';
+const pushDeviceIdKey = 'palestra.push.deviceId';
 const officialInstagramUrl = 'https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA==';
 const defaultProvinceInstagram: Record<string, string> = {
   Cordoba: 'https://www.instagram.com/infopalestra.cordoba?igsh=MXd2aTcwcmo4bzEwZw==',
@@ -49,6 +50,16 @@ const defaultProvinceInstagram: Record<string, string> = {
   Jujuy: 'https://www.instagram.com/infopalestra.jujuy?igsh=eGI4bnYyMnNlNXZn',
   Tucuman: 'https://www.instagram.com/infopalestra.tucuman?igsh=MTE5YzNqbXN1ZXdrag=='
 };
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true
+  })
+});
 
 type TabKey = string;
 type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general';
@@ -434,6 +445,57 @@ function notificationPermissionLabel(session: Session | null) {
     return 'La notificacion quedara disponible solo para roles con permiso de enviar notificaciones.';
   }
   return 'Tambien se dejara preparada una notificacion push para los usuarios alcanzados.';
+}
+
+async function getPushDeviceId() {
+  const current = await AsyncStorage.getItem(pushDeviceIdKey);
+  if (current) {
+    return current;
+  }
+  const next = `device-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  await AsyncStorage.setItem(pushDeviceIdKey, next);
+  return next;
+}
+
+async function requestAndRegisterPushToken(session: Session | null, requestPermission: boolean) {
+  if (!session?.id) {
+    return { status: 'missing-session', token: null as string | null, error: 'Inicia sesion para activar notificaciones.' };
+  }
+  if (Platform.OS === 'web') {
+    return { status: 'web', token: null as string | null, error: 'Las notificaciones push se prueban en celular.' };
+  }
+
+  const currentPermission = await Notifications.getPermissionsAsync();
+  let finalStatus = currentPermission.status;
+  if (requestPermission && currentPermission.status !== 'granted') {
+    const requestedPermission = await Notifications.requestPermissionsAsync();
+    finalStatus = requestedPermission.status;
+  }
+  if (finalStatus !== 'granted') {
+    return { status: finalStatus, token: null as string | null, error: 'Permiso de notificaciones no habilitado.' };
+  }
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.DEFAULT
+    });
+  }
+
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  const tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+  const deviceId = await getPushDeviceId();
+  const { error } = await registerPushToken({
+    token: tokenResult.data,
+    platform: Platform.OS,
+    deviceId,
+    appVersion: demoVersionLabel,
+    isActive: true
+  });
+  if (error) {
+    return { status: 'error', token: tokenResult.data, error: error.message };
+  }
+  return { status: 'granted', token: tokenResult.data, error: null as string | null };
 }
 
 function statusLabel(status: UserStatus) {
@@ -884,35 +946,14 @@ export default function App() {
     let alive = true;
 
     async function registerDeviceForPushNotifications() {
-      if (!session?.id || Platform.OS === 'web') {
+      if (!session?.id) {
         return;
       }
       try {
-        if (Platform.OS === 'android') {
-          await Notifications.setNotificationChannelAsync('default', {
-            name: 'default',
-            importance: Notifications.AndroidImportance.DEFAULT
-          });
-        }
-        const currentPermission = await Notifications.getPermissionsAsync();
-        let finalStatus = currentPermission.status;
-        if (currentPermission.status !== 'granted') {
-          const requestedPermission = await Notifications.requestPermissionsAsync();
-          finalStatus = requestedPermission.status;
-        }
-        if (!alive || finalStatus !== 'granted') {
+        const result = await requestAndRegisterPushToken(session, true);
+        if (!alive || result.status !== 'granted') {
           return;
         }
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-        const tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-        if (!alive || !tokenResult.data) {
-          return;
-        }
-        await registerPushToken({
-          token: tokenResult.data,
-          platform: Platform.OS,
-          appVersion: demoVersionLabel
-        });
       } catch (error) {
         console.error('register push token', error);
       }
@@ -3250,6 +3291,8 @@ function ProfileScreen({
   const [authFocusedField, setAuthFocusedField] = useState('');
   const [authErrors, setAuthErrors] = useState<Record<string, string>>({});
   const [authMessage, setAuthMessage] = useState('');
+  const [notificationPermissionStatus, setNotificationPermissionStatus] = useState('desconocido');
+  const [pushTokenPreview, setPushTokenPreview] = useState('');
   const [registerFullName, setRegisterFullName] = useState('');
   const [registerContact, setRegisterContact] = useState('');
   const [registerProvince, setRegisterProvince] = useState('');
@@ -3592,6 +3635,30 @@ function ProfileScreen({
   useEffect(() => {
     setAdminConfigDraft(adminConfig);
   }, [adminConfig]);
+
+  useEffect(() => {
+    let alive = true;
+    async function loadNotificationStatus() {
+      if (Platform.OS === 'web') {
+        setNotificationPermissionStatus('solo celular');
+        return;
+      }
+      try {
+        const permission = await Notifications.getPermissionsAsync();
+        if (alive) {
+          setNotificationPermissionStatus(permission.status);
+        }
+      } catch {
+        if (alive) {
+          setNotificationPermissionStatus('no disponible');
+        }
+      }
+    }
+    loadNotificationStatus();
+    return () => {
+      alive = false;
+    };
+  }, [session?.id, profilePanel]);
 
   useEffect(() => {
     if (session?.role !== 'administrador') {
@@ -4436,6 +4503,11 @@ function ProfileScreen({
     body: string;
     targetKind: string;
     targetValue?: string | null;
+    targetScope?: string | null;
+    province?: string | null;
+    community?: string | null;
+    minRole?: string | null;
+    tabKey?: string | null;
     sourceType?: string | null;
     sourceId?: string | null;
   }) {
@@ -4446,7 +4518,12 @@ function ProfileScreen({
     if (!canNotify) {
       return 'El aviso se publico, pero tu rango no tiene permiso para notificar usuarios.';
     }
-    const { error } = await createNotificationIntent(values);
+    const { error } = await createNotificationIntent({
+      ...values,
+      body: values.body.slice(0, 220),
+      targetScope: values.targetScope ?? values.targetKind,
+      minRole: values.minRole ?? 'palestrista'
+    });
     return error ? `El aviso se publico, pero no pude preparar la notificacion: ${error.message}` : null;
   }
 
@@ -4457,13 +4534,20 @@ function ProfileScreen({
     }
 
     setAuthMessage('Publicando noticia...');
-    const { error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true);
+    const { data: newsId, error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true);
+    const newsTargetKind = session && ['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? 'provincia' : 'nacional';
     const notificationWarning = !error ? await queueNotificationIfRequested(adminNewsNotify, {
       notificationType: 'aviso_dirigencial',
       title: adminNewsTitle.trim(),
       body: adminNewsBody.trim(),
-      targetKind: 'nacional',
-      sourceType: 'news'
+      targetKind: newsTargetKind,
+      targetValue: newsTargetKind === 'provincia' ? session?.province ?? null : null,
+      targetScope: newsTargetKind,
+      province: newsTargetKind === 'provincia' ? session?.province ?? null : null,
+      minRole: 'palestrista',
+      tabKey: 'notilestra',
+      sourceType: 'news',
+      sourceId: typeof newsId === 'string' ? newsId : null
     }) : null;
     setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminNewsNotify ? 'Noticia creada y notificacion preparada.' : 'Noticia creada.'));
     if (!error) {
@@ -4567,13 +4651,20 @@ function ProfileScreen({
     }
 
     setAuthMessage('Publicando evento...');
-    const { error } = await createEvent(adminEventTitle.trim(), adminEventBody.trim(), adminEventDate.trim(), true);
+    const { data: eventId, error } = await createEvent(adminEventTitle.trim(), adminEventBody.trim(), adminEventDate.trim(), true);
+    const eventTargetKind = session && ['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? 'provincia' : 'nacional';
     const notificationWarning = !error ? await queueNotificationIfRequested(adminEventNotify, {
       notificationType: 'recordatorio_evento',
       title: adminEventTitle.trim(),
       body: adminEventBody.trim(),
-      targetKind: 'nacional',
-      sourceType: 'event'
+      targetKind: eventTargetKind,
+      targetValue: eventTargetKind === 'provincia' ? session?.province ?? null : null,
+      targetScope: eventTargetKind,
+      province: eventTargetKind === 'provincia' ? session?.province ?? null : null,
+      minRole: 'palestrista',
+      tabKey: 'notilestra',
+      sourceType: 'event',
+      sourceId: typeof eventId === 'string' ? eventId : null
     }) : null;
     setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminEventNotify ? 'Evento creado y notificacion preparada.' : 'Evento creado.'));
     if (!error) {
@@ -4948,6 +5039,24 @@ function ProfileScreen({
     setAuthMessage(changeDone('Ajustes de cuenta actualizados.'));
   }
 
+  async function enablePushNotificationsFromSettings() {
+    if (!session) {
+      setAuthMessage('Inicia sesion para activar notificaciones.');
+      return;
+    }
+    setAuthMessage('Solicitando permiso de notificaciones...');
+    try {
+      const result = await requestAndRegisterPushToken(session, true);
+      setNotificationPermissionStatus(result.status);
+      if (result.token) {
+        setPushTokenPreview(`${result.token.slice(0, 18)}...`);
+      }
+      setAuthMessage(result.error ? result.error : changeDone('Notificaciones activadas en este dispositivo.'));
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No pude activar notificaciones.');
+    }
+  }
+
   async function publishCommunityPost() {
     if (!session || !isCommunityLeader) {
       return;
@@ -4987,6 +5096,11 @@ function ProfileScreen({
       body: communityPostBody.trim(),
       targetKind: 'comunidad',
       targetValue: session.communityOfOrigin,
+      targetScope: visibility,
+      province: session.province,
+      community: session.communityOfOrigin,
+      minRole: visibility === 'sedimentadores' ? 'sedimentador' : 'palestrista',
+      tabKey: 'perfil',
       sourceType: 'community_publication'
     });
     setCommunityPostTitle('');
@@ -5305,6 +5419,17 @@ function ProfileScreen({
                 ))}
               </View>
               <Text style={styles.cardText}>Tema activo: {appTheme.name === 'dark' ? 'Oscuro' : 'Predeterminado'}.</Text>
+              <View style={styles.settingRow}>
+                <View style={styles.settingRowText}>
+                  <Text style={styles.cardTitle}>Permitir notificaciones</Text>
+                  <Text style={styles.cardText}>Estado actual: {notificationPermissionStatus}. Activa este dispositivo para recibir avisos importantes cuando el sistema de envio quede conectado.</Text>
+                  {pushTokenPreview ? <Text style={styles.feedMeta}>Token registrado: {pushTokenPreview}</Text> : null}
+                </View>
+              </View>
+              <TouchableOpacity style={styles.secondaryButton} onPress={enablePushNotificationsFromSettings}>
+                <Ionicons name="notifications-outline" size={17} color={palette.red} />
+                <Text style={styles.secondaryButtonText}>Solicitar permiso</Text>
+              </TouchableOpacity>
               <TextInput style={styles.input} placeholder="Nuevo mail" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none" />
               <TextInput style={styles.input} placeholder="Nueva contrasena" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
               <TouchableOpacity style={styles.primaryButton} onPress={saveAccountSettings}>

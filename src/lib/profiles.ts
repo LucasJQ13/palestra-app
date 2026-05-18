@@ -424,15 +424,19 @@ export async function setUserAgendaPreference(values: {
 export async function registerPushToken(values: {
   token: string;
   platform: string;
+  deviceId?: string | null;
   deviceName?: string | null;
   appVersion?: string | null;
+  isActive?: boolean;
 }) {
   try {
     return await supabase.rpc('register_push_token', {
       p_expo_push_token: values.token,
       p_platform: values.platform,
+      p_device_id: values.deviceId ?? null,
       p_device_name: values.deviceName ?? null,
-      p_app_version: values.appVersion ?? null
+      p_app_version: values.appVersion ?? null,
+      p_is_active: values.isActive ?? true
     });
   } catch (error) {
     return networkError(error);
@@ -445,6 +449,11 @@ export async function createNotificationIntent(values: {
   body: string;
   targetKind: string;
   targetValue?: string | null;
+  targetScope?: string | null;
+  province?: string | null;
+  community?: string | null;
+  minRole?: string | null;
+  tabKey?: string | null;
   sourceType?: string | null;
   sourceId?: string | null;
 }) {
@@ -455,6 +464,11 @@ export async function createNotificationIntent(values: {
       p_body: values.body,
       p_target_kind: values.targetKind,
       p_target_value: values.targetValue ?? null,
+      p_target_scope: values.targetScope ?? null,
+      p_province: values.province ?? null,
+      p_community: values.community ?? null,
+      p_min_role: values.minRole ?? null,
+      p_tab_key: values.tabKey ?? null,
       p_source_type: values.sourceType ?? null,
       p_source_id: values.sourceId ?? null
     });

@@ -485,7 +485,7 @@ export async function fetchMotivadorPeriods(session?: Session | null): Promise<R
       const selectedDateList = Array.isArray(item.selected_dates) && item.selected_dates.length > 0
         ? item.selected_dates.map((date: string) => String(date).slice(0, 10))
         : startsOn === endsOn ? [startsOn] : buildDateRange(startsOn, endsOn);
-      const selectedDates = selectedDateList.join(', ');
+      const selectedDates = formatSpanishDateRange(selectedDateList);
       const description = item.description ? ` ${item.description}` : '';
       const address = item.address ?? 'Direccion a confirmar';
       const opening = item.opening_time ? ` Apertura: ${item.opening_time}.` : '';
@@ -516,4 +516,36 @@ function buildDateRange(startsOn: string, endsOn: string) {
     cursor.setDate(cursor.getDate() + 1);
   }
   return dates.length > 0 ? dates : [startsOn];
+}
+
+function formatSpanishDateRange(dateList: string[]) {
+  const dates = dateList
+    .map((date) => new Date(`${date}T00:00:00`))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+  if (dates.length === 0) {
+    return 'Fecha a confirmar';
+  }
+
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  const sameDay = first.toDateString() === last.toDateString();
+  const sameMonth = first.getMonth() === last.getMonth() && first.getFullYear() === last.getFullYear();
+  const sameYear = first.getFullYear() === last.getFullYear();
+
+  if (sameDay) {
+    return `${first.getDate()} de ${spanishMonth(first)} del ${first.getFullYear()}`;
+  }
+  if (sameMonth) {
+    return `del ${first.getDate()} al ${last.getDate()} de ${spanishMonth(first)} del ${first.getFullYear()}`;
+  }
+  if (sameYear) {
+    return `del ${first.getDate()} de ${spanishMonth(first)} al ${last.getDate()} de ${spanishMonth(last)} del ${first.getFullYear()}`;
+  }
+  return `del ${first.getDate()} de ${spanishMonth(first)} del ${first.getFullYear()} al ${last.getDate()} de ${spanishMonth(last)} del ${last.getFullYear()}`;
+}
+
+function spanishMonth(date: Date) {
+  const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  return months[date.getMonth()] ?? '';
 }
