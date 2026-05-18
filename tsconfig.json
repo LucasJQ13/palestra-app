@@ -3,5 +3,6 @@
   "compilerOptions": {
     "strict": true,
     "noImplicitReturns": true
-  }
+  },
+  "exclude": ["supabase/functions"]
 }

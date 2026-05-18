@@ -540,6 +540,16 @@ export async function createNotificationIntent(values: {
   }
 }
 
+export async function deliverNotificationIntent(intentId: string) {
+  try {
+    return await supabase.functions.invoke('send-push-notifications', {
+      body: { intent_id: intentId }
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function createNews(title: string, body: string, isPublic: boolean) {
   return supabase.rpc('admin_create_news', {
     p_title: title,

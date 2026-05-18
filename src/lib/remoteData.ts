@@ -228,6 +228,34 @@ export async function archiveCommunityPublication(publicationId: string) {
 }
 
 export async function fetchCommunityPublications(session?: Session | null) {
+  if (session) {
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_my_community_publications');
+      if (!rpcError && rpcData) {
+        return (rpcData as any[]).map((item) => ({
+          id: item.id,
+          kind: item.kind,
+          communityName: item.community_name ?? 'Comunidad',
+          visibility: item.visibility,
+          eventDate: item.event_date,
+          pollOptions: item.poll_options ?? [],
+          pollResults: item.poll_results ?? {},
+          status: item.status ?? 'activo',
+          createdBy: item.created_by ?? null,
+          createdAt: item.created_at ?? null,
+          authorName: item.author_name ?? 'Palestrista',
+          authorRole: item.author_role ?? 'palestrista',
+          scope: `${item.kind} - ${item.community_name ?? 'Comunidad'}`,
+          title: item.title,
+          body: item.event_date ? `${String(item.event_date).slice(0, 10)} - ${item.body}` : item.body,
+          imageUrl: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
+        }));
+      }
+    } catch {
+      // Fall back to direct table reads for projects that did not apply the SQL patch yet.
+    }
+  }
+
   let result;
   try {
     result = await supabase

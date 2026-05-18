@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, deleteAdminUserByEmail, deleteAppTab, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -41,6 +41,7 @@ const demoVersionLabel = 'DEMO 0.1.0';
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
 const themePreferenceKey = 'palestra.themePreference';
 const pushDeviceIdKey = 'palestra.push.deviceId';
+const inputPlaceholderColor = '#5E8396';
 const officialInstagramUrl = 'https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA==';
 const defaultProvinceInstagram: Record<string, string> = {
   Cordoba: 'https://www.instagram.com/infopalestra.cordoba?igsh=MXd2aTcwcmo4bzEwZw==',
@@ -60,6 +61,12 @@ Notifications.setNotificationHandler({
     shouldShowList: true
   })
 });
+
+(TextInput as any).defaultProps = {
+  ...((TextInput as any).defaultProps ?? {}),
+  placeholderTextColor: inputPlaceholderColor,
+  selectionColor: palette.red
+};
 
 type TabKey = string;
 type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'navegacion';
@@ -495,7 +502,7 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   const tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
   const deviceId = await getPushDeviceId();
-  const { error } = await registerPushToken({
+    const { error } = await registerPushToken({
     token: tokenResult.data,
     platform: Platform.OS,
     deviceId,
@@ -506,6 +513,12 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
     return { status: 'error', token: tokenResult.data, error: error.message };
   }
   return { status: 'granted', token: tokenResult.data, error: null as string | null };
+}
+
+function showFeedbackMessage(message: string) {
+  if (Platform.OS === 'android') {
+    ToastAndroid.show(message, ToastAndroid.SHORT);
+  }
 }
 
 function statusLabel(status: UserStatus) {
@@ -2500,10 +2513,11 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
           </TouchableOpacity>
         </Modal>
         <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={closeCommunityModal}>
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeCommunityModal}>
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity style={styles.modalBackdropTouch} activeOpacity={1} onPress={closeCommunityModal} />
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0} style={styles.modalKeyboardAvoider}>
             <TouchableOpacity style={[styles.modalPanel, styles.communityModalPanel]} activeOpacity={1} onPress={() => undefined}>
-              <ScrollView ref={contactScrollRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+              <ScrollView ref={contactScrollRef} keyboardShouldPersistTaps="handled" nestedScrollEnabled scrollEventThrottle={16} overScrollMode="always" showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
               <TouchableOpacity style={styles.modalCloseButton} onPress={closeCommunityModal} activeOpacity={0.8}>
                 <Ionicons name="close" size={22} color={palette.red} />
               </TouchableOpacity>
@@ -2572,7 +2586,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
               </ScrollView>
             </TouchableOpacity>
             </KeyboardAvoidingView>
-          </TouchableOpacity>
+          </View>
         </Modal>
         {(province.province === 'Tucuman' || province.province === 'Catamarca') ? (
           <>
@@ -3982,8 +3996,9 @@ function ProfileScreen({
       setForumComments({});
       return;
     }
+    const normalizeCommunity = (value?: string | null) => (value ?? '').trim().toLowerCase();
     const items = await fetchCommunityPublications(session);
-    const scopedItems = items.filter((item) => item.communityName === session.communityOfOrigin);
+    const scopedItems = items.filter((item) => normalizeCommunity(item.communityName) === normalizeCommunity(session.communityOfOrigin));
     setMyCommunityPublications(scopedItems);
     const ids = scopedItems.map((item) => item.id).filter(Boolean) as string[];
     setForumComments(await fetchPublicationComments(ids));
@@ -4640,13 +4655,23 @@ function ProfileScreen({
     if (!canNotify) {
       return 'El aviso se publico, pero tu rango no tiene permiso para notificar usuarios.';
     }
-    const { error } = await createNotificationIntent({
+    const { data, error } = await createNotificationIntent({
       ...values,
       body: values.body.slice(0, 220),
       targetScope: values.targetScope ?? values.targetKind,
       minRole: values.minRole ?? 'palestrista'
     });
-    return error ? `El aviso se publico, pero no pude preparar la notificacion: ${error.message}` : null;
+    if (error) {
+      return `El aviso se publico, pero no pude preparar la notificacion: ${error.message}`;
+    }
+    const intentId = typeof data === 'string' ? data : Array.isArray(data) ? data[0] : null;
+    if (intentId) {
+      const delivery = await deliverNotificationIntent(intentId);
+      if (delivery.error) {
+        return `El aviso se publico, pero no pude enviar la notificacion: ${delivery.error.message}`;
+      }
+    }
+    return null;
   }
 
   async function adminCreateNews() {
@@ -5279,7 +5304,7 @@ function ProfileScreen({
       setAuthMessage('Las encuestas necesitan al menos 2 opciones, una por linea.');
       return;
     }
-    const { error } = await createCommunityPublication({
+    const { data: communityPublicationId, error } = await createCommunityPublication({
       kind: communityPostKind,
       title: communityPostTitle.trim() || 'Aviso comunitario',
       body: communityPostBody.trim(),
@@ -5302,14 +5327,19 @@ function ProfileScreen({
       community: session.communityOfOrigin,
       minRole: visibility === 'sedimentadores' ? 'sedimentador' : 'palestrista',
       tabKey: 'perfil',
-      sourceType: 'community_publication'
+      sourceType: 'community_publication',
+      sourceId: typeof communityPublicationId === 'string' ? communityPublicationId : null
     });
     setCommunityPostTitle('');
     setCommunityPostBody('');
     setCommunityPostDate('');
     setCommunityPollOptions('');
     setCommunityPostNotify(false);
-    setAuthMessage(notificationWarning ?? 'Mensaje enviado');
+    const successMessage = notificationWarning ?? changeDone('Mensaje enviado correctamente');
+    setAuthMessage(successMessage);
+    if (!notificationWarning) {
+      showFeedbackMessage('Mensaje enviado correctamente');
+    }
     await refreshCommunityForum();
     await onContentChanged();
   }
@@ -8196,10 +8226,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 18
   },
+  modalBackdropTouch: {
+    ...StyleSheet.absoluteFillObject
+  },
   modalKeyboardAvoider: {
     width: '100%',
     maxWidth: 520,
-    maxHeight: '90%'
+    maxHeight: '90%',
+    zIndex: 2
   },
   modalScrollContent: {
     paddingBottom: 24,
