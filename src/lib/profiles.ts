@@ -384,6 +384,12 @@ export async function acceptDiocesanCoordinatorRequest(requestId: string) {
 
 export async function confirmAdminUserEmail(id: string) {
   try {
+    const edge = await supabase.functions.invoke('admin-confirm-email', {
+      body: { user_id: id }
+    });
+    if (!edge.error) {
+      return edge;
+    }
     return await supabase.rpc('admin_confirm_user_email', {
       p_user_id: id
     });

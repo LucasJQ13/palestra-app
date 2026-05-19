@@ -18,7 +18,10 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "org.palestra.argentina",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ]
     },
     "ios": {
       "bundleIdentifier": "org.palestra.argentina"

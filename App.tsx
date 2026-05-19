@@ -43,6 +43,8 @@ const themePreferenceKey = 'palestra.themePreference';
 const pushDeviceIdKey = 'palestra.push.deviceId';
 const inputPlaceholderColor = '#5E8396';
 const officialInstagramUrl = 'https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA==';
+const easProjectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? 'sin-project-id';
+const appRuntimeOwner = String((Constants as any).appOwnership ?? (Constants as any).executionEnvironment ?? 'standalone');
 const defaultProvinceInstagram: Record<string, string> = {
   Cordoba: 'https://www.instagram.com/infopalestra.cordoba?igsh=MXd2aTcwcmo4bzEwZw==',
   Catamarca: 'https://www.instagram.com/infopalestra.catamarca?igsh=MTB6ZXd0YWo1em4xdg==',
@@ -493,7 +495,7 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
     return { status: 'missing-session', token: null as string | null, error: 'Inicia sesion para activar notificaciones.' };
   }
   if (Platform.OS === 'web') {
-    return { status: 'web', token: null as string | null, error: 'Las notificaciones push se prueban en celular.' };
+    return { status: 'web', token: null as string | null, projectId: easProjectId, deviceId: null as string | null, appRuntimeOwner, saved: false, error: 'Las notificaciones push se prueban en celular.' };
   }
 
   const currentPermission = await Notifications.getPermissionsAsync();
@@ -503,30 +505,33 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
     finalStatus = requestedPermission.status;
   }
   if (finalStatus !== 'granted') {
-    return { status: finalStatus, token: null as string | null, error: 'Permiso de notificaciones no habilitado.' };
+    return { status: finalStatus, token: null as string | null, projectId: easProjectId, deviceId: null as string | null, appRuntimeOwner, saved: false, error: 'Permiso de notificaciones no habilitado.' };
   }
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.DEFAULT
+      name: 'Palestra',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#2d8dc8'
     });
   }
 
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+  const projectId = easProjectId;
   const tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
   const deviceId = await getPushDeviceId();
-    const { error } = await registerPushToken({
+  const { error } = await registerPushToken({
     token: tokenResult.data,
     platform: Platform.OS,
     deviceId,
-    appVersion: demoVersionLabel,
+    deviceName: appRuntimeOwner,
+    appVersion: `${demoVersionLabel} - ${appRuntimeOwner}`,
     isActive: true
   });
   if (error) {
-    return { status: 'error', token: tokenResult.data, error: error.message };
+    return { status: 'error', token: tokenResult.data, projectId, deviceId, appRuntimeOwner, saved: false, error: error.message };
   }
-  return { status: 'granted', token: tokenResult.data, error: null as string | null };
+  return { status: 'granted', token: tokenResult.data, projectId, deviceId, appRuntimeOwner, saved: true, error: null as string | null };
 }
 
 function showFeedbackMessage(message: string) {
@@ -1366,8 +1371,7 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
                   placeholder={block.type === 'imagen' ? 'URL de imagen' : 'Contenido'}
                   value={block.value}
                   onChangeText={(value) => updateInlineBlock(block.id, value)}
-                  multiline={block.type !== 'titulo'}
-                />
+                  multiline={block.type !== 'titulo'} placeholderTextColor={inputPlaceholderColor} />
                 {block.type === 'imagen' && block.value ? <Image source={{ uri: block.value }} style={styles.cardImage} /> : null}
               </View>
             ))}
@@ -1575,8 +1579,8 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
           </View>
           {homeEditId && isRemoteNewsItem(item) && item.id === homeEditId ? (
             <View style={styles.stackSmall}>
-              <TextInput style={styles.input} placeholder="Titulo de la publicacion" value={homeEditTitle} onChangeText={setHomeEditTitle} />
-              <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo" value={homeEditBody} onChangeText={setHomeEditBody} multiline />
+              <TextInput style={styles.input} placeholder="Titulo de la publicacion" value={homeEditTitle} onChangeText={setHomeEditTitle} placeholderTextColor={inputPlaceholderColor} />
+              <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo" value={homeEditBody} onChangeText={setHomeEditBody} multiline placeholderTextColor={inputPlaceholderColor} />
               <View style={styles.inlineActions}>
                 <TouchableOpacity style={styles.primaryButton} onPress={saveHomeNewsEdit}>
                   <Text style={styles.primaryButtonText}>Guardar</Text>
@@ -1953,9 +1957,9 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
             </View>
             {notilestraEditId && item.id === notilestraEditId ? (
               <View style={styles.stackSmall}>
-                <TextInput style={styles.input} placeholder="Titulo de la entrada" value={notilestraEditTitle} onChangeText={setNotilestraEditTitle} />
-                <TextInput style={styles.input} placeholder="Fecha del evento (AAAA-MM-DD)" value={notilestraEditDate} onChangeText={setNotilestraEditDate} />
-                <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo" value={notilestraEditBody} onChangeText={setNotilestraEditBody} multiline />
+                <TextInput style={styles.input} placeholder="Titulo de la entrada" value={notilestraEditTitle} onChangeText={setNotilestraEditTitle} placeholderTextColor={inputPlaceholderColor} />
+                <TextInput style={styles.input} placeholder="Fecha del evento (AAAA-MM-DD)" value={notilestraEditDate} onChangeText={setNotilestraEditDate} placeholderTextColor={inputPlaceholderColor} />
+                <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo" value={notilestraEditBody} onChangeText={setNotilestraEditBody} multiline placeholderTextColor={inputPlaceholderColor} />
                 <View style={styles.inlineActions}>
                   <TouchableOpacity style={styles.primaryButton} onPress={saveNotilestraEdit}>
                     <Text style={styles.primaryButtonText}>Guardar</Text>
@@ -2290,8 +2294,8 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       {showUpload ? (
         <View style={styles.inlineEditorPanel}>
           <Text style={styles.cardEyebrow}>Nuevo PDF</Text>
-          <TextInput style={styles.input} placeholder="Titulo" value={uploadTitle} onChangeText={setUploadTitle} />
-          <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={uploadDescription} onChangeText={setUploadDescription} multiline />
+          <TextInput style={styles.input} placeholder="Titulo" value={uploadTitle} onChangeText={setUploadTitle} placeholderTextColor={inputPlaceholderColor} />
+          <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={uploadDescription} onChangeText={setUploadDescription} multiline placeholderTextColor={inputPlaceholderColor} />
           <Text style={styles.cardEyebrow}>Visibilidad</Text>
           <View style={styles.filterRow}>
             {[
@@ -2338,8 +2342,8 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
               {isEditingThisMaterial ? (
                 <View style={styles.profileCommunityPanel}>
                   <Text style={styles.cardEyebrow}>Editar material</Text>
-                  <TextInput style={styles.input} placeholder="Titulo" value={materialEditTitle} onChangeText={setMaterialEditTitle} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialEditDescription} onChangeText={setMaterialEditDescription} multiline />
+                  <TextInput style={styles.input} placeholder="Titulo" value={materialEditTitle} onChangeText={setMaterialEditTitle} placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialEditDescription} onChangeText={setMaterialEditDescription} multiline placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.filterRow}>
                     {[
                       { key: 'publico', label: 'Todo publico' },
@@ -2574,9 +2578,9 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                       {!session ? (
                         <>
                           <Text style={styles.inputLabel}>Nombre</Text>
-                          <TextInput style={styles.input} placeholder="Ej: Juan Perez" value={contactName} onChangeText={setContactName} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} />
+                          <TextInput style={styles.input} placeholder="Ej: Juan Perez" value={contactName} onChangeText={setContactName} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
                           <Text style={styles.inputLabel}>Contacto</Text>
-                          <TextInput style={styles.input} placeholder="Ej: nombre@email.com o telefono" value={contactInfoValue} onChangeText={setContactInfoValue} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} />
+                          <TextInput style={styles.input} placeholder="Ej: nombre@email.com o telefono" value={contactInfoValue} onChangeText={setContactInfoValue} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
                         </>
                       ) : null}
                       <Text style={styles.inputLabel}>Mensaje</Text>
@@ -2586,8 +2590,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                         value={contactMessage}
                         onChangeText={(value) => setContactMessage(value.slice(0, 500))}
                         onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)}
-                        multiline
-                      />
+                        multiline placeholderTextColor={inputPlaceholderColor} />
                       <Text style={styles.cardText}>{contactMessage.length}/500</Text>
                       <TouchableOpacity style={styles.primaryButton} onPress={sendCommunityContactMessage}>
                         <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
@@ -2936,17 +2939,17 @@ function LibrarySectionScreen({
         {showEditor && canCreateItems ? (
           <View style={styles.libraryEditor}>
             <Text style={styles.cardTitle}>{editingItem ? 'Editar contenido' : 'Nuevo contenido'}</Text>
-            <TextInput style={styles.input} placeholder="Titulo" value={draftTitle} onChangeText={setDraftTitle} />
-            <TextInput style={styles.input} placeholder="Subtitulo opcional" value={draftSubtitle} onChangeText={setDraftSubtitle} />
+            <TextInput style={styles.input} placeholder="Titulo" value={draftTitle} onChangeText={setDraftTitle} placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={styles.input} placeholder="Subtitulo opcional" value={draftSubtitle} onChangeText={setDraftSubtitle} placeholderTextColor={inputPlaceholderColor} />
             {variant === 'song' ? (
               <>
-                <TextInput style={styles.input} placeholder="URL de portada o imagen" value={draftImageUrl} onChangeText={setDraftImageUrl} autoCapitalize="none" />
+                <TextInput style={styles.input} placeholder="URL de portada o imagen" value={draftImageUrl} onChangeText={setDraftImageUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
                 <TouchableOpacity style={styles.secondaryButton} onPress={chooseLibraryImage}>
                   <Text style={styles.secondaryButtonText}>Subir imagen</Text>
                 </TouchableOpacity>
               </>
             ) : null}
-            <TextInput style={[styles.input, styles.textArea, styles.libraryBodyInput]} placeholder={variant === 'prayer' ? 'Texto de la oracion' : 'Letra separada por estrofas'} value={draftBody} onChangeText={setDraftBody} multiline />
+            <TextInput style={[styles.input, styles.textArea, styles.libraryBodyInput]} placeholder={variant === 'prayer' ? 'Texto de la oracion' : 'Letra separada por estrofas'} value={draftBody} onChangeText={setDraftBody} multiline placeholderTextColor={inputPlaceholderColor} />
             <TouchableOpacity style={styles.primaryButton} onPress={submitItem}>
               <Text style={styles.primaryButtonText}>Guardar</Text>
             </TouchableOpacity>
@@ -3332,6 +3335,7 @@ function ProfileScreen({
   const [authMessage, setAuthMessage] = useState('');
   const [notificationPermissionStatus, setNotificationPermissionStatus] = useState('desconocido');
   const [pushTokenPreview, setPushTokenPreview] = useState('');
+  const [pushDebugInfo, setPushDebugInfo] = useState('');
   const [registerFullName, setRegisterFullName] = useState('');
   const [registerContact, setRegisterContact] = useState('');
   const [registerProvince, setRegisterProvince] = useState('');
@@ -4562,7 +4566,7 @@ function ProfileScreen({
       return;
     }
     await loadAdminUsers();
-    setAuthMessage('Cambios realizados');
+    setAuthMessage(changeDone('Mail confirmado correctamente.'));
   }
 
   async function deleteSelectedAdminUser() {
@@ -5306,6 +5310,15 @@ function ProfileScreen({
       if (result.token) {
         setPushTokenPreview(`${result.token.slice(0, 18)}...`);
       }
+      setPushDebugInfo([
+        `Permiso: ${result.status}`,
+        `ProjectId: ${result.projectId}`,
+        `Runtime: ${result.appRuntimeOwner}`,
+        `DeviceId: ${result.deviceId ?? 'sin-device-id'}`,
+        `Usuario: ${session.email}`,
+        `Guardado Supabase: ${result.saved ? 'si' : 'no'}`,
+        `Token: ${result.token ?? 'sin-token'}`
+      ].join('\n'));
       setAuthMessage(result.error ? result.error : changeDone('Notificaciones activadas en este dispositivo.'));
     } catch (error) {
       setAuthMessage(error instanceof Error ? error.message : 'No pude activar notificaciones.');
@@ -5599,8 +5612,8 @@ function ProfileScreen({
               </View>
             ) : null}
             <Text style={styles.cardText}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
-            <TextInput style={styles.input} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName} />
-            <TextInput style={styles.input} placeholder="Contacto" value={editContact} onChangeText={setEditContact} />
+            <TextInput style={styles.input} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName}  placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={styles.input} placeholder="Contacto" value={editContact} onChangeText={setEditContact}  placeholderTextColor={inputPlaceholderColor} />
             <Text style={styles.cardEyebrow}>Provincia</Text>
             <TouchableOpacity style={styles.dropdownButton} onPress={() => setEditProvinceDropdownOpen(!editProvinceDropdownOpen)}>
               <Text style={styles.dropdownButtonText}>{editProvince || 'Seleccionar provincia'}</Text>
@@ -5682,16 +5695,23 @@ function ProfileScreen({
               <View style={styles.settingRow}>
                 <View style={styles.settingRowText}>
                   <Text style={styles.cardTitle}>Permitir notificaciones</Text>
-                  <Text style={styles.cardText}>Estado actual: {notificationPermissionStatus}. Activa este dispositivo para recibir avisos importantes cuando el sistema de envio quede conectado.</Text>
+                  <Text style={styles.cardText}>Estado actual: {notificationPermissionStatus}. Activa este dispositivo para recibir avisos importantes.</Text>
                   {pushTokenPreview ? <Text style={styles.feedMeta}>Token registrado: {pushTokenPreview}</Text> : null}
+                  <Text style={styles.feedMeta}>Runtime: {appRuntimeOwner} - ProjectId: {easProjectId}</Text>
                 </View>
               </View>
               <TouchableOpacity style={styles.secondaryButton} onPress={enablePushNotificationsFromSettings}>
                 <Ionicons name="notifications-outline" size={17} color={palette.red} />
                 <Text style={styles.secondaryButtonText}>Solicitar permiso</Text>
               </TouchableOpacity>
-              <TextInput style={styles.input} placeholder="Nuevo mail" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none" />
-              <TextInput style={styles.input} placeholder="Nueva contrasena" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
+              {pushDebugInfo ? (
+                <View style={styles.inlineEditorPanel}>
+                  <Text style={styles.cardEyebrow}>Debug temporal de notificaciones</Text>
+                  <Text selectable style={styles.feedMeta}>{pushDebugInfo}</Text>
+                </View>
+              ) : null}
+              <TextInput style={styles.input} placeholder="Nuevo mail" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+              <TextInput style={styles.input} placeholder="Nueva contrasena" value={newPassword} onChangeText={setNewPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
               <TouchableOpacity style={styles.primaryButton} onPress={saveAccountSettings}>
                 <Text style={styles.primaryButtonText}>Guardar ajustes</Text>
               </TouchableOpacity>
@@ -5711,8 +5731,8 @@ function ProfileScreen({
               {isCommunityLeader ? (
                 <View style={styles.inlineEditorPanel}>
                   <Text style={styles.cardEyebrow}>Nuevo aviso comunitario</Text>
-                  <TextInput style={styles.input} placeholder="Titulo opcional del aviso" value={communityPostTitle} onChangeText={setCommunityPostTitle} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje para la comunidad" value={communityPostBody} onChangeText={setCommunityPostBody} multiline />
+                  <TextInput style={styles.input} placeholder="Titulo opcional del aviso" value={communityPostTitle} onChangeText={setCommunityPostTitle}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje para la comunidad" value={communityPostBody} onChangeText={setCommunityPostBody} multiline  placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.settingRow}>
                     <View style={styles.settingRowText}>
                       <Text style={styles.cardTitle}>Notificar a miembros</Text>
@@ -5756,8 +5776,8 @@ function ProfileScreen({
                   ) : null}
                   {editingCommunityPublicationId === item.id ? (
                     <View style={styles.inlineEditorPanel}>
-                      <TextInput style={styles.input} placeholder="Titulo del aviso" value={editingCommunityPublicationTitle} onChangeText={setEditingCommunityPublicationTitle} />
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido del aviso" value={editingCommunityPublicationBody} onChangeText={setEditingCommunityPublicationBody} multiline />
+                      <TextInput style={styles.input} placeholder="Titulo del aviso" value={editingCommunityPublicationTitle} onChangeText={setEditingCommunityPublicationTitle}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido del aviso" value={editingCommunityPublicationBody} onChangeText={setEditingCommunityPublicationBody} multiline  placeholderTextColor={inputPlaceholderColor} />
                       <View style={styles.inlineActions}>
                         <TouchableOpacity style={styles.primaryButton} onPress={() => saveCommunityPublicationEdit('activo')}>
                           <Text style={styles.primaryButtonText}>Guardar</Text>
@@ -5923,7 +5943,7 @@ function ProfileScreen({
                         placeholder="Buscar por nombre, mail, provincia, comunidad o rango"
                         value={mailboxRecipientSearch}
                         onChangeText={setMailboxRecipientSearch}
-                      />
+                       placeholderTextColor={inputPlaceholderColor} />
                       <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxUserDropdownOpen(!mailboxUserDropdownOpen)}>
                         <Text style={styles.dropdownButtonText}>{mailboxSelectedUserIds.length} usuario/s seleccionado/s</Text>
                         <Ionicons name={mailboxUserDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
@@ -5968,7 +5988,7 @@ function ProfileScreen({
                     value={mailboxDraft}
                     onChangeText={(value) => setMailboxDraft(value.slice(0, 500))}
                     multiline
-                  />
+                   placeholderTextColor={inputPlaceholderColor} />
                   <TouchableOpacity style={styles.primaryButton} onPress={submitNewMailboxMessage}>
                     <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
                   </TouchableOpacity>
@@ -6008,7 +6028,7 @@ function ProfileScreen({
                         value={mailboxResponses[message.id] ?? ''}
                         onChangeText={(value) => setMailboxResponses((current) => ({ ...current, [message.id]: value.slice(0, 1000) }))}
                         multiline
-                      />
+                       placeholderTextColor={inputPlaceholderColor} />
                       <TouchableOpacity style={styles.primaryButton} onPress={() => submitMailboxResponse(message.id)}>
                         <Text style={styles.primaryButtonText}>Responder</Text>
                       </TouchableOpacity>
@@ -6064,7 +6084,7 @@ function ProfileScreen({
                     value={userRequestText}
                     onChangeText={(value) => setUserRequestText(value.slice(0, 500))}
                     multiline
-                  />
+                   placeholderTextColor={inputPlaceholderColor} />
                   <Text style={styles.cardText}>{userRequestText.length}/500</Text>
                   <TouchableOpacity style={styles.primaryButton} onPress={() => submitUserRequest(item)}>
                     <Text style={styles.primaryButtonText}>Enviar solicitud</Text>
@@ -6165,14 +6185,14 @@ function ProfileScreen({
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Identidad de la app</Text>
                   <Text style={styles.cardText}>Base editable para nombre, subtitulo, logo, portada y colores principales.</Text>
-                  <TextInput style={styles.input} placeholder="Nombre de la app" value={adminConfigDraft.identity.appName} onChangeText={(value) => updateAdminConfigSection('identity', { appName: value })} />
-                  <TextInput style={styles.input} placeholder="Subtitulo" value={adminConfigDraft.identity.subtitle} onChangeText={(value) => updateAdminConfigSection('identity', { subtitle: value })} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion institucional" value={adminConfigDraft.identity.description} onChangeText={(value) => updateAdminConfigSection('identity', { description: value })} multiline />
-                  <TextInput style={styles.input} placeholder="URL del logo" value={adminConfigDraft.identity.logoUrl} onChangeText={(value) => updateAdminConfigSection('identity', { logoUrl: value })} />
-                  <TextInput style={styles.input} placeholder="URL de imagen hero/portada" value={adminConfigDraft.identity.heroImageUrl} onChangeText={(value) => updateAdminConfigSection('identity', { heroImageUrl: value })} />
+                  <TextInput style={styles.input} placeholder="Nombre de la app" value={adminConfigDraft.identity.appName} onChangeText={(value) => updateAdminConfigSection('identity', { appName: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="Subtitulo" value={adminConfigDraft.identity.subtitle} onChangeText={(value) => updateAdminConfigSection('identity', { subtitle: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion institucional" value={adminConfigDraft.identity.description} onChangeText={(value) => updateAdminConfigSection('identity', { description: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="URL del logo" value={adminConfigDraft.identity.logoUrl} onChangeText={(value) => updateAdminConfigSection('identity', { logoUrl: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="URL de imagen hero/portada" value={adminConfigDraft.identity.heroImageUrl} onChangeText={(value) => updateAdminConfigSection('identity', { heroImageUrl: value })}  placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.inlineActions}>
-                    <TextInput style={[styles.input, styles.colorInput]} placeholder="#2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })} />
-                    <TextInput style={[styles.input, styles.colorInput]} placeholder="#5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })} />
+                    <TextInput style={[styles.input, styles.colorInput]} placeholder="#2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput]} placeholder="#5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
                   </View>
                   <View style={styles.adminPreviewPane}>
                     <Text style={styles.cardEyebrow}>Previsualizacion</Text>
@@ -6189,9 +6209,9 @@ function ProfileScreen({
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Home</Text>
                   <Text style={styles.cardText}>Control visual del dashboard inicial, accesos rapidos y secciones visibles.</Text>
-                  <TextInput style={styles.input} placeholder="Titulo principal" value={adminConfigDraft.home.heroTitle} onChangeText={(value) => updateAdminConfigSection('home', { heroTitle: value })} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto principal" value={adminConfigDraft.home.heroText} onChangeText={(value) => updateAdminConfigSection('home', { heroText: value })} multiline />
-                  <TextInput style={styles.input} placeholder="Banner destacado" value={adminConfigDraft.home.featuredBanner} onChangeText={(value) => updateAdminConfigSection('home', { featuredBanner: value })} />
+                  <TextInput style={styles.input} placeholder="Titulo principal" value={adminConfigDraft.home.heroTitle} onChangeText={(value) => updateAdminConfigSection('home', { heroTitle: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto principal" value={adminConfigDraft.home.heroText} onChangeText={(value) => updateAdminConfigSection('home', { heroText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="Banner destacado" value={adminConfigDraft.home.featuredBanner} onChangeText={(value) => updateAdminConfigSection('home', { featuredBanner: value })}  placeholderTextColor={inputPlaceholderColor} />
                   <Text style={styles.cardEyebrow}>Modulos visibles</Text>
                   <View style={styles.filterRow}>
                     {['noticias', 'comunidades', 'materiales', 'perfil', 'agenda', 'actividad'].map((item, index) => (
@@ -6243,10 +6263,10 @@ function ProfileScreen({
                     </View>
                   ))}
                   <Text style={styles.cardEyebrow}>Nuevo material</Text>
-                  <TextInput style={styles.input} placeholder="Nombre del archivo" value={materialTitle} onChangeText={setMaterialTitle} />
-                  <TextInput style={styles.input} placeholder="Categoria" value={materialCategory} onChangeText={setMaterialCategory} />
-                  <TextInput style={styles.input} placeholder="URL del archivo o PDF" value={materialFileUrl} onChangeText={setMaterialFileUrl} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialDescription} onChangeText={setMaterialDescription} multiline />
+                  <TextInput style={styles.input} placeholder="Nombre del archivo" value={materialTitle} onChangeText={setMaterialTitle}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="Categoria" value={materialCategory} onChangeText={setMaterialCategory}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="URL del archivo o PDF" value={materialFileUrl} onChangeText={setMaterialFileUrl}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialDescription} onChangeText={setMaterialDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.filterRow}>
                     {['publico', 'interno', 'reservado', 'administrador'].map((item, index) => (
                       <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, materialVisibility === item && styles.filterChipActive]} onPress={() => setMaterialVisibility(item)}>
@@ -6254,7 +6274,7 @@ function ProfileScreen({
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TextInput style={styles.input} placeholder="Permiso requerido opcional. Ej: ver_materiales_internos" value={materialPermission} onChangeText={setMaterialPermission} />
+                  <TextInput style={styles.input} placeholder="Permiso requerido opcional. Ej: ver_materiales_internos" value={materialPermission} onChangeText={setMaterialPermission}  placeholderTextColor={inputPlaceholderColor} />
                   <TouchableOpacity style={styles.primaryButton} onPress={adminSaveMaterial}>
                     <Text style={styles.primaryButtonText}>Guardar material</Text>
                   </TouchableOpacity>
@@ -6291,12 +6311,12 @@ function ProfileScreen({
                   <Text style={styles.cardText}>Configura canales nacionales, Instagram por provincia y bloques dinamicos visibles en Contacto.</Text>
                   {session?.role === 'administrador' ? (
                     <>
-                      <TextInput style={styles.input} placeholder="Correo electronico oficial. Ej: contacto@palestra.org.ar" value={adminConfigDraft.contact.email} onChangeText={(value) => updateAdminConfigSection('contact', { email: value })} />
-                      <TextInput style={styles.input} placeholder="Numero telefonico oficial. Ej: +54 351 000-0000" value={adminConfigDraft.contact.phone} onChangeText={(value) => updateAdminConfigSection('contact', { phone: value })} />
+                      <TextInput style={styles.input} placeholder="Correo electronico oficial. Ej: contacto@palestra.org.ar" value={adminConfigDraft.contact.email} onChangeText={(value) => updateAdminConfigSection('contact', { email: value })}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Numero telefonico oficial. Ej: +54 351 000-0000" value={adminConfigDraft.contact.phone} onChangeText={(value) => updateAdminConfigSection('contact', { phone: value })}  placeholderTextColor={inputPlaceholderColor} />
                     </>
                   ) : null}
                   <Text style={styles.cardEyebrow}>Instagram nacional</Text>
-                  <TextInput style={styles.input} placeholder="URL o usuario de Instagram nacional" value={adminConfigDraft.contact.instagram} onChangeText={(value) => updateAdminConfigSection('contact', { instagram: value })} />
+                  <TextInput style={styles.input} placeholder="URL o usuario de Instagram nacional" value={adminConfigDraft.contact.instagram} onChangeText={(value) => updateAdminConfigSection('contact', { instagram: value })}  placeholderTextColor={inputPlaceholderColor} />
                   <TouchableOpacity style={styles.primaryButton} onPress={saveInstagramConfigDraft}>
                     <Text style={styles.primaryButtonText}>Guardar Instagram</Text>
                   </TouchableOpacity>
@@ -6313,10 +6333,10 @@ function ProfileScreen({
                             provinceInstagram: { ...(adminConfigDraft.contact.provinceInstagram ?? {}), [province]: value }
                           })}
                           autoCapitalize="none"
-                        />
+                         placeholderTextColor={inputPlaceholderColor} />
                       ))}
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de ayuda para orientar a quien visita Contacto" value={adminConfigDraft.contact.helpText} onChangeText={(value) => updateAdminConfigSection('contact', { helpText: value })} multiline />
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto opcional de donaciones o colaboracion" value={adminConfigDraft.contact.donationText} onChangeText={(value) => updateAdminConfigSection('contact', { donationText: value })} multiline />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de ayuda para orientar a quien visita Contacto" value={adminConfigDraft.contact.helpText} onChangeText={(value) => updateAdminConfigSection('contact', { helpText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto opcional de donaciones o colaboracion" value={adminConfigDraft.contact.donationText} onChangeText={(value) => updateAdminConfigSection('contact', { donationText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
                       <Text style={styles.cardEyebrow}>Bloques dinamicos</Text>
                       {(adminConfigDraft.contact.blocks ?? []).map((block, index) => (
                         <View key={block.id} style={styles.innerNewsCard}>
@@ -6329,7 +6349,7 @@ function ProfileScreen({
                               blocks[index] = { ...block, label: value };
                               updateAdminConfigSection('contact', { blocks });
                             }}
-                          />
+                           placeholderTextColor={inputPlaceholderColor} />
                           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
                             {(['texto', 'telefono', 'email', 'imagen', 'direccion', 'enlace', 'boton', 'red_social'] as ContactBlock['type'][]).map((type) => (
                               <TouchableOpacity key={type} style={[styles.filterChip, block.type === type && styles.filterChipActive]} onPress={() => {
@@ -6351,7 +6371,7 @@ function ProfileScreen({
                               updateAdminConfigSection('contact', { blocks });
                             }}
                             multiline
-                          />
+                           placeholderTextColor={inputPlaceholderColor} />
                           <TouchableOpacity style={styles.secondaryButton} onPress={() => updateAdminConfigSection('contact', { blocks: (adminConfigDraft.contact.blocks ?? []).filter((item) => item.id !== block.id) })}>
                             <Text style={styles.secondaryButtonText}>Eliminar bloque</Text>
                           </TouchableOpacity>
@@ -6392,7 +6412,7 @@ function ProfileScreen({
                             </TouchableOpacity>
                           ))}
                         </View>
-                        <TextInput style={styles.input} placeholder="Numero de PM" value={pmNumber} onChangeText={setPmNumber} keyboardType="numeric" />
+                        <TextInput style={styles.input} placeholder="Numero de PM" value={pmNumber} onChangeText={setPmNumber} keyboardType="numeric"  placeholderTextColor={inputPlaceholderColor} />
                         <Text style={styles.cardEyebrow}>Provincia</Text>
                         <View style={styles.filterRow}>
                           {motivadorProvinceOptions.map((province) => (
@@ -6444,13 +6464,13 @@ function ProfileScreen({
                             </View>
                           </View>
                         ) : null}
-                        <TextInput style={styles.input} placeholder="Casa de retiro" value={pmRetreatHouse} onChangeText={setPmRetreatHouse} />
-                        <TextInput style={styles.input} placeholder="Direccion de la casa de retiro" value={pmAddress} onChangeText={setPmAddress} />
-                        <TextInput style={styles.input} placeholder="Horario estimado de apertura. Ej: Viernes 18:00" value={pmOpeningTime} onChangeText={setPmOpeningTime} />
-                        <TextInput style={styles.input} placeholder="Horario estimado de clausura. Ej: Domingo 17:00" value={pmClosingTime} onChangeText={setPmClosingTime} />
-                        <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion opcional" value={pmDescription} onChangeText={setPmDescription} multiline />
-                        <TextInput style={styles.input} placeholder="URL foto del lugar opcional" value={pmPlacePhotoUrl} onChangeText={setPmPlacePhotoUrl} autoCapitalize="none" />
-                        <TextInput style={styles.input} placeholder="URL flyer o invitacion opcional" value={pmFlyerUrl} onChangeText={setPmFlyerUrl} autoCapitalize="none" />
+                        <TextInput style={styles.input} placeholder="Casa de retiro" value={pmRetreatHouse} onChangeText={setPmRetreatHouse}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="Direccion de la casa de retiro" value={pmAddress} onChangeText={setPmAddress}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="Horario estimado de apertura. Ej: Viernes 18:00" value={pmOpeningTime} onChangeText={setPmOpeningTime}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="Horario estimado de clausura. Ej: Domingo 17:00" value={pmClosingTime} onChangeText={setPmClosingTime}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion opcional" value={pmDescription} onChangeText={setPmDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="URL foto del lugar opcional" value={pmPlacePhotoUrl} onChangeText={setPmPlacePhotoUrl} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="URL flyer o invitacion opcional" value={pmFlyerUrl} onChangeText={setPmFlyerUrl} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
                         <TouchableOpacity style={[styles.filterChip, pmVisibleToLowerRoles && styles.filterChipActive]} onPress={() => setPmVisibleToLowerRoles(!pmVisibleToLowerRoles)}>
                           <Text style={[styles.filterChipText, pmVisibleToLowerRoles && styles.filterChipTextActive]}>{pmVisibleToLowerRoles ? 'Visible para inferiores a Sedimentador' : 'Invisible para inferiores a Sedimentador'}</Text>
                         </TouchableOpacity>
@@ -6527,7 +6547,7 @@ function ProfileScreen({
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Configuracion general</Text>
                   <Text style={styles.cardText}>Base para mantenimiento, aviso global, permisos, modulos activos, foro y chat.</Text>
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje visible durante mantenimiento" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje visible durante mantenimiento" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
                   {[
                     { key: 'maintenanceMode', label: 'Modo mantenimiento' },
                     { key: 'futureForumEnabled', label: 'Preparar foro' }
@@ -6559,7 +6579,7 @@ function ProfileScreen({
                       <Text style={styles.cardEyebrow}>Crear usuario basico</Text>
                       <Text style={styles.cardText}>Crea una cuenta habilitada con mail y contrasena. Al ingresar, el usuario debera completar provincia y comunidad.</Text>
                       <Text style={styles.inputLabel}>Mail</Text>
-                      <TextInput style={styles.input} placeholder="Ingresa el correo electronico" value={adminCreateEmail} onChangeText={setAdminCreateEmail} autoCapitalize="none" keyboardType="email-address" />
+                      <TextInput style={styles.input} placeholder="Ingresa el correo electronico" value={adminCreateEmail} onChangeText={setAdminCreateEmail} autoCapitalize="none" keyboardType="email-address"  placeholderTextColor={inputPlaceholderColor} />
                       <Text style={styles.inputLabel}>Contrasena</Text>
                       <View style={styles.passwordInputWrap}>
                         <TextInput
@@ -6571,7 +6591,7 @@ function ProfileScreen({
                           autoCapitalize="none"
                           autoCorrect={false}
                           returnKeyType="done"
-                        />
+                         placeholderTextColor={inputPlaceholderColor} />
                         <TouchableOpacity style={styles.passwordEyeButton} onPress={() => setAdminCreatePasswordVisible(!adminCreatePasswordVisible)} activeOpacity={0.82}>
                           <Ionicons name={adminCreatePasswordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
                         </TouchableOpacity>
@@ -6581,7 +6601,7 @@ function ProfileScreen({
                       </TouchableOpacity>
                     </View>
                   )}
-                  <TextInput style={styles.input} placeholder="Buscar por nombre, mail, provincia, comunidad o rol" value={adminUserSearch} onChangeText={setAdminUserSearch} />
+                  <TextInput style={styles.input} placeholder="Buscar por nombre, mail, provincia, comunidad o rol" value={adminUserSearch} onChangeText={setAdminUserSearch}  placeholderTextColor={inputPlaceholderColor} />
                   <TouchableOpacity style={styles.primaryButton} onPress={loadAdminUsers}>
                     <Text style={styles.primaryButtonText}>Cargar todos los usuarios</Text>
                   </TouchableOpacity>
@@ -6589,7 +6609,7 @@ function ProfileScreen({
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Diagnostico y liberacion de login</Text>
                       <Text style={styles.cardText}>Usalo cuando un mail no puede ingresar, no aparece en usuarios o quedo atrapado en Auth/Profile.</Text>
-                      <TextInput style={styles.input} placeholder="Mail a diagnosticar" value={adminDiagnosticEmail} onChangeText={setAdminDiagnosticEmail} autoCapitalize="none" keyboardType="email-address" />
+                      <TextInput style={styles.input} placeholder="Mail a diagnosticar" value={adminDiagnosticEmail} onChangeText={setAdminDiagnosticEmail} autoCapitalize="none" keyboardType="email-address"  placeholderTextColor={inputPlaceholderColor} />
                       <View style={styles.inlineActions}>
                         <TouchableOpacity style={styles.secondaryButton} onPress={diagnoseUserLogin}>
                           <Ionicons name="search-outline" size={17} color={palette.red} />
@@ -6681,10 +6701,10 @@ function ProfileScreen({
                             </TouchableOpacity>
                             {selected ? (
                               <View style={styles.adminInlineEditor}>
-                                <TextInput style={styles.input} placeholder="Nombre y apellido" value={adminUserFullName} onChangeText={setAdminUserFullName} />
-                                <TextInput style={styles.input} placeholder="Email" value={adminUserEmail} onChangeText={setAdminUserEmail} autoCapitalize="none" />
-                                <TextInput style={styles.input} placeholder="Nueva contrasena opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} secureTextEntry />
-                                <TextInput style={styles.input} placeholder="Contacto" value={adminUserPhone} onChangeText={setAdminUserPhone} />
+                                <TextInput style={styles.input} placeholder="Nombre y apellido" value={adminUserFullName} onChangeText={setAdminUserFullName}  placeholderTextColor={inputPlaceholderColor} />
+                                <TextInput style={styles.input} placeholder="Email" value={adminUserEmail} onChangeText={setAdminUserEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                                <TextInput style={styles.input} placeholder="Nueva contrasena opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
+                                <TextInput style={styles.input} placeholder="Contacto" value={adminUserPhone} onChangeText={setAdminUserPhone}  placeholderTextColor={inputPlaceholderColor} />
                                 <Text style={styles.cardEyebrow}>Provincia</Text>
                                 <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserProvinceDropdownOpen(!adminUserProvinceDropdownOpen)}>
                                   <Text style={styles.dropdownButtonText}>{adminUserProvince || 'Seleccionar provincia'}</Text>
@@ -6795,7 +6815,7 @@ function ProfileScreen({
                       {item.communityName ? <Text style={styles.cardText}>Comunidad: {item.communityName}</Text> : null}
                       {item.targetUserName ? <Text style={styles.cardText}>Sucesor propuesto: {item.targetUserName} - {roleLabel((item.targetRole ?? 'palestrista') as Role)}</Text> : null}
                       <Text style={styles.cardText}>Definicion: {item.definition}</Text>
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje opcional para el usuario" value={adminRequestMessage} onChangeText={setAdminRequestMessage} multiline />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje opcional para el usuario" value={adminRequestMessage} onChangeText={setAdminRequestMessage} multiline  placeholderTextColor={inputPlaceholderColor} />
                       {item.title === 'Solicitud de perseverancia' ? (
                         <View style={styles.profileCommunityPanel}>
                           <Text style={styles.cardEyebrow}>Rol a designar si se aprueba</Text>
@@ -6853,9 +6873,9 @@ function ProfileScreen({
                   <Text style={styles.cardTitle}>Noticias</Text>
                   <Text style={styles.cardText}>Crear noticias generales, preparar borradores y marcar publicaciones destacadas.</Text>
                   <Text style={styles.cardEyebrow}>Categoria: General</Text>
-                  <TextInput style={styles.input} placeholder="Titulo de la noticia" value={adminNewsTitle} onChangeText={setAdminNewsTitle} />
-                  <TextInput style={styles.input} placeholder="Bajada o resumen breve" value={adminNewsImage} onChangeText={setAdminNewsImage} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo de la noticia" value={adminNewsBody} onChangeText={setAdminNewsBody} multiline />
+                  <TextInput style={styles.input} placeholder="Titulo de la noticia" value={adminNewsTitle} onChangeText={setAdminNewsTitle}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="Bajada o resumen breve" value={adminNewsImage} onChangeText={setAdminNewsImage}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo de la noticia" value={adminNewsBody} onChangeText={setAdminNewsBody} multiline  placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.filterRow}>
                     <TouchableOpacity style={[styles.filterChip, adminNewsDraft && styles.filterChipActive]} onPress={() => setAdminNewsDraft(!adminNewsDraft)}>
                       <Text style={[styles.filterChipText, adminNewsDraft && styles.filterChipTextActive]}>{adminNewsDraft ? 'Borrador' : 'Publicar'}</Text>
@@ -6897,8 +6917,8 @@ function ProfileScreen({
               {adminModule === 'eventos' ? (
                 <View style={styles.adminWorkspace}>
                 <Text style={styles.cardTitle}>Crear evento {tabLabel('notilestra')}</Text>
-                <TextInput style={styles.input} placeholder="Titulo del evento" value={adminEventTitle} onChangeText={setAdminEventTitle} />
-                <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion o detalle del evento" value={adminEventBody} onChangeText={setAdminEventBody} multiline />
+                <TextInput style={styles.input} placeholder="Titulo del evento" value={adminEventTitle} onChangeText={setAdminEventTitle}  placeholderTextColor={inputPlaceholderColor} />
+                <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion o detalle del evento" value={adminEventBody} onChangeText={setAdminEventBody} multiline  placeholderTextColor={inputPlaceholderColor} />
                 <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminEventCalendarOpen(!adminEventCalendarOpen)}>
                   <Ionicons name="calendar-outline" size={17} color={palette.red} />
                   <Text style={styles.secondaryButtonText}>Seleccionar fecha</Text>
@@ -6936,7 +6956,7 @@ function ProfileScreen({
                     </View>
                   </View>
                 ) : null}
-                <TextInput style={styles.input} placeholder="Fecha y hora del evento. Ej: 2026-05-28T21:00:00-03:00" value={adminEventDate} onChangeText={setAdminEventDate} />
+                <TextInput style={styles.input} placeholder="Fecha y hora del evento. Ej: 2026-05-28T21:00:00-03:00" value={adminEventDate} onChangeText={setAdminEventDate}  placeholderTextColor={inputPlaceholderColor} />
                 <View style={styles.settingRow}>
                   <View style={styles.settingRowText}>
                     <Text style={styles.cardTitle}>Notificar usuarios</Text>
@@ -6972,7 +6992,7 @@ function ProfileScreen({
                   {canAdministrateCommunities && selectedAdminProvince ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Crear comunidad</Text>
-                      <TextInput style={styles.input} placeholder="Nombre de comunidad" value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityName(value); }} />
+                      <TextInput style={styles.input} placeholder="Nombre de comunidad" value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityName(value); }}  placeholderTextColor={inputPlaceholderColor} />
                       <View style={styles.filterRow}>
                         {[
                           { key: 'jovenes', label: 'Jovenes' },
@@ -6983,11 +7003,11 @@ function ProfileScreen({
                           </TouchableOpacity>
                         ))}
                       </View>
-                      <TextInput style={styles.input} placeholder="Localidad, zona o direccion" value={adminCommunityId ? '' : adminCommunityAddress} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityAddress(value); }} />
-                      <TextInput style={styles.input} placeholder="Contacto opcional" value={adminCommunityId ? '' : adminCommunityPhone} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityPhone(value); }} />
-                      <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityId ? '' : adminCommunityDay} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDay(value); }} />
-                      <TextInput style={styles.input} placeholder="Horario" value={adminCommunityId ? '' : adminCommunityTime} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityTime(value); }} />
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={adminCommunityId ? '' : adminCommunityDescription} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDescription(value); }} multiline />
+                      <TextInput style={styles.input} placeholder="Localidad, zona o direccion" value={adminCommunityId ? '' : adminCommunityAddress} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityAddress(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Contacto opcional" value={adminCommunityId ? '' : adminCommunityPhone} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityPhone(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityId ? '' : adminCommunityDay} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDay(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Horario" value={adminCommunityId ? '' : adminCommunityTime} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityTime(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={adminCommunityId ? '' : adminCommunityDescription} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDescription(value); }} multiline  placeholderTextColor={inputPlaceholderColor} />
                       <TouchableOpacity style={[styles.filterChip, adminCommunityIsActive && styles.filterChipActive]} onPress={() => setAdminCommunityIsActive(!adminCommunityIsActive)}>
                         <Text style={[styles.filterChipText, adminCommunityIsActive && styles.filterChipTextActive]}>{adminCommunityIsActive ? 'Activa' : 'Inactiva'}</Text>
                       </TouchableOpacity>
@@ -7014,12 +7034,12 @@ function ProfileScreen({
                               </TouchableOpacity>
                               {selected ? (
                                 <View style={styles.adminInlineEditor}>
-                                  <TextInput style={styles.input} placeholder="Nombre" value={adminCommunityName} onChangeText={setAdminCommunityName} />
-                                  <TextInput style={styles.input} placeholder="Direccion" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress} />
-                                  <TextInput style={styles.input} placeholder="Numero de contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone} />
-                                  <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay} />
-                                  <TextInput style={styles.input} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime} />
-                                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline />
+                                  <TextInput style={styles.input} placeholder="Nombre" value={adminCommunityName} onChangeText={setAdminCommunityName}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={styles.input} placeholder="Direccion" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={styles.input} placeholder="Numero de contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={styles.input} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
                                   <View style={styles.filterRow}>
                                     <TouchableOpacity style={styles.secondaryButton} onPress={() => adminToggleCommunityStatus(itemKey, !isActive)}>
                                       <Text style={styles.secondaryButtonText}>{isActive ? 'Deshabilitar' : 'Habilitar'}</Text>
@@ -7133,7 +7153,7 @@ function ProfileScreen({
                             placeholder="Ej: Noticias"
                             value={selectedNavigationDraft.label}
                             onChangeText={(value) => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, label: value } }))}
-                          />
+                           placeholderTextColor={inputPlaceholderColor} />
                         </View>
                         <View style={styles.navigationField}>
                           <Text style={styles.cardEyebrow}>Icono Ionicons</Text>
@@ -7143,7 +7163,7 @@ function ProfileScreen({
                             value={selectedNavigationDraft.iconName}
                             onChangeText={(value) => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, iconName: value } }))}
                             autoCapitalize="none"
-                          />
+                           placeholderTextColor={inputPlaceholderColor} />
                         </View>
                       </View>
 
@@ -7205,9 +7225,9 @@ function ProfileScreen({
                       <Ionicons name="add-circle-outline" size={22} color={palette.red} />
                       <Text style={styles.navigationFocusTitle}>Nueva seccion</Text>
                     </View>
-                    <TextInput style={styles.input} placeholder="Nombre visible. Ej: Noticias" value={newTabLabel} onChangeText={setNewTabLabel} />
-                    <TextInput style={styles.input} placeholder="Clave interna. Ej: noticias" value={newTabKey} onChangeText={(value) => setNewTabKey(normalizeTabKey(value))} autoCapitalize="none" />
-                    <TextInput style={styles.input} placeholder="Icono. Ej: newspaper-outline" value={newTabIcon} onChangeText={setNewTabIcon} autoCapitalize="none" />
+                    <TextInput style={styles.input} placeholder="Nombre visible. Ej: Noticias" value={newTabLabel} onChangeText={setNewTabLabel}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={styles.input} placeholder="Clave interna. Ej: noticias" value={newTabKey} onChangeText={(value) => setNewTabKey(normalizeTabKey(value))} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={styles.input} placeholder="Icono. Ej: newspaper-outline" value={newTabIcon} onChangeText={setNewTabIcon} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationIconPicker}>
                       {navigationIconSuggestions.map((icon) => (
                         <TouchableOpacity key={`new-${icon}`} style={[styles.navigationIconChoice, newTabIcon === icon && styles.navigationIconChoiceActive]} onPress={() => setNewTabIcon(icon)}>
@@ -7243,7 +7263,7 @@ function ProfileScreen({
                 {session?.role === 'administrador' ? (
                   <>
                     <Text style={styles.cardEyebrow}>Crear pagina nueva</Text>
-                    <TextInput style={styles.input} placeholder="Nombre de la pagina" value={newTabLabel} onChangeText={setNewTabLabel} />
+                    <TextInput style={styles.input} placeholder="Nombre de la pagina" value={newTabLabel} onChangeText={setNewTabLabel}  placeholderTextColor={inputPlaceholderColor} />
                     <Text style={styles.cardText}>Roles que pueden verla</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
                       {visibleHierarchyFor(session).map((role) => (
@@ -7265,7 +7285,7 @@ function ProfileScreen({
                             style={styles.input}
                             value={draft.label}
                             onChangeText={(value) => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, label: value } }))}
-                          />
+                           placeholderTextColor={inputPlaceholderColor} />
                           <View style={styles.inlineActions}>
                             <TouchableOpacity style={styles.secondaryButton} onPress={() => adminMoveTab(tab.key, -1)} disabled={index === 0}>
                               <Text style={styles.secondaryButtonText}>Subir</Text>
@@ -7315,8 +7335,8 @@ function ProfileScreen({
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-                <TextInput style={styles.input} placeholder="Titulo de la seccion" value={contentTitle} onChangeText={setContentTitle} />
-                <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de la seccion" value={contentBody} onChangeText={setContentBody} multiline />
+                <TextInput style={styles.input} placeholder="Titulo de la seccion" value={contentTitle} onChangeText={setContentTitle}  placeholderTextColor={inputPlaceholderColor} />
+                <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de la seccion" value={contentBody} onChangeText={setContentBody} multiline  placeholderTextColor={inputPlaceholderColor} />
                 <View style={styles.inlineActions}>
                   <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('titulo')}>
                     <Text style={styles.secondaryButtonText}>+ Titulo</Text>
@@ -7337,7 +7357,7 @@ function ProfileScreen({
                       value={block.value}
                       onChangeText={(value) => updateContentBlock(block.id, value)}
                       multiline={block.type !== 'titulo'}
-                    />
+                     placeholderTextColor={inputPlaceholderColor} />
                     <View style={styles.inlineActions}>
                       <TouchableOpacity style={styles.secondaryButton} onPress={() => moveContentBlock(index, -1)}>
                         <Text style={styles.secondaryButtonText}>Subir</Text>
@@ -7383,10 +7403,10 @@ function ProfileScreen({
                 onChangeText={(value) => { setRegisterFullName(value); setAuthErrors((current) => ({ ...current, fullName: '' })); }}
                 onFocus={() => setAuthFocusedField('fullName')}
                 onBlur={() => setAuthFocusedField('')}
-              />
+               placeholderTextColor={inputPlaceholderColor} />
               {authErrors.fullName ? <Text style={styles.formErrorText}>{authErrors.fullName}</Text> : null}
               <Text style={styles.inputLabel}>Contacto</Text>
-              <TextInput style={[styles.input, authFocusedField === 'contact' && styles.inputFocused]} placeholder="Telefono o contacto opcional" value={registerContact} onChangeText={setRegisterContact} onFocus={() => setAuthFocusedField('contact')} onBlur={() => setAuthFocusedField('')} />
+              <TextInput style={[styles.input, authFocusedField === 'contact' && styles.inputFocused]} placeholder="Telefono o contacto opcional" value={registerContact} onChangeText={setRegisterContact} onFocus={() => setAuthFocusedField('contact')} onBlur={() => setAuthFocusedField('')}  placeholderTextColor={inputPlaceholderColor} />
               <Text style={styles.inputLabel}>Provincia</Text>
               <TouchableOpacity style={styles.dropdownButton} onPress={() => setProvinceDropdownOpen(!provinceDropdownOpen)}>
                 <Text style={styles.dropdownButtonText}>{registerProvince || 'Selecciona tu provincia'}</Text>
@@ -7442,7 +7462,7 @@ function ProfileScreen({
             keyboardType="email-address"
             onFocus={() => setAuthFocusedField('email')}
             onBlur={() => setAuthFocusedField('')}
-          />
+           placeholderTextColor={inputPlaceholderColor} />
           {authErrors.email ? <Text style={styles.formErrorText}>{authErrors.email}</Text> : null}
           <Text style={styles.inputLabel}>Contrasena</Text>
           <View style={styles.passwordInputWrap}>
@@ -7468,7 +7488,7 @@ function ProfileScreen({
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="done"
-            />
+             placeholderTextColor={inputPlaceholderColor} />
             <TouchableOpacity style={styles.passwordEyeButton} onPress={() => setAuthPasswordVisible(!authPasswordVisible)} activeOpacity={0.82}>
               <Ionicons name={authPasswordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
             </TouchableOpacity>
@@ -7485,7 +7505,7 @@ function ProfileScreen({
                 secureTextEntry={!authPasswordVisible}
                 onFocus={() => setAuthFocusedField('confirm')}
                 onBlur={() => setAuthFocusedField('')}
-              />
+               placeholderTextColor={inputPlaceholderColor} />
               {authErrors.confirm ? <Text style={styles.formErrorText}>{authErrors.confirm}</Text> : null}
             </>
           ) : null}
