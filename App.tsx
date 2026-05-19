@@ -490,12 +490,39 @@ async function getPushDeviceId() {
   return next;
 }
 
+type PushRegistrationResult = {
+  status: string;
+  token: string | null;
+  projectId?: string;
+  deviceId?: string | null;
+  appRuntimeOwner?: string;
+  saved?: boolean;
+  error: string | null;
+  technicalError?: string | null;
+};
+
+function getTechnicalErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error ?? 'Error desconocido');
+}
+
+function getFriendlyPushError(error: unknown) {
+  const message = getTechnicalErrorMessage(error);
+  if (
+    message.includes('Default FirebaseApp is not initialized') ||
+    message.includes('fcm-credentials') ||
+    message.includes('google-services')
+  ) {
+    return 'No se pudo inicializar push remoto en esta APK. Revisá la configuración Firebase/FCM.';
+  }
+  return 'No se pudo activar push remoto en este dispositivo.';
+}
+
 async function requestAndRegisterPushToken(session: Session | null, requestPermission: boolean) {
   if (!session?.id) {
-    return { status: 'missing-session', token: null as string | null, error: 'Inicia sesion para activar notificaciones.' };
+    return { status: 'missing-session', token: null, error: 'Inicia sesion para activar notificaciones.', technicalError: null } satisfies PushRegistrationResult;
   }
   if (Platform.OS === 'web') {
-    return { status: 'web', token: null as string | null, projectId: easProjectId, deviceId: null as string | null, appRuntimeOwner, saved: false, error: 'Las notificaciones push se prueban en celular.' };
+    return { status: 'web', token: null, projectId: easProjectId, deviceId: null, appRuntimeOwner, saved: false, error: 'Las notificaciones push se prueban en celular.', technicalError: null } satisfies PushRegistrationResult;
   }
 
   const currentPermission = await Notifications.getPermissionsAsync();
@@ -505,7 +532,7 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
     finalStatus = requestedPermission.status;
   }
   if (finalStatus !== 'granted') {
-    return { status: finalStatus, token: null as string | null, projectId: easProjectId, deviceId: null as string | null, appRuntimeOwner, saved: false, error: 'Permiso de notificaciones no habilitado.' };
+    return { status: finalStatus, token: null, projectId: easProjectId, deviceId: null, appRuntimeOwner, saved: false, error: 'Permiso de notificaciones no habilitado.', technicalError: null } satisfies PushRegistrationResult;
   }
 
   if (Platform.OS === 'android') {
@@ -520,7 +547,21 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
   }
 
   const projectId = easProjectId;
-  const tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+  let tokenResult: Notifications.ExpoPushToken;
+  try {
+    tokenResult = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+  } catch (error) {
+    return {
+      status: 'push-config-error',
+      token: null,
+      projectId,
+      deviceId: null,
+      appRuntimeOwner,
+      saved: false,
+      error: getFriendlyPushError(error),
+      technicalError: getTechnicalErrorMessage(error)
+    } satisfies PushRegistrationResult;
+  }
   const deviceId = await getPushDeviceId();
   const { error } = await registerPushToken({
     token: tokenResult.data,
@@ -531,9 +572,9 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
     isActive: true
   });
   if (error) {
-    return { status: 'error', token: tokenResult.data, projectId, deviceId, appRuntimeOwner, saved: false, error: error.message };
+    return { status: 'error', token: tokenResult.data, projectId, deviceId, appRuntimeOwner, saved: false, error: error.message, technicalError: error.message } satisfies PushRegistrationResult;
   }
-  return { status: 'granted', token: tokenResult.data, projectId, deviceId, appRuntimeOwner, saved: true, error: null as string | null };
+  return { status: 'granted', token: tokenResult.data, projectId, deviceId, appRuntimeOwner, saved: true, error: null, technicalError: null } satisfies PushRegistrationResult;
 }
 
 function showFeedbackMessage(message: string) {
@@ -5344,11 +5385,12 @@ function ProfileScreen({
         `DeviceId: ${result.deviceId ?? 'sin-device-id'}`,
         `Usuario: ${session.email}`,
         `Guardado Supabase: ${result.saved ? 'si' : 'no'}`,
-        `Token: ${result.token ?? 'sin-token'}`
+        `Token: ${result.token ?? 'sin-token'}`,
+        `Error tecnico: ${result.technicalError ?? 'sin-error-tecnico'}`
       ].join('\n'));
       setAuthMessage(result.error ? result.error : changeDone('Notificaciones activadas en este dispositivo.'));
     } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : 'No pude activar notificaciones.');
+      setAuthMessage(getFriendlyPushError(error));
     }
   }
 
@@ -5399,7 +5441,8 @@ function ProfileScreen({
         `DeviceId: ${result.deviceId ?? 'sin-device-id'}`,
         `Usuario: ${session.email}`,
         `Guardado Supabase: ${result.saved ? 'si' : 'no'}`,
-        `Token: ${result.token ?? 'sin-token'}`
+        `Token: ${result.token ?? 'sin-token'}`,
+        `Error tecnico: ${result.technicalError ?? 'sin-error-tecnico'}`
       ].join('\n'));
     }
     if (!token) {

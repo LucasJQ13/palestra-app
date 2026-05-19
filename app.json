@@ -18,6 +18,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "package": "org.palestra.argentina",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 1,
       "permissions": [
         "POST_NOTIFICATIONS"

@@ -10,5 +10,7 @@ bundle.js
 *.p12
 *.key
 *.mobileprovision
+firebase-service-account*.json
+*service-account*.json
 .env
 supabase/.temp/
