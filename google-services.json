@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "81693697659",
+    "project_id": "palestra-argentina",
+    "storage_bucket": "palestra-argentina.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:81693697659:android:b5cc5492908af9acefe4de",
+        "android_client_info": {
+          "package_name": "org.palestra.argentina"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAb3F2PZ7j_XzFDnCooxLnqs6017qbjjOA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
