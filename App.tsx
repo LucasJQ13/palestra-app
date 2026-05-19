@@ -3497,6 +3497,8 @@ function ProfileScreen({
   const [newTabIcon, setNewTabIcon] = useState('document-text-outline');
   const [newTabRoles, setNewTabRoles] = useState<string[]>(['sedimentador', 'coordinador_comunidad', 'animador_comunidad', 'vocal', 'coordinador_diocesano', 'asesor', 'vocal_nacional', 'coordinador_nacional', 'administrador']);
   const [selectedNavigationTabKey, setSelectedNavigationTabKey] = useState('');
+  const [navigationRolesDropdownOpen, setNavigationRolesDropdownOpen] = useState(false);
+  const [newNavigationRolesDropdownOpen, setNewNavigationRolesDropdownOpen] = useState(false);
   const [selectedContentTab, setSelectedContentTab] = useState<TabKey>('inicio');
   const [contentTitle, setContentTitle] = useState('');
   const [contentBody, setContentBody] = useState('');
@@ -3596,6 +3598,7 @@ function ProfileScreen({
   const isCommunityLeader = isCommunityLeaderRole(session);
   const canAdministrateCommunities = canCreateOrAdministrateCommunities(session);
   const canReviewLeadershipRequests = Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
+  const showDedicatedNavigationManager = adminModule === 'navegacion' && session?.role === 'administrador';
   const selectableCommunityMembers = communityMembers.filter((member) => (
     member.email !== session?.email
     && member.full_name !== session?.fullName
@@ -6280,6 +6283,252 @@ function ProfileScreen({
             </View>
           ) : null}
           {(hasPermission(session, 'gestionar_sistema') || canAdministrateCommunities || hasPermission(session, 'gestionar_contenido') || hasPermission(session, 'gestionar_permisos') || canReviewLeadershipRequests || isCommunityLeader) ? (
+            showDedicatedNavigationManager ? (
+                <View style={styles.navigationDedicatedShell}>
+                  <View style={styles.navigationDedicatedTopbar}>
+                    <View style={styles.navigationDedicatedBrand}>
+                      <View style={styles.navigationDedicatedLogo}>
+                        <Ionicons name="navigate-outline" size={22} color={palette.white} />
+                      </View>
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.navigationDedicatedTitle}>Consola de navegacion</Text>
+                        <Text style={styles.navigationDedicatedSubtitle}>Gestion visual de secciones, roles y barra inferior.</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity style={styles.navigationBackButton} onPress={() => setAdminModule('resumen')} activeOpacity={0.85}>
+                      <Ionicons name="arrow-back-outline" size={17} color={palette.red} />
+                      <Text style={styles.navigationBackButtonText}>Regresar a Palestra APP</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {authMessage ? <Text style={styles.navigationDedicatedMessage}>{authMessage}</Text> : null}
+
+                  <View style={styles.navigationBuilderScreen}>
+                    <View style={styles.navigationBuilderHero}>
+                      <View style={styles.navigationHeroText}>
+                        <Text style={styles.navigationHeroEyebrow}>Constructor visual</Text>
+                        <Text style={styles.navigationHeroTitle}>Navegacion de la app</Text>
+                        <Text style={styles.navigationHeroBody}>Edita la barra inferior como un panel profesional: orden, iconos, nombres, visibilidad y roles desde una sola pantalla.</Text>
+                      </View>
+                      <View style={styles.navigationHeroBadge}>
+                        <Ionicons name="phone-portrait-outline" size={22} color={palette.white} />
+                      </View>
+                    </View>
+
+                    <View style={styles.navigationStatsRow}>
+                      <View style={styles.navigationStatPill}>
+                        <Text style={styles.navigationStatValue}>{editableTabs.length}</Text>
+                        <Text style={styles.navigationStatLabel}>Secciones</Text>
+                      </View>
+                      <View style={styles.navigationStatPill}>
+                        <Text style={styles.navigationStatValue}>{navigationVisibleCount}</Text>
+                        <Text style={styles.navigationStatLabel}>Visibles</Text>
+                      </View>
+                      <View style={styles.navigationStatPill}>
+                        <Text style={styles.navigationStatValue}>{navigationLockedCount}</Text>
+                        <Text style={styles.navigationStatLabel}>Base</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.navigationPhonePreview}>
+                      <View style={styles.navigationPhoneTop}>
+                        <View>
+                          <Text style={styles.navigationPhoneTitle}>Palestra</Text>
+                          <Text style={styles.navigationPhoneSub}>Vista previa en vivo</Text>
+                        </View>
+                        <View style={styles.navigationPhoneStatus} />
+                      </View>
+                      <View style={styles.navigationPreviewContent}>
+                        <Text style={styles.navigationPreviewLabel}>Barra inferior</Text>
+                        <Text style={styles.navigationPreviewHint}>Los cambios guardados impactan globalmente al refrescar la app.</Text>
+                      </View>
+                      <View style={styles.navPreviewBar}>
+                        {editableTabs.slice(0, 7).map((tab) => {
+                          const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                          const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
+                          const selected = selectedNavigationTab?.key === tab.key;
+                          return (
+                            <TouchableOpacity key={`preview-dedicated-${tab.key}`} style={[styles.navPreviewItem, !draft.isVisible && styles.navPreviewItemHidden, selected && styles.navPreviewItemSelected]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
+                              <Ionicons name={iconName} size={18} color={selected ? palette.white : draft.isVisible ? palette.red : palette.inkMuted} />
+                              <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label || tab.label}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationRail}>
+                      {editableTabs.map((tab, index) => {
+                        const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                        const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
+                        const selected = selectedNavigationTab?.key === tab.key;
+                        return (
+                          <TouchableOpacity key={`rail-dedicated-${tab.key}`} style={[styles.navigationRailItem, selected && styles.navigationRailItemActive]} onPress={() => { setSelectedNavigationTabKey(tab.key); setNavigationRolesDropdownOpen(false); }} activeOpacity={0.85}>
+                            <Ionicons name={iconName} size={20} color={selected ? palette.white : palette.red} />
+                            <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label || tab.label}</Text>
+                            <Text style={[styles.navigationRailMeta, selected && styles.navigationRailTextActive]}>#{index + 1}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {selectedNavigationTab && selectedNavigationDraft ? (
+                      <View style={styles.navigationFocusPanel}>
+                        <View style={styles.navigationFocusHeader}>
+                          <View style={styles.navigationFocusIcon}>
+                            <Ionicons name={isIoniconName(selectedNavigationDraft.iconName) ? selectedNavigationDraft.iconName : 'help-circle-outline'} size={28} color={palette.red} />
+                          </View>
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.navigationFocusTitle}>{selectedNavigationDraft.label || selectedNavigationTab.label}</Text>
+                            <Text style={styles.feedMeta}>Clave interna: {selectedNavigationTab.key}</Text>
+                            <Text style={styles.feedMeta}>Orden actual: {selectedNavigationTab.sortOrder}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.navigationFieldGrid}>
+                          <View style={styles.navigationField}>
+                            <Text style={styles.cardEyebrow}>Nombre visible</Text>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Ej: Noticias"
+                              value={selectedNavigationDraft.label}
+                              onChangeText={(value) => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, label: value } }))}
+                              placeholderTextColor={inputPlaceholderColor}
+                            />
+                          </View>
+                          <View style={styles.navigationField}>
+                            <Text style={styles.cardEyebrow}>Icono Ionicons</Text>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Ej: newspaper-outline"
+                              value={selectedNavigationDraft.iconName}
+                              onChangeText={(value) => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, iconName: value } }))}
+                              autoCapitalize="none"
+                              placeholderTextColor={inputPlaceholderColor}
+                            />
+                          </View>
+                        </View>
+
+                        <Text style={styles.cardEyebrow}>Iconos rapidos</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationIconPicker}>
+                          {navigationIconSuggestions.map((icon) => (
+                            <TouchableOpacity key={`dedicated-${icon}`} style={[styles.navigationIconChoice, selectedNavigationDraft.iconName === icon && styles.navigationIconChoiceActive]} onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, iconName: icon } }))}>
+                              <Ionicons name={icon} size={21} color={selectedNavigationDraft.iconName === icon ? palette.white : palette.red} />
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+
+                        <View style={styles.navigationActionGrid}>
+                          <TouchableOpacity style={styles.navigationMiniAction} onPress={() => adminMoveTab(selectedNavigationTab.key, -1)} disabled={editableTabs[0]?.key === selectedNavigationTab.key}>
+                            <Ionicons name="arrow-back-outline" size={17} color={palette.red} />
+                            <Text style={styles.navigationMiniActionText}>Mover izq.</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.navigationMiniAction} onPress={() => adminMoveTab(selectedNavigationTab.key, 1)} disabled={editableTabs[editableTabs.length - 1]?.key === selectedNavigationTab.key}>
+                            <Ionicons name="arrow-forward-outline" size={17} color={palette.red} />
+                            <Text style={styles.navigationMiniActionText}>Mover der.</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.navigationMiniAction, selectedNavigationDraft.isVisible && styles.navigationMiniActionActive]}
+                            onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, isVisible: !selectedNavigationDraft.isVisible } }))}
+                          >
+                            <Ionicons name={selectedNavigationDraft.isVisible ? 'eye-outline' : 'eye-off-outline'} size={17} color={selectedNavigationDraft.isVisible ? palette.white : palette.red} />
+                            <Text style={[styles.navigationMiniActionText, selectedNavigationDraft.isVisible && styles.navigationMiniActionTextActive]}>{selectedNavigationDraft.isVisible ? 'Visible' : 'Oculta'}</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.navigationRolesPanel}>
+                          <TouchableOpacity style={styles.navigationRolesButton} onPress={() => setNavigationRolesDropdownOpen(!navigationRolesDropdownOpen)} activeOpacity={0.85}>
+                            <View style={styles.adminUserHeaderText}>
+                              <Text style={styles.cardEyebrow}>Roles que ven esta seccion</Text>
+                              <Text style={styles.navigationRolesSummary}>{(selectedNavigationDraft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role)).length} roles seleccionados</Text>
+                            </View>
+                            <Ionicons name={navigationRolesDropdownOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.red} />
+                          </TouchableOpacity>
+                          <View style={styles.navigationSelectedRolesWrap}>
+                            {(selectedNavigationDraft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role)).slice(0, 5).map((role) => (
+                              <TouchableOpacity key={`selected-role-${role}`} style={styles.navigationSelectedRoleChip} onPress={() => updateTabRole(selectedNavigationTab.key, role as Role, false)}>
+                                <Text style={styles.navigationSelectedRoleText}>{roleShortLabel(role as Role)}</Text>
+                                <Ionicons name="close-outline" size={13} color={palette.red} />
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                          {navigationRolesDropdownOpen ? (
+                            <View style={styles.navigationRolesDropdown}>
+                              {visibleHierarchyFor(session).map((role) => {
+                                const roles = selectedNavigationDraft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role);
+                                const checked = roles.includes(role.role);
+                                return (
+                                  <TouchableOpacity key={`role-option-${role.role}`} style={styles.navigationRoleOption} onPress={() => updateTabRole(selectedNavigationTab.key, role.role as Role, !checked)} activeOpacity={0.82}>
+                                    <Ionicons name={checked ? 'checkbox-outline' : 'square-outline'} size={18} color={checked ? palette.red : palette.inkMuted} />
+                                    <Text style={styles.navigationRoleOptionText}>{role.label}</Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          ) : null}
+                        </View>
+
+                        <View style={styles.inlineActions}>
+                          <TouchableOpacity style={[styles.primaryButton, styles.navigationLargeButton]} onPress={() => adminSaveTab(selectedNavigationTab.key, selectedNavigationTab.label)}>
+                            <Ionicons name="save-outline" size={17} color={palette.white} />
+                            <Text style={styles.primaryButtonText}>Guardar seccion</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.secondaryButton, styles.navigationLargeButton]} onPress={() => adminDeleteTab(selectedNavigationTab.key)}>
+                            <Ionicons name="trash-outline" size={17} color={palette.red} />
+                            <Text style={styles.secondaryButtonText}>{(!protectedTabKeys.has(selectedNavigationTab.key) && !defaultTabByKey.has(selectedNavigationTab.key)) ? 'Eliminar' : 'No eliminable'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : null}
+
+                    <View style={styles.navigationCreatePanel}>
+                      <View style={styles.navigationCreateHeader}>
+                        <Ionicons name="add-circle-outline" size={22} color={palette.red} />
+                        <Text style={styles.navigationFocusTitle}>Nueva seccion</Text>
+                      </View>
+                      <TextInput style={styles.input} placeholder="Nombre visible. Ej: Noticias" value={newTabLabel} onChangeText={setNewTabLabel} placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Clave interna. Ej: noticias" value={newTabKey} onChangeText={(value) => setNewTabKey(normalizeTabKey(value))} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Icono. Ej: newspaper-outline" value={newTabIcon} onChangeText={setNewTabIcon} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationIconPicker}>
+                        {navigationIconSuggestions.map((icon) => (
+                          <TouchableOpacity key={`new-dedicated-${icon}`} style={[styles.navigationIconChoice, newTabIcon === icon && styles.navigationIconChoiceActive]} onPress={() => setNewTabIcon(icon)}>
+                            <Ionicons name={icon} size={21} color={newTabIcon === icon ? palette.white : palette.red} />
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                      <TouchableOpacity style={styles.navigationRolesButton} onPress={() => setNewNavigationRolesDropdownOpen(!newNavigationRolesDropdownOpen)} activeOpacity={0.85}>
+                        <View style={styles.adminUserHeaderText}>
+                          <Text style={styles.cardEyebrow}>Roles visibles</Text>
+                          <Text style={styles.navigationRolesSummary}>{newTabRoles.length} roles seleccionados</Text>
+                        </View>
+                        <Ionicons name={newNavigationRolesDropdownOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {newNavigationRolesDropdownOpen ? (
+                        <View style={styles.navigationRolesDropdown}>
+                          {visibleHierarchyFor(session).map((role) => {
+                            const checked = newTabRoles.includes(role.role as Role);
+                            return (
+                              <TouchableOpacity key={`new-role-option-${role.role}`} style={styles.navigationRoleOption} onPress={() => toggleNewTabRole(role.role as Role)} activeOpacity={0.82}>
+                                <Ionicons name={checked ? 'checkbox-outline' : 'square-outline'} size={18} color={checked ? palette.red : palette.inkMuted} />
+                                <Text style={styles.navigationRoleOptionText}>{role.label}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      ) : null}
+                      <TouchableOpacity style={[styles.primaryButton, styles.navigationLargeButton]} onPress={adminCreatePage}>
+                        <Ionicons name="add-circle-outline" size={17} color={palette.white} />
+                        <Text style={styles.primaryButtonText}>Crear seccion</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity style={styles.navigationRestoreButton} onPress={adminRestoreDefaultNavigation}>
+                      <Ionicons name="refresh-circle-outline" size={18} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Restaurar navegacion predeterminada</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
             <View style={styles.adminPanel}>
               <Text style={styles.cardEyebrow}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
               <Text style={styles.cardTitle}>{session.role === 'administrador' ? 'Panel tecnico global' : 'Panel diocesano'}</Text>
@@ -7534,6 +7783,7 @@ function ProfileScreen({
                 </View>
               ) : null}
             </View>
+              )
           ) : null}
         </View>
       ) : (
@@ -10078,12 +10328,81 @@ const styles = StyleSheet.create({
     marginTop: 8
   },
   navigationBuilderScreen: {
-    marginHorizontal: -10,
-    marginTop: -8,
+    marginHorizontal: 0,
+    marginTop: 0,
     padding: 14,
     borderRadius: 28,
     gap: 14,
     backgroundColor: '#E6F3F5',
+    overflow: 'hidden'
+  },
+  navigationDedicatedShell: {
+    marginHorizontal: -16,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 18,
+    borderRadius: 32,
+    gap: 12,
+    backgroundColor: '#DFF0F6'
+  },
+  navigationDedicatedTopbar: {
+    gap: 12,
+    padding: 14,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)'
+  },
+  navigationDedicatedBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  navigationDedicatedLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.red
+  },
+  navigationDedicatedTitle: {
+    color: palette.ink,
+    fontSize: 21,
+    fontWeight: '900'
+  },
+  navigationDedicatedSubtitle: {
+    color: palette.inkMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700'
+  },
+  navigationBackButton: {
+    minHeight: 48,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(45, 141, 200, 0.09)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)'
+  },
+  navigationBackButtonText: {
+    color: palette.red,
+    fontSize: 13,
+    fontWeight: '900'
+  },
+  navigationDedicatedMessage: {
+    color: palette.ink,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontWeight: '800',
     overflow: 'hidden'
   },
   navigationBuilderHero: {
@@ -10292,10 +10611,12 @@ const styles = StyleSheet.create({
   },
   navigationMiniAction: {
     flex: 1,
-    minHeight: 46,
+    minHeight: 52,
     borderRadius: 17,
     flexDirection: 'row',
     gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.72)',
@@ -10313,6 +10634,78 @@ const styles = StyleSheet.create({
   },
   navigationMiniActionTextActive: {
     color: palette.white
+  },
+  navigationRolesPanel: {
+    gap: 8
+  },
+  navigationRolesButton: {
+    minHeight: 58,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    backgroundColor: 'rgba(45, 141, 200, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)'
+  },
+  navigationRolesSummary: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  navigationSelectedRolesWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7
+  },
+  navigationSelectedRoleChip: {
+    minHeight: 32,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)'
+  },
+  navigationSelectedRoleText: {
+    color: palette.ink,
+    fontSize: 11,
+    fontWeight: '900'
+  },
+  navigationRolesDropdown: {
+    borderRadius: 20,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    overflow: 'hidden'
+  },
+  navigationRoleOption: {
+    minHeight: 44,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(45, 141, 200, 0.08)'
+  },
+  navigationRoleOptionText: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '800',
+    flex: 1
+  },
+  navigationLargeButton: {
+    minHeight: 52,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    borderRadius: 18
   },
   navigationCreatePanel: {
     borderRadius: 28,
