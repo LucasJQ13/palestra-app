@@ -582,6 +582,20 @@ export async function deliverNotificationIntent(intentId: string) {
   }
 }
 
+export async function debugPushToDevice(values: {
+  token: string;
+  projectId: string;
+  runtime: string;
+}) {
+  try {
+    return await supabase.functions.invoke('debug-push-notification', {
+      body: values
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function createNews(title: string, body: string, isPublic: boolean) {
   return supabase.rpc('admin_create_news', {
     p_title: title,

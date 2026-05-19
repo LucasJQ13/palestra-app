@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -57,7 +57,7 @@ const defaultProvinceInstagram: Record<string, string> = {
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false,
+    shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true,
     shouldShowList: true
@@ -511,9 +511,11 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'Palestra',
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#2d8dc8'
+      lightColor: '#2d8dc8',
+      sound: 'default',
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC
     });
   }
 
@@ -537,6 +539,25 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
 function showFeedbackMessage(message: string) {
   if (Platform.OS === 'android') {
     ToastAndroid.show(message, ToastAndroid.SHORT);
+  }
+}
+
+async function getAndroidChannelDebug() {
+  if (Platform.OS !== 'android') {
+    return 'No aplica: plataforma no Android.';
+  }
+  try {
+    const channels = await Notifications.getNotificationChannelsAsync();
+    return JSON.stringify(channels.map((channel) => ({
+      id: channel.id,
+      name: channel.name,
+      importance: channel.importance,
+      sound: channel.sound,
+      vibrationPattern: channel.vibrationPattern,
+      lockscreenVisibility: channel.lockscreenVisibility
+    })), null, 2);
+  } catch (error) {
+    return error instanceof Error ? error.message : 'No pude leer canales Android.';
   }
 }
 
@@ -3336,6 +3357,9 @@ function ProfileScreen({
   const [notificationPermissionStatus, setNotificationPermissionStatus] = useState('desconocido');
   const [pushTokenPreview, setPushTokenPreview] = useState('');
   const [pushDebugInfo, setPushDebugInfo] = useState('');
+  const [pushCurrentToken, setPushCurrentToken] = useState('');
+  const [pushChannelDebug, setPushChannelDebug] = useState('');
+  const [pushTestResult, setPushTestResult] = useState('');
   const [registerFullName, setRegisterFullName] = useState('');
   const [registerContact, setRegisterContact] = useState('');
   const [registerProvince, setRegisterProvince] = useState('');
@@ -5309,7 +5333,10 @@ function ProfileScreen({
       setNotificationPermissionStatus(result.status);
       if (result.token) {
         setPushTokenPreview(`${result.token.slice(0, 18)}...`);
+        setPushCurrentToken(result.token);
       }
+      const channelDebug = await getAndroidChannelDebug();
+      setPushChannelDebug(channelDebug);
       setPushDebugInfo([
         `Permiso: ${result.status}`,
         `ProjectId: ${result.projectId}`,
@@ -5323,6 +5350,73 @@ function ProfileScreen({
     } catch (error) {
       setAuthMessage(error instanceof Error ? error.message : 'No pude activar notificaciones.');
     }
+  }
+
+  async function sendLocalNotificationDebug() {
+    setPushTestResult('Enviando notificacion local...');
+    try {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Palestra',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#2d8dc8',
+          sound: 'default',
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC
+        });
+      }
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Prueba local Palestra',
+          body: 'Si ves esto, Android y el canal local muestran notificaciones.',
+          sound: 'default'
+        },
+        trigger: null
+      });
+      setPushChannelDebug(await getAndroidChannelDebug());
+      setPushTestResult('Notificacion local solicitada. Si aparece, el canal Android funciona.');
+    } catch (error) {
+      setPushTestResult(error instanceof Error ? error.message : 'Fallo la prueba local.');
+    }
+  }
+
+  async function sendRemotePushDebug() {
+    if (session?.role !== 'administrador') {
+      setPushTestResult('Solo Administrador puede enviar prueba push.');
+      return;
+    }
+    let token = pushCurrentToken;
+    if (!token) {
+      const result = await requestAndRegisterPushToken(session, true);
+      token = result.token ?? '';
+      setNotificationPermissionStatus(result.status);
+      setPushCurrentToken(token);
+      setPushTokenPreview(token ? `${token.slice(0, 18)}...` : '');
+      setPushDebugInfo([
+        `Permiso: ${result.status}`,
+        `ProjectId: ${result.projectId}`,
+        `Runtime: ${result.appRuntimeOwner}`,
+        `DeviceId: ${result.deviceId ?? 'sin-device-id'}`,
+        `Usuario: ${session.email}`,
+        `Guardado Supabase: ${result.saved ? 'si' : 'no'}`,
+        `Token: ${result.token ?? 'sin-token'}`
+      ].join('\n'));
+    }
+    if (!token) {
+      setPushTestResult('No hay token actual para probar.');
+      return;
+    }
+    setPushTestResult('Enviando push remoto a Expo Push API...');
+    const response = await debugPushToDevice({
+      token,
+      projectId: easProjectId,
+      runtime: appRuntimeOwner
+    });
+    setPushChannelDebug(await getAndroidChannelDebug());
+    setPushTestResult(JSON.stringify({
+      error: response.error?.message ?? null,
+      data: response.data ?? null
+    }, null, 2));
   }
 
   async function publishCommunityPost() {
@@ -5708,6 +5802,26 @@ function ProfileScreen({
                 <View style={styles.inlineEditorPanel}>
                   <Text style={styles.cardEyebrow}>Debug temporal de notificaciones</Text>
                   <Text selectable style={styles.feedMeta}>{pushDebugInfo}</Text>
+                  {pushChannelDebug ? (
+                    <>
+                      <Text style={styles.cardEyebrow}>Canales Android</Text>
+                      <Text selectable style={styles.feedMeta}>{pushChannelDebug}</Text>
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+              {session.role === 'administrador' ? (
+                <View style={styles.inlineEditorPanel}>
+                  <Text style={styles.cardEyebrow}>Pruebas push APK</Text>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={sendLocalNotificationDebug}>
+                    <Ionicons name="phone-portrait-outline" size={17} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>Probar canal local Android</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.primaryButton} onPress={sendRemotePushDebug}>
+                    <Ionicons name="notifications-outline" size={17} color={palette.white} />
+                    <Text style={styles.primaryButtonText}>Enviar notificacion de prueba a este dispositivo</Text>
+                  </TouchableOpacity>
+                  {pushTestResult ? <Text selectable style={styles.feedMeta}>{pushTestResult}</Text> : null}
                 </View>
               ) : null}
               <TextInput style={styles.input} placeholder="Nuevo mail" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
