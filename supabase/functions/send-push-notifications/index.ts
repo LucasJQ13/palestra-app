@@ -88,6 +88,8 @@ Deno.serve(async (request) => {
         sound: 'default',
         title: intent.title,
         body: intent.body,
+        priority: 'high',
+        channelId: 'default',
         data: {
           ...(intent.payload ?? {}),
           intent_id: intent.id,
