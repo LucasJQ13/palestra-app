@@ -45,6 +45,12 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - El buscador de usuarios se simplifico a busqueda por nombre.
 - Confirmar emails, crear usuarios basicos y eliminar/liberar mails siguen reservados al Administrador.
 
+### Solicitudes de coordinacion
+
+- Se agrego `supabase/patch_beta_coordinator_acceptance.sql` para reemplazo por solicitud/aceptacion de Coordinador Diocesano y Coordinador Nacional.
+- La app reconoce las solicitudes `Solicitud de Coordinacion Diocesana` y `Solicitud de Coordinacion Nacional` en el perfil del usuario elegido.
+- Al aceptar, el coordinador anterior baja automaticamente a Sedimentador y queda registro en `audit_logs`.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.

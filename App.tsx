@@ -6299,7 +6299,7 @@ function ProfileScreen({
                       <Text style={styles.cardText}>Respondio: {item.resolvedBy ?? 'Pendiente'}</Text>
                       <Text style={styles.cardText}>Fecha de resolucion: {item.resolvedAt ? new Date(item.resolvedAt).toLocaleString('es-AR') : 'Pendiente'}</Text>
                       <Text style={styles.cardText}>Mensaje: {item.message ?? 'Sin mensaje todavia'}</Text>
-                      {['Propuesta Coordinador Diocesano', 'Propuesta Coordinador Nacional'].includes(item.title) && item.status === 'pendiente' && item.targetUserId === session.id ? (
+                      {['Propuesta Coordinador Diocesano', 'Propuesta Coordinador Nacional', 'Solicitud de Coordinacion Diocesana', 'Solicitud de Coordinacion Nacional'].includes(item.title) && item.status === 'pendiente' && item.targetUserId === session.id ? (
                         <TouchableOpacity style={styles.primaryButton} onPress={() => acceptDiocesanRequest(item.id)}>
                           <Text style={styles.primaryButtonText}>Aceptar rango {roleLabel((item.targetRole ?? 'coordinador_diocesano') as Role)}</Text>
                         </TouchableOpacity>
