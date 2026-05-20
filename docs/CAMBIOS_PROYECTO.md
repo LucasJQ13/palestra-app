@@ -95,6 +95,12 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - Se agrego `Ver como` dentro del `Panel Dirigencial` solo para Administrador.
 - La simulacion no persiste, no modifica Supabase y muestra una barra para volver al Administrador real.
 
+### Privacidad de mails y credenciales
+
+- Los listados comunes dejan de usar emails como dato visible principal.
+- En `Usuarios`, el email queda visible solo para Administrador dentro de gestion tecnica.
+- La credencial digital usa etiquetas visibles de rango por provincia mediante `roleLabelForProvince`.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.

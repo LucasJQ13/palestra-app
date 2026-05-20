@@ -6232,16 +6232,16 @@ function ProfileScreen({
               <SectionTitle title="Encargados" />
               {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).map((member) => (
                 <View key={`leader-${member.id}`} style={styles.innerNewsCard}>
-                  <Text style={styles.cardText}>{member.full_name ?? member.email} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels)}</Text>
+                  <Text style={styles.cardText}>{member.full_name ?? 'Palestrista'} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels)}</Text>
                   <TouchableOpacity
                     style={styles.actionPill}
                     onPress={() => openPublicProfile({
                       id: member.id,
-                      fullName: member.full_name ?? member.email ?? 'Palestrista',
+                      fullName: member.full_name ?? 'Palestrista',
                       role: member.role as Role,
                       province: member.province,
                       communityName: member.community_name,
-                      contact: member.email,
+                      contact: '',
                       avatarUrl: member.avatar_url
                     })}
                   >
@@ -6353,7 +6353,7 @@ function ProfileScreen({
                       <Text style={styles.inputLabel}>Buscar usuario</Text>
                       <TextInput
                         style={styles.input}
-                        placeholder="Buscar por nombre, mail, provincia, comunidad o rango"
+                        placeholder="Buscar por nombre, provincia, comunidad o rango"
                         value={mailboxRecipientSearch}
                         onChangeText={setMailboxRecipientSearch}
                        placeholderTextColor={inputPlaceholderColor} />
@@ -6370,7 +6370,7 @@ function ProfileScreen({
                               <TouchableOpacity key={user.id} style={styles.dropdownItem} onPress={() => toggleMailboxUser(user.id)}>
                                 <Ionicons name={selectedUser ? 'checkbox-outline' : 'square-outline'} size={18} color={selectedUser ? palette.red : palette.inkMuted} />
                                 <View style={styles.adminUserHeaderText}>
-                                  <Text style={styles.dropdownItemText}>{user.full_name ?? user.email ?? 'Usuario'}</Text>
+                                  <Text style={styles.dropdownItemText}>{user.full_name ?? 'Usuario'}</Text>
                                   <Text style={styles.feedMeta}>{roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
                                 </View>
                               </TouchableOpacity>
@@ -6382,7 +6382,7 @@ function ProfileScreen({
                         <View style={styles.chipRow}>
                           {selectedMailboxUsers.slice(0, 8).map((user) => (
                             <TouchableOpacity key={user.id} style={[styles.filterChip, styles.filterChipActive]} onPress={() => toggleMailboxUser(user.id)}>
-                              <Text style={[styles.filterChipText, styles.filterChipTextActive]}>{user.full_name ?? user.email}</Text>
+                              <Text style={[styles.filterChipText, styles.filterChipTextActive]}>{user.full_name ?? 'Usuario'}</Text>
                             </TouchableOpacity>
                           ))}
                           {selectedMailboxUsers.length > 8 ? <Text style={styles.cardText}>+{selectedMailboxUsers.length - 8} mas</Text> : null}
@@ -7478,21 +7478,22 @@ function ProfileScreen({
                                   {user.avatar_url ? <Image source={{ uri: user.avatar_url }} style={styles.adminUserAvatarImage} /> : <Ionicons name="person-outline" size={20} color={palette.red} />}
                                 </View>
                                 <View style={styles.adminUserHeaderText}>
-                                  <Text style={styles.cardTitle}>{user.full_name ?? user.email ?? 'Usuario sin nombre'}</Text>
-                                  <Text style={styles.cardText}>{user.email ?? 'Sin email'} - {user.status} - {roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels)}</Text>
+                                  <Text style={styles.cardTitle}>{user.full_name ?? 'Usuario sin nombre'}</Text>
+                                  <Text style={styles.cardText}>{user.status} - {roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels)} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  {session.role === 'administrador' ? <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text> : null}
                                 </View>
                               </View>
-                              <Text style={styles.cardText}>Email: {user.email_confirmed_at ? 'confirmado' : 'sin confirmar'}</Text>
+                              {session.role === 'administrador' ? <Text style={styles.cardText}>Email: {user.email_confirmed_at ? 'confirmado' : 'sin confirmar'}</Text> : null}
                               <TouchableOpacity
                                 style={styles.actionPill}
                                 onPress={() => openPublicProfile({
                                   id: user.id,
-                                  fullName: user.full_name ?? user.email ?? 'Usuario sin nombre',
+                                  fullName: user.full_name ?? 'Usuario sin nombre',
                                   role: (user.role || 'palestrista') as Role,
                                   province: user.province,
                                   communityName: user.community_name,
                                   avatarUrl: user.avatar_url,
-                                  contact: user.phone ?? user.email
+                                  contact: user.phone ?? ''
                                 })}
                               >
                                 <Ionicons name="person-circle-outline" size={16} color={palette.red} />
