@@ -127,6 +127,17 @@ export type RolePermissionRecord = {
   enabled: boolean;
 };
 
+export type ProvinceRoleLabelRecord = {
+  id: string;
+  province_id: string;
+  province: string;
+  role_key: string;
+  display_label: string;
+  description: string | null;
+  is_active: boolean;
+  updated_at: string;
+};
+
 export async function fetchPendingProfiles(): Promise<PendingProfile[]> {
   const { data, error } = await supabase.rpc('admin_get_pending_profiles');
 
@@ -623,6 +634,38 @@ export async function saveRolePermissions(role: string, permissionKeys: string[]
     return await supabase.rpc('admin_save_role_permissions', {
       p_role: role,
       p_permission_keys: permissionKeys
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchProvinceRoleLabels(): Promise<ProvinceRoleLabelRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_province_role_labels');
+    if (error || !data) {
+      return [];
+    }
+    return data as ProvinceRoleLabelRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveProvinceRoleLabel(values: {
+  province: string;
+  roleKey: string;
+  displayLabel: string;
+  description: string;
+  isActive: boolean;
+}) {
+  try {
+    return await supabase.rpc('admin_save_province_role_label', {
+      p_province: values.province,
+      p_role_key: values.roleKey,
+      p_display_label: values.displayLabel,
+      p_description: values.description,
+      p_is_active: values.isActive
     });
   } catch (error) {
     return networkError(error);

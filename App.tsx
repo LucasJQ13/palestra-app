@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -73,7 +73,7 @@ Notifications.setNotificationHandler({
 };
 
 type TabKey = string;
-type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'navegacion' | 'permisos_roles';
+type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'navegacion' | 'permisos_roles' | 'etiquetas_roles';
 type ContactBlock = { id: string; type: 'texto' | 'telefono' | 'email' | 'imagen' | 'direccion' | 'enlace' | 'boton' | 'red_social'; label: string; value: string };
 type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'buzon' | 'configuracion';
 type AppAdminConfig = {
@@ -216,6 +216,7 @@ const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof t
   { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
   { key: 'solicitudes', label: 'Solicitudes', icon: 'mail-unread-outline' },
   { key: 'permisos_roles', label: 'Permisos', icon: 'shield-checkmark-outline', systemOnly: true },
+  { key: 'etiquetas_roles', label: 'Etiquetas', icon: 'pricetags-outline', systemOnly: true },
   { key: 'navegacion', label: 'Navegacion', icon: 'navigate-outline', systemOnly: true },
   { key: 'periodo_motivador', label: 'Periodo', icon: 'flame-outline', systemOnly: true },
   { key: 'configuracion', label: 'Config', icon: 'settings-outline', systemOnly: true }
@@ -412,6 +413,14 @@ function canEditPageContent(session: Session | null, key: TabKey) {
 
 function roleLabel(role: Role) {
   return roleDefinitions.find((item) => item.role === role)?.label ?? role;
+}
+
+function roleLabelForProvince(role: Role, province?: string | null, labels: ProvinceRoleLabelRecord[] = []) {
+  if (!province) {
+    return roleLabel(role);
+  }
+  const custom = labels.find((item) => item.is_active && item.role_key === role && item.province.toLowerCase() === province.toLowerCase());
+  return custom?.display_label || roleLabel(role);
 }
 
 function roleShortLabel(role: Role) {
@@ -3527,6 +3536,14 @@ function ProfileScreen({
   const [permissionRoleDropdownOpen, setPermissionRoleDropdownOpen] = useState(false);
   const [rolePermissionRows, setRolePermissionRows] = useState<RolePermissionRecord[]>([]);
   const [rolePermissionDraft, setRolePermissionDraft] = useState<Permission[]>(rolePermissions.palestrista);
+  const [provinceRoleLabels, setProvinceRoleLabels] = useState<ProvinceRoleLabelRecord[]>([]);
+  const [roleLabelProvince, setRoleLabelProvince] = useState(session?.province ?? '');
+  const [roleLabelRole, setRoleLabelRole] = useState<Role>('animador_comunidad');
+  const [roleLabelDraft, setRoleLabelDraft] = useState('');
+  const [roleLabelDescription, setRoleLabelDescription] = useState('');
+  const [roleLabelActive, setRoleLabelActive] = useState(true);
+  const [roleLabelProvinceDropdownOpen, setRoleLabelProvinceDropdownOpen] = useState(false);
+  const [roleLabelRoleDropdownOpen, setRoleLabelRoleDropdownOpen] = useState(false);
   const [adminNewsTitle, setAdminNewsTitle] = useState('');
   const [adminNewsBody, setAdminNewsBody] = useState('');
   const [adminNewsCategory, setAdminNewsCategory] = useState('General');
@@ -3905,6 +3922,10 @@ function ProfileScreen({
   }, [initialPanel]);
 
   useEffect(() => {
+    fetchProvinceRoleLabels().then(setProvinceRoleLabels);
+  }, [session?.id]);
+
+  useEffect(() => {
     if (authMessage.startsWith('Cambio realizado.')) {
       onSavedFeedback('Cambios guardados');
     } else if (authMessage && !authMessage.startsWith('Completa provincia')) {
@@ -4117,6 +4138,19 @@ function ProfileScreen({
       }
     }
   }, [adminModule, session?.role, session?.province, motivadorProvinceOptions.length]);
+
+  useEffect(() => {
+    if (adminModule === 'etiquetas_roles' && session?.role === 'administrador') {
+      loadProvinceRoleLabels();
+    }
+  }, [adminModule, session?.role]);
+
+  useEffect(() => {
+    const current = provinceRoleLabels.find((item) => item.province === roleLabelProvince && item.role_key === roleLabelRole);
+    setRoleLabelDraft(current?.display_label ?? roleLabel(roleLabelRole));
+    setRoleLabelDescription(current?.description ?? '');
+    setRoleLabelActive(current?.is_active ?? true);
+  }, [provinceRoleLabels, roleLabelProvince, roleLabelRole]);
 
   useEffect(() => {
     if (!selectedAdminCommunity) {
@@ -4881,6 +4915,42 @@ function ProfileScreen({
     }
     await loadRolePermissionDraft(permissionRole);
     setAuthMessage(changeDone('Permisos del rango actualizados.'));
+  }
+
+  async function loadProvinceRoleLabels() {
+    setAuthMessage('Cargando etiquetas de rangos...');
+    const rows = await fetchProvinceRoleLabels();
+    setProvinceRoleLabels(rows);
+    setAuthMessage(rows.length > 0 ? 'Etiquetas cargadas.' : 'No hay etiquetas personalizadas cargadas.');
+  }
+
+  async function saveProvinceRoleLabelDraft() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede editar nombres visibles de rangos.');
+      return;
+    }
+    if (!roleLabelProvince) {
+      setAuthMessage('Elegir provincia.');
+      return;
+    }
+    if (!roleLabelDraft.trim()) {
+      setAuthMessage('Escribir el nombre visible del rango.');
+      return;
+    }
+
+    const { error } = await saveProvinceRoleLabel({
+      province: roleLabelProvince,
+      roleKey: roleLabelRole,
+      displayLabel: roleLabelDraft.trim(),
+      description: roleLabelDescription.trim(),
+      isActive: roleLabelActive
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadProvinceRoleLabels();
+    setAuthMessage(changeDone('Etiqueta de rango actualizada.'));
   }
 
   async function queueNotificationIfRequested(enabled: boolean, values: {
@@ -5834,7 +5904,7 @@ function ProfileScreen({
                 </View>
                 <View style={styles.adminUserHeaderText}>
                   <Text style={styles.accountMenuName}>{session.fullName}</Text>
-                  <Text style={styles.accountMenuSub}>{roleLabel(session.role)}</Text>
+                  <Text style={styles.accountMenuSub}>{roleLabelForProvince(session.role, session.province, provinceRoleLabels)}</Text>
                 </View>
               </View>
               {[
@@ -5867,7 +5937,7 @@ function ProfileScreen({
                 </View>
               </View>
               {session.email ? <Text style={styles.cardText}>{session.email}</Text> : null}
-              <Text style={styles.cardText}>{roleLabel(session.role)}</Text>
+              <Text style={styles.cardText}>{roleLabelForProvince(session.role, session.province, provinceRoleLabels)}</Text>
               <TouchableOpacity style={styles.photoChangeButton} onPress={uploadProfilePhoto}>
                 <Ionicons name="camera-outline" size={16} color={palette.red} />
                 <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
@@ -5877,7 +5947,7 @@ function ProfileScreen({
           {profilePanel === 'vista' ? <View style={styles.profileMetaGrid}>
             {[
               { label: 'Provincia', value: session.province, icon: 'map-outline' },
-              { label: 'Rango', value: roleLabel(session.role), icon: 'ribbon-outline' },
+              { label: 'Rango', value: roleLabelForProvince(session.role, session.province, provinceRoleLabels), icon: 'ribbon-outline' },
               { label: 'Contacto', value: session.contact, icon: 'chatbubble-ellipses-outline' },
               { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' }
             ].map((item) => (
@@ -6031,7 +6101,7 @@ function ProfileScreen({
               <Text style={styles.cardEyebrow}>{session.communityOfOrigin}</Text>
               <SectionTitle title="Mi comunidad" />
               <Text style={styles.cardText}>
-                Relacion activa: {roleLabel(session.role)} vinculado a {session.communityOfOrigin} en {session.province}.
+                Relacion activa: {roleLabelForProvince(session.role, session.province, provinceRoleLabels)} vinculado a {session.communityOfOrigin} en {session.province}.
                 {['animador_comunidad', 'coordinador_comunidad'].includes(session.role) ? ' Este rango puede editar su comunidad asignada.' : ''}
                 {['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? ' Este rango supervisa animadores y coordinadores de comunidad de su provincia.' : ''}
                 {['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ' Este rango supervisa estructura nacional y provincias.' : ''}
@@ -6065,7 +6135,7 @@ function ProfileScreen({
                   {item.title ? <Text style={styles.cardTitle}>{item.title}</Text> : null}
                   <Text style={styles.cardText}>{item.body}</Text>
                   <Text style={styles.feedMeta}>
-                    Por {item.authorName ?? 'Palestrista'} - {roleLabel((item.authorRole || 'palestrista') as Role)}
+                    Por {item.authorName ?? 'Palestrista'} - {roleLabelForProvince((item.authorRole || 'palestrista') as Role, session.province, provinceRoleLabels)}
                   </Text>
                   <Text style={styles.feedMeta}>
                     {item.createdAt ? new Date(item.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Fecha no disponible'}
@@ -6106,7 +6176,7 @@ function ProfileScreen({
               ) : communityMembers.map((member) => (
                 <View key={member.id} style={styles.innerNewsCard}>
                   <Text style={styles.cardTitle}>{member.full_name ?? member.email}</Text>
-                  <Text style={styles.cardText}>{roleLabel((member.role || 'palestrista') as Role)}</Text>
+                  <Text style={styles.cardText}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels)}</Text>
                   <TouchableOpacity
                     style={styles.actionPill}
                     onPress={() => openPublicProfile({
@@ -6127,7 +6197,7 @@ function ProfileScreen({
               <SectionTitle title="Encargados" />
               {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).map((member) => (
                 <View key={`leader-${member.id}`} style={styles.innerNewsCard}>
-                  <Text style={styles.cardText}>{member.full_name ?? member.email} - {roleLabel(member.role as Role)}</Text>
+                  <Text style={styles.cardText}>{member.full_name ?? member.email} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels)}</Text>
                   <TouchableOpacity
                     style={styles.actionPill}
                     onPress={() => openPublicProfile({
@@ -6266,7 +6336,7 @@ function ProfileScreen({
                                 <Ionicons name={selectedUser ? 'checkbox-outline' : 'square-outline'} size={18} color={selectedUser ? palette.red : palette.inkMuted} />
                                 <View style={styles.adminUserHeaderText}>
                                   <Text style={styles.dropdownItemText}>{user.full_name ?? user.email ?? 'Usuario'}</Text>
-                                  <Text style={styles.feedMeta}>{roleLabel((user.role || 'palestrista') as Role)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  <Text style={styles.feedMeta}>{roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
                                 </View>
                               </TouchableOpacity>
                             );
@@ -6368,7 +6438,7 @@ function ProfileScreen({
               </View>
               <View style={styles.adminUserHeaderText}>
                 <Text style={styles.credentialName}>{session.fullName}</Text>
-                <Text style={styles.cardText}>{roleLabel(session.role)}</Text>
+                <Text style={styles.cardText}>{roleLabelForProvince(session.role, session.province, provinceRoleLabels)}</Text>
                 <Text style={styles.cardText}>{session.communityOfOrigin}, {session.province}</Text>
               </View>
             </View>
@@ -7150,6 +7220,76 @@ function ProfileScreen({
                 </View>
               ) : null}
 
+              {adminModule === 'etiquetas_roles' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Nombres visibles por provincia</Text>
+                  <Text style={styles.cardText}>Personaliza como se ve un rango en una provincia sin cambiar su role_key interno, permisos ni jerarquia.</Text>
+                  <Text style={styles.cardEyebrow}>Provincia</Text>
+                  <TouchableOpacity style={styles.dropdownButton} onPress={() => setRoleLabelProvinceDropdownOpen(!roleLabelProvinceDropdownOpen)}>
+                    <Text style={styles.dropdownButtonText}>{roleLabelProvince || 'Seleccionar provincia'}</Text>
+                    <Ionicons name={roleLabelProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  </TouchableOpacity>
+                  {roleLabelProvinceDropdownOpen ? (
+                    <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                      {registrationCommunities.map((item) => (
+                        <TouchableOpacity key={item.province} style={styles.dropdownItem} onPress={() => { setRoleLabelProvince(item.province); setRoleLabelProvinceDropdownOpen(false); }}>
+                          <Text style={styles.dropdownItemText}>{item.province}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  <Text style={styles.cardEyebrow}>Rango interno</Text>
+                  <TouchableOpacity style={styles.dropdownButton} onPress={() => setRoleLabelRoleDropdownOpen(!roleLabelRoleDropdownOpen)}>
+                    <Text style={styles.dropdownButtonText}>{roleLabel(roleLabelRole)}</Text>
+                    <Ionicons name={roleLabelRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  </TouchableOpacity>
+                  {roleLabelRoleDropdownOpen ? (
+                    <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                      {roleDefinitions.filter((role) => role.role !== 'invitado' && role.role !== 'administrador').map((role) => (
+                        <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setRoleLabelRole(role.role as Role); setRoleLabelRoleDropdownOpen(false); }}>
+                          <Text style={styles.dropdownItemText}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  <TextInput style={styles.input} placeholder="Nombre visible para esta provincia" value={roleLabelDraft} onChangeText={setRoleLabelDraft} placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion interna opcional" value={roleLabelDescription} onChangeText={setRoleLabelDescription} multiline placeholderTextColor={inputPlaceholderColor} />
+                  <TouchableOpacity style={[styles.adminListRow, roleLabelActive && styles.adminListRowActive]} onPress={() => setRoleLabelActive(!roleLabelActive)}>
+                    <Ionicons name={roleLabelActive ? 'toggle' : 'toggle-outline'} size={24} color={roleLabelActive ? palette.red : palette.inkMuted} />
+                    <Text style={styles.adminQuickText}>{roleLabelActive ? 'Etiqueta activa' : 'Etiqueta inactiva: se usa nombre estandar'}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.profileCommunityPanel}>
+                    <Text style={styles.cardEyebrow}>Vista previa</Text>
+                    <Text style={styles.cardTitle}>{roleLabelForProvince(roleLabelRole, roleLabelProvince, provinceRoleLabels)}</Text>
+                    <Text style={styles.cardText}>Interno: {roleLabelRole}. Los permisos siguen usando este valor interno.</Text>
+                  </View>
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={loadProvinceRoleLabels}>
+                      <Ionicons name="refresh-outline" size={17} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Cargar etiquetas</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.primaryButton} onPress={saveProvinceRoleLabelDraft}>
+                      <Ionicons name="save-outline" size={17} color={palette.white} />
+                      <Text style={styles.primaryButtonText}>Guardar etiqueta</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {provinceRoleLabels.length > 0 ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Etiquetas cargadas</Text>
+                      {provinceRoleLabels.map((item) => (
+                        <View key={item.id} style={styles.adminListRow}>
+                          <Ionicons name={item.is_active ? 'pricetag-outline' : 'eye-off-outline'} size={20} color={palette.red} />
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.adminQuickText}>{item.province} - {roleLabel(item.role_key as Role)}</Text>
+                            <Text style={styles.cardText}>{item.display_label}{item.is_active ? '' : ' (inactiva)'}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
               {adminModule === 'configuracion' ? (
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Configuracion general</Text>
@@ -7285,7 +7425,7 @@ function ProfileScreen({
                                 </View>
                                 <View style={styles.adminUserHeaderText}>
                                   <Text style={styles.cardTitle}>{user.full_name ?? user.email ?? 'Usuario sin nombre'}</Text>
-                                  <Text style={styles.cardText}>{user.email ?? 'Sin email'} - {user.status} - {user.role}</Text>
+                                  <Text style={styles.cardText}>{user.email ?? 'Sin email'} - {user.status} - {roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels)}</Text>
                                 </View>
                               </View>
                               <Text style={styles.cardText}>Email: {user.email_confirmed_at ? 'confirmado' : 'sin confirmar'}</Text>

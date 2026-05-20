@@ -75,6 +75,13 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - Asesor, Vocal Diocesano, Coordinador Diocesano, Vocal Nacional y Coordinador Nacional ven una edicion reducida enfocada en datos de perfil, provincia, comunidad, estado y rol permitido.
 - Los rangos nacionales ahora pueden asignar rangos inferiores a su propio rango desde la app, manteniendo Administrador protegido.
 
+### Etiquetas visibles de rangos
+
+- Se agrego `supabase/patch_beta_province_role_labels.sql` con la tabla `province_role_labels` y RPC para leer/guardar etiquetas visibles por provincia.
+- Se agrego la herramienta admin `Etiquetas` para elegir provincia, rango interno y nombre visible.
+- La personalizacion solo cambia visualizacion; los permisos siguen usando el `role_key` interno.
+- Documentacion tecnica: `docs/roles_architecture.md`.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.
