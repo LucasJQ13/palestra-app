@@ -9,7 +9,7 @@ import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
 import { AppTheme, ThemeName, themePresets } from './src/theme/themes';
-import { auditLog, calendarActivities, communities, contactInfo, communityNews, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, profileRequestTypes, roleDefinitions } from './src/data/content';
+import { auditLog, calendarActivities, communities, contactInfo, communityNews, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
@@ -5528,12 +5528,12 @@ function ProfileScreen({
     setAuthMessage(changeDone('Aceptaste el nuevo rango de coordinación.'));
   }
 
-  function submitUserRequest(title: string) {
+  async function submitUserRequest(title: string) {
     if (!session) {
       return;
     }
     if (userRequestText.trim().length === 0) {
-      setAuthMessage('Escribir una descripcion de hasta 500 caracteres para enviar la solicitud.');
+      setAuthMessage('Escribí una descripción de hasta 500 caracteres para enviar la solicitud.');
       return;
     }
 
@@ -5545,12 +5545,13 @@ function ProfileScreen({
       createdAt: new Date().toISOString(),
       status: 'pendiente' as const
     };
-    createUserRequest(title, newRequest.definition).then(async ({ error }) => {
-      if (!error) {
-        await loadMyRequests();
-        await loadAdminRequests();
-      }
-    });
+    const { error } = await createUserRequest(title, newRequest.definition);
+    if (error) {
+      setAuthMessage(error.message || 'No se pudo enviar la solicitud.');
+      return;
+    }
+    await loadMyRequests();
+    await loadAdminRequests();
     setSentRequests((current) => [
       ...current,
       newRequest
@@ -5561,7 +5562,7 @@ function ProfileScreen({
     ]);
     setSelectedRequest(null);
     setUserRequestText('');
-    setAuthMessage(changeDone('Solicitud enviada al panel del administrador.'));
+    setAuthMessage(changeDone(title === 'Solicitud Especial' ? 'Solicitud enviada a la dirigencia diocesana.' : 'Solicitud enviada al panel del administrador.'));
   }
 
   async function submitLeadershipChangeRequest() {
@@ -6479,33 +6480,48 @@ function ProfileScreen({
             </View>
             <Text style={styles.cardText}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
           </View> : null}
-          {profilePanel === 'vista' && session.role !== 'administrador' ? <SectionTitle title="Solicitudes" /> : null}
-          {profilePanel === 'vista' && session.role !== 'administrador' ? profileRequestTypes.map((item, index) => (
-            <View key={`${item}-${index}`}>
-              <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === item ? null : item)}>
-                <Text style={styles.cardTitle}>{item}</Text>
-                <Text style={styles.expandHint}>{selectedRequest === item ? 'Cerrar solicitud' : 'Abrir solicitud'}</Text>
+          {profilePanel === 'vista' && session.role !== 'administrador' ? (
+            <View style={styles.profileCommunityPanel}>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => setSelectedRequest(selectedRequest === 'menu' ? null : 'menu')}>
+                <Ionicons name="mail-unread-outline" size={17} color={palette.white} />
+                <Text style={styles.primaryButtonText}>Solicitudes</Text>
               </TouchableOpacity>
-              {selectedRequest === item ? (
-                <View style={styles.profileCommunityPanel}>
-                  <Text style={styles.cardEyebrow}>Solicitud</Text>
-                  <Text style={styles.cardTitle}>{item}</Text>
-                  <Text style={styles.cardText}>Escribi el motivo de la solicitud. Maximo 500 caracteres.</Text>
-                  <TextInput
-                    style={[styles.input, styles.textArea]}
-                    placeholder="Detalle de la solicitud"
-                    value={userRequestText}
-                    onChangeText={(value) => setUserRequestText(value.slice(0, 500))}
-                    multiline
-                   placeholderTextColor={inputPlaceholderColor} />
-                  <Text style={styles.cardText}>{userRequestText.length}/500</Text>
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => submitUserRequest(item)}>
-                    <Text style={styles.primaryButtonText}>Enviar solicitud</Text>
+              {selectedRequest === 'menu' || (selectedRequest && ['Solicitud de perseverancia', 'Solicitud Especial'].includes(selectedRequest)) ? (
+                <View style={styles.inlineEditorPanel}>
+                  {roleRank(session.role) < roleRank('sedimentador') ? (
+                    <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === 'Solicitud de perseverancia' ? 'menu' : 'Solicitud de perseverancia')}>
+                      <Text style={styles.cardTitle}>Solicitud de Perseverancia</Text>
+                      <Text style={styles.cardText}>Para pedir revisión del camino de perseverancia.</Text>
+                      <Text style={styles.expandHint}>{selectedRequest === 'Solicitud de perseverancia' ? 'Cerrar solicitud' : 'Abrir solicitud'}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === 'Solicitud Especial' ? 'menu' : 'Solicitud Especial')}>
+                    <Text style={styles.cardTitle}>Solicitud Especial</Text>
+                    <Text style={styles.cardText}>Contacto con Vocal Diocesano o Coordinador Diocesano de tu provincia.</Text>
+                    <Text style={styles.expandHint}>{selectedRequest === 'Solicitud Especial' ? 'Cerrar solicitud' : 'Abrir solicitud'}</Text>
                   </TouchableOpacity>
+                  {selectedRequest && selectedRequest !== 'menu' ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Solicitud</Text>
+                      <Text style={styles.cardTitle}>{selectedRequest === 'Solicitud de perseverancia' ? 'Solicitud de Perseverancia' : selectedRequest}</Text>
+                      <Text style={styles.cardText}>Escribí el motivo de la solicitud. Máximo 500 caracteres.</Text>
+                      <TextInput
+                        style={[styles.input, styles.textArea]}
+                        placeholder={selectedRequest === 'Solicitud Especial' ? 'Escribí tu consulta para la dirigencia diocesana' : 'Detalle de la solicitud'}
+                        value={userRequestText}
+                        onChangeText={(value) => setUserRequestText(value.slice(0, 500))}
+                        multiline
+                       placeholderTextColor={inputPlaceholderColor} />
+                      <Text style={styles.cardText}>{userRequestText.length}/500</Text>
+                      <TouchableOpacity style={styles.primaryButton} onPress={() => submitUserRequest(selectedRequest)}>
+                        <Text style={styles.primaryButtonText}>Enviar solicitud</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
             </View>
-          )) : null}
+          ) : null}
           {profilePanel === 'vista' && session.role !== 'administrador' ? (
             <View style={styles.profileCommunityPanel}>
               <Text style={styles.cardEyebrow}>Solicitudes enviadas</Text>

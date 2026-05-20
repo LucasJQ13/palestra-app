@@ -101,6 +101,13 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - En `Usuarios`, el email queda visible solo para Administrador dentro de gestion tecnica.
 - La credencial digital usa etiquetas visibles de rango por provincia mediante `roleLabelForProvince`.
 
+### Solicitudes de perfil
+
+- `Solicitudes` ahora se abre como boton dentro del perfil.
+- `Solicitud de Perseverancia` solo aparece para rangos inferiores a Sedimentador.
+- `Solicitud Especial` queda disponible para contactar dirigencia diocesana.
+- El envio espera confirmacion real de Supabase antes de mostrar exito.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.
