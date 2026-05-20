@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -779,8 +779,10 @@ export default function App() {
   const [contentVersion, setContentVersion] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [appMessage, setAppMessage] = useState('');
+  const [successToastVisible, setSuccessToastVisible] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
   const lastBackPressRef = useRef(0);
+  const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const touchPointerOpacity = useRef(new Animated.Value(0)).current;
   const appTheme = themePresets[themeName] ?? themePresets.default;
@@ -788,6 +790,26 @@ export default function App() {
   const { width: viewportWidth } = useWindowDimensions();
   const compactViewport = viewportWidth < 390;
   const veryCompactViewport = viewportWidth < 340;
+
+  const showToastSuccess = useCallback((message = 'Cambios guardados') => {
+    setAppMessage(message);
+    setSuccessToastVisible(true);
+    if (successToastTimerRef.current) {
+      clearTimeout(successToastTimerRef.current);
+    }
+    successToastTimerRef.current = setTimeout(() => {
+      setSuccessToastVisible(false);
+      setAppMessage('');
+    }, 1500);
+  }, []);
+
+  const showToastError = useCallback((message = 'No se pudo guardar') => {
+    setAppMessage(message);
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+    }
+    setTimeout(() => setAppMessage(''), 1800);
+  }, []);
 
   const currentDateTimeLabel = useMemo(() => {
     const date = currentDateTime.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -1162,7 +1184,7 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} />;
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} />;
   }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled, themeName, appTheme]);
 
   return (
@@ -1233,7 +1255,15 @@ export default function App() {
             {!veryCompactViewport ? <Text numberOfLines={1} style={styles.headerDateTime}>{currentDateTimeLabel}</Text> : null}
           </View>
         </View>
-        {appMessage ? (
+        {successToastVisible ? (
+          <View pointerEvents="none" style={styles.successToastOverlay}>
+            <View style={styles.successToastCard}>
+              <Ionicons name="checkmark-circle" size={22} color={palette.white} />
+              <Text style={styles.successToastText}>Cambios guardados</Text>
+            </View>
+          </View>
+        ) : null}
+        {appMessage && !successToastVisible ? (
           <View pointerEvents="none" style={styles.appToast}>
             <Text style={styles.appToastText}>{appMessage}</Text>
           </View>
@@ -3412,6 +3442,8 @@ function ProfileScreen({
   onTabsChanged,
   onContentChanged,
   onNavigate,
+  onSavedFeedback,
+  onErrorFeedback,
   initialPanel = 'vista'
 }: {
   session: Session | null;
@@ -3428,6 +3460,8 @@ function ProfileScreen({
   onTabsChanged: () => Promise<void>;
   onContentChanged: () => Promise<void>;
   onNavigate: (tab: TabKey) => void;
+  onSavedFeedback: (message?: string) => void;
+  onErrorFeedback: (message?: string) => void;
   initialPanel?: ProfilePanel;
 }) {
   const [showCommunity, setShowCommunity] = useState(false);
@@ -3869,6 +3903,17 @@ function ProfileScreen({
       setProfilePanel(initialPanel);
     }
   }, [initialPanel]);
+
+  useEffect(() => {
+    if (authMessage.startsWith('Cambio realizado.')) {
+      onSavedFeedback('Cambios guardados');
+    } else if (authMessage && !authMessage.startsWith('Completa provincia')) {
+      const lowerMessage = authMessage.toLowerCase();
+      if (lowerMessage.includes('error') || lowerMessage.includes('no se pudo') || lowerMessage.includes('failed')) {
+        onErrorFeedback(authMessage);
+      }
+    }
+  }, [authMessage, onErrorFeedback, onSavedFeedback]);
 
   function updateAdminConfigSection<K extends keyof AppAdminConfig>(section: K, patch: Partial<AppAdminConfig[K]>) {
     setAdminConfigDraft((current) => ({
@@ -8269,6 +8314,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     textAlign: 'center'
+  },
+  successToastOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(12, 25, 38, 0.18)'
+  },
+  successToastCard: {
+    minHeight: 58,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    backgroundColor: 'rgba(45, 141, 200, 0.92)',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 8
+  },
+  successToastText: {
+    color: palette.white,
+    fontSize: 16,
+    fontWeight: '900'
   },
   maintenancePanel: {
     backgroundColor: palette.white,

@@ -63,6 +63,12 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - Documentacion: `docs/github_actions_apk.md`.
 - El flujo EAS sigue disponible con `npm run build:apk`.
 
+### Confirmaciones de guardado
+
+- Se agrego un toast reutilizable de exito con el texto `Cambios guardados`.
+- El toast se muestra solo cuando las acciones devuelven el mensaje interno `Cambio realizado...`, es decir, despues de una respuesta de guardado correcta.
+- Los errores se siguen mostrando aparte para evitar exitos falsos.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.
