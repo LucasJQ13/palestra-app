@@ -115,6 +115,13 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - El Administrador puede ocultar o restaurar contenido fallback; la decision se guarda en `admin_config.settings.hiddenFallbackContent`.
 - Home, Noticias/Agenda y calendario respetan esa lista para evitar que contenido demo aparezca como real.
 
+### Alias de rangos
+
+- Se agrego la herramienta `Rangos` para duplicar/renombrar rangos como alias visuales persistentes.
+- Los alias se guardan en `admin_config.settings.roleAliases`.
+- Cada alias hereda permisos del rango base y no crea roles internos nuevos.
+- La documentacion se amplio en `docs/roles_architecture.md`.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.

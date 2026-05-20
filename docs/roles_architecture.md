@@ -70,3 +70,17 @@ Crear roles dinamicos sin migrar esa base podria romper permisos o dejar usuario
 5. Recien ahi habilitar una herramienta segura para duplicar o crear rangos.
 
 Hasta completar esa migracion, la opcion segura es personalizar nombres visibles sin cambiar `role_key`.
+
+## Alias de rangos en Beta
+
+La herramienta `Rangos` del Panel Dirigencial implementa una duplicacion segura como alias visual:
+
+- El Administrador elige un rango base.
+- Define un nuevo nombre visible.
+- Decide si aplica globalmente o solo a una provincia.
+- Define si queda activo o inactivo.
+- La configuracion se guarda en `admin_config.settings.roleAliases`.
+
+Un alias no crea un `role_key` nuevo. Hereda siempre los permisos del rango base. Por ejemplo, un alias de `animador_comunidad` puede llamarse `Animador del Iniciador`, pero internamente sigue siendo `animador_comunidad`.
+
+Esto permite probar nombres y estructuras sin romper Supabase, RLS ni la app instalada.
