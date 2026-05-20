@@ -61,7 +61,7 @@ export const roleHierarchy: RoleDefinition[] = [
     label: 'Vocal Diocesano',
     rank: 5,
     scope: 'provincia',
-    description: 'Sedimentador a cargo de un area del movimiento. Gestiona comunidades, animadores y coordinadores de comunidad de su provincia.',
+    description: 'Sedimentador a cargo de un área del movimiento. Gestiona comunidades, animadores y coordinadores de comunidad de su provincia.',
     approval: 'Debe ser aprobado por el Coordinador Diocesano.',
     approverRoles: ['coordinador_diocesano', 'administrador']
   },
@@ -70,7 +70,7 @@ export const roleHierarchy: RoleDefinition[] = [
     label: 'Asesor',
     rank: 6,
     scope: 'provincia',
-    description: 'Tiene la misma potestad operativa que un Vocal Diocesano dentro de su provincia.',
+    description: 'Acompaña y colabora con la organización de su provincia.',
     approval: 'Debe ser aprobado por el Coordinador Diocesano.',
     approverRoles: ['coordinador_diocesano', 'administrador']
   },
@@ -97,7 +97,7 @@ export const roleHierarchy: RoleDefinition[] = [
     label: 'Coordinador Nacional',
     rank: 9,
     scope: 'nacional',
-    description: 'Esta a cargo de todas las provincias, vocales nacionales y toda la estructura anterior.',
+    description: 'Está a cargo de todas las provincias, vocales nacionales y toda la estructura anterior.',
     approval: 'Debe ser aprobado por el Coordinador Nacional anterior.',
     approverRoles: ['coordinador_nacional', 'administrador']
   },
@@ -106,8 +106,8 @@ export const roleHierarchy: RoleDefinition[] = [
     label: 'Administrador',
     rank: 10,
     scope: 'sistema',
-    description: 'Tiene potestad absoluta sobre la aplicacion, sin restricciones funcionales.',
-    approval: 'Perfil tecnico asignado por administracion.',
+    description: 'Perfil técnico de administración de la app.',
+    approval: 'Perfil técnico asignado por administración.',
     approverRoles: ['administrador']
   }
 ];

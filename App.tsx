@@ -207,7 +207,7 @@ function normalizeAdminConfig(config?: Partial<AppAdminConfig> | null): AppAdmin
 }
 
 const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof typeof Ionicons.glyphMap; systemOnly?: boolean }> = [
-  { key: 'resumen', label: 'Dashboard', icon: 'grid-outline' },
+  { key: 'resumen', label: 'Panel', icon: 'grid-outline' },
   { key: 'identidad', label: 'Identidad', icon: 'sparkles-outline', systemOnly: true },
   { key: 'home', label: 'Home', icon: 'home-outline', systemOnly: true },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', systemOnly: true },
@@ -217,7 +217,7 @@ const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof t
   { key: 'solicitudes', label: 'Solicitudes', icon: 'mail-unread-outline' },
   { key: 'permisos_roles', label: 'Permisos', icon: 'shield-checkmark-outline', systemOnly: true },
   { key: 'etiquetas_roles', label: 'Etiquetas', icon: 'pricetags-outline', systemOnly: true },
-  { key: 'navegacion', label: 'Navegacion', icon: 'navigate-outline', systemOnly: true },
+  { key: 'navegacion', label: 'Navegación', icon: 'navigate-outline', systemOnly: true },
   { key: 'periodo_motivador', label: 'Periodo', icon: 'flame-outline', systemOnly: true },
   { key: 'configuracion', label: 'Config', icon: 'settings-outline', systemOnly: true }
 ];
@@ -457,7 +457,7 @@ const permissionFriendlyLabels: Record<Permission, string> = {
   aprobar_sedimentadores: 'Puede aprobar sedimentadores',
   otorgar_roles_provincia: 'Puede otorgar roles provinciales',
   otorgar_roles_diocesanos: 'Puede otorgar roles diocesanos',
-  ver_seccion_asesores: 'Puede ver seccion de asesores',
+  ver_seccion_asesores: 'Puede ver sección de asesores',
   gestionar_permisos: 'Puede gestionar permisos',
   gestionar_sistema: 'Puede gestionar sistema',
   gestionar_roles_globales: 'Puede gestionar roles globales',
@@ -528,7 +528,7 @@ function notificationPermissionLabel(session: Session | null) {
   if (!session || (!hasPermission(session, 'enviar_notificaciones') && !['animador_comunidad', 'coordinador_comunidad'].includes(session.role))) {
     return 'La notificacion quedara disponible solo para roles con permiso de enviar notificaciones.';
   }
-  return 'Tambien se dejara preparada una notificacion push para los usuarios alcanzados.';
+  return 'También se dejará preparada una notificación push para los usuarios alcanzados.';
 }
 
 async function getPushDeviceId() {
@@ -570,7 +570,7 @@ function getFriendlyPushError(error: unknown) {
 
 async function requestAndRegisterPushToken(session: Session | null, requestPermission: boolean) {
   if (!session?.id) {
-    return { status: 'missing-session', token: null, error: 'Inicia sesion para activar notificaciones.', technicalError: null } satisfies PushRegistrationResult;
+    return { status: 'missing-session', token: null, error: 'Iniciá sesión para activar notificaciones.', technicalError: null } satisfies PushRegistrationResult;
   }
   if (Platform.OS === 'web') {
     return { status: 'web', token: null, projectId: easProjectId, deviceId: null, appRuntimeOwner, saved: false, error: 'Las notificaciones push se prueban en celular.', technicalError: null } satisfies PushRegistrationResult;
@@ -660,7 +660,7 @@ function statusLabel(status: UserStatus) {
   if (status === 'bloqueado') {
     return 'Bloqueado';
   }
-  return 'Pendiente de aprobacion';
+  return 'Pendiente de aprobación';
 }
 
 function changeDone(detail: string) {
@@ -689,18 +689,18 @@ function isValidEmail(value: string) {
 function safeAuthError(message?: string) {
   const text = (message ?? '').toLowerCase();
   if (text.includes('invalid login') || text.includes('invalid credentials')) {
-    return 'Mail o contrasena incorrectos.';
+    return 'Mail o contraseña incorrectos.';
   }
   if (text.includes('email not confirmed')) {
-    return 'Tu correo todavia no esta confirmado.';
+    return 'Tu correo todavía no está confirmado.';
   }
   if (text.includes('already') || text.includes('existe')) {
     return 'Ya existe un usuario con ese correo.';
   }
   if (text.includes('password') || text.includes('contrasena')) {
-    return 'Revisa la contrasena indicada.';
+    return 'Revisá la contraseña indicada.';
   }
-  return 'No pudimos completar la accion. Revisa los datos e intenta nuevamente.';
+  return 'No pudimos completar la acción. Revisá los datos e intenta nuevamente.';
 }
 
 function AppLoadingScreen() {
@@ -1368,7 +1368,7 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
 
       if (uploadError) {
         setDraftBlocks((current) => [...current, { id: `imagen-${Date.now()}`, type: 'imagen', value: asset.uri }]);
-        setEditorMessage(`No pude subir a Supabase (${uploadError.message}). La imagen quedo cargada localmente para esta edicion.`);
+        setEditorMessage(`No pude subir a Supabase (${uploadError.message}). La imagen quedó cargada localmente para esta edición.`);
         return;
       }
 
@@ -1648,7 +1648,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
 
       <EditableIntro content={content} editor={editor} />
 
-      <SectionTitle title="Accesos rapidos" />
+      <SectionTitle title="Accesos rápidos" />
       <View style={styles.homeTileGrid}>
         {homeTiles.map((tile) => (
           <TouchableOpacity key={tile.tab} style={styles.homeTile} activeOpacity={0.88} onPress={() => onNavigate(tile.tab)}>
@@ -1759,17 +1759,12 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
         </TouchableOpacity>
       ))}
 
-      {canAccessPrivate(session) ? (
-        <View style={styles.notice}>
-          <Ionicons name="lock-open-outline" size={20} color={palette.green} />
-          <Text style={styles.noticeText}>Tu usuario esta aprobado. Ya podes ver contenido interno segun tus permisos.</Text>
-        </View>
-      ) : (
+      {!canAccessPrivate(session) ? (
         <View style={styles.notice}>
           <Ionicons name="lock-closed-outline" size={20} color={palette.red} />
-          <Text style={styles.noticeText}>Algunas secciones requieren registro y aprobacion de un coordinador.</Text>
+          <Text style={styles.noticeText}>Algunas secciones requieren registro y aprobación de un coordinador.</Text>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -2220,7 +2215,7 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
       ))}
       <View style={styles.notice}>
         <Ionicons name="archive-outline" size={20} color={palette.red} />
-        <Text style={styles.noticeText}>El registro historico de PM queda disponible aca; las fechas cargadas en Supabase tambien se reflejan en el calendario de Noticias.</Text>
+        <Text style={styles.noticeText}>El registro histórico de PM queda disponible acá; las fechas cargadas en Supabase también se reflejan en el calendario de Noticias.</Text>
       </View>
     </View>
   );
@@ -2727,7 +2722,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                   </View>
                   {showContactBox ? (
                     <View style={styles.inlineEditorPanel}>
-                      <Text style={styles.cardEyebrow}>Mensaje a animacion/coordinacion</Text>
+                      <Text style={styles.cardEyebrow}>Mensaje a animación/coordinación</Text>
                       {!session ? (
                         <>
                           <Text style={styles.inputLabel}>Nombre</Text>
@@ -2885,7 +2880,7 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
 }
 
 function MaintenanceScreen({ adminConfig, onNavigate }: { adminConfig: AppAdminConfig; onNavigate: (tab: TabKey) => void }) {
-  const message = adminConfig.settings.globalMessage.trim() || 'Estamos realizando tareas de mantenimiento. La aplicacion volvera a estar disponible proximamente.';
+  const message = adminConfig.settings.globalMessage.trim() || 'Estamos realizando tareas de mantenimiento. La aplicación volverá a estar disponible próximamente.';
   return (
     <View style={styles.stack}>
       <View style={styles.maintenancePanel}>
@@ -2999,7 +2994,7 @@ function LibrarySectionScreen({
     }
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
-      setMessage('Para publicar contenido tenes que iniciar sesion con una cuenta real de Supabase. El acceso de prueba interno no puede guardar publicaciones.');
+      setMessage('Para publicar contenido tenés que iniciar sesión con una cuenta real de Supabase. El acceso de prueba interno no puede guardar publicaciones.');
       return;
     }
     const { error } = await saveLibraryItem({
@@ -3151,7 +3146,7 @@ function EmptyRemoteContent({ title }: { title: string }) {
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardText}>No hay contenido publicado en Supabase para esta seccion todavia.</Text>
+      <Text style={styles.cardText}>No hay contenido publicado en Supabase para esta sección todavía.</Text>
     </View>
   );
 }
@@ -3163,7 +3158,7 @@ function GenericPageScreen({ title, content, editor }: { title: string; content?
       <EditableIntro content={content} editor={editor} />
       {!content ? (
         <View style={styles.card}>
-          <Text style={styles.cardText}>Esta pagina todavia no tiene contenido cargado.</Text>
+          <Text style={styles.cardText}>Esta página todavía no tiene contenido cargado.</Text>
         </View>
       ) : null}
     </View>
@@ -3224,7 +3219,7 @@ function ForumScreen({ session, title }: { session: Session | null; title: strin
 
   async function submitTopic() {
     if (!canCreate) {
-      setForumMessage('Inicia sesion con un usuario aprobado para crear temas.');
+      setForumMessage('Iniciá sesión con un usuario aprobado para crear temas.');
       return;
     }
     if (!selectedCategoryId || !topicTitle.trim() || !topicBody.trim()) {
@@ -3290,7 +3285,7 @@ function ForumScreen({ session, title }: { session: Session | null; title: strin
 
   async function submitComment() {
     if (!canCreate) {
-      setForumMessage('Inicia sesion con un usuario aprobado para comentar.');
+      setForumMessage('Iniciá sesión con un usuario aprobado para comentar.');
       return;
     }
     if (!selectedTopic || !commentDraft.trim()) {
@@ -3347,7 +3342,7 @@ function ForumScreen({ session, title }: { session: Session | null; title: strin
               <Ionicons name="add-circle-outline" size={17} color={palette.white} />
               <Text style={styles.primaryButtonText}>Crear tema</Text>
             </TouchableOpacity>
-          ) : <Text style={styles.cardText}>Inicia sesion para crear temas o comentar.</Text>}
+          ) : <Text style={styles.cardText}>Iniciá sesión para crear temas o comentar.</Text>}
         </View>
       ) : null}
       {showComposer ? (
@@ -3956,7 +3951,7 @@ function ProfileScreen({
 
   async function saveAdminConfigDraft(scope: string) {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo el administrador puede guardar configuracion global.');
+      setAuthMessage('Solo el administrador puede guardar configuración global.');
       return;
     }
     setAuthMessage(`Guardando ${scope}...`);
@@ -4070,7 +4065,7 @@ function ProfileScreen({
       return;
     }
     if (!pmProvince || !pmNumber.trim() || pmSelectedDates.length === 0 || !pmRetreatHouse.trim() || !pmAddress.trim() || !pmOpeningTime.trim() || !pmClosingTime.trim()) {
-      setAuthMessage('Completa tipo, numero, provincia, fechas, casa, direccion y horarios.');
+      setAuthMessage('Completá tipo, número, provincia, fechas, casa, dirección y horarios.');
       return;
     }
     const { error } = await saveMotivadorPeriod({
@@ -4289,7 +4284,7 @@ function ProfileScreen({
 
   async function submitNewMailboxMessage() {
     if (!session || session.role === 'invitado') {
-      setAuthMessage('Inicia sesion para enviar mensajes.');
+      setAuthMessage('Iniciá sesión para enviar mensajes.');
       return;
     }
     if (!mailboxDraft.trim()) {
@@ -4437,7 +4432,7 @@ function ProfileScreen({
       nextErrors.email = 'Ingresa un correo valido';
     }
     if (!authPassword) {
-      nextErrors.password = 'La contrasena es obligatoria';
+      nextErrors.password = 'La contraseña es obligatoria';
     }
     if (authMode === 'register') {
       if (!registerFullName.trim()) {
@@ -4450,10 +4445,10 @@ function ProfileScreen({
         nextErrors.community = 'Selecciona tu comunidad';
       }
       if (authPassword.length < 6) {
-        nextErrors.password = 'La contrasena debe tener al menos 6 caracteres';
+        nextErrors.password = 'La contraseña debe tener al menos 6 caracteres';
       }
       if (authPasswordConfirm !== authPassword) {
-        nextErrors.confirm = 'Las contrasenas no coinciden';
+        nextErrors.confirm = 'Las contraseñas no coinciden';
       }
     }
     setAuthErrors(nextErrors);
@@ -4471,7 +4466,7 @@ function ProfileScreen({
       return Promise.resolve(true);
     }
 
-    const message = 'Al cambiar tu provincia o comunidad, tu rango actual puede volver a Sedimentador hasta nueva aprobacion.';
+    const message = 'Al cambiar tu provincia o comunidad, tu rango actual puede volver a Sedimentador hasta nueva aprobación.';
     if (Platform.OS === 'web') {
       return Promise.resolve(typeof window === 'undefined' ? true : window.confirm(message));
     }
@@ -4495,7 +4490,7 @@ function ProfileScreen({
       return;
     }
     await loadRealProfile(data.user.id, authEmail.trim());
-    setAuthMessage('Sesion iniciada.');
+    setAuthMessage('Sesión iniciada.');
   }
 
   async function registerReal() {
@@ -4523,11 +4518,11 @@ function ProfileScreen({
 
     if (data.session) {
       await loadRealProfile(data.user.id, authEmail.trim());
-      setAuthMessage('Registro creado. Queda pendiente de aprobacion.');
+      setAuthMessage('Registro creado. Queda pendiente de aprobación.');
       return;
     }
 
-    setAuthMessage('Registro creado como Palestrista pendiente. Inicia sesion cuando el email este confirmado o un administrador lo habilite.');
+    setAuthMessage('Registro creado como Palestrista pendiente. Iniciá sesión cuando el email esté confirmado o un administrador lo habilite.');
   }
 
   async function signOutReal() {
@@ -4539,7 +4534,7 @@ function ProfileScreen({
   async function refreshRealProfile() {
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
-      setAuthMessage('No hay una sesion real activa. Cerrar e iniciar sesion otra vez.');
+      setAuthMessage('No hay una sesión real activa. Cerrá e iniciá sesión otra vez.');
       return;
     }
 
@@ -4565,7 +4560,7 @@ function ProfileScreen({
 
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
-      setAuthMessage('Perfil de prueba actualizado visualmente. Inicia sesion real para guardar en Supabase.');
+      setAuthMessage('Perfil de prueba actualizado visualmente. Iniciá sesión real para guardar en Supabase.');
       onSessionChange({
         ...session,
         fullName: editFullName || session.fullName,
@@ -4625,7 +4620,7 @@ function ProfileScreen({
 
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
-      setAuthMessage('Inicia sesion real para subir una foto.');
+      setAuthMessage('Iniciá sesión real para subir una foto.');
       return;
     }
 
@@ -4680,7 +4675,7 @@ function ProfileScreen({
       const firstProvince = items.find((item) => item.province)?.province ?? 'Sin provincia';
       setSelectedUsersProvince(firstProvince);
     }
-    setAuthMessage(items.length > 0 ? 'Usuarios cargados.' : 'No se encontraron usuarios o falta ejecutar el SQL de administracion.');
+    setAuthMessage(items.length > 0 ? 'Usuarios cargados.' : 'No se encontraron usuarios o falta ejecutar el SQL de administración.');
   }
 
   async function createBasicAdminUser() {
@@ -4693,7 +4688,7 @@ function ProfileScreen({
       return;
     }
     if (adminCreatePassword.length < 6) {
-      setAuthMessage('La contrasena debe tener al menos 6 caracteres.');
+      setAuthMessage('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
 
@@ -4791,7 +4786,7 @@ function ProfileScreen({
       return;
     }
 
-    const message = 'Esta accion eliminara el acceso del usuario y liberara su correo para reutilizarlo. Se guardara un backup interno antes de eliminar.';
+    const message = 'Esta acción eliminará el acceso del usuario y liberará su correo para reutilizarlo. Se guardará un backup interno antes de eliminar.';
     const confirmed = Platform.OS === 'web'
       ? (typeof window === 'undefined' ? true : window.confirm(message))
       : await new Promise<boolean>((resolve) => {
@@ -4845,7 +4840,7 @@ function ProfileScreen({
     }
     await diagnoseUserLogin();
     await loadAdminUsers();
-    setAuthMessage(changeDone('Usuario reparado. Probalo iniciando sesion nuevamente.'));
+    setAuthMessage(changeDone('Usuario reparado. Probalo iniciando sesión nuevamente.'));
   }
 
   async function deleteUserByDiagnosticEmail() {
@@ -4854,7 +4849,7 @@ function ProfileScreen({
       setAuthMessage('Ingresa un mail valido para liberar.');
       return;
     }
-    const message = `Esta accion eliminara Auth/Profile/datos vinculados de ${email} y liberara el correo. Se guardara backup interno antes de eliminar.`;
+    const message = `Esta acción eliminará Auth/Profile/datos vinculados de ${email} y liberará el correo. Se guardará backup interno antes de eliminar.`;
     const confirmed = Platform.OS === 'web'
       ? (typeof window === 'undefined' ? true : window.confirm(message))
       : await new Promise<boolean>((resolve) => {
@@ -5177,7 +5172,7 @@ function ProfileScreen({
       return;
     }
     if (editableTabs.some((item) => item.key === key)) {
-      setAuthMessage('Ya existe una seccion con esa clave interna.');
+      setAuthMessage('Ya existe una sección con esa clave interna.');
       return;
     }
     if (!isIoniconName(newTabIcon)) {
@@ -5254,13 +5249,13 @@ function ProfileScreen({
       return;
     }
     if (protectedTabKeys.has(key) || defaultTabByKey.has(key)) {
-      setAuthMessage('Esta seccion es critica o propia de la app. Podes ocultarla, pero no eliminarla.');
+      setAuthMessage('Esta sección es crítica o propia de la app. Podés ocultarla, pero no eliminarla.');
       return;
     }
     const confirmed = Platform.OS === 'web'
-      ? (typeof window === 'undefined' ? true : window.confirm('¿Seguro que deseas eliminar esta seccion? Tambien se puede perder contenido asociado.'))
+      ? (typeof window === 'undefined' ? true : window.confirm('¿Seguro que deseas eliminar esta sección? También se puede perder contenido asociado.'))
       : await new Promise<boolean>((resolve) => {
-        Alert.alert('Eliminar seccion', '¿Seguro que deseas eliminar esta seccion? Tambien se puede perder contenido asociado.', [
+        Alert.alert('Eliminar sección', '¿Seguro que deseas eliminar esta sección? También se puede perder contenido asociado.', [
           { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
           { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
         ]);
@@ -5275,18 +5270,18 @@ function ProfileScreen({
     }
     await onTabsChanged();
     await onContentChanged();
-    setAuthMessage(changeDone('Seccion eliminada.'));
+    setAuthMessage(changeDone('Sección eliminada.'));
   }
 
   async function adminRestoreDefaultNavigation() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo el administrador puede restaurar navegacion.');
+      setAuthMessage('Solo el administrador puede restaurar navegación.');
       return;
     }
     const confirmed = Platform.OS === 'web'
-      ? (typeof window === 'undefined' ? true : window.confirm('¿Restaurar la navegacion predeterminada? Se reemplazaran nombres, iconos, orden y visibilidad base.'))
+      ? (typeof window === 'undefined' ? true : window.confirm('¿Restaurar la navegación predeterminada? Se reemplazarán nombres, iconos, orden y visibilidad base.'))
       : await new Promise<boolean>((resolve) => {
-        Alert.alert('Restaurar navegacion', '¿Restaurar la navegacion predeterminada? Se reemplazaran nombres, iconos, orden y visibilidad base.', [
+        Alert.alert('Restaurar navegación', '¿Restaurar la navegación predeterminada? Se reemplazarán nombres, iconos, orden y visibilidad base.', [
           { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
           { text: 'Restaurar', style: 'destructive', onPress: () => resolve(true) }
         ]);
@@ -5301,7 +5296,7 @@ function ProfileScreen({
     }
     setEditingTabs({});
     await onTabsChanged();
-    setAuthMessage(changeDone('Navegacion predeterminada restaurada.'));
+    setAuthMessage(changeDone('Navegación predeterminada restaurada.'));
   }
 
   async function adminSaveContent() {
@@ -5490,7 +5485,7 @@ function ProfileScreen({
     }
     await loadMyRequests();
     await refreshRealProfile();
-    setAuthMessage(changeDone('Aceptaste el nuevo rango de coordinacion.'));
+    setAuthMessage(changeDone('Aceptaste el nuevo rango de coordinación.'));
   }
 
   function submitUserRequest(title: string) {
@@ -5570,7 +5565,7 @@ function ProfileScreen({
       updates.password = newPassword;
     }
     if (!updates.email && !updates.password) {
-      setAuthMessage('No hay cambios de mail o contrasena para guardar.');
+      setAuthMessage('No hay cambios de mail o contraseña para guardar.');
       return;
     }
     const { error } = await supabase.auth.updateUser(updates);
@@ -5586,7 +5581,7 @@ function ProfileScreen({
 
   async function enablePushNotificationsFromSettings() {
     if (!session) {
-      setAuthMessage('Inicia sesion para activar notificaciones.');
+      setAuthMessage('Iniciá sesión para activar notificaciones.');
       return;
     }
     setAuthMessage('Solicitando permiso de notificaciones...');
@@ -5607,7 +5602,7 @@ function ProfileScreen({
         `Usuario: ${session.email}`,
         `Guardado Supabase: ${result.saved ? 'si' : 'no'}`,
         `Token: ${result.token ?? 'sin-token'}`,
-        `Error tecnico: ${result.technicalError ?? 'sin-error-tecnico'}`
+        `Error técnico: ${result.technicalError ?? 'sin-error-técnico'}`
       ].join('\n'));
       setAuthMessage(result.error ? result.error : changeDone('Notificaciones activadas en este dispositivo.'));
     } catch (error) {
@@ -5663,7 +5658,7 @@ function ProfileScreen({
         `Usuario: ${session.email}`,
         `Guardado Supabase: ${result.saved ? 'si' : 'no'}`,
         `Token: ${result.token ?? 'sin-token'}`,
-        `Error tecnico: ${result.technicalError ?? 'sin-error-tecnico'}`
+        `Error técnico: ${result.technicalError ?? 'sin-error-técnico'}`
       ].join('\n'));
     }
     if (!token) {
@@ -5820,7 +5815,7 @@ function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone('Reaccion registrada.'));
+    setAuthMessage(changeDone('Reacción registrada.'));
   }
 
   async function submitForumReport(publicationId: string) {
@@ -5921,7 +5916,7 @@ function ProfileScreen({
               ))}
               <TouchableOpacity style={styles.accountMenuItem} onPress={signOutReal}>
                 <Ionicons name="log-out-outline" size={18} color={palette.red} />
-                <Text style={[styles.accountMenuItemText, styles.accountMenuDanger]}>Cerrar sesion</Text>
+                <Text style={[styles.accountMenuItemText, styles.accountMenuDanger]}>Cerrar sesión</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -6019,7 +6014,7 @@ function ProfileScreen({
           </View> : null}
           {profilePanel === 'configuracion' ? (
             <View style={styles.profileCommunityPanel}>
-              <Text style={styles.cardEyebrow}>Configuracion de usuario</Text>
+              <Text style={styles.cardEyebrow}>Configuración de usuario</Text>
               <View style={styles.settingRow}>
                 <View style={styles.settingRowText}>
                   <Text style={styles.cardTitle}>Mostrar puntero tactil</Text>
@@ -6089,7 +6084,7 @@ function ProfileScreen({
                 </View>
               ) : null}
               <TextInput style={styles.input} placeholder="Nuevo mail" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
-              <TextInput style={styles.input} placeholder="Nueva contrasena" value={newPassword} onChangeText={setNewPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
+              <TextInput style={styles.input} placeholder="Nueva contraseña" value={newPassword} onChangeText={setNewPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
               <TouchableOpacity style={styles.primaryButton} onPress={saveAccountSettings}>
                 <Text style={styles.primaryButtonText}>Guardar ajustes</Text>
               </TouchableOpacity>
@@ -6488,8 +6483,8 @@ function ProfileScreen({
                       <Text style={styles.cardText}>Detalle: {item.definition}</Text>
                       <Text style={styles.cardText}>Respondio: {item.resolvedBy ?? 'Pendiente'}</Text>
                       <Text style={styles.cardText}>Fecha de resolucion: {item.resolvedAt ? new Date(item.resolvedAt).toLocaleString('es-AR') : 'Pendiente'}</Text>
-                      <Text style={styles.cardText}>Mensaje: {item.message ?? 'Sin mensaje todavia'}</Text>
-                      {['Propuesta Coordinador Diocesano', 'Propuesta Coordinador Nacional', 'Solicitud de Coordinacion Diocesana', 'Solicitud de Coordinacion Nacional'].includes(item.title) && item.status === 'pendiente' && item.targetUserId === session.id ? (
+                      <Text style={styles.cardText}>Mensaje: {item.message ?? 'Sin mensaje todavía'}</Text>
+                      {['Propuesta Coordinador Diocesano', 'Propuesta Coordinador Nacional', 'Solicitud de Coordinación Diocesana', 'Solicitud de Coordinación Nacional', 'Solicitud de Coordinacion Diocesana', 'Solicitud de Coordinacion Nacional'].includes(item.title) && item.status === 'pendiente' && item.targetUserId === session.id ? (
                         <TouchableOpacity style={styles.primaryButton} onPress={() => acceptDiocesanRequest(item.id)}>
                           <Text style={styles.primaryButtonText}>Aceptar rango {roleLabel((item.targetRole ?? 'coordinador_diocesano') as Role)}</Text>
                         </TouchableOpacity>
@@ -6509,8 +6504,8 @@ function ProfileScreen({
                         <Ionicons name="navigate-outline" size={22} color={palette.white} />
                       </View>
                       <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.navigationDedicatedTitle}>Consola de navegacion</Text>
-                        <Text style={styles.navigationDedicatedSubtitle}>Gestion visual de secciones, roles y barra inferior.</Text>
+                        <Text style={styles.navigationDedicatedTitle}>Consola de navegación</Text>
+                        <Text style={styles.navigationDedicatedSubtitle}>Gestión visual de secciones, roles y barra inferior.</Text>
                       </View>
                     </View>
                     <TouchableOpacity style={styles.navigationBackButton} onPress={() => setAdminModule('resumen')} activeOpacity={0.85}>
@@ -6525,7 +6520,7 @@ function ProfileScreen({
                     <View style={styles.navigationBuilderHero}>
                       <View style={styles.navigationHeroText}>
                         <Text style={styles.navigationHeroEyebrow}>Constructor visual</Text>
-                        <Text style={styles.navigationHeroTitle}>Navegacion de la app</Text>
+                        <Text style={styles.navigationHeroTitle}>Navegación de la app</Text>
                         <Text style={styles.navigationHeroBody}>Edita la barra inferior como un panel profesional: orden, iconos, nombres, visibilidad y roles desde una sola pantalla.</Text>
                       </View>
                       <View style={styles.navigationHeroBadge}>
@@ -6627,7 +6622,7 @@ function ProfileScreen({
                           </View>
                         </View>
 
-                        <Text style={styles.cardEyebrow}>Iconos rapidos</Text>
+                        <Text style={styles.cardEyebrow}>Iconos rápidos</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationIconPicker}>
                           {navigationIconSuggestions.map((icon) => (
                             <TouchableOpacity key={`dedicated-${icon}`} style={[styles.navigationIconChoice, selectedNavigationDraft.iconName === icon && styles.navigationIconChoiceActive]} onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, iconName: icon } }))}>
@@ -6657,7 +6652,7 @@ function ProfileScreen({
                         <View style={styles.navigationRolesPanel}>
                           <TouchableOpacity style={styles.navigationRolesButton} onPress={() => setNavigationRolesDropdownOpen(!navigationRolesDropdownOpen)} activeOpacity={0.85}>
                             <View style={styles.adminUserHeaderText}>
-                              <Text style={styles.cardEyebrow}>Roles que ven esta seccion</Text>
+                              <Text style={styles.cardEyebrow}>Roles que ven esta sección</Text>
                               <Text style={styles.navigationRolesSummary}>{(selectedNavigationDraft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role)).length} roles seleccionados</Text>
                             </View>
                             <Ionicons name={navigationRolesDropdownOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.red} />
@@ -6689,7 +6684,7 @@ function ProfileScreen({
                         <View style={styles.inlineActions}>
                           <TouchableOpacity style={[styles.primaryButton, styles.navigationLargeButton]} onPress={() => adminSaveTab(selectedNavigationTab.key, selectedNavigationTab.label)}>
                             <Ionicons name="save-outline" size={17} color={palette.white} />
-                            <Text style={styles.primaryButtonText}>Guardar seccion</Text>
+                            <Text style={styles.primaryButtonText}>Guardar sección</Text>
                           </TouchableOpacity>
                           <TouchableOpacity style={[styles.secondaryButton, styles.navigationLargeButton]} onPress={() => adminDeleteTab(selectedNavigationTab.key)}>
                             <Ionicons name="trash-outline" size={17} color={palette.red} />
@@ -6702,7 +6697,7 @@ function ProfileScreen({
                     <View style={styles.navigationCreatePanel}>
                       <View style={styles.navigationCreateHeader}>
                         <Ionicons name="add-circle-outline" size={22} color={palette.red} />
-                        <Text style={styles.navigationFocusTitle}>Nueva seccion</Text>
+                        <Text style={styles.navigationFocusTitle}>Nueva sección</Text>
                       </View>
                       <TextInput style={styles.input} placeholder="Nombre visible. Ej: Noticias" value={newTabLabel} onChangeText={setNewTabLabel} placeholderTextColor={inputPlaceholderColor} />
                       <TextInput style={styles.input} placeholder="Clave interna. Ej: noticias" value={newTabKey} onChangeText={(value) => setNewTabKey(normalizeTabKey(value))} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
@@ -6736,21 +6731,21 @@ function ProfileScreen({
                       ) : null}
                       <TouchableOpacity style={[styles.primaryButton, styles.navigationLargeButton]} onPress={adminCreatePage}>
                         <Ionicons name="add-circle-outline" size={17} color={palette.white} />
-                        <Text style={styles.primaryButtonText}>Crear seccion</Text>
+                        <Text style={styles.primaryButtonText}>Crear sección</Text>
                       </TouchableOpacity>
                     </View>
 
                     <TouchableOpacity style={styles.navigationRestoreButton} onPress={adminRestoreDefaultNavigation}>
                       <Ionicons name="refresh-circle-outline" size={18} color={palette.red} />
-                      <Text style={styles.secondaryButtonText}>Restaurar navegacion predeterminada</Text>
+                      <Text style={styles.secondaryButtonText}>Restaurar navegación predeterminada</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (
             <View style={styles.adminPanel}>
               <Text style={styles.cardEyebrow}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
-              <Text style={styles.cardTitle}>{session.role === 'administrador' ? 'Panel tecnico global' : 'Panel diocesano'}</Text>
-              <Text style={styles.cardText}>{session.role === 'administrador' ? 'Gestionar roles, permisos, pestanas, secciones, comunidades, provincias, usuarios, contenido y configuracion general.' : 'Revisar solicitudes y gestionar cambios de dirigencia dentro de la provincia.'}</Text>
+              <Text style={styles.cardTitle}>Panel Dirigencial</Text>
+              <Text style={styles.cardText}>{session.role === 'administrador' ? 'Gestionar roles, permisos, pestañas, secciones, comunidades, provincias, usuarios, contenido y configuración general.' : 'Revisar solicitudes y gestionar cambios de dirigencia dentro de la provincia.'}</Text>
               {authMessage ? <Text style={styles.adminMessage}>{authMessage}</Text> : null}
               {adminConfigDraft.settings.maintenanceMode ? (
                 <View style={styles.adminStatusPill}>
@@ -6773,8 +6768,8 @@ function ProfileScreen({
 
               {adminModule === 'resumen' ? (
                 <View style={styles.adminWorkspace}>
-                  <Text style={styles.cardTitle}>Admin Dashboard</Text>
-                  <Text style={styles.cardText}>Consola base para controlar contenido, usuarios, comunidades, identidad y configuracion general de la app.</Text>
+                  <Text style={styles.cardTitle}>Panel Dirigencial</Text>
+                  <Text style={styles.cardText}>Consola base para controlar contenido, usuarios, comunidades, identidad y configuración general de la app.</Text>
                   <View style={styles.adminStatRow}>
                     {adminDraftSummary.map((item) => (
                       <TouchableOpacity key={item.label} style={styles.adminStat} activeOpacity={0.84}>
@@ -6784,7 +6779,7 @@ function ProfileScreen({
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <Text style={styles.cardEyebrow}>Accesos rapidos</Text>
+                  <Text style={styles.cardEyebrow}>Accesos rápidos</Text>
                   <View style={styles.adminQuickGrid}>
                     {[
                       { label: isCommunityLeader ? 'Nuevo aviso comunitario' : 'Nueva noticia', module: isCommunityLeader ? 'muro_comunitario' : 'noticias', icon: 'add-circle-outline' },
@@ -6801,7 +6796,7 @@ function ProfileScreen({
                     ))}
                   </View>
                   <Text style={styles.cardEyebrow}>Arquitectura editable</Text>
-                  <Text style={styles.cardText}>Panel reducido para Beta: identidad, home, noticias, contacto, periodo motivador, usuarios, comunidades y configuracion real.</Text>
+                  <Text style={styles.cardText}>Panel reducido para Beta: identidad, home, noticias, contacto, período motivador, usuarios, comunidades y configuración real.</Text>
                 </View>
               ) : null}
 
@@ -6832,7 +6827,7 @@ function ProfileScreen({
               {adminModule === 'home' ? (
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Home</Text>
-                  <Text style={styles.cardText}>Control visual del dashboard inicial, accesos rapidos y secciones visibles.</Text>
+                  <Text style={styles.cardText}>Control visual del panel inicial, accesos rápidos y secciones visibles.</Text>
                   <TextInput style={styles.input} placeholder="Titulo principal" value={adminConfigDraft.home.heroTitle} onChangeText={(value) => updateAdminConfigSection('home', { heroTitle: value })}  placeholderTextColor={inputPlaceholderColor} />
                   <TextInput style={[styles.input, styles.textArea]} placeholder="Texto principal" value={adminConfigDraft.home.heroText} onChangeText={(value) => updateAdminConfigSection('home', { heroText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
                   <TextInput style={styles.input} placeholder="Banner destacado" value={adminConfigDraft.home.featuredBanner} onChangeText={(value) => updateAdminConfigSection('home', { featuredBanner: value })}  placeholderTextColor={inputPlaceholderColor} />
@@ -6908,7 +6903,7 @@ function ProfileScreen({
               {adminModule === 'historia_admin' ? (
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Nuestra Historia</Text>
-                  <Text style={styles.cardText}>Gestion de capitulos, preguntas frecuentes y textos institucionales desde el editor centralizado.</Text>
+                  <Text style={styles.cardText}>Gestión de capítulos, preguntas frecuentes y textos institucionales desde el editor centralizado.</Text>
                   <View style={styles.adminListRow}>
                     <Ionicons name="book-outline" size={19} color={palette.red} />
                     <View style={styles.adminUserHeaderText}>
@@ -6987,7 +6982,7 @@ function ProfileScreen({
                           </ScrollView>
                           <TextInput
                             style={[styles.input, styles.textArea]}
-                            placeholder="Contenido, URL, telefono, email o direccion"
+                            placeholder="Contenido, URL, teléfono, email o dirección"
                             value={block.value}
                             onChangeText={(value) => {
                               const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
@@ -7017,12 +7012,12 @@ function ProfileScreen({
 
               {adminModule === 'periodo_motivador' ? (
                 <View style={styles.adminWorkspace}>
-                  <Text style={styles.cardTitle}>Periodo Motivador</Text>
-                  <Text style={styles.cardText}>Gestion real de PM por provincia. Solo Vocal Diocesano, Coordinador Diocesano y Administrador pueden administrar esta seccion.</Text>
+                  <Text style={styles.cardTitle}>Período Motivador</Text>
+                  <Text style={styles.cardText}>Gestión real de PM por provincia. Solo Vocal Diocesano, Coordinador Diocesano y Administrador pueden administrar esta sección.</Text>
                   {!canManageMotivadorPanel(session) ? (
                     <View style={styles.notice}>
                       <Ionicons name="lock-closed-outline" size={20} color={palette.red} />
-                      <Text style={styles.noticeText}>No tenes permisos para gestionar Periodos Motivadores.</Text>
+                      <Text style={styles.noticeText}>No tenés permisos para gestionar Períodos Motivadores.</Text>
                     </View>
                   ) : null}
                   {canManageMotivadorPanel(session) ? (
@@ -7036,7 +7031,7 @@ function ProfileScreen({
                             </TouchableOpacity>
                           ))}
                         </View>
-                        <TextInput style={styles.input} placeholder="Numero de PM" value={pmNumber} onChangeText={setPmNumber} keyboardType="numeric"  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="Número de PM" value={pmNumber} onChangeText={setPmNumber} keyboardType="numeric"  placeholderTextColor={inputPlaceholderColor} />
                         <Text style={styles.cardEyebrow}>Provincia</Text>
                         <View style={styles.filterRow}>
                           {motivadorProvinceOptions.map((province) => (
@@ -7089,7 +7084,7 @@ function ProfileScreen({
                           </View>
                         ) : null}
                         <TextInput style={styles.input} placeholder="Casa de retiro" value={pmRetreatHouse} onChangeText={setPmRetreatHouse}  placeholderTextColor={inputPlaceholderColor} />
-                        <TextInput style={styles.input} placeholder="Direccion de la casa de retiro" value={pmAddress} onChangeText={setPmAddress}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="Dirección de la casa de retiro" value={pmAddress} onChangeText={setPmAddress}  placeholderTextColor={inputPlaceholderColor} />
                         <TextInput style={styles.input} placeholder="Horario estimado de apertura. Ej: Viernes 18:00" value={pmOpeningTime} onChangeText={setPmOpeningTime}  placeholderTextColor={inputPlaceholderColor} />
                         <TextInput style={styles.input} placeholder="Horario estimado de clausura. Ej: Domingo 17:00" value={pmClosingTime} onChangeText={setPmClosingTime}  placeholderTextColor={inputPlaceholderColor} />
                         <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion opcional" value={pmDescription} onChangeText={setPmDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
@@ -7111,7 +7106,7 @@ function ProfileScreen({
                         </TouchableOpacity>
                         {pmEditingId ? (
                           <TouchableOpacity style={styles.secondaryButton} onPress={resetMotivadorForm}>
-                            <Text style={styles.secondaryButtonText}>Cancelar edicion</Text>
+                            <Text style={styles.secondaryButtonText}>Cancelar edición</Text>
                           </TouchableOpacity>
                         ) : null}
                       </View>
@@ -7145,9 +7140,9 @@ function ProfileScreen({
                           <View style={styles.adminUserHeaderText}>
                             <Text style={styles.cardTitle}>PM {period.gender === 'femenino' ? 'Femenino' : 'Masculino'} {period.pm_number} - {period.province}</Text>
                             <Text style={styles.cardText}>Fechas: {selectedDatesSummary(period.selected_dates?.map((date) => String(date).slice(0, 10)) ?? [period.starts_on, period.ends_on])}</Text>
-                            <Text style={styles.cardText}>Casa: {period.retreat_house}. Direccion: {period.address}</Text>
+                            <Text style={styles.cardText}>Casa: {period.retreat_house}. Dirección: {period.address}</Text>
                             <Text style={styles.cardText}>Apertura: {period.opening_time ?? 'Sin horario'} - Clausura: {period.closing_time ?? 'Sin horario'}</Text>
-                            <Text style={styles.cardText}>Estado: {period.status}. Ultima edicion: {period.updated_by_name ?? 'Sin registro'}</Text>
+                            <Text style={styles.cardText}>Estado: {period.status}. Última edición: {period.updated_by_name ?? 'Sin registro'}</Text>
                             <View style={styles.inlineActions}>
                               <TouchableOpacity style={styles.secondaryButton} onPress={() => editMotivadorPeriod(period)}>
                                 <Text style={styles.secondaryButtonText}>Editar</Text>
@@ -7292,8 +7287,8 @@ function ProfileScreen({
 
               {adminModule === 'configuracion' ? (
                 <View style={styles.adminWorkspace}>
-                  <Text style={styles.cardTitle}>Configuracion general</Text>
-                  <Text style={styles.cardText}>Base para mantenimiento, aviso global, permisos, modulos activos, foro y chat.</Text>
+                  <Text style={styles.cardTitle}>Configuración general</Text>
+                  <Text style={styles.cardText}>Base para mantenimiento, aviso global, permisos, módulos activos, foro y chat.</Text>
                   <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje visible durante mantenimiento" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
                   {[
                     { key: 'maintenanceMode', label: 'Modo mantenimiento' },
@@ -7308,10 +7303,10 @@ function ProfileScreen({
                       </TouchableOpacity>
                     );
                   })}
-                  <Text style={styles.cardEyebrow}>Orden de navegacion</Text>
+                  <Text style={styles.cardEyebrow}>Orden de navegación</Text>
                   <Text style={styles.cardText}>El orden y visibilidad se administran desde Contenido.</Text>
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Configuracion general')}>
-                    <Text style={styles.primaryButtonText}>Guardar configuracion</Text>
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Configuración general')}>
+                    <Text style={styles.primaryButtonText}>Guardar configuración</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -7323,15 +7318,15 @@ function ProfileScreen({
                     <Text style={styles.cardText}>Tu rango puede revisar y gestionar usuarios dentro de su alcance. Crear usuarios, confirmar mails y eliminar accesos queda reservado al Administrador.</Text>
                   ) : (
                     <View style={styles.profileCommunityPanel}>
-                      <Text style={styles.cardEyebrow}>Crear usuario basico</Text>
-                      <Text style={styles.cardText}>Crea una cuenta habilitada con mail y contrasena. Al ingresar, el usuario debera completar provincia y comunidad.</Text>
+                      <Text style={styles.cardEyebrow}>Crear usuario básico</Text>
+                      <Text style={styles.cardText}>Crea una cuenta habilitada con mail y contraseña. Al ingresar, el usuario deberá completar provincia y comunidad.</Text>
                       <Text style={styles.inputLabel}>Mail</Text>
-                      <TextInput style={styles.input} placeholder="Ingresa el correo electronico" value={adminCreateEmail} onChangeText={setAdminCreateEmail} autoCapitalize="none" keyboardType="email-address"  placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={styles.inputLabel}>Contrasena</Text>
+                      <TextInput style={styles.input} placeholder="Ingresá el correo electrónico" value={adminCreateEmail} onChangeText={setAdminCreateEmail} autoCapitalize="none" keyboardType="email-address"  placeholderTextColor={inputPlaceholderColor} />
+                      <Text style={styles.inputLabel}>Contraseña</Text>
                       <View style={styles.passwordInputWrap}>
                         <TextInput
                           style={[styles.input, styles.inputWithIcon]}
-                          placeholder="Minimo 6 caracteres"
+                          placeholder="Mínimo 6 caracteres"
                           value={adminCreatePassword}
                           onChangeText={setAdminCreatePassword}
                           secureTextEntry={!adminCreatePasswordVisible}
@@ -7444,7 +7439,7 @@ function ProfileScreen({
                                 <Ionicons name="person-circle-outline" size={16} color={palette.red} />
                                 <Text style={styles.actionPillText}>Ver perfil</Text>
                               </TouchableOpacity>
-                              <Text style={styles.expandHint}>{canEditThisUser ? (selected ? 'Cerrar edicion' : 'Editar usuario') : 'Edicion bloqueada por jerarquia'}</Text>
+                              <Text style={styles.expandHint}>{canEditThisUser ? (selected ? 'Cerrar edición' : 'Editar usuario') : 'Edición bloqueada por jerarquía'}</Text>
                             </TouchableOpacity>
                             {selected ? (
                               <View style={styles.adminInlineEditor}>
@@ -7452,13 +7447,10 @@ function ProfileScreen({
                                 {session.role === 'administrador' ? (
                                   <>
                                     <TextInput style={styles.input} placeholder="Email" value={adminUserEmail} onChangeText={setAdminUserEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
-                                    <TextInput style={styles.input} placeholder="Nueva contrasena opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
+                                    <TextInput style={styles.input} placeholder="Nueva contraseña opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
                                   </>
                                 ) : (
-                                  <View style={styles.inlineInfoPanel}>
-                                    <Ionicons name="lock-closed-outline" size={17} color={palette.red} />
-                                    <Text style={styles.cardText}>Email protegido: {selectedAdminUser?.email ?? 'Sin email'}. Solo Administrador puede cambiar mail o contrasena.</Text>
-                                  </View>
+                                  null
                                 )}
                                 <TextInput style={styles.input} placeholder="Contacto" value={adminUserPhone} onChangeText={setAdminUserPhone}  placeholderTextColor={inputPlaceholderColor} />
                                 <Text style={styles.cardEyebrow}>Provincia</Text>
@@ -7763,7 +7755,7 @@ function ProfileScreen({
                           </TouchableOpacity>
                         ))}
                       </View>
-                      <TextInput style={styles.input} placeholder="Localidad, zona o direccion" value={adminCommunityId ? '' : adminCommunityAddress} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityAddress(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Localidad, zona o dirección" value={adminCommunityId ? '' : adminCommunityAddress} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityAddress(value); }}  placeholderTextColor={inputPlaceholderColor} />
                       <TextInput style={styles.input} placeholder="Contacto opcional" value={adminCommunityId ? '' : adminCommunityPhone} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityPhone(value); }}  placeholderTextColor={inputPlaceholderColor} />
                       <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityId ? '' : adminCommunityDay} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDay(value); }}  placeholderTextColor={inputPlaceholderColor} />
                       <TextInput style={styles.input} placeholder="Horario" value={adminCommunityId ? '' : adminCommunityTime} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityTime(value); }}  placeholderTextColor={inputPlaceholderColor} />
@@ -7795,7 +7787,7 @@ function ProfileScreen({
                               {selected ? (
                                 <View style={styles.adminInlineEditor}>
                                   <TextInput style={styles.input} placeholder="Nombre" value={adminCommunityName} onChangeText={setAdminCommunityName}  placeholderTextColor={inputPlaceholderColor} />
-                                  <TextInput style={styles.input} placeholder="Direccion" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={styles.input} placeholder="Dirección" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={styles.input} placeholder="Numero de contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={styles.input} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
@@ -7827,7 +7819,7 @@ function ProfileScreen({
                   <View style={styles.navigationBuilderHero}>
                     <View style={styles.navigationHeroText}>
                       <Text style={styles.navigationHeroEyebrow}>Constructor visual</Text>
-                      <Text style={styles.navigationHeroTitle}>Navegacion de la app</Text>
+                      <Text style={styles.navigationHeroTitle}>Navegación de la app</Text>
                       <Text style={styles.navigationHeroBody}>Edita la barra inferior como un panel profesional: orden, iconos, nombres, visibilidad y roles desde una sola pantalla.</Text>
                     </View>
                     <View style={styles.navigationHeroBadge}>
@@ -7927,7 +7919,7 @@ function ProfileScreen({
                         </View>
                       </View>
 
-                      <Text style={styles.cardEyebrow}>Iconos rapidos</Text>
+                      <Text style={styles.cardEyebrow}>Iconos rápidos</Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationIconPicker}>
                         {navigationIconSuggestions.map((icon) => (
                           <TouchableOpacity key={icon} style={[styles.navigationIconChoice, selectedNavigationDraft.iconName === icon && styles.navigationIconChoiceActive]} onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, iconName: icon } }))}>
@@ -7954,7 +7946,7 @@ function ProfileScreen({
                         </TouchableOpacity>
                       </View>
 
-                      <Text style={styles.cardEyebrow}>Roles que ven esta seccion</Text>
+                      <Text style={styles.cardEyebrow}>Roles que ven esta sección</Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
                         {visibleHierarchyFor(session).map((role) => {
                           const roles = selectedNavigationDraft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role);
@@ -7970,7 +7962,7 @@ function ProfileScreen({
                       <View style={styles.inlineActions}>
                         <TouchableOpacity style={styles.primaryButton} onPress={() => adminSaveTab(selectedNavigationTab.key, selectedNavigationTab.label)}>
                           <Ionicons name="save-outline" size={17} color={palette.white} />
-                          <Text style={styles.primaryButtonText}>Guardar seccion</Text>
+                          <Text style={styles.primaryButtonText}>Guardar sección</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.secondaryButton} onPress={() => adminDeleteTab(selectedNavigationTab.key)}>
                           <Ionicons name="trash-outline" size={17} color={palette.red} />
@@ -7983,7 +7975,7 @@ function ProfileScreen({
                   <View style={styles.navigationCreatePanel}>
                     <View style={styles.navigationCreateHeader}>
                       <Ionicons name="add-circle-outline" size={22} color={palette.red} />
-                      <Text style={styles.navigationFocusTitle}>Nueva seccion</Text>
+                      <Text style={styles.navigationFocusTitle}>Nueva sección</Text>
                     </View>
                     <TextInput style={styles.input} placeholder="Nombre visible. Ej: Noticias" value={newTabLabel} onChangeText={setNewTabLabel}  placeholderTextColor={inputPlaceholderColor} />
                     <TextInput style={styles.input} placeholder="Clave interna. Ej: noticias" value={newTabKey} onChangeText={(value) => setNewTabKey(normalizeTabKey(value))} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
@@ -8005,13 +7997,13 @@ function ProfileScreen({
                     </ScrollView>
                     <TouchableOpacity style={styles.primaryButton} onPress={adminCreatePage}>
                       <Ionicons name="add-circle-outline" size={17} color={palette.white} />
-                      <Text style={styles.primaryButtonText}>Crear seccion</Text>
+                      <Text style={styles.primaryButtonText}>Crear sección</Text>
                     </TouchableOpacity>
                   </View>
 
                   <TouchableOpacity style={styles.navigationRestoreButton} onPress={adminRestoreDefaultNavigation}>
                     <Ionicons name="refresh-circle-outline" size={18} color={palette.red} />
-                    <Text style={styles.secondaryButtonText}>Restaurar navegacion predeterminada</Text>
+                    <Text style={styles.secondaryButtonText}>Restaurar navegación predeterminada</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -8095,8 +8087,8 @@ function ProfileScreen({
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-                <TextInput style={styles.input} placeholder="Titulo de la seccion" value={contentTitle} onChangeText={setContentTitle}  placeholderTextColor={inputPlaceholderColor} />
-                <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de la seccion" value={contentBody} onChangeText={setContentBody} multiline  placeholderTextColor={inputPlaceholderColor} />
+                <TextInput style={styles.input} placeholder="Título de la sección" value={contentTitle} onChangeText={setContentTitle}  placeholderTextColor={inputPlaceholderColor} />
+                <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de la sección" value={contentBody} onChangeText={setContentBody} multiline  placeholderTextColor={inputPlaceholderColor} />
                 <View style={styles.inlineActions}>
                   <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('titulo')}>
                     <Text style={styles.secondaryButtonText}>+ Titulo</Text>
@@ -8146,7 +8138,7 @@ function ProfileScreen({
           <Text style={styles.cardText}>Estas navegando como invitado. Podes ver inicio, noticias publicas, comunidades, historia y contacto.</Text>
           <View style={styles.filterRow}>
             <TouchableOpacity style={[styles.filterChip, authMode === 'login' && styles.filterChipActive]} onPress={() => setAuthMode('login')}>
-              <Text style={[styles.filterChipText, authMode === 'login' && styles.filterChipTextActive]}>Iniciar sesion</Text>
+              <Text style={[styles.filterChipText, authMode === 'login' && styles.filterChipTextActive]}>Iniciar sesión</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.filterChip, authMode === 'register' && styles.filterChipActive]} onPress={() => setAuthMode('register')}>
               <Text style={[styles.filterChipText, authMode === 'register' && styles.filterChipTextActive]}>Registrarme</Text>
@@ -8225,7 +8217,7 @@ function ProfileScreen({
             onBlur={() => setAuthFocusedField('')}
            placeholderTextColor={inputPlaceholderColor} />
           {authErrors.email ? <Text style={styles.formErrorText}>{authErrors.email}</Text> : null}
-          <Text style={styles.inputLabel}>Contrasena</Text>
+          <Text style={styles.inputLabel}>Contraseña</Text>
           <View style={styles.passwordInputWrap}>
             <TextInput
               style={[
@@ -8234,7 +8226,7 @@ function ProfileScreen({
                 authFocusedField === 'password' && styles.inputFocused,
                 authErrors.password && styles.inputError
               ]}
-              placeholder={authMode === 'register' ? 'Minimo 6 caracteres' : 'Ingresa tu contrasena'}
+              placeholder={authMode === 'register' ? 'Mínimo 6 caracteres' : 'Ingresá tu contraseña'}
               value={authPassword}
               onChangeText={(value) => {
                 setAuthPassword(value);
@@ -8257,10 +8249,10 @@ function ProfileScreen({
           {authErrors.password ? <Text style={styles.formErrorText}>{authErrors.password}</Text> : null}
           {authMode === 'register' ? (
             <>
-              <Text style={styles.inputLabel}>Confirmar contrasena</Text>
+              <Text style={styles.inputLabel}>Confirmar contraseña</Text>
               <TextInput
                 style={[styles.input, authFocusedField === 'confirm' && styles.inputFocused, authErrors.confirm && styles.inputError]}
-                placeholder="Repite tu contrasena"
+                placeholder="Repetí tu contraseña"
                 value={authPasswordConfirm}
                 onChangeText={(value) => { setAuthPasswordConfirm(value); setAuthErrors((current) => ({ ...current, confirm: '' })); }}
                 secureTextEntry={!authPasswordVisible}
@@ -8273,7 +8265,7 @@ function ProfileScreen({
           {authMode === 'register' ? (
             <ActionButton label="Registrarme" onPress={registerReal} />
           ) : (
-            <ActionButton label="Iniciar sesion" onPress={signInReal} />
+            <ActionButton label="Iniciar sesión" onPress={signInReal} />
           )}
           {authMessage ? <Text style={styles.cardText}>{authMessage}</Text> : null}
           <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowInternalTestAccess(!showInternalTestAccess)}>

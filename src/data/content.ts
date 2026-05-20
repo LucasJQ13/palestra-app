@@ -14,7 +14,7 @@ export const news = [
   {
     scope: 'Servicio',
     title: 'Convocatoria nacional de comunidades',
-    body: 'Este es un aviso largo de prueba. La idea es validar como se comporta la app cuando un equipo nacional, provincial o local necesita publicar un comunicado con bastante informacion. En una version real podria incluir indicaciones pastorales, horarios, responsables, datos de inscripcion, materiales previos y una breve motivacion para que los jovenes puedan prepararse. Tambien nos permite revisar si el texto se lee bien, si la imagen acompana sin ocupar demasiado espacio y si la experiencia de expandir o contraer resulta comoda en celulares de distintos tamanos.',
+    body: 'Este es un aviso largo de prueba. La idea es validar cómo se comporta la app cuando un equipo nacional, provincial o local necesita publicar un comunicado con bastante información. En una versión real podría incluir indicaciones pastorales, horarios, responsables, datos de inscripción, materiales previos y una breve motivación para que los jóvenes puedan prepararse. También nos permite revisar si el texto se lee bien, si la imagen acompaña sin ocupar demasiado espacio y si la experiencia de expandir o contraer resulta cómoda en celulares de distintos tamaños.',
     imageUrl: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
   }
 ];
@@ -47,7 +47,7 @@ export const notilestra = [
     scope: 'Novedad',
     date: '2026-05-22',
     title: 'Nuevo espacio de materiales internos',
-    body: 'La app incorporara recursos para miembros aprobados, coordinadores, asesores y equipo nacional.'
+    body: 'La app incorporará recursos para miembros aprobados, coordinadores, asesores y equipo nacional.'
   },
   {
     scope: 'Agenda',
@@ -114,7 +114,7 @@ export const materials = [
   },
   {
     type: 'Reservado',
-    title: 'Documento de coordinacion nacional',
+    title: 'Documento de coordinación nacional',
     description: 'Material de trabajo para equipo nacional y roles autorizados.',
     permission: 'descargar_archivos_exclusivos'
   }
@@ -147,7 +147,7 @@ export const communities: ProvinceCommunity[] = [
     description: '29 comunidades activas.',
     locations: Array.from({ length: 29 }, (_, index) => ({
       name: `Comunidad Salta ${index + 1}`,
-      address: `Direccion ficticia ${index + 1}, Salta`,
+      address: `Dirección ficticia ${index + 1}, Salta`,
       phone: `+54 387 400-${String(index + 1).padStart(4, '0')}`,
       meetingDay: index % 2 === 0 ? 'Sabado' : 'Domingo',
       meetingTime: index % 2 === 0 ? '18:00' : '17:30',
@@ -161,7 +161,7 @@ export const communities: ProvinceCommunity[] = [
     description: '25 comunidades activas.',
     locations: Array.from({ length: 25 }, (_, index) => ({
       name: `Comunidad Jujuy ${index + 1}`,
-      address: `Direccion ficticia ${index + 1}, Jujuy`,
+      address: `Dirección ficticia ${index + 1}, Jujuy`,
       phone: `+54 388 400-${String(index + 1).padStart(4, '0')}`,
       meetingDay: index % 2 === 0 ? 'Viernes' : 'Sabado',
       meetingTime: index % 2 === 0 ? '20:00' : '18:30',
@@ -176,7 +176,7 @@ export const communities: ProvinceCommunity[] = [
     locations: [
       ...Array.from({ length: 16 }, (_, index) => ({
       name: `Comunidad Tucuman ${index + 1}`,
-      address: `Direccion ficticia ${index + 1}, Tucuman`,
+      address: `Dirección ficticia ${index + 1}, Tucumán`,
       phone: `+54 381 400-${String(index + 1).padStart(4, '0')}`,
       meetingDay: index % 2 === 0 ? 'Sabado' : 'Miercoles',
       meetingTime: index % 2 === 0 ? '19:00' : '21:00',
@@ -186,7 +186,7 @@ export const communities: ProvinceCommunity[] = [
     })),
       ...Array.from({ length: 3 }, (_, index) => ({
         name: `Comunidad Adultos Tucuman ${index + 1}`,
-        address: `Direccion ficticia adultos ${index + 1}, Tucuman`,
+        address: `Dirección ficticia adultos ${index + 1}, Tucumán`,
         phone: `+54 381 500-${String(index + 1).padStart(4, '0')}`,
         meetingDay: 'Jueves',
         meetingTime: '20:30',
@@ -203,7 +203,7 @@ export const communities: ProvinceCommunity[] = [
     locations: [
       ...Array.from({ length: 17 }, (_, index) => ({
       name: `Comunidad Catamarca ${index + 1}`,
-      address: `Direccion ficticia ${index + 1}, Catamarca`,
+      address: `Dirección ficticia ${index + 1}, Catamarca`,
       phone: `+54 383 400-${String(index + 1).padStart(4, '0')}`,
       meetingDay: index % 2 === 0 ? 'Domingo' : 'Sabado',
       meetingTime: index % 2 === 0 ? '18:00' : '20:00',
@@ -213,7 +213,7 @@ export const communities: ProvinceCommunity[] = [
     })),
       ...Array.from({ length: 3 }, (_, index) => ({
         name: `Comunidad Adultos Catamarca ${index + 1}`,
-        address: `Direccion ficticia adultos ${index + 1}, Catamarca`,
+        address: `Dirección ficticia adultos ${index + 1}, Catamarca`,
         phone: `+54 383 500-${String(index + 1).padStart(4, '0')}`,
         meetingDay: 'Martes',
         meetingTime: '20:00',
@@ -229,7 +229,7 @@ export const communities: ProvinceCommunity[] = [
     description: '2 comunidades activas.',
     locations: Array.from({ length: 2 }, (_, index) => ({
       name: `Comunidad Cordoba ${index + 1}`,
-      address: `Direccion ficticia ${index + 1}, Cordoba`,
+      address: `Dirección ficticia ${index + 1}, Córdoba`,
       phone: `+54 351 400-${String(index + 1).padStart(4, '0')}`,
       meetingDay: 'Sabado',
       meetingTime: '18:30',
@@ -243,7 +243,7 @@ export const communities: ProvinceCommunity[] = [
     description: '3 comunidades activas.',
     locations: Array.from({ length: 3 }, (_, index) => ({
       name: `Comunidad San Luis ${index + 1}`,
-      address: `Direccion ficticia ${index + 1}, San Luis`,
+      address: `Dirección ficticia ${index + 1}, San Luis`,
       phone: `+54 266 400-${String(index + 1).padStart(4, '0')}`,
       meetingDay: 'Viernes',
       meetingTime: '20:30',
@@ -254,10 +254,10 @@ export const communities: ProvinceCommunity[] = [
 ];
 
 export const movementHistory = [
-  'Palestra nacio como una respuesta joven al deseo de vivir la fe de una manera cercana, comunitaria y comprometida. Desde sus primeros pasos, el movimiento busco que cada persona pudiera descubrir que Cristo camina con ella en la vida concreta, en la amistad, en el servicio, en la alegria compartida y tambien en las preguntas profundas que aparecen al crecer.',
+  'Palestra nació como una respuesta joven al deseo de vivir la fe de una manera cercana, comunitaria y comprometida. Desde sus primeros pasos, el movimiento buscó que cada persona pudiera descubrir que Cristo camina con ella en la vida concreta, en la amistad, en el servicio, en la alegría compartida y también en las preguntas profundas que aparecen al crecer.',
   'Con el tiempo, distintas comunidades fueron tomando forma en parroquias, colegios, barrios y espacios pastorales. Cada una desarrollo su propio modo de reunirse, cantar, rezar, acompanar y servir, pero todas conservaron una misma intuicion: nadie camina solo cuando encuentra una comunidad que lo recibe y lo ayuda a mirar la vida con esperanza.',
   'En Argentina, Palestra fue extendiendose por provincias donde muchos jovenes encontraron un lugar para formarse, asumir responsabilidades y descubrir una vocacion de servicio. Salta, Jujuy, Tucuman, Catamarca, Cordoba y San Luis sostienen hoy una red viva de comunidades con historias distintas, marcadas por encuentros, jornadas, misiones, retiros, reuniones semanales y gestos silenciosos de acompanamiento.',
-  'Esta aplicacion busca continuar esa historia en clave digital. No reemplaza la vida comunitaria ni el encuentro cara a cara, sino que intenta ordenar la comunicacion, acercar materiales, visibilizar comunidades y cuidar los espacios internos del movimiento. Es una herramienta sencilla para que Palestra pueda seguir caminando con unidad, memoria y creatividad.'
+  'Esta aplicación busca continuar esa historia en clave digital. No reemplaza la vida comunitaria ni el encuentro cara a cara, sino que intenta ordenar la comunicación, acercar materiales, visibilizar comunidades y cuidar los espacios internos del movimiento. Es una herramienta sencilla para que Palestra pueda seguir caminando con unidad, memoria y creatividad.'
 ];
 
 export const contactInfo = {
@@ -290,7 +290,7 @@ export const profileRequestTypes = [
 
 export const internalMessages = [
   {
-    from: 'Coordinacion',
+    from: 'Coordinación',
     title: 'Mensaje para la comunidad',
     body: 'Recordatorio ficticio para revisar horarios y confirmar asistencia.'
   },
@@ -318,8 +318,8 @@ export const pendingUsers = [
 
 export const auditLog = [
   'Lucia Rios publico una noticia en Comunidad Cordoba 1.',
-  'Vocal diocesano aprobo un usuario sedimentador.',
-  'Coordinacion Nacional actualizo permisos de prueba.'
+  'Vocal diocesano aprobó un usuario sedimentador.',
+  'Coordinación Nacional actualizó permisos de prueba.'
 ];
 
 export { roleHierarchy as roleDefinitions } from '../lib/roles';

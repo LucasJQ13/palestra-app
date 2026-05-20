@@ -82,6 +82,13 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - La personalizacion solo cambia visualizacion; los permisos siguen usando el `role_key` interno.
 - Documentacion tecnica: `docs/roles_architecture.md`.
 
+### Limpieza visual de Beta
+
+- Se cambio el titulo del panel de administracion a `Panel Dirigencial`.
+- Se quito el aviso de Home que indicaba que el usuario ya estaba aprobado.
+- Se corrigieron textos visibles con tildes y `ñ` en login, perfil, panel dirigencial y contenido base.
+- Se retiro la leyenda visual de potestad absoluta del rol Administrador.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.
