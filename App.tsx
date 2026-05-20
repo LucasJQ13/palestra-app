@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
@@ -2594,12 +2594,22 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
             </View>
           </TouchableOpacity>
         </Modal>
-        <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={closeCommunityModal}>
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity style={styles.modalBackdropTouch} activeOpacity={1} onPress={closeCommunityModal} />
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0} style={styles.modalKeyboardAvoider}>
-            <TouchableOpacity style={[styles.modalPanel, styles.communityModalPanel]} activeOpacity={1} onPress={() => undefined}>
-              <ScrollView ref={contactScrollRef} keyboardShouldPersistTaps="handled" nestedScrollEnabled scrollEventThrottle={16} overScrollMode="always" showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollContent}>
+        <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={closeCommunityModal} statusBarTranslucent>
+          <View style={styles.modalOverlay} pointerEvents="box-none">
+            <Pressable style={styles.modalBackdropTouch} onPress={closeCommunityModal} />
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0} style={styles.modalKeyboardAvoider} pointerEvents="box-none">
+            <View style={[styles.modalPanel, styles.communityModalPanel]} pointerEvents="auto">
+              <ScrollView
+                ref={contactScrollRef}
+                style={styles.communityModalScroll}
+                keyboardShouldPersistTaps="always"
+                keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                nestedScrollEnabled
+                scrollEventThrottle={16}
+                overScrollMode="always"
+                showsVerticalScrollIndicator
+                contentContainerStyle={styles.modalScrollContent}
+              >
               <TouchableOpacity style={styles.modalCloseButton} onPress={closeCommunityModal} activeOpacity={0.8}>
                 <Ionicons name="close" size={22} color={palette.red} />
               </TouchableOpacity>
@@ -2665,7 +2675,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                 </>
               ) : null}
               </ScrollView>
-            </TouchableOpacity>
+            </View>
             </KeyboardAvoidingView>
           </View>
         </Modal>
@@ -8768,7 +8778,8 @@ const styles = StyleSheet.create({
     padding: 18
   },
   modalBackdropTouch: {
-    ...StyleSheet.absoluteFillObject
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1
   },
   modalKeyboardAvoider: {
     width: '100%',
@@ -8777,7 +8788,8 @@ const styles = StyleSheet.create({
     zIndex: 2
   },
   modalScrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 34,
+    paddingTop: 2,
     gap: 10
   },
   modalCloseButton: {
@@ -8819,9 +8831,15 @@ const styles = StyleSheet.create({
     height: '100%'
   },
   communityModalPanel: {
+    width: '100%',
     maxHeight: '86%',
     borderRadius: 30,
-    paddingBottom: 20
+    paddingBottom: 12,
+    overflow: 'hidden'
+  },
+  communityModalScroll: {
+    width: '100%',
+    flexGrow: 0
   },
   communityModalImage: {
     width: '100%',
@@ -9582,6 +9600,8 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: palette.red,
     minHeight: 48,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 18,
     flexDirection: 'row',
     gap: 7,
@@ -9596,12 +9616,16 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: palette.white,
     fontSize: 15,
-    fontWeight: '800'
+    fontWeight: '800',
+    textAlign: 'center',
+    flexShrink: 1
   },
   secondaryButton: {
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.32)',
     minHeight: 48,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 18,
     flexDirection: 'row',
     gap: 7,
@@ -9613,7 +9637,9 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: palette.red,
     fontSize: 15,
-    fontWeight: '800'
+    fontWeight: '800',
+    textAlign: 'center',
+    flexShrink: 1
   },
   tabBar: {
     position: 'absolute',

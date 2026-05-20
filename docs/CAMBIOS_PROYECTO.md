@@ -32,6 +32,12 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - Los scripts de build APK ahora usan el perfil `beta-apk`.
 - Los accesos de prueba quedan nombrados como internos/de prueba, no como maqueta publica.
 
+### Modal Comunidades
+
+- Se reemplazo el wrapper tactil del panel por un `View` para que el `ScrollView` interno reciba gestos de un dedo sin conflicto.
+- El backdrop del modal queda separado con `Pressable`, evitando que capture el scroll del contenido.
+- Se reforzo el scroll con `keyboardShouldPersistTaps`, `keyboardDismissMode`, `nestedScrollEnabled` y altura controlada.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.
