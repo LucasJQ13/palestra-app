@@ -10,7 +10,7 @@ El push local puede funcionar aunque el push remoto falle. Para que una APK stan
 - Package Android: `org.palestra.argentina`
 - EAS projectId: `ae3f9e9c-fa3d-4273-a840-e5796b9734d6`
 - Archivo requerido por `app.json`: `./google-services.json`
-- Build demo: `npm run build:apk`
+- Build beta: `npm run build:apk`
 
 ## Pasos en Firebase
 

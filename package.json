@@ -8,9 +8,9 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "build:apk": "npx eas-cli build -p android --profile demo-apk --clear-cache",
-    "build:apk:fast": "npx eas-cli build -p android --profile demo-apk",
-    "build:apk:clean": "npx eas-cli build -p android --profile demo-apk --clear-cache"
+    "build:apk": "npx eas-cli build -p android --profile beta-apk --clear-cache",
+    "build:apk:fast": "npx eas-cli build -p android --profile beta-apk",
+    "build:apk:clean": "npx eas-cli build -p android --profile beta-apk --clear-cache"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

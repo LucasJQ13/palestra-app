@@ -54,6 +54,6 @@ La primera version se distribuye como APK descargable desde una web simple. No r
 1. Instalar Node.js LTS completo.
 2. Crear proyecto gratis en Supabase.
 3. Cargar `supabase/schema.sql` en el editor SQL de Supabase.
-4. Reemplazar el login demo por autenticacion real.
+4. Mantener autenticacion real con Supabase y retirar accesos de prueba antes de produccion.
 5. Cargar identidad visual oficial: logo, colores y textos institucionales.
 6. Generar APK de prueba.

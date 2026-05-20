@@ -9,7 +9,7 @@ import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
 import { AppTheme, ThemeName, themePresets } from './src/theme/themes';
-import { auditLog, calendarActivities, communities, contactInfo, communityNews, demoRequests, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
+import { auditLog, calendarActivities, communities, contactInfo, communityNews, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, profileRequestTypes, roleDefinitions } from './src/data/content';
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
@@ -37,7 +37,9 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const demoVersionLabel = 'DEMO 0.1.0';
+const appBetaVersion = '0.1.0';
+const appStageLabel = 'BETA';
+const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
 const themePreferenceKey = 'palestra.themePreference';
 const pushDeviceIdKey = 'palestra.push.deviceId';
@@ -277,9 +279,9 @@ function normalizeTabKey(value: string) {
   return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 }
 
-const demoSessions: Record<string, Session> = {
+const internalTestSessions: Record<string, Session> = {
   invitado: {
-    fullName: 'Visitante Demo',
+    fullName: 'Visitante de prueba',
     province: 'Salta',
     contact: '+54 387 400-0001',
     communityOfOrigin: 'Sin comunidad asignada',
@@ -315,7 +317,7 @@ const demoSessions: Record<string, Session> = {
     permissions: getPermissionsForRole('coordinador_comunidad')
   },
   nacional: {
-    fullName: 'Equipo Nacional Demo',
+    fullName: 'Equipo Nacional de prueba',
     province: 'Argentina',
     contact: '+54 9 11 2456-7890',
     communityOfOrigin: 'Equipo Nacional',
@@ -568,7 +570,7 @@ async function requestAndRegisterPushToken(session: Session | null, requestPermi
     platform: Platform.OS,
     deviceId,
     deviceName: appRuntimeOwner,
-    appVersion: `${demoVersionLabel} - ${appRuntimeOwner}`,
+    appVersion: `${appVersionLabel} - ${appRuntimeOwner}`,
     isActive: true
   });
   if (error) {
@@ -1175,7 +1177,7 @@ export default function App() {
             <View style={styles.brandTextBlock}>
               <Text numberOfLines={1} style={styles.brand}>{adminConfig.identity.appName}</Text>
               <Text numberOfLines={1} style={styles.subtitle}>{adminConfig.identity.subtitle}</Text>
-              <Text numberOfLines={1} style={styles.demoLabel}>{demoVersionLabel}</Text>
+              <Text numberOfLines={1} style={styles.versionBadge}>{appVersionLabel}</Text>
             </View>
           </View>
           <View style={styles.headerActions}>
@@ -2908,7 +2910,7 @@ function LibrarySectionScreen({
     }
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
-      setMessage('Para publicar contenido tenes que iniciar sesion con una cuenta real de Supabase. El acceso demo no puede guardar publicaciones.');
+      setMessage('Para publicar contenido tenes que iniciar sesion con una cuenta real de Supabase. El acceso de prueba interno no puede guardar publicaciones.');
       return;
     }
     const { error } = await saveLibraryItem({
@@ -3408,7 +3410,7 @@ function ProfileScreen({
   const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>(communities);
   const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
   const [communityDropdownOpen, setCommunityDropdownOpen] = useState(false);
-  const [showDemoAccess, setShowDemoAccess] = useState(false);
+  const [showInternalTestAccess, setShowInternalTestAccess] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [editFullName, setEditFullName] = useState(session?.fullName ?? '');
   const [editContact, setEditContact] = useState(session?.contact ?? '');
@@ -3549,7 +3551,7 @@ function ProfileScreen({
     {
       id: 'req-001',
       title: 'Solicitud de perseverancia',
-      requester: 'Usuario demo 1',
+      requester: 'Usuario de prueba 1',
       definition: 'Pide revision para acceder al rango de Sedimentador.',
       createdAt: '2026-05-10T09:00:00-03:00',
       status: 'pendiente'
@@ -3557,7 +3559,7 @@ function ProfileScreen({
     {
       id: 'req-002',
       title: 'Solicitud de material exclusivo',
-      requester: 'Usuario demo 2',
+      requester: 'Usuario de prueba 2',
       definition: 'Pide acceso a material interno de formacion.',
       createdAt: '2026-05-14T08:15:00-03:00',
       status: 'pendiente'
@@ -4429,7 +4431,7 @@ function ProfileScreen({
 
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
-      setAuthMessage('Perfil demo actualizado visualmente. Inicia sesion real para guardar en Supabase.');
+      setAuthMessage('Perfil de prueba actualizado visualmente. Inicia sesion real para guardar en Supabase.');
       onSessionChange({
         ...session,
         fullName: editFullName || session.fullName,
@@ -6227,7 +6229,7 @@ function ProfileScreen({
             <Text style={styles.cardText}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
           </View> : null}
           {profilePanel === 'vista' && session.role !== 'administrador' ? <SectionTitle title="Solicitudes" /> : null}
-          {profilePanel === 'vista' && session.role !== 'administrador' ? demoRequests.map((item, index) => (
+          {profilePanel === 'vista' && session.role !== 'administrador' ? profileRequestTypes.map((item, index) => (
             <View key={`${item}-${index}`}>
               <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === item ? null : item)}>
                 <Text style={styles.cardTitle}>{item}</Text>
@@ -7917,23 +7919,23 @@ function ProfileScreen({
             </>
           ) : null}
           {authMode === 'register' ? (
-            <DemoButton label="Registrarme" onPress={registerReal} />
+            <ActionButton label="Registrarme" onPress={registerReal} />
           ) : (
-            <DemoButton label="Iniciar sesion" onPress={signInReal} />
+            <ActionButton label="Iniciar sesion" onPress={signInReal} />
           )}
           {authMessage ? <Text style={styles.cardText}>{authMessage}</Text> : null}
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowDemoAccess(!showDemoAccess)}>
-            <Text style={styles.secondaryButtonText}>{showDemoAccess ? 'Ocultar accesos demo' : 'Mostrar accesos demo'}</Text>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowInternalTestAccess(!showInternalTestAccess)}>
+            <Text style={styles.secondaryButtonText}>{showInternalTestAccess ? 'Ocultar accesos de prueba' : 'Mostrar accesos de prueba'}</Text>
           </TouchableOpacity>
-          {showDemoAccess ? (
+          {showInternalTestAccess ? (
             <View style={styles.profileCommunityPanel}>
-              <Text style={styles.cardEyebrow}>Modo demo</Text>
+              <Text style={styles.cardEyebrow}>Accesos de prueba</Text>
               <Text style={styles.cardText}>Solo para probar interfaces por rango.</Text>
-              <DemoButton label="Entrar como palestrista" onPress={() => onSessionChange(demoSessions.palestrista)} />
-              <DemoButton label="Entrar como sedimentador" onPress={() => onSessionChange(demoSessions.sedimentador)} />
-              <DemoButton label="Entrar como coordinador" onPress={() => onSessionChange(demoSessions.coordinador)} />
-              <DemoButton label="Entrar como coordinador nacional" onPress={() => onSessionChange(demoSessions.nacional)} />
-              <DemoButton label="Entrar como administrador" onPress={() => onSessionChange(demoSessions.administrador)} />
+              <ActionButton label="Entrar como palestrista" onPress={() => onSessionChange(internalTestSessions.palestrista)} />
+              <ActionButton label="Entrar como sedimentador" onPress={() => onSessionChange(internalTestSessions.sedimentador)} />
+              <ActionButton label="Entrar como coordinador" onPress={() => onSessionChange(internalTestSessions.coordinador)} />
+              <ActionButton label="Entrar como coordinador nacional" onPress={() => onSessionChange(internalTestSessions.nacional)} />
+              <ActionButton label="Entrar como administrador" onPress={() => onSessionChange(internalTestSessions.administrador)} />
             </View>
           ) : null}
         </View>
@@ -7942,7 +7944,7 @@ function ProfileScreen({
   );
 }
 
-function DemoButton({ label, onPress }: { label: string; onPress: () => void }) {
+function ActionButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.primaryButton} onPress={onPress} activeOpacity={0.85}>
       <Text style={styles.primaryButtonText}>{label}</Text>
@@ -8082,7 +8084,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2
   },
-  demoLabel: {
+  versionBadge: {
     color: palette.red,
     fontSize: 10,
     fontWeight: '900',

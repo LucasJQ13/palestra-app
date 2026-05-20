@@ -4,7 +4,7 @@
     "appVersionSource": "local"
   },
   "build": {
-    "demo-apk": {
+    "beta-apk": {
       "android": {
         "buildType": "apk"
       },

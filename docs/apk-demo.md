@@ -1,6 +1,6 @@
-# APK DEMO de Palestra
+# APK BETA de Palestra
 
-Estado actual: el proyecto esta preparado para generar una APK DEMO privada de Android usando Expo/EAS.
+Estado actual: el proyecto esta preparado para generar una APK BETA privada de Android usando Expo/EAS.
 
 ## Opcion recomendada para esta etapa
 
@@ -13,7 +13,7 @@ npm run build:apk
 Ese comando ejecuta:
 
 ```bash
-npx eas-cli build -p android --profile demo-apk
+npx eas-cli build -p android --profile beta-apk
 ```
 
 ## Antes de ejecutar
@@ -49,10 +49,10 @@ EAS Build compila en la nube y al terminar muestra un enlace de descarga. Desde 
 - Icono: `assets/logo-palestra.png`.
 - Splash screen: configurado con el logo y fondo `#E6F3F5`.
 - Android package: `org.palestra.argentina`.
-- Version demo visible en la app: `DEMO 0.1.0`.
-- Perfil de APK interna: `demo-apk` en `eas.json`.
+- Version beta visible en la app: `BETA 0.1.0`.
+- Perfil de APK interna: `beta-apk` en `eas.json`.
 
-## Advertencias para la demo
+## Advertencias para la beta
 
 - Esta APK no es Play Store ni version final.
 - Algunas funciones dependen de internet y Supabase.

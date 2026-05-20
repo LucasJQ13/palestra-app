@@ -23,6 +23,15 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - Se inicio una mejora para que la herramienta `Navegacion` del panel administrador funcione como pantalla dedicada.
 - Criterio: no duplicar rutas, no romper `app_tabs`, mantener persistencia Supabase y restringir uso a Administrador.
 
+## 2026-05-20
+
+### Version Beta
+
+- La etiqueta visual de la app paso a `BETA 0.1.0`.
+- La version visible queda centralizada en `App.tsx` con `appStageLabel`, `appBetaVersion` y `appVersionLabel`.
+- Los scripts de build APK ahora usan el perfil `beta-apk`.
+- Los accesos de prueba quedan nombrados como internos/de prueba, no como maqueta publica.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.

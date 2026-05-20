@@ -283,7 +283,7 @@ export const faqItems = [
   }
 ];
 
-export const demoRequests = [
+export const profileRequestTypes = [
   'Solicitud de perseverancia',
   'Necesito contactar un dirigente'
 ];
@@ -318,7 +318,7 @@ export const pendingUsers = [
 
 export const auditLog = [
   'Lucia Rios publico una noticia en Comunidad Cordoba 1.',
-  'Vocal Demo aprobo un usuario sedimentador.',
+  'Vocal diocesano aprobo un usuario sedimentador.',
   'Coordinacion Nacional actualizo permisos de prueba.'
 ];
 
@@ -333,7 +333,7 @@ export const communityNews = [
   {
     community: 'Comunidad Tucuman 1',
     title: 'Servicio comunitario del mes',
-    body: 'Actividad ficticia organizada por la comunidad de origen del perfil demo.'
+    body: 'Actividad de referencia organizada por la comunidad de origen del perfil.'
   },
   {
     community: 'Comunidad Salta 1',
