@@ -108,6 +108,13 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - `Solicitud Especial` queda disponible para contactar dirigencia diocesana.
 - El envio espera confirmacion real de Supabase antes de mostrar exito.
 
+### Contenido Publicado
+
+- Se agrego la herramienta `Contenido` al Panel Dirigencial.
+- Muestra paginas editables de Supabase y contenido base/fallback local.
+- El Administrador puede ocultar o restaurar contenido fallback; la decision se guarda en `admin_config.settings.hiddenFallbackContent`.
+- Home, Noticias/Agenda y calendario respetan esa lista para evitar que contenido demo aparezca como real.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.

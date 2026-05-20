@@ -73,7 +73,7 @@ Notifications.setNotificationHandler({
 };
 
 type TabKey = string;
-type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'navegacion' | 'permisos_roles' | 'etiquetas_roles';
+type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'contenido_publicado' | 'navegacion' | 'permisos_roles' | 'etiquetas_roles';
 type ContactBlock = { id: string; type: 'texto' | 'telefono' | 'email' | 'imagen' | 'direccion' | 'enlace' | 'boton' | 'red_social'; label: string; value: string };
 type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'buzon' | 'configuracion';
 type AppAdminConfig = {
@@ -105,6 +105,7 @@ type AppAdminConfig = {
     maintenanceMode: boolean;
     globalMessage: string;
     futureForumEnabled: boolean;
+    hiddenFallbackContent: string[];
   };
   periodoMotivador: {
     active: boolean;
@@ -176,7 +177,8 @@ const defaultAdminConfig: AppAdminConfig = {
   settings: {
     maintenanceMode: false,
     globalMessage: '',
-    futureForumEnabled: false
+    futureForumEnabled: false,
+    hiddenFallbackContent: []
   },
   periodoMotivador: {
     active: false,
@@ -211,6 +213,7 @@ const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof t
   { key: 'identidad', label: 'Identidad', icon: 'sparkles-outline', systemOnly: true },
   { key: 'home', label: 'Home', icon: 'home-outline', systemOnly: true },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', systemOnly: true },
+  { key: 'contenido_publicado', label: 'Contenido', icon: 'albums-outline', systemOnly: true },
   { key: 'comunidades', label: 'Comunidades', icon: 'location-outline' },
   { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
   { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
@@ -438,6 +441,10 @@ function roleShortLabel(role: Role) {
     administrador: 'Admin'
   };
   return labels[role] ?? roleLabel(role);
+}
+
+function fallbackContentKey(section: string, title: string, date?: string) {
+  return `${section}:${date ? `${date}:` : ''}${title}`;
 }
 
 const permissionFriendlyLabels: Record<Permission, string> = {
@@ -1191,7 +1198,7 @@ export default function App() {
       return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={navigateToTab} adminConfig={adminConfig} />;
     }
     if (activeTab === 'notilestra') {
-      return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} editor={pageEditorProps('notilestra')} />;
+      return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} editor={pageEditorProps('notilestra')} adminConfig={adminConfig} />;
     }
     if (activeTab === 'materiales') {
       return <MaterialsScreen session={session} title={tabLabel('materiales')} content={appContent.find((item) => item.tab_key === 'materiales')} refreshKey={contentVersion} editor={pageEditorProps('materiales')} />;
@@ -1585,6 +1592,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
   const [homeEditBody, setHomeEditBody] = useState('');
   const [homeActionMessage, setHomeActionMessage] = useState('');
   const canManageHomeEntries = canManageNationalPublishedContent(session);
+  const hiddenFallbackContent = adminConfig.settings.hiddenFallbackContent ?? [];
   const instagramUrl = adminConfig.contact.instagram?.startsWith('http') ? adminConfig.contact.instagram : `https://www.instagram.com/${adminConfig.contact.instagram.replace('@', '')}`;
   const instagramLabel = instagramUrl.includes('infopalestra.argentina') ? '@infopalestra.argentina' : adminConfig.contact.instagram;
   const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = [
@@ -1599,7 +1607,10 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
     { label: 'Comunidades', value: String(communities.reduce((total, item) => total + item.locations.length, 0)), icon: 'people-circle-outline' as keyof typeof Ionicons.glyphMap },
     { label: 'Materiales', value: String(materials.length), icon: 'library-outline' as keyof typeof Ionicons.glyphMap }
   ];
-  const nextEvents = notilestra.slice(0, 2);
+  const nextEvents = notilestra
+    .filter((item) => !hiddenFallbackContent.includes(fallbackContentKey('notilestra', item.title, item.date)))
+    .slice(0, 2);
+  const visibleHomeNews = homeNews.filter((item) => isRemoteNewsItem(item) || !hiddenFallbackContent.includes(fallbackContentKey('home', item.title)));
 
   useEffect(() => {
     let alive = true;
@@ -1744,7 +1755,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
 
       <SectionTitle title="Info Palestrista" />
       {homeActionMessage ? <Text style={styles.noticeText}>{homeActionMessage}</Text> : null}
-      {homeNews.map((item, index) => (
+      {visibleHomeNews.map((item, index) => (
         <TouchableOpacity key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]} activeOpacity={0.86} onPress={() => {
           if (!(homeEditId && isRemoteNewsItem(item) && item.id === homeEditId)) {
             setExpandedNews(expandedNews === item.title ? null : item.title);
@@ -1808,7 +1819,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
   );
 }
 
-function NotilestraScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
+function NotilestraScreen({ session, title, content, refreshKey, editor, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [selectedCalendarItems, setSelectedCalendarItems] = useState<Array<{ date: string; title: string; body?: string; imageUrl?: string; scope?: string; mapUrl?: string }>>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -1896,14 +1907,17 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
     });
     return groups;
   }, [notilestraItems, baseDate.getFullYear(), baseDate.getMonth()]);
+  const hiddenFallbackContent = adminConfig.settings.hiddenFallbackContent ?? [];
   const activityDays = calendarActivities.filter((item) => {
     const itemDate = new Date(`${item.date}T00:00:00`);
     const canSee = !('requiredPermission' in item) || hasPermission(session, item.requiredPermission as Permission);
-    return canSee && itemDate.getFullYear() === baseDate.getFullYear() && itemDate.getMonth() === baseDate.getMonth();
+    const hidden = hiddenFallbackContent.includes(fallbackContentKey('calendario', item.title, item.date));
+    return canSee && !hidden && itemDate.getFullYear() === baseDate.getFullYear() && itemDate.getMonth() === baseDate.getMonth();
   });
   const feedItems = useMemo(() => groupMotivadorFeedItems(notilestraItems), [notilestraItems]);
-  const favoriteItems = feedItems.filter((item) => favorites.includes(agendaPreferenceKey(item)));
-  const reminderItems = feedItems.filter((item) => reminders.includes(agendaPreferenceKey(item)));
+  const visibleFeedItems = feedItems.filter((item) => item.id || !hiddenFallbackContent.includes(fallbackContentKey('notilestra', item.title, item.date)));
+  const favoriteItems = visibleFeedItems.filter((item) => favorites.includes(agendaPreferenceKey(item)));
+  const reminderItems = visibleFeedItems.filter((item) => reminders.includes(agendaPreferenceKey(item)));
   const dueReminderItems = reminderItems.filter((item) => {
     const eventDate = new Date(`${item.date}T00:00:00`);
     const tomorrow = new Date();
@@ -2116,7 +2130,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor }: { ses
           </View>
         </View>
       </Modal>
-      {subtab === 'noticias' ? feedItems.map((item, index) => (
+      {subtab === 'noticias' ? visibleFeedItems.map((item, index) => (
         <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
           <TouchableOpacity activeOpacity={0.86} onPress={() => {
             if (!(notilestraEditId && item.id === notilestraEditId)) {
@@ -4002,6 +4016,31 @@ function ProfileScreen({
     }
     onAdminConfigChange(adminConfigDraft);
     setAuthMessage(changeDone(`${scope} guardado en Supabase.`));
+  }
+
+  async function setFallbackContentHidden(key: string, hidden: boolean) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede gestionar contenido publicado.');
+      return;
+    }
+    const current = adminConfigDraft.settings.hiddenFallbackContent ?? [];
+    const nextHidden = hidden ? Array.from(new Set([...current, key])) : current.filter((item) => item !== key);
+    const nextConfig = {
+      ...adminConfigDraft,
+      settings: {
+        ...adminConfigDraft.settings,
+        hiddenFallbackContent: nextHidden
+      }
+    };
+    setAuthMessage('Guardando visibilidad de contenido...');
+    const { error } = await saveAdminConfig(nextConfig);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAdminConfigDraft(nextConfig);
+    onAdminConfigChange(nextConfig);
+    setAuthMessage(changeDone(hidden ? 'Contenido ocultado.' : 'Contenido restaurado.'));
   }
 
   async function saveInstagramConfigDraft() {
@@ -6917,6 +6956,47 @@ function ProfileScreen({
                   <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Home')}>
                     <Text style={styles.primaryButtonText}>Guardar Home</Text>
                   </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'contenido_publicado' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Contenido Publicado</Text>
+                  <Text style={styles.cardText}>Inventario central para distinguir contenido real de Supabase y contenido base/fallback usado para que la app no quede vacía.</Text>
+                  <Text style={styles.cardEyebrow}>Páginas editables en Supabase</Text>
+                  {appContent.length === 0 ? <Text style={styles.cardText}>No hay páginas publicadas cargadas desde Supabase.</Text> : null}
+                  {appContent.map((item) => (
+                    <View key={item.tab_key} style={styles.adminListRow}>
+                      <Ionicons name="document-text-outline" size={20} color={palette.red} />
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.adminQuickText}>{item.title || item.tab_key}</Text>
+                        <Text style={styles.cardText}>Origen: Supabase - pestaña {item.tab_key}</Text>
+                      </View>
+                      <TouchableOpacity style={styles.actionPill} onPress={() => { setSelectedContentTab(item.tab_key); setAdminModule('contenido_general'); }}>
+                        <Text style={styles.actionPillText}>Editar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <Text style={styles.cardEyebrow}>Contenido base / fallback</Text>
+                  {[
+                    ...news.map((item) => ({ key: fallbackContentKey('home', item.title), section: 'Home', title: item.title, origin: 'Fallback local' })),
+                    ...notilestra.map((item) => ({ key: fallbackContentKey('notilestra', item.title, item.date), section: 'Noticias/Agenda', title: item.title, origin: `Fallback local - ${item.date}` })),
+                    ...calendarActivities.map((item) => ({ key: fallbackContentKey('calendario', item.title, item.date), section: 'Calendario', title: item.title, origin: `Fallback local - ${item.date}` }))
+                  ].map((item) => {
+                    const hidden = (adminConfigDraft.settings.hiddenFallbackContent ?? []).includes(item.key);
+                    return (
+                      <View key={item.key} style={[styles.adminListRow, hidden && styles.lockedCard]}>
+                        <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
+                        <View style={styles.adminUserHeaderText}>
+                          <Text style={styles.adminQuickText}>{item.title}</Text>
+                          <Text style={styles.cardText}>{item.section} - {item.origin} - {hidden ? 'oculto' : 'visible'}</Text>
+                        </View>
+                        <TouchableOpacity style={styles.actionPill} onPress={() => setFallbackContentHidden(item.key, !hidden)}>
+                          <Text style={styles.actionPillText}>{hidden ? 'Mostrar' : 'Ocultar'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
                 </View>
               ) : null}
 
