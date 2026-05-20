@@ -57,6 +57,12 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - Se agrego `supabase/patch_beta_role_permissions_admin.sql` con RPC `admin_get_role_permissions` y `admin_save_role_permissions`.
 - Esta etapa deja persistencia y arquitectura base; las pantallas existentes aun conservan parte de la logica local mientras se migra progresivamente a permisos remotos.
 
+### APK con GitHub Actions
+
+- Se agrego workflow alternativo `.github/workflows/android-apk.yml` para compilar APK debug sin EAS Cloud.
+- Documentacion: `docs/github_actions_apk.md`.
+- El flujo EAS sigue disponible con `npm run build:apk`.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.
