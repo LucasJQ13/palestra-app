@@ -89,6 +89,12 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - Se corrigieron textos visibles con tildes y `ñ` en login, perfil, panel dirigencial y contenido base.
 - Se retiro la leyenda visual de potestad absoluta del rol Administrador.
 
+### Ver como
+
+- Se quitaron los accesos de prueba del login publico.
+- Se agrego `Ver como` dentro del `Panel Dirigencial` solo para Administrador.
+- La simulacion no persiste, no modifica Supabase y muestra una barra para volver al Administrador real.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.

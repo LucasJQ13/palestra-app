@@ -778,6 +778,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>('inicio');
   const [tabHistory, setTabHistory] = useState<TabKey[]>(['inicio']);
   const [session, setSession] = useState<Session | null>(null);
+  const [adminSessionBeforeViewAs, setAdminSessionBeforeViewAs] = useState<Session | null>(null);
   const [touchPointer, setTouchPointer] = useState<{ x: number; y: number } | null>(null);
   const [touchPointerEnabled, setTouchPointerEnabled] = useState(false);
   const [themeName, setThemeName] = useState<ThemeName>('default');
@@ -1011,7 +1012,35 @@ export default function App() {
     const result = await getMyProfileSession(data.user.email ?? 'Usuario');
     if (result.session) {
       setSession(result.session);
+      setAdminSessionBeforeViewAs(null);
     }
+  }
+
+  function startAdminViewAs(nextSession: Session) {
+    if (session?.role !== 'administrador') {
+      showToastError('Solo Administrador puede usar Ver como.');
+      return;
+    }
+    setAdminSessionBeforeViewAs(session);
+    setSession({
+      ...nextSession,
+      id: undefined,
+      email: undefined
+    });
+    setActiveTab('inicio');
+    setTabHistory(['inicio']);
+    showToastSuccess('Modo Ver como activado');
+  }
+
+  function stopAdminViewAs() {
+    if (!adminSessionBeforeViewAs) {
+      return;
+    }
+    setSession(adminSessionBeforeViewAs);
+    setAdminSessionBeforeViewAs(null);
+    setActiveTab('perfil');
+    setTabHistory(['perfil']);
+    showToastSuccess('Volviste a Administrador');
   }
 
   async function refreshAppContent(source = 'manual') {
@@ -1093,6 +1122,7 @@ export default function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, authSession) => {
       if (!authSession?.user) {
         setSession(null);
+        setAdminSessionBeforeViewAs(null);
       }
       if (authSession?.user) {
         hydrateRealSession();
@@ -1193,7 +1223,7 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} />;
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} />;
   }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled, themeName, appTheme]);
 
   return (
@@ -1264,6 +1294,15 @@ export default function App() {
             {!veryCompactViewport ? <Text numberOfLines={1} style={styles.headerDateTime}>{currentDateTimeLabel}</Text> : null}
           </View>
         </View>
+        {adminSessionBeforeViewAs ? (
+          <View style={styles.viewAsBanner}>
+            <Ionicons name="eye-outline" size={17} color={palette.white} />
+            <Text style={styles.viewAsBannerText}>Ver como: {roleLabel(session?.role ?? 'invitado')}</Text>
+            <TouchableOpacity style={styles.viewAsExitButton} onPress={stopAdminViewAs}>
+              <Text style={styles.viewAsExitText}>Volver a Administrador</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         {successToastVisible ? (
           <View pointerEvents="none" style={styles.successToastOverlay}>
             <View style={styles.successToastCard}>
@@ -3448,6 +3487,7 @@ function ProfileScreen({
   onNavigate,
   onSavedFeedback,
   onErrorFeedback,
+  onViewAsSession,
   initialPanel = 'vista'
 }: {
   session: Session | null;
@@ -3466,6 +3506,7 @@ function ProfileScreen({
   onNavigate: (tab: TabKey) => void;
   onSavedFeedback: (message?: string) => void;
   onErrorFeedback: (message?: string) => void;
+  onViewAsSession: (session: Session) => void;
   initialPanel?: ProfilePanel;
 }) {
   const [showCommunity, setShowCommunity] = useState(false);
@@ -3498,7 +3539,6 @@ function ProfileScreen({
   const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>(communities);
   const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
   const [communityDropdownOpen, setCommunityDropdownOpen] = useState(false);
-  const [showInternalTestAccess, setShowInternalTestAccess] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [editFullName, setEditFullName] = useState(session?.fullName ?? '');
   const [editContact, setEditContact] = useState(session?.contact ?? '');
@@ -6795,6 +6835,25 @@ function ProfileScreen({
                       </TouchableOpacity>
                     ))}
                   </View>
+                  {session.role === 'administrador' ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Ver como</Text>
+                      <Text style={styles.cardText}>Simulación temporal para revisar la app con otros rangos. No cambia permisos reales ni guarda cambios en Supabase.</Text>
+                      <View style={styles.adminQuickGrid}>
+                        {([
+                          { key: 'palestrista', label: 'Palestrista' },
+                          { key: 'sedimentador', label: 'Sedimentador' },
+                          { key: 'coordinador', label: 'Coordinador' },
+                          { key: 'nacional', label: 'Nacional' }
+                        ] as const).map((item) => (
+                          <TouchableOpacity key={item.key} style={styles.adminQuickAction} onPress={() => onViewAsSession(internalTestSessions[item.key])}>
+                            <Ionicons name="eye-outline" size={20} color={palette.red} />
+                            <Text style={styles.adminQuickText}>{item.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
                   <Text style={styles.cardEyebrow}>Arquitectura editable</Text>
                   <Text style={styles.cardText}>Panel reducido para Beta: identidad, home, noticias, contacto, período motivador, usuarios, comunidades y configuración real.</Text>
                 </View>
@@ -8268,20 +8327,6 @@ function ProfileScreen({
             <ActionButton label="Iniciar sesión" onPress={signInReal} />
           )}
           {authMessage ? <Text style={styles.cardText}>{authMessage}</Text> : null}
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowInternalTestAccess(!showInternalTestAccess)}>
-            <Text style={styles.secondaryButtonText}>{showInternalTestAccess ? 'Ocultar accesos de prueba' : 'Mostrar accesos de prueba'}</Text>
-          </TouchableOpacity>
-          {showInternalTestAccess ? (
-            <View style={styles.profileCommunityPanel}>
-              <Text style={styles.cardEyebrow}>Accesos de prueba</Text>
-              <Text style={styles.cardText}>Solo para probar interfaces por rango.</Text>
-              <ActionButton label="Entrar como palestrista" onPress={() => onSessionChange(internalTestSessions.palestrista)} />
-              <ActionButton label="Entrar como sedimentador" onPress={() => onSessionChange(internalTestSessions.sedimentador)} />
-              <ActionButton label="Entrar como coordinador" onPress={() => onSessionChange(internalTestSessions.coordinador)} />
-              <ActionButton label="Entrar como coordinador nacional" onPress={() => onSessionChange(internalTestSessions.nacional)} />
-              <ActionButton label="Entrar como administrador" onPress={() => onSessionChange(internalTestSessions.administrador)} />
-            </View>
-          ) : null}
         </View>
       )}
     </View>
@@ -8484,6 +8529,34 @@ const styles = StyleSheet.create({
   successToastText: {
     color: palette.white,
     fontSize: 16,
+    fontWeight: '900'
+  },
+  viewAsBanner: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: palette.blueDeep,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  viewAsBannerText: {
+    color: palette.white,
+    fontSize: 12,
+    fontWeight: '900',
+    flex: 1
+  },
+  viewAsExitButton: {
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(255,255,255,0.16)'
+  },
+  viewAsExitText: {
+    color: palette.white,
+    fontSize: 11,
     fontWeight: '900'
   },
   inlineInfoPanel: {
