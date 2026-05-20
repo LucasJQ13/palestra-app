@@ -38,6 +38,13 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - El backdrop del modal queda separado con `Pressable`, evitando que capture el scroll del contenido.
 - Se reforzo el scroll con `keyboardShouldPersistTaps`, `keyboardDismissMode`, `nestedScrollEnabled` y altura controlada.
 
+### Usuarios y jerarquia
+
+- La herramienta `Usuarios` queda habilitada para Asesor, Vocal Diocesano, Coordinador Diocesano, Vocal Nacional, Coordinador Nacional y Administrador.
+- Se agrego `supabase/patch_beta_user_role_management.sql` para actualizar RPC de usuarios con alcance por provincia/nacion y reglas de jerarquia.
+- El buscador de usuarios se simplifico a busqueda por nombre.
+- Confirmar emails, crear usuarios basicos y eliminar/liberar mails siguen reservados al Administrador.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.

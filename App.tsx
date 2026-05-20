@@ -368,6 +368,9 @@ function canEditAdminUser(session: Session | null, user?: AdminUser | null) {
   if (!session || !user) {
     return false;
   }
+  if (user.id === session.id) {
+    return false;
+  }
   const targetRole = (user.role || 'palestrista') as Role;
   if (targetRole === 'administrador') {
     return false;
@@ -376,6 +379,10 @@ function canEditAdminUser(session: Session | null, user?: AdminUser | null) {
     return false;
   }
   return roleRank(session.role) >= roleRank(targetRole);
+}
+
+function canManageUsersPanel(session: Session | null) {
+  return Boolean(session && ['asesor', 'vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role));
 }
 
 function canEditStaticInstitutionalPage(session: Session | null) {
@@ -3608,6 +3615,7 @@ function ProfileScreen({
   const profileNews = session ? communityNews.filter((item) => item.community === session.communityOfOrigin) : [];
   const roleInfo = session ? roleDefinitions.find((item) => item.role === session.role) : null;
   const isCommunityLeader = isCommunityLeaderRole(session);
+  const canManageUsers = canManageUsersPanel(session);
   const canAdministrateCommunities = canCreateOrAdministrateCommunities(session);
   const canReviewLeadershipRequests = Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
   const showDedicatedNavigationManager = adminModule === 'navegacion' && session?.role === 'administrador';
@@ -3625,7 +3633,7 @@ function ProfileScreen({
     if (!query) {
       return true;
     }
-    return [user.full_name, user.email, user.province, user.community_name, user.role, user.status]
+    return [user.full_name]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(query));
   });
@@ -3741,7 +3749,7 @@ function ProfileScreen({
       return session?.role === 'administrador';
     }
     if (item.key === 'usuarios') {
-      return session?.role === 'administrador';
+      return canManageUsers;
     }
     if (hasPermission(session, 'gestionar_sistema')) {
       return true;
@@ -4545,8 +4553,8 @@ function ProfileScreen({
   }
 
   async function loadAdminUsers() {
-    if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede acceder a usuarios.');
+    if (!canManageUsersPanel(session)) {
+      setAuthMessage('Tu rango no tiene acceso a la herramienta Usuarios.');
       return;
     }
     setAuthMessage('Cargando usuarios...');
@@ -4635,6 +4643,10 @@ function ProfileScreen({
   }
 
   async function confirmSelectedUserEmail() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede confirmar mails desde Auth.');
+      return;
+    }
     if (!selectedAdminUser) {
       setAuthMessage('Elegir un usuario para aprobar email.');
       return;
@@ -4650,6 +4662,10 @@ function ProfileScreen({
   }
 
   async function deleteSelectedAdminUser() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede eliminar usuarios y liberar mails.');
+      return;
+    }
     if (!selectedAdminUser) {
       setAuthMessage('Elegir un usuario para eliminar.');
       return;
@@ -6585,7 +6601,7 @@ function ProfileScreen({
                       { label: 'Crear comunidad', module: 'comunidades', icon: 'location-outline' },
                       { label: 'Revisar usuarios', module: 'usuarios', icon: 'people-outline' }
                     ].filter((item) => (
-                      (item.module !== 'usuarios' || session.role === 'administrador')
+                      (item.module !== 'usuarios' || canManageUsers)
                       && (item.module !== 'comunidades' || canAdministrateCommunities)
                     )).map((item) => (
                       <TouchableOpacity key={item.label} style={styles.adminQuickAction} onPress={() => item.module === 'muro_comunitario' ? setProfilePanel('comunidad') : setAdminModule(item.module as AdminModule)}>
@@ -6991,7 +7007,7 @@ function ProfileScreen({
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Usuarios registrados</Text>
                   {session.role !== 'administrador' ? (
-                    <Text style={styles.cardText}>Solo el Administrador puede crear y gestionar usuarios desde esta pestaña.</Text>
+                    <Text style={styles.cardText}>Tu rango puede revisar y gestionar usuarios dentro de su alcance. Crear usuarios, confirmar mails y eliminar accesos queda reservado al Administrador.</Text>
                   ) : (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Crear usuario basico</Text>
@@ -7019,9 +7035,9 @@ function ProfileScreen({
                       </TouchableOpacity>
                     </View>
                   )}
-                  <TextInput style={styles.input} placeholder="Buscar por nombre, mail, provincia, comunidad o rol" value={adminUserSearch} onChangeText={setAdminUserSearch}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="Buscar usuario por nombre" value={adminUserSearch} onChangeText={setAdminUserSearch}  placeholderTextColor={inputPlaceholderColor} />
                   <TouchableOpacity style={styles.primaryButton} onPress={loadAdminUsers}>
-                    <Text style={styles.primaryButtonText}>Cargar todos los usuarios</Text>
+                    <Text style={styles.primaryButtonText}>Cargar usuarios disponibles</Text>
                   </TouchableOpacity>
                   {session.role === 'administrador' ? (
                     <View style={styles.profileCommunityPanel}>
@@ -7180,13 +7196,17 @@ function ProfileScreen({
                                 <TouchableOpacity style={styles.primaryButton} onPress={saveAdminUser}>
                                   <Text style={styles.primaryButtonText}>Guardar usuario</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={styles.secondaryButton} onPress={confirmSelectedUserEmail}>
-                                  <Text style={styles.secondaryButtonText}>Confirmar email</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.secondaryButton} onPress={deleteSelectedAdminUser}>
-                                  <Ionicons name="trash-outline" size={17} color={palette.red} />
-                                  <Text style={styles.secondaryButtonText}>Eliminar usuario</Text>
-                                </TouchableOpacity>
+                                {session.role === 'administrador' ? (
+                                  <>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={confirmSelectedUserEmail}>
+                                      <Text style={styles.secondaryButtonText}>Confirmar email</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={deleteSelectedAdminUser}>
+                                      <Ionicons name="trash-outline" size={17} color={palette.red} />
+                                      <Text style={styles.secondaryButtonText}>Eliminar usuario</Text>
+                                    </TouchableOpacity>
+                                  </>
+                                ) : null}
                               </View>
                             ) : null}
                           </View>
