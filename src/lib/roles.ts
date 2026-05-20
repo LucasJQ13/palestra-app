@@ -156,6 +156,15 @@ export function canApproveRole(session: Session | null, targetRole: Role) {
   if (session.role === 'administrador') {
     return true;
   }
+  if (session.role === 'coordinador_nacional') {
+    return targetRole === 'coordinador_nacional' || roleRank(targetRole) < roleRank(session.role);
+  }
+  if (session.role === 'vocal_nacional') {
+    return roleRank(targetRole) < roleRank(session.role);
+  }
+  if (session.role === 'coordinador_diocesano' && targetRole === 'coordinador_diocesano') {
+    return true;
+  }
   const target = roleHierarchy.find((item) => item.role === targetRole);
   return Boolean(target?.approverRoles.includes(session.role) && roleRank(session.role) >= roleRank(targetRole));
 }

@@ -4706,8 +4706,8 @@ function ProfileScreen({
     setAuthMessage('Guardando usuario...');
     const { error } = await updateAdminUser({
       id: selectedAdminUser.id,
-      email: adminUserEmail,
-      password: adminUserPassword,
+      email: session?.role === 'administrador' ? adminUserEmail : (selectedAdminUser.email ?? ''),
+      password: session?.role === 'administrador' ? adminUserPassword : '',
       fullName: adminUserFullName,
       phone: adminUserPhone,
       province: adminUserProvince,
@@ -4721,7 +4721,7 @@ function ProfileScreen({
     }
     await loadAdminUsers();
     setSelectedAdminUserId('');
-    setAuthMessage('Cambios realizados');
+    setAuthMessage(changeDone('Usuario actualizado.'));
   }
 
   async function confirmSelectedUserEmail() {
@@ -7309,8 +7309,17 @@ function ProfileScreen({
                             {selected ? (
                               <View style={styles.adminInlineEditor}>
                                 <TextInput style={styles.input} placeholder="Nombre y apellido" value={adminUserFullName} onChangeText={setAdminUserFullName}  placeholderTextColor={inputPlaceholderColor} />
-                                <TextInput style={styles.input} placeholder="Email" value={adminUserEmail} onChangeText={setAdminUserEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
-                                <TextInput style={styles.input} placeholder="Nueva contrasena opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
+                                {session.role === 'administrador' ? (
+                                  <>
+                                    <TextInput style={styles.input} placeholder="Email" value={adminUserEmail} onChangeText={setAdminUserEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                                    <TextInput style={styles.input} placeholder="Nueva contrasena opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
+                                  </>
+                                ) : (
+                                  <View style={styles.inlineInfoPanel}>
+                                    <Ionicons name="lock-closed-outline" size={17} color={palette.red} />
+                                    <Text style={styles.cardText}>Email protegido: {selectedAdminUser?.email ?? 'Sin email'}. Solo Administrador puede cambiar mail o contrasena.</Text>
+                                  </View>
+                                )}
                                 <TextInput style={styles.input} placeholder="Contacto" value={adminUserPhone} onChangeText={setAdminUserPhone}  placeholderTextColor={inputPlaceholderColor} />
                                 <Text style={styles.cardEyebrow}>Provincia</Text>
                                 <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserProvinceDropdownOpen(!adminUserProvinceDropdownOpen)}>
@@ -8344,6 +8353,17 @@ const styles = StyleSheet.create({
     color: palette.white,
     fontSize: 16,
     fontWeight: '900'
+  },
+  inlineInfoPanel: {
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(45, 141, 200, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
   },
   maintenancePanel: {
     backgroundColor: palette.white,

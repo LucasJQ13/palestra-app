@@ -69,6 +69,12 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - El toast se muestra solo cuando las acciones devuelven el mensaje interno `Cambio realizado...`, es decir, despues de una respuesta de guardado correcta.
 - Los errores se siguen mostrando aparte para evitar exitos falsos.
 
+### Usuarios para rangos superiores
+
+- La herramienta `Usuarios` conserva acciones tecnicas solo para Administrador: crear usuarios, confirmar mails, diagnosticar login, reparar, eliminar y liberar correo.
+- Asesor, Vocal Diocesano, Coordinador Diocesano, Vocal Nacional y Coordinador Nacional ven una edicion reducida enfocada en datos de perfil, provincia, comunidad, estado y rol permitido.
+- Los rangos nacionales ahora pueden asignar rangos inferiores a su propio rango desde la app, manteniendo Administrador protegido.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.
