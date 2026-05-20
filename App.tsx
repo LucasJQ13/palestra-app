@@ -11,9 +11,9 @@ import { palette } from './src/theme/palette';
 import { AppTheme, ThemeName, themePresets } from './src/theme/themes';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, profileRequestTypes, roleDefinitions } from './src/data/content';
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
-import { getPermissionsForRole } from './src/lib/permissions';
+import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -73,7 +73,7 @@ Notifications.setNotificationHandler({
 };
 
 type TabKey = string;
-type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'navegacion';
+type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'navegacion' | 'permisos_roles';
 type ContactBlock = { id: string; type: 'texto' | 'telefono' | 'email' | 'imagen' | 'direccion' | 'enlace' | 'boton' | 'red_social'; label: string; value: string };
 type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'buzon' | 'configuracion';
 type AppAdminConfig = {
@@ -215,6 +215,7 @@ const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof t
   { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
   { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
   { key: 'solicitudes', label: 'Solicitudes', icon: 'mail-unread-outline' },
+  { key: 'permisos_roles', label: 'Permisos', icon: 'shield-checkmark-outline', systemOnly: true },
   { key: 'navegacion', label: 'Navegacion', icon: 'navigate-outline', systemOnly: true },
   { key: 'periodo_motivador', label: 'Periodo', icon: 'flame-outline', systemOnly: true },
   { key: 'configuracion', label: 'Config', icon: 'settings-outline', systemOnly: true }
@@ -429,6 +430,38 @@ function roleShortLabel(role: Role) {
   };
   return labels[role] ?? roleLabel(role);
 }
+
+const permissionFriendlyLabels: Record<Permission, string> = {
+  ver_inicio: 'Puede ver Inicio',
+  ver_noticias: 'Puede ver Noticias',
+  ver_comunidades: 'Puede ver Comunidades',
+  ver_historia: 'Puede ver Historia',
+  ver_contacto: 'Puede ver Contacto',
+  ver_materiales_internos: 'Puede ver materiales internos',
+  descargar_archivos: 'Puede descargar archivos',
+  descargar_archivos_exclusivos: 'Puede descargar archivos exclusivos',
+  ver_fechas_privadas: 'Puede ver fechas privadas',
+  ver_noticias_comunidad: 'Puede ver noticias de su comunidad',
+  subir_noticias_comunidad: 'Puede publicar avisos comunitarios',
+  gestionar_comunidad: 'Puede gestionar comunidad',
+  enviar_mensajes_comunidad: 'Puede enviar mensajes comunitarios',
+  aprobar_sedimentadores: 'Puede aprobar sedimentadores',
+  otorgar_roles_provincia: 'Puede otorgar roles provinciales',
+  otorgar_roles_diocesanos: 'Puede otorgar roles diocesanos',
+  ver_seccion_asesores: 'Puede ver seccion de asesores',
+  gestionar_permisos: 'Puede gestionar permisos',
+  gestionar_sistema: 'Puede gestionar sistema',
+  gestionar_roles_globales: 'Puede gestionar roles globales',
+  gestionar_pestanas: 'Puede gestionar pestanas',
+  gestionar_comunidades_global: 'Puede gestionar comunidades globales',
+  enviar_notificaciones: 'Puede enviar notificaciones',
+  gestionar_contenido: 'Puede gestionar contenido'
+};
+
+const permissionOptions = (Object.keys(permissionFriendlyLabels) as Permission[]).map((permission) => ({
+  key: permission,
+  label: permissionFriendlyLabels[permission]
+}));
 
 function tabShortLabel(label: string) {
   const normalized = label.toLowerCase();
@@ -3456,6 +3489,10 @@ function ProfileScreen({
   const [adminCreatePasswordVisible, setAdminCreatePasswordVisible] = useState(false);
   const [adminDiagnosticEmail, setAdminDiagnosticEmail] = useState('lucas.lsd.13@gmail.com');
   const [adminLoginDiagnostic, setAdminLoginDiagnostic] = useState<AdminUserLoginDiagnostic | null>(null);
+  const [permissionRole, setPermissionRole] = useState<Role>('palestrista');
+  const [permissionRoleDropdownOpen, setPermissionRoleDropdownOpen] = useState(false);
+  const [rolePermissionRows, setRolePermissionRows] = useState<RolePermissionRecord[]>([]);
+  const [rolePermissionDraft, setRolePermissionDraft] = useState<Permission[]>(rolePermissions.palestrista);
   const [adminNewsTitle, setAdminNewsTitle] = useState('');
   const [adminNewsBody, setAdminNewsBody] = useState('');
   const [adminNewsCategory, setAdminNewsCategory] = useState('General');
@@ -4761,6 +4798,44 @@ function ProfileScreen({
     setAdminLoginDiagnostic(null);
     await loadAdminUsers();
     setAuthMessage(changeDone('Usuario eliminado y correo liberado correctamente.'));
+  }
+
+  async function loadRolePermissionDraft(role: Role = permissionRole) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede gestionar permisos de rangos.');
+      return;
+    }
+    setAuthMessage('Cargando permisos del rango...');
+    const rows = await fetchRolePermissions(role);
+    setRolePermissionRows(rows);
+    if (rows.length > 0) {
+      setRolePermissionDraft(rows.filter((item) => item.enabled).map((item) => item.permission_key as Permission));
+    } else {
+      setRolePermissionDraft(rolePermissions[role] ?? []);
+    }
+    setAuthMessage(rows.length > 0 ? 'Permisos cargados.' : 'No hay permisos remotos cargados; se muestra base local.');
+  }
+
+  function toggleRolePermission(permission: Permission) {
+    setRolePermissionDraft((current) => (
+      current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...current, permission]
+    ));
+  }
+
+  async function saveRolePermissionDraft() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede guardar permisos de rangos.');
+      return;
+    }
+    const { error } = await saveRolePermissions(permissionRole, rolePermissionDraft);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadRolePermissionDraft(permissionRole);
+    setAuthMessage(changeDone('Permisos del rango actualizados.'));
   }
 
   async function queueNotificationIfRequested(enabled: boolean, values: {
@@ -6974,6 +7049,59 @@ function ProfileScreen({
                       ))}
                     </>
                   ) : null}
+                </View>
+              ) : null}
+
+              {adminModule === 'permisos_roles' ? (
+                <View style={styles.adminWorkspace}>
+                  <Text style={styles.cardTitle}>Permisos de Rangos</Text>
+                  <Text style={styles.cardText}>Base administrable para activar o desactivar permisos por rango. Los cambios se guardan en Supabase y preparan la arquitectura global de permisos.</Text>
+                  <Text style={styles.cardEyebrow}>Rango</Text>
+                  <TouchableOpacity style={styles.dropdownButton} onPress={() => setPermissionRoleDropdownOpen(!permissionRoleDropdownOpen)}>
+                    <Text style={styles.dropdownButtonText}>{roleLabel(permissionRole)}</Text>
+                    <Ionicons name={permissionRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  </TouchableOpacity>
+                  {permissionRoleDropdownOpen ? (
+                    <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                      {roleDefinitions.filter((role) => role.role !== 'administrador').map((role) => (
+                        <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => {
+                          const nextRole = role.role as Role;
+                          setPermissionRole(nextRole);
+                          setRolePermissionDraft(rolePermissions[nextRole] ?? []);
+                          setRolePermissionRows([]);
+                          setPermissionRoleDropdownOpen(false);
+                        }}>
+                          <Text style={styles.dropdownItemText}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => loadRolePermissionDraft(permissionRole)}>
+                      <Ionicons name="refresh-outline" size={17} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Cargar permisos</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.primaryButton} onPress={saveRolePermissionDraft}>
+                      <Ionicons name="save-outline" size={17} color={palette.white} />
+                      <Text style={styles.primaryButtonText}>Guardar permisos</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.cardEyebrow}>Permisos disponibles</Text>
+                  <View style={styles.permissionGrid}>
+                    {permissionOptions.map((permission) => {
+                      const checked = rolePermissionDraft.includes(permission.key);
+                      const remoteRow = rolePermissionRows.find((item) => item.permission_key === permission.key);
+                      return (
+                        <TouchableOpacity key={permission.key} style={[styles.permissionToggle, checked && styles.permissionToggleActive]} onPress={() => toggleRolePermission(permission.key)} activeOpacity={0.85}>
+                          <Ionicons name={checked ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={checked ? palette.white : palette.red} />
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={[styles.permissionToggleTitle, checked && styles.permissionToggleTitleActive]}>{remoteRow?.permission_label || permission.label}</Text>
+                            <Text style={[styles.permissionToggleMeta, checked && styles.permissionToggleMetaActive]}>{permission.key}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
               ) : null}
 
@@ -10329,6 +10457,42 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 14,
     gap: 6
+  },
+  permissionGrid: {
+    gap: 8
+  },
+  permissionToggle: {
+    minHeight: 64,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)'
+  },
+  permissionToggleActive: {
+    backgroundColor: palette.red,
+    borderColor: palette.red
+  },
+  permissionToggleTitle: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: '900'
+  },
+  permissionToggleTitleActive: {
+    color: palette.white
+  },
+  permissionToggleMeta: {
+    color: palette.inkMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2
+  },
+  permissionToggleMetaActive: {
+    color: 'rgba(255,255,255,0.78)'
   },
   colorInput: {
     flex: 1,

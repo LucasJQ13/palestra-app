@@ -119,6 +119,14 @@ export type UserAgendaPreferenceRecord = {
   created_at: string;
 };
 
+export type RolePermissionRecord = {
+  role: string;
+  permission_key: string;
+  permission_label: string;
+  permission_description: string | null;
+  enabled: boolean;
+};
+
 export async function fetchPendingProfiles(): Promise<PendingProfile[]> {
   const { data, error } = await supabase.rpc('admin_get_pending_profiles');
 
@@ -590,6 +598,31 @@ export async function debugPushToDevice(values: {
   try {
     return await supabase.functions.invoke('debug-push-notification', {
       body: values
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchRolePermissions(role: string): Promise<RolePermissionRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('admin_get_role_permissions', {
+      p_role: role
+    });
+    if (error || !data) {
+      return [];
+    }
+    return data as RolePermissionRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveRolePermissions(role: string, permissionKeys: string[]) {
+  try {
+    return await supabase.rpc('admin_save_role_permissions', {
+      p_role: role,
+      p_permission_keys: permissionKeys
     });
   } catch (error) {
     return networkError(error);

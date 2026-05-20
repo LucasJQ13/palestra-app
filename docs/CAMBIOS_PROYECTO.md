@@ -51,6 +51,12 @@ Este documento resume decisiones y cambios relevantes para continuar el proyecto
 - La app reconoce las solicitudes `Solicitud de Coordinacion Diocesana` y `Solicitud de Coordinacion Nacional` en el perfil del usuario elegido.
 - Al aceptar, el coordinador anterior baja automaticamente a Sedimentador y queda registro en `audit_logs`.
 
+### Permisos administrables
+
+- Se agrego modulo admin `Permisos` para que Administrador seleccione un rango, vea permisos y active/desactive opciones.
+- Se agrego `supabase/patch_beta_role_permissions_admin.sql` con RPC `admin_get_role_permissions` y `admin_save_role_permissions`.
+- Esta etapa deja persistencia y arquitectura base; las pantallas existentes aun conservan parte de la logica local mientras se migra progresivamente a permisos remotos.
+
 ## Recomendacion operativa
 
 - Antes de trabajar desde otra PC: `git pull --ff-only`.
