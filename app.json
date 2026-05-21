@@ -12,6 +12,12 @@
       "resizeMode": "contain",
       "backgroundColor": "#E6F3F5"
     },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#2d8dc8",
+      "androidMode": "default",
+      "androidCollapsedTitle": "Palestra"
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-palestra.png",

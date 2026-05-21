@@ -7,6 +7,22 @@ type PushTicket = {
   details?: Record<string, unknown>;
 };
 
+function notificationTitle(intent: any) {
+  if (String(intent.notification_type ?? '').includes('privado')) {
+    return 'Mensaje privado';
+  }
+  if (String(intent.notification_type ?? '').includes('recordatorio') || intent.source_type === 'event') {
+    return 'Recordatorio';
+  }
+  if (intent.target_kind === 'comunidad') {
+    return `Aviso comunitario · ${intent.community || intent.target_value || 'Comunidad'}`;
+  }
+  if (intent.target_kind === 'provincia') {
+    return `Aviso provincial · ${intent.province || intent.target_value || 'Provincia'}`;
+  }
+  return 'Aviso nacional · Palestra';
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
@@ -44,7 +60,7 @@ Deno.serve(async (request) => {
 
     const { data: intent, error: intentError } = await supabase
       .from('notification_intents')
-      .select('id, title, body, payload, tab_key, source_type, source_id, status')
+      .select('id, created_by, notification_type, title, body, payload, tab_key, source_type, source_id, target_kind, target_value, target_scope, province, community, min_role, status')
       .eq('id', intentId)
       .single();
 
@@ -86,16 +102,25 @@ Deno.serve(async (request) => {
       const messages = tokenGroup.map((token) => ({
         to: token,
         sound: 'default',
-        title: intent.title,
+        title: notificationTitle(intent),
+        subtitle: intent.title,
         body: intent.body,
         priority: 'high',
         channelId: 'default',
         data: {
           ...(intent.payload ?? {}),
+          notification_type: intent.notification_type,
           intent_id: intent.id,
           tab: intent.tab_key,
           source_type: intent.source_type,
-          source_id: intent.source_id
+          source_id: intent.source_id,
+          province_id: intent.province ?? null,
+          community_id: intent.community ?? null,
+          scope: intent.target_scope ?? intent.target_kind,
+          target_kind: intent.target_kind,
+          target_value: intent.target_value,
+          min_role: intent.min_role,
+          created_by: intent.created_by
         }
       }));
 

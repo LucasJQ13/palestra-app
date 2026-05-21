@@ -591,6 +591,30 @@ function getFriendlyPushError(error: unknown) {
   return 'No se pudo activar push remoto en este dispositivo.';
 }
 
+function notificationTitleFor(values: {
+  notificationType: string;
+  title: string;
+  targetKind: string;
+  targetValue?: string | null;
+  province?: string | null;
+  community?: string | null;
+  sourceType?: string | null;
+}) {
+  if (values.notificationType.includes('privado')) {
+    return 'Mensaje privado';
+  }
+  if (values.notificationType.includes('recordatorio') || values.sourceType === 'event') {
+    return 'Recordatorio';
+  }
+  if (values.targetKind === 'comunidad') {
+    return `Aviso comunitario · ${values.community || values.targetValue || 'Comunidad'}`;
+  }
+  if (values.targetKind === 'provincia') {
+    return `Aviso provincial · ${values.province || values.targetValue || 'Provincia'}`;
+  }
+  return 'Aviso nacional · Palestra';
+}
+
 async function requestAndRegisterPushToken(session: Session | null, requestPermission: boolean) {
   if (!session?.id) {
     return { status: 'missing-session', token: null, error: 'Iniciá sesión para activar notificaciones.', technicalError: null } satisfies PushRegistrationResult;
@@ -802,6 +826,8 @@ export default function App() {
   const [tabHistory, setTabHistory] = useState<TabKey[]>(['inicio']);
   const [session, setSession] = useState<Session | null>(null);
   const [adminSessionBeforeViewAs, setAdminSessionBeforeViewAs] = useState<Session | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [profileInitialPanel, setProfileInitialPanel] = useState<ProfilePanel>('vista');
   const [touchPointer, setTouchPointer] = useState<{ x: number; y: number } | null>(null);
   const [touchPointerEnabled, setTouchPointerEnabled] = useState(false);
   const [themeName, setThemeName] = useState<ThemeName>('default');
@@ -991,6 +1017,65 @@ export default function App() {
     });
   }, [resolvedTabs, session, adminConfig.settings.maintenanceMode]);
 
+  const drawerWidth = Math.min(348, Math.max(286, viewportWidth * 0.86));
+  const drawerItems = useMemo(() => {
+    const items: Array<{
+      key: string;
+      label: string;
+      icon: keyof typeof Ionicons.glyphMap;
+      action: () => void;
+      active: boolean;
+      meta?: string;
+    }> = visibleTabs.map((tab) => ({
+      key: tab.key,
+      label: tab.label,
+      icon: tab.icon,
+      active: activeTab === tab.key,
+      action: () => navigateToTab(tab.key)
+    }));
+
+    items.push({
+      key: 'perfil',
+      label: 'Perfil',
+      icon: 'person-circle-outline',
+      active: activeTab === 'perfil' && profileInitialPanel === 'vista',
+      action: () => {
+        setProfileInitialPanel('vista');
+        navigateToTab('perfil');
+      }
+    });
+
+    if (canAccessPrivate(session)) {
+      items.push({
+        key: 'mi_comunidad',
+        label: 'Mi Comunidad',
+        icon: 'people-circle-outline',
+        active: activeTab === 'perfil' && profileInitialPanel === 'comunidad',
+        meta: session?.communityOfOrigin,
+        action: () => {
+          setProfileInitialPanel('comunidad');
+          navigateToTab('perfil');
+        }
+      });
+    }
+
+    if (canManageUsersPanel(session) || isCommunityLeaderRole(session)) {
+      items.push({
+        key: 'panel_dirigencial',
+        label: 'Panel Dirigencial',
+        icon: 'shield-checkmark-outline',
+        active: activeTab === 'perfil' && profileInitialPanel === 'vista',
+        meta: 'Gestión interna',
+        action: () => {
+          setProfileInitialPanel('vista');
+          navigateToTab('perfil');
+        }
+      });
+    }
+
+    return items;
+  }, [visibleTabs, activeTab, profileInitialPanel, session]);
+
   const tabLabel = (key: TabKey) => resolvedTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
   const pageEditorProps = (key: TabKey): PageEditorProps => ({
     tabKey: key,
@@ -1092,12 +1177,16 @@ export default function App() {
   }
 
   function navigateToTab(nextTab: TabKey) {
+    setDrawerOpen(false);
     if (isMissingProfileScope(session) && nextTab !== 'perfil') {
       setActiveTab('perfil');
       setTabHistory(['perfil']);
       setAppMessage('Completa provincia y comunidad para usar la app.');
       setTimeout(() => setAppMessage(''), 2200);
       return;
+    }
+    if (nextTab !== 'perfil') {
+      setProfileInitialPanel('vista');
     }
     if (nextTab === activeTab) {
       return;
@@ -1107,6 +1196,11 @@ export default function App() {
   }
 
   function goBackInApp() {
+    if (drawerOpen) {
+      setDrawerOpen(false);
+      return true;
+    }
+
     if (tabHistory.length > 1) {
       const nextHistory = tabHistory.slice(0, -1);
       const previousTab = nextHistory[nextHistory.length - 1] ?? 'inicio';
@@ -1164,7 +1258,7 @@ export default function App() {
 
     const subscription = BackHandler.addEventListener('hardwareBackPress', goBackInApp);
     return () => subscription.remove();
-  }, [activeTab, tabHistory]);
+  }, [activeTab, tabHistory, drawerOpen]);
 
   useEffect(() => {
     if (isMissingProfileScope(session) && activeTab !== 'perfil') {
@@ -1246,8 +1340,8 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} />;
-  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled, themeName, appTheme]);
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} />;
+  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel]);
 
   return (
     <SafeAreaProvider>
@@ -1313,10 +1407,46 @@ export default function App() {
                 <Ionicons name="person-circle-outline" size={17} color={palette.red} />
                 {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>Mi Perfil</Text> : null}
               </TouchableOpacity>
+              <TouchableOpacity style={styles.headerMenuButton} onPress={() => setDrawerOpen(true)} activeOpacity={0.85}>
+                <Ionicons name="menu-outline" size={22} color={palette.red} />
+              </TouchableOpacity>
             </View>
             {!veryCompactViewport ? <Text numberOfLines={1} style={styles.headerDateTime}>{currentDateTimeLabel}</Text> : null}
           </View>
         </View>
+        <Modal visible={drawerOpen} transparent animationType="fade" onRequestClose={() => setDrawerOpen(false)}>
+          <View style={styles.drawerOverlay}>
+            <Pressable style={styles.drawerBackdrop} onPress={() => setDrawerOpen(false)} />
+            <View style={[styles.drawerPanel, { width: drawerWidth }]}>
+              <View style={styles.drawerHeader}>
+                <View style={styles.drawerLogo}>
+                  <Image source={palestraLogo} style={styles.brandLogoImage} />
+                </View>
+                <View style={styles.drawerHeaderText}>
+                  <Text numberOfLines={1} style={styles.drawerTitle}>Palestra</Text>
+                  <Text numberOfLines={1} style={styles.drawerSubtitle}>{session ? displayRoleLabel(session.role, session.province) : 'Invitado'}</Text>
+                </View>
+                <TouchableOpacity style={styles.drawerCloseButton} onPress={() => setDrawerOpen(false)} activeOpacity={0.85}>
+                  <Ionicons name="close-outline" size={22} color={palette.ink} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.drawerScroll} contentContainerStyle={styles.drawerScrollContent} showsVerticalScrollIndicator={false}>
+                {drawerItems.map((item) => (
+                  <TouchableOpacity key={item.key} style={[styles.drawerItem, item.active && styles.drawerItemActive]} onPress={item.action} activeOpacity={0.84}>
+                    <View style={[styles.drawerIconFrame, item.active && styles.drawerIconFrameActive]}>
+                      <Ionicons name={item.icon} size={20} color={item.active ? palette.white : palette.red} />
+                    </View>
+                    <View style={styles.drawerItemTextBlock}>
+                      <Text numberOfLines={1} style={[styles.drawerItemText, item.active && styles.drawerItemTextActive]}>{item.label}</Text>
+                      {item.meta ? <Text numberOfLines={1} style={styles.drawerItemMeta}>{item.meta}</Text> : null}
+                    </View>
+                    {item.active ? <Ionicons name="ellipse" size={8} color={palette.red} /> : null}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
         {adminSessionBeforeViewAs ? (
           <View style={styles.viewAsBanner}>
             <Ionicons name="eye-outline" size={17} color={palette.white} />
@@ -1356,20 +1486,6 @@ export default function App() {
             {screen}
           </Animated.View>
         </ScrollView>
-        <View style={[styles.tabBar, compactViewport && styles.tabBarCompact, isDarkTheme && styles.tabBarDark]}>
-          {visibleTabs.map((tab) => {
-            const selected = activeTab === tab.key;
-            return (
-              <TouchableOpacity key={`${tab.key}-${tab.sortOrder}`} style={[styles.tabButton, compactViewport && styles.tabButtonCompact]} onPress={() => navigateToTab(tab.key)} activeOpacity={0.8}>
-                <View style={[styles.tabIconFrame, compactViewport && styles.tabIconFrameCompact, selected && styles.tabIconFrameActive]}>
-                  <Ionicons name={tab.icon} size={compactViewport ? 18 : 20} color={selected ? palette.white : palette.red} />
-                </View>
-                {!veryCompactViewport ? <Text numberOfLines={1} style={[styles.tabLabel, compactViewport && styles.tabLabelCompact, selected && styles.tabLabelActive]}>{compactViewport ? tabShortLabel(tab.label) : tab.label}</Text> : null}
-                {selected ? <View style={styles.tabActiveDot} /> : null}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -3562,6 +3678,7 @@ function ProfileScreen({
   const [pushCurrentToken, setPushCurrentToken] = useState('');
   const [pushChannelDebug, setPushChannelDebug] = useState('');
   const [pushTestResult, setPushTestResult] = useState('');
+  const [showPushDiagnostics, setShowPushDiagnostics] = useState(false);
   const [registerFullName, setRegisterFullName] = useState('');
   const [registerContact, setRegisterContact] = useState('');
   const [registerProvince, setRegisterProvince] = useState('');
@@ -5153,6 +5270,7 @@ function ProfileScreen({
     }
     const { data, error } = await createNotificationIntent({
       ...values,
+      title: notificationTitleFor(values),
       body: values.body.slice(0, 220),
       targetScope: values.targetScope ?? values.targetKind,
       minRole: values.minRole ?? 'palestrista'
@@ -6299,38 +6417,43 @@ function ProfileScreen({
                 <View style={styles.settingRowText}>
                   <Text style={styles.cardTitle}>Permitir notificaciones</Text>
                   <Text style={styles.cardText}>Estado actual: {notificationPermissionStatus}. Activa este dispositivo para recibir avisos importantes.</Text>
-                  {pushTokenPreview ? <Text style={styles.feedMeta}>Token registrado: {pushTokenPreview}</Text> : null}
-                  <Text style={styles.feedMeta}>Runtime: {appRuntimeOwner} - ProjectId: {easProjectId}</Text>
                 </View>
               </View>
               <TouchableOpacity style={styles.secondaryButton} onPress={enablePushNotificationsFromSettings}>
                 <Ionicons name="notifications-outline" size={17} color={palette.red} />
                 <Text style={styles.secondaryButtonText}>Solicitar permiso</Text>
               </TouchableOpacity>
-              {pushDebugInfo ? (
-                <View style={styles.inlineEditorPanel}>
-                  <Text style={styles.cardEyebrow}>Debug temporal de notificaciones</Text>
-                  <Text selectable style={styles.feedMeta}>{pushDebugInfo}</Text>
-                  {pushChannelDebug ? (
-                    <>
-                      <Text style={styles.cardEyebrow}>Canales Android</Text>
-                      <Text selectable style={styles.feedMeta}>{pushChannelDebug}</Text>
-                    </>
-                  ) : null}
-                </View>
-              ) : null}
               {session.role === 'administrador' ? (
                 <View style={styles.inlineEditorPanel}>
-                  <Text style={styles.cardEyebrow}>Pruebas push APK</Text>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={sendLocalNotificationDebug}>
-                    <Ionicons name="phone-portrait-outline" size={17} color={palette.red} />
-                    <Text style={styles.secondaryButtonText}>Probar canal local Android</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.primaryButton} onPress={sendRemotePushDebug}>
-                    <Ionicons name="notifications-outline" size={17} color={palette.white} />
-                    <Text style={styles.primaryButtonText}>Enviar notificacion de prueba a este dispositivo</Text>
-                  </TouchableOpacity>
-                  {pushTestResult ? <Text selectable style={styles.feedMeta}>{pushTestResult}</Text> : null}
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingRowText}>
+                      <Text style={styles.cardEyebrow}>Diagnóstico de notificaciones</Text>
+                      <Text style={styles.cardText}>Herramientas técnicas visibles solo para Administrador.</Text>
+                    </View>
+                    <Switch value={showPushDiagnostics} onValueChange={setShowPushDiagnostics} />
+                  </View>
+                  {showPushDiagnostics ? (
+                    <>
+                      {pushTokenPreview ? <Text style={styles.feedMeta}>Token registrado: {pushTokenPreview}</Text> : null}
+                      <Text style={styles.feedMeta}>Runtime: {appRuntimeOwner} - ProjectId: {easProjectId}</Text>
+                      {pushDebugInfo ? <Text selectable style={styles.feedMeta}>{pushDebugInfo}</Text> : null}
+                      {pushChannelDebug ? (
+                        <>
+                          <Text style={styles.cardEyebrow}>Canales Android</Text>
+                          <Text selectable style={styles.feedMeta}>{pushChannelDebug}</Text>
+                        </>
+                      ) : null}
+                      <TouchableOpacity style={styles.secondaryButton} onPress={sendLocalNotificationDebug}>
+                        <Ionicons name="phone-portrait-outline" size={17} color={palette.red} />
+                        <Text style={styles.secondaryButtonText}>Probar canal local Android</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.primaryButton} onPress={sendRemotePushDebug}>
+                        <Ionicons name="notifications-outline" size={17} color={palette.white} />
+                        <Text style={styles.primaryButtonText}>Enviar notificacion de prueba a este dispositivo</Text>
+                      </TouchableOpacity>
+                      {pushTestResult ? <Text selectable style={styles.feedMeta}>{pushTestResult}</Text> : null}
+                    </>
+                  ) : null}
                 </View>
               ) : null}
               <TextInput style={styles.input} placeholder="Nuevo mail" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
@@ -9029,10 +9152,131 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900'
   },
+  headerMenuButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(12, 25, 38, 0.34)',
+    flexDirection: 'row'
+  },
+  drawerBackdrop: {
+    ...StyleSheet.absoluteFillObject
+  },
+  drawerPanel: {
+    height: '100%',
+    backgroundColor: '#F6FBFC',
+    borderTopRightRadius: 30,
+    borderBottomRightRadius: 30,
+    paddingTop: 18,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 12
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(45, 141, 200, 0.12)'
+  },
+  drawerLogo: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    overflow: 'hidden',
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)'
+  },
+  drawerHeaderText: {
+    flex: 1,
+    minWidth: 0
+  },
+  drawerTitle: {
+    color: palette.ink,
+    fontSize: 22,
+    fontWeight: '900'
+  },
+  drawerSubtitle: {
+    color: palette.inkMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 2
+  },
+  drawerCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)'
+  },
+  drawerScroll: {
+    marginTop: 14
+  },
+  drawerScrollContent: {
+    gap: 8,
+    paddingBottom: 28
+  },
+  drawerItem: {
+    minHeight: 58,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  drawerItemActive: {
+    backgroundColor: 'rgba(45, 141, 200, 0.12)'
+  },
+  drawerIconFrame: {
+    width: 40,
+    height: 40,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45, 141, 200, 0.09)'
+  },
+  drawerIconFrameActive: {
+    backgroundColor: palette.red
+  },
+  drawerItemTextBlock: {
+    flex: 1,
+    minWidth: 0
+  },
+  drawerItemText: {
+    color: palette.ink,
+    fontSize: 15,
+    fontWeight: '900'
+  },
+  drawerItemTextActive: {
+    color: palette.red
+  },
+  drawerItemMeta: {
+    color: palette.inkMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2
+  },
   content: {
     paddingHorizontal: 18,
     paddingTop: 10,
-    paddingBottom: 156
+    paddingBottom: 48
   },
   contentDark: {
     backgroundColor: themePresets.dark.colors.background
