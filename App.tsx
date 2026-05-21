@@ -21,6 +21,15 @@ import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermiss
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
 
 const palestraLogo = require('./assets/logo-palestra.png');
+const AppThemeContext = React.createContext<AppTheme>(themePresets.default);
+
+function useAppTheme() {
+  return React.useContext(AppThemeContext);
+}
+
+function useIsDarkTheme() {
+  return useAppTheme().mode === 'dark';
+}
 const provinceLogos: Record<string, any> = {
   Salta: require('./assets/logo-provincia-salta.png'),
   Jujuy: require('./assets/logo-provincia-jujuy.png'),
@@ -1502,7 +1511,8 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView
+      <AppThemeContext.Provider value={appTheme}>
+        <SafeAreaView
         style={[styles.safeArea, isDarkTheme && styles.safeAreaDark]}
         onTouchStart={(event) => {
           const { pageX, pageY } = event.nativeEvent;
@@ -1739,7 +1749,8 @@ export default function App() {
             {screen}
           </Animated.View>
         </ScrollView>
-      </SafeAreaView>
+        </SafeAreaView>
+      </AppThemeContext.Provider>
     </SafeAreaProvider>
   );
 }
@@ -2223,6 +2234,7 @@ function BirthDatePicker({ value, onChange }: { value: string; onChange: (value:
 }
 
 function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?: PageEditorProps }) {
+  const isDark = useIsDarkTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [draftLabel, setDraftLabel] = useState(editor?.title ?? '');
   const [draftTitle, setDraftTitle] = useState(content?.title ?? editor?.title ?? '');
@@ -2355,25 +2367,25 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
 
     if (content.blocks && content.blocks.length > 0) {
       return (
-        <View style={styles.contentIntro}>
+        <View style={[styles.contentIntro, isDark && styles.surfacePanelDark]}>
           {content.blocks.map((block, index) => {
             const blockKey = `${block.id}-${index}`;
             if (block.type === 'titulo') {
-              return <Text key={blockKey} style={styles.cardTitle}>{block.value}</Text>;
+              return <Text key={blockKey} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{block.value}</Text>;
             }
             if (block.type === 'imagen') {
               return <Image key={blockKey} source={{ uri: block.value }} style={styles.cardImage} />;
             }
-            return <Text key={blockKey} style={styles.cardText}>{block.value}</Text>;
+            return <Text key={blockKey} style={[styles.cardText, isDark && styles.textDarkBody]}>{block.value}</Text>;
           })}
         </View>
       );
     }
 
     return (
-      <View style={styles.contentIntro}>
-        <Text style={styles.cardTitle}>{content.title}</Text>
-        <Text style={styles.cardText}>{content.body}</Text>
+      <View style={[styles.contentIntro, isDark && styles.surfacePanelDark]}>
+        <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{content.title}</Text>
+        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{content.body}</Text>
       </View>
     );
   })();
@@ -2386,8 +2398,8 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
           <Text style={styles.inlineEditButtonText}>{isEditing ? 'Cerrar editor' : 'Editar pagina'}</Text>
         </TouchableOpacity>
         {isEditing ? (
-          <View style={styles.inlineEditorPanel}>
-            <Text style={styles.cardText}>Edita el contenido con bloques. El primer bloque de texto se usa como resumen interno de la pagina.</Text>
+          <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Edita el contenido con bloques. El primer bloque de texto se usa como resumen interno de la pagina.</Text>
             <View style={styles.inlineActions}>
               <TouchableOpacity style={styles.smallActionButton} onPress={() => addInlineBlock('titulo')}>
                 <Ionicons name="text-outline" size={16} color={palette.red} />
@@ -2403,9 +2415,9 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
               </TouchableOpacity>
             </View>
             {draftBlocks.map((block, index) => (
-              <View key={`${block.id}-${index}`} style={styles.inlineBlockEditor}>
+              <View key={`${block.id}-${index}`} style={[styles.inlineBlockEditor, isDark && styles.surfaceRowDark]}>
                 <View style={styles.inlineBlockHeader}>
-                  <Text style={styles.cardEyebrow}>{block.type}</Text>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{block.type}</Text>
                   <View style={styles.inlineIconActions}>
                     <TouchableOpacity style={styles.iconButtonGhost} onPress={() => moveInlineBlock(index, -1)}>
                       <Ionicons name="arrow-up-outline" size={16} color={palette.inkMuted} />
@@ -2430,7 +2442,7 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
             <TouchableOpacity style={styles.primaryButton} onPress={saveInlinePage}>
               <Text style={styles.primaryButtonText}>Guardar pagina</Text>
             </TouchableOpacity>
-            {editorMessage ? <Text style={styles.cardText}>{editorMessage}</Text> : null}
+            {editorMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{editorMessage}</Text> : null}
           </View>
         ) : null}
         {renderedContent}
@@ -2446,6 +2458,7 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
 }
 
 function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void; adminConfig: AppAdminConfig }) {
+  const isDark = useIsDarkTheme();
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
   const [homeNews, setHomeNews] = useState<HomeFeedItem[]>(news);
   const [communityAgenda, setCommunityAgenda] = useState<CommunityPublication[]>([]);
@@ -2569,8 +2582,8 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             <View style={[styles.homeTileIcon, { backgroundColor: tile.color }]}>
               <Ionicons name={tile.icon} size={25} color={palette.white} />
             </View>
-            <Text style={styles.homeTileTitle}>{tile.title}</Text>
-            <Text style={styles.homeTileMeta}>{tile.meta}</Text>
+            <Text style={[styles.homeTileTitle, isDark && styles.textDarkStrong]}>{tile.title}</Text>
+            <Text style={[styles.homeTileMeta, isDark && styles.textDarkMuted]}>{tile.meta}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -2578,10 +2591,10 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
       <SectionTitle title="Resumen" />
       <View style={styles.dashboardStrip}>
         {dashboardStats.map((item) => (
-          <View key={item.label} style={styles.dashboardStat}>
-            <Ionicons name={item.icon} size={18} color={palette.red} />
-            <Text style={styles.dashboardValue}>{item.value}</Text>
-            <Text style={styles.dashboardLabel}>{item.label}</Text>
+          <View key={item.label} style={[styles.dashboardStat, isDark && styles.surfaceCardDark]}>
+            <Ionicons name={item.icon} size={18} color={isDark ? themePresets.dark.colors.secondary : palette.red} />
+            <Text style={[styles.dashboardValue, isDark && styles.textDarkStrong]}>{item.value}</Text>
+            <Text style={[styles.dashboardLabel, isDark && styles.textDarkMuted]}>{item.label}</Text>
           </View>
         ))}
       </View>
@@ -2596,22 +2609,22 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
       </TouchableOpacity>
 
       <SectionTitle title="Agenda comunitaria" />
-      <View style={styles.featurePanel}>
+      <View style={[styles.featurePanel, isDark && styles.surfacePanelDark]}>
         <View style={styles.featurePanelHeader}>
-          <Text style={styles.cardEyebrow}>Proximamente</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Proximamente</Text>
           <TouchableOpacity style={[styles.iconButton, styles.viewAllButton]} activeOpacity={0.8} onPress={() => onNavigate('notilestra')}>
             <Text style={styles.linkText}>Ver todas</Text>
           </TouchableOpacity>
         </View>
         {(communityAgenda.length > 0 ? communityAgenda.slice(0, 3) : nextEvents).map((item, index) => (
-          <View key={`${item.title}-${index}`} style={styles.miniEventRow}>
+          <View key={`${item.title}-${index}`} style={[styles.miniEventRow, isDark && styles.surfaceRowDark]}>
             <View style={styles.miniEventDate}>
               <Text style={styles.miniEventDay}>{new Date(`${'date' in item ? item.date : item.eventDate}T00:00:00`).getDate()}</Text>
               <Text style={styles.miniEventMonth}>{new Date(`${'date' in item ? item.date : item.eventDate}T00:00:00`).toLocaleDateString('es-AR', { month: 'short' })}</Text>
             </View>
             <View style={styles.miniEventBody}>
-              <Text style={styles.miniEventTitle}>{item.title}</Text>
-              <Text style={styles.miniEventScope}>{item.scope}</Text>
+              <Text style={[styles.miniEventTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
+              <Text style={[styles.miniEventScope, isDark && styles.textDarkMuted]}>{item.scope}</Text>
             </View>
           </View>
         ))}
@@ -2620,7 +2633,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
       <SectionTitle title="Info Palestrista" />
       {homeActionMessage ? <Text style={styles.noticeText}>{homeActionMessage}</Text> : null}
       {visibleHomeNews.map((item, index) => (
-        <TouchableOpacity key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]} activeOpacity={0.86} onPress={() => {
+        <TouchableOpacity key={`${item.title}-${index}`} style={[styles.card, styles.feedCard, isDark && styles.feedCardDark]} activeOpacity={0.86} onPress={() => {
           if (!(homeEditId && isRemoteNewsItem(item) && item.id === homeEditId)) {
             setExpandedNews(expandedNews === item.title ? null : item.title);
           }
@@ -2630,8 +2643,8 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
               <Ionicons name="sparkles-outline" size={18} color={palette.red} />
             </View>
             <View style={styles.feedHeaderText}>
-              <Text style={styles.cardEyebrow}>{item.scope}</Text>
-              <Text style={styles.feedMeta}>Comunidad Palestra</Text>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{item.scope}</Text>
+              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Comunidad Palestra</Text>
             </View>
           </View>
           {homeEditId && isRemoteNewsItem(item) && item.id === homeEditId ? (
@@ -2649,8 +2662,8 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             </View>
           ) : (
             <>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardText} numberOfLines={expandedNews === item.title ? undefined : 2}>{item.body}</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]} numberOfLines={expandedNews === item.title ? undefined : 2}>{item.body}</Text>
             </>
           )}
           {expandedNews === item.title ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
@@ -2667,7 +2680,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             </View>
           ) : null}
           <View style={styles.feedFooter}>
-            <Text style={styles.expandHint}>{expandedNews === item.title ? 'Tocar para contraer' : 'Tocar para leer mas'}</Text>
+            <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>{expandedNews === item.title ? 'Tocar para contraer' : 'Tocar para leer mas'}</Text>
             <Ionicons name={expandedNews === item.title ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
           </View>
         </TouchableOpacity>
@@ -2684,6 +2697,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
 }
 
 function NotilestraScreen({ session, title, content, refreshKey, editor, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
+  const isDark = useIsDarkTheme();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [selectedCalendarItems, setSelectedCalendarItems] = useState<Array<{ date: string; title: string; body?: string; imageUrl?: string; scope?: string; mapUrl?: string }>>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -2919,7 +2933,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
       {notilestraActionMessage ? <Text style={styles.noticeText}>{notilestraActionMessage}</Text> : null}
       <Modal visible={dueReminderItems.length > 0 && !dismissedReminderPopup} transparent animationType="fade" onRequestClose={() => setDismissedReminderPopup(true)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalPanel}>
+          <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]}>
             <TouchableOpacity style={styles.modalCloseButton} onPress={() => setDismissedReminderPopup(true)} activeOpacity={0.8}>
               <Ionicons name="close" size={22} color={palette.red} />
             </TouchableOpacity>
@@ -2940,18 +2954,18 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
           </TouchableOpacity>
         ))}
       </View>
-      <View style={styles.calendarCard}>
+      <View style={[styles.calendarCard, isDark && styles.surfacePanelDark]}>
         <View style={styles.calendarHeader}>
           <TouchableOpacity onPress={() => setMonthOffset(monthOffset - 1)} style={styles.iconButton}>
             <Ionicons name="chevron-back" size={18} color={palette.red} />
           </TouchableOpacity>
-          <Text style={styles.calendarTitle}>{monthLabel}</Text>
+          <Text style={[styles.calendarTitle, isDark && styles.textDarkStrong]}>{monthLabel}</Text>
           <TouchableOpacity onPress={() => setMonthOffset(monthOffset + 1)} style={styles.iconButton}>
             <Ionicons name="chevron-forward" size={18} color={palette.red} />
           </TouchableOpacity>
         </View>
         <View style={styles.calendarGrid}>
-          {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, index) => <Text key={`${day}-${index}`} style={styles.calendarWeekday}>{day}</Text>)}
+          {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, index) => <Text key={`${day}-${index}`} style={[styles.calendarWeekday, isDark && styles.textDarkMuted]}>{day}</Text>)}
           {Array.from({ length: firstDay }).map((_, index) => <View key={`empty-${index}`} style={styles.calendarDay} />)}
           {Array.from({ length: daysInMonth }).map((_, index) => {
             const day = index + 1;
@@ -2962,8 +2976,8 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
             const activity = activityDays.find((item) => new Date(`${item.date}T00:00:00`).getDate() === day);
             const canOpenDay = hasEvent || Boolean(activity);
             return (
-              <TouchableOpacity key={day} style={[styles.calendarDay, hasEvent && styles.calendarEventDay, hasMotivador && styles.calendarMotivadorDay, activity && styles.calendarActivityDay]} activeOpacity={canOpenDay ? 0.75 : 1} onPress={() => canOpenDay && openCalendarDay(day)}>
-                <Text style={[styles.calendarDayText, hasEvent && styles.calendarEventText, activity && styles.calendarActivityText]}>{day}</Text>
+              <TouchableOpacity key={day} style={[styles.calendarDay, isDark && styles.calendarDayDark, hasEvent && styles.calendarEventDay, hasMotivador && styles.calendarMotivadorDay, activity && styles.calendarActivityDay]} activeOpacity={canOpenDay ? 0.75 : 1} onPress={() => canOpenDay && openCalendarDay(day)}>
+                <Text style={[styles.calendarDayText, isDark && styles.textDarkBody, hasEvent && styles.calendarEventText, activity && styles.calendarActivityText]}>{day}</Text>
                 {hasMultipleEvents ? <View style={styles.calendarMultiDot} /> : null}
               </TouchableOpacity>
             );
@@ -2972,17 +2986,17 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
       </View>
       <Modal visible={selectedCalendarItems.length > 0} transparent animationType="fade" onRequestClose={() => setSelectedCalendarItems([])}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalPanel}>
+          <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]}>
             <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedCalendarItems([])} activeOpacity={0.8}>
               <Ionicons name="close" size={22} color={palette.red} />
             </TouchableOpacity>
-            <Text style={styles.cardEyebrow}>{selectedCalendarItems[0]?.date}</Text>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{selectedCalendarItems[0]?.date}</Text>
             {selectedCalendarItems.map((item) => (
               <View key={`${item.date}-${item.title}`} style={styles.modalItem}>
-                <Text style={styles.cardEyebrow}>{item.scope ?? 'Notilestra'}</Text>
-                <Text style={styles.cardTitle}>{item.title}</Text>
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{item.scope ?? 'Notilestra'}</Text>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
                 {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
-                {item.body ? <Text style={styles.cardText}>{item.body}</Text> : null}
+                {item.body ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.body}</Text> : null}
                 {item.mapUrl ? (
                   <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(item.mapUrl as string)}>
                     <Ionicons name="map-outline" size={17} color={palette.red} />
@@ -2995,7 +3009,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
         </View>
       </Modal>
       {subtab === 'noticias' ? visibleFeedItems.map((item, index) => (
-        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
+        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard, isDark && styles.feedCardDark]}>
           <TouchableOpacity activeOpacity={0.86} onPress={() => {
             if (!(notilestraEditId && item.id === notilestraEditId)) {
               setExpandedItem(expandedItem === item.title ? null : item.title);
@@ -3006,8 +3020,8 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
                 <Ionicons name="megaphone-outline" size={18} color={palette.red} />
               </View>
               <View style={styles.feedHeaderText}>
-                <Text style={styles.cardEyebrow}>{item.scope}</Text>
-                <Text style={styles.feedMeta}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{item.scope}</Text>
+                <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
               </View>
             </View>
             {notilestraEditId && item.id === notilestraEditId ? (
@@ -3026,8 +3040,8 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
               </View>
             ) : (
               <>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardText} numberOfLines={expandedItem === item.title ? undefined : 2}>{item.body}</Text>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]} numberOfLines={expandedItem === item.title ? undefined : 2}>{item.body}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -3056,24 +3070,25 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
         </View>
       )) : null}
       {subtab === 'favoritos' ? <View style={styles.stack}>{favoriteItems.length > 0 ? favoriteItems.map((item, index) => (
-        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
-          <Text style={styles.cardEyebrow}>{item.scope} - {item.date}</Text>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardText}>{item.body}</Text>
+        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard, isDark && styles.feedCardDark]}>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{item.scope} - {item.date}</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.body}</Text>
         </View>
-      )) : <View style={styles.card}><Text style={styles.cardText}>Todavia no marcaste favoritos.</Text></View>}</View> : null}
+      )) : <View style={[styles.card, isDark && styles.surfaceCardDark]}><Text style={[styles.cardText, isDark && styles.textDarkBody]}>Todavia no marcaste favoritos.</Text></View>}</View> : null}
       {subtab === 'recordatorios' ? <View style={styles.stack}>{reminderItems.length > 0 ? reminderItems.map((item, index) => (
-        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
-          <Text style={styles.cardEyebrow}>Recordatorio - {item.date}</Text>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardText}>La app mostrara un aviso interno 1 dia antes al abrir Notilestra.</Text>
+        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard, isDark && styles.feedCardDark]}>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Recordatorio - {item.date}</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>La app mostrara un aviso interno 1 dia antes al abrir Notilestra.</Text>
         </View>
-      )) : <View style={styles.card}><Text style={styles.cardText}>Todavia no marcaste recordatorios.</Text></View>}</View> : null}
+      )) : <View style={[styles.card, isDark && styles.surfaceCardDark]}><Text style={[styles.cardText, isDark && styles.textDarkBody]}>Todavia no marcaste recordatorios.</Text></View>}</View> : null}
     </View>
   );
 }
 
 function MotivadorScreen({ session, title, content, refreshKey, editor, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
+  const isDark = useIsDarkTheme();
   const [items, setItems] = useState<AgendaItem[]>([]);
 
   useEffect(() => {
@@ -3096,31 +3111,31 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      <View style={styles.featurePanel}>
-        <Text style={styles.cardTitle}>{adminConfig.periodoMotivador.title}</Text>
-        <Text style={styles.cardText}>{adminConfig.periodoMotivador.body}</Text>
+      <View style={[styles.featurePanel, isDark && styles.surfacePanelDark]}>
+        <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{adminConfig.periodoMotivador.title}</Text>
+        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{adminConfig.periodoMotivador.body}</Text>
         {adminConfig.periodoMotivador.imageUrl ? <Image source={{ uri: adminConfig.periodoMotivador.imageUrl }} style={styles.cardImage} /> : null}
       </View>
       <SectionTitle title="Agenda de PM" />
       {items.length === 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>No hay PM activos</Text>
-          <Text style={styles.cardText}>Cuando se carguen PM reales y activos en Supabase, apareceran aca.</Text>
+        <View style={[styles.card, isDark && styles.surfaceCardDark]}>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>No hay PM activos</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Cuando se carguen PM reales y activos en Supabase, apareceran aca.</Text>
         </View>
       ) : null}
       {items.map((item, index) => (
-        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard]}>
+        <View key={`${item.title}-${index}`} style={[styles.card, styles.feedCard, isDark && styles.feedCardDark]}>
           <View style={styles.feedHeader}>
             <View style={styles.feedAvatar}>
               <Ionicons name="flame-outline" size={18} color={palette.red} />
             </View>
             <View style={styles.feedHeaderText}>
-              <Text style={styles.cardEyebrow}>{item.scope}</Text>
-              <Text style={styles.feedMeta}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{item.scope}</Text>
+              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
             </View>
           </View>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardText}>{item.body}</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.body}</Text>
           {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
           {item.mapUrl ? (
             <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(item.mapUrl as string)}>
@@ -3139,6 +3154,7 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
 }
 
 function MaterialsScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
+  const isDark = useIsDarkTheme();
   const [remoteMaterials, setRemoteMaterials] = useState<AppMaterialRecord[]>([]);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
@@ -3347,11 +3363,11 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
         </TouchableOpacity>
       ) : null}
       {showUpload ? (
-        <View style={styles.inlineEditorPanel}>
-          <Text style={styles.cardEyebrow}>Nuevo PDF</Text>
+        <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo PDF</Text>
           <TextInput style={styles.input} placeholder="Titulo" value={uploadTitle} onChangeText={setUploadTitle} placeholderTextColor={inputPlaceholderColor} />
           <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={uploadDescription} onChangeText={setUploadDescription} multiline placeholderTextColor={inputPlaceholderColor} />
-          <Text style={styles.cardEyebrow}>Visibilidad</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Visibilidad</Text>
           <View style={styles.filterRow}>
             {[
               { key: 'publico', label: 'Todo publico' },
@@ -3376,12 +3392,12 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
             <Ionicons name="document-attach-outline" size={17} color={palette.red} />
             <Text style={styles.secondaryButtonText}>Elegir PDF max. 15Mb</Text>
           </TouchableOpacity>
-          {uploadMessage ? <Text style={styles.cardText}>{uploadMessage}</Text> : null}
+          {uploadMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{uploadMessage}</Text> : null}
         </View>
       ) : null}
       {visibleMaterials.length === 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>No existen archivos actualmente</Text>
+        <View style={[styles.card, isDark && styles.surfaceCardDark]}>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>No existen archivos actualmente</Text>
         </View>
       ) : null}
       {visibleMaterials.map((material, index) => {
@@ -3389,14 +3405,14 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
         const canEditThisMaterial = 'id' in material && canManageMaterial(material);
         const isEditingThisMaterial = 'id' in material && editingMaterialId === material.id;
         return (
-          <View key={`${material.title}-${index}`} style={[styles.card, styles.libraryCard, locked && styles.lockedCard]}>
+          <View key={`${material.title}-${index}`} style={[styles.card, styles.libraryCard, isDark && styles.libraryCardDark, locked && styles.lockedCard]}>
             <View style={styles.libraryIcon}>
               <Ionicons name={locked ? 'lock-closed-outline' : 'document-text-outline'} size={24} color={locked ? palette.inkMuted : palette.red} />
             </View>
             <View style={styles.libraryBody}>
               {isEditingThisMaterial ? (
                 <View style={styles.profileCommunityPanel}>
-                  <Text style={styles.cardEyebrow}>Editar material</Text>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Editar material</Text>
                   <TextInput style={styles.input} placeholder="Titulo" value={materialEditTitle} onChangeText={setMaterialEditTitle} placeholderTextColor={inputPlaceholderColor} />
                   <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialEditDescription} onChangeText={setMaterialEditDescription} multiline placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.filterRow}>
@@ -3430,10 +3446,10 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
                 </View>
               ) : (
                 <>
-                  <Text style={styles.cardEyebrow}>{material.type}</Text>
-                  <Text style={styles.cardTitle}>{material.title}</Text>
-                  <Text style={styles.cardText}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
-                  {locked ? <Text style={styles.cardText}>Requiere permiso: {material.permission}</Text> : null}
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{material.type}</Text>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{material.title}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
+                  {locked ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Requiere permiso: {material.permission}</Text> : null}
                   {!locked && 'fileUrl' in material && material.fileUrl ? (
                     <TouchableOpacity style={styles.secondaryButton} onPress={() => openMaterialFile(material)}>
                       <Ionicons name="download-outline" size={16} color={palette.red} />
@@ -3461,6 +3477,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
 }
 
 function CommunitiesScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
+  const isDark = useIsDarkTheme();
   const [communityData, setCommunityData] = useState<AppCommunity[]>(communities);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
@@ -3494,14 +3511,14 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
 
   function renderCommunityRow(location: AppCommunity['locations'][number], keyPrefix = 'community') {
     return (
-      <View key={`${keyPrefix}-${location.name}`} style={[styles.card, styles.communityCard]}>
+      <View key={`${keyPrefix}-${location.name}`} style={[styles.card, styles.communityCard, isDark && styles.surfaceCardDark]}>
         <View style={styles.communityRowHeader}>
           <TouchableOpacity style={styles.communityRowBody} activeOpacity={0.86} onPress={() => openCommunityPresentation(location.name)}>
-            <Text style={styles.cardTitle}>{location.name}</Text>
-            <Text style={styles.cardText}>{location.address}</Text>
-            <Text style={styles.cardText}>Contacto: {location.phone}</Text>
-            <Text style={styles.cardText}>Reunion: {location.meetingDay} - {location.meetingTime}</Text>
-            <Text style={styles.expandHint}>Tocar para ver presentacion</Text>
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{location.name}</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{location.address}</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {location.phone}</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Reunion: {location.meetingDay} - {location.meetingTime}</Text>
+            <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>Tocar para ver presentacion</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -3579,9 +3596,9 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
         <Text style={styles.screenIntro}>{province.description}</Text>
         <Modal visible={Boolean(selectedProvinceLogo)} transparent animationType="fade" onRequestClose={() => setSelectedProvinceLogo(null)}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedProvinceLogo(null)}>
-            <View style={styles.provinceLogoModal}>
+            <View style={[styles.provinceLogoModal, isDark && styles.surfacePanelDark]}>
               {selectedProvinceLogo && provinceLogos[selectedProvinceLogo.province] ? <Image source={provinceLogos[selectedProvinceLogo.province]} style={styles.provinceLogoModalImage} /> : <Text style={styles.provinceLogoModalText}>{selectedProvinceLogo?.province.slice(0, 2).toUpperCase()}</Text>}
-              <Text style={styles.cardTitle}>{selectedProvinceLogo?.province}</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedProvinceLogo?.province}</Text>
             </View>
           </TouchableOpacity>
         </Modal>
@@ -3589,7 +3606,7 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
           <View style={styles.modalOverlay} pointerEvents="box-none">
             <Pressable style={styles.modalBackdropTouch} onPress={closeCommunityModal} />
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0} style={styles.modalKeyboardAvoider} pointerEvents="box-none">
-            <View style={[styles.modalPanel, styles.communityModalPanel]} pointerEvents="auto">
+            <View style={[styles.modalPanel, styles.communityModalPanel, isDark && styles.surfacePanelDark]} pointerEvents="auto">
               <ScrollView
                 ref={contactScrollRef}
                 style={styles.communityModalScroll}
@@ -3607,28 +3624,28 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
               {community ? (
                 <>
                   <Image source={{ uri: community.imageUrl }} style={styles.communityModalImage} />
-                  <Text style={styles.cardEyebrow}>{province.region}</Text>
-                  <Text style={styles.cardTitle}>{community.name}</Text>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{province.region}</Text>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{community.name}</Text>
                   <View style={styles.communityModalMeta}>
                     <View style={styles.communityModalMetaItem}>
                       <Ionicons name="map-outline" size={17} color={palette.red} />
-                      <Text style={styles.communityModalMetaText}>{province.province}</Text>
+                      <Text style={[styles.communityModalMetaText, isDark && styles.textDarkBody]}>{province.province}</Text>
                     </View>
                     <View style={styles.communityModalMetaItem}>
                       <Ionicons name="people-outline" size={17} color={palette.red} />
-                      <Text style={styles.communityModalMetaText}>{province.locations.length} comunidades activas</Text>
+                      <Text style={[styles.communityModalMetaText, isDark && styles.textDarkBody]}>{province.locations.length} comunidades activas</Text>
                     </View>
                     <View style={styles.communityModalMetaItem}>
                       <Ionicons name="call-outline" size={17} color={palette.red} />
-                      <Text style={styles.communityModalMetaText}>{community.phone}</Text>
+                      <Text style={[styles.communityModalMetaText, isDark && styles.textDarkBody]}>{community.phone}</Text>
                     </View>
                     <View style={styles.communityModalMetaItem}>
                       <Ionicons name="calendar-outline" size={17} color={palette.red} />
-                      <Text style={styles.communityModalMetaText}>{community.meetingDay} - {community.meetingTime}</Text>
+                      <Text style={[styles.communityModalMetaText, isDark && styles.textDarkBody]}>{community.meetingDay} - {community.meetingTime}</Text>
                     </View>
                   </View>
-                  <Text style={styles.cardText}>{community.address}</Text>
-                  <Text style={styles.cardText}>{community.description}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{community.address}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{community.description}</Text>
                   <View style={styles.inlineActions}>
                     <TouchableOpacity style={styles.locationIconButton} onPress={() => openCommunityLocation(community)} accessibilityLabel="Abrir ubicacion">
                       <Ionicons name="location-outline" size={22} color={palette.white} />
@@ -3638,17 +3655,17 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                     </TouchableOpacity>
                   </View>
                   {showContactBox ? (
-                    <View style={styles.inlineEditorPanel}>
-                      <Text style={styles.cardEyebrow}>Mensaje a animación/coordinación</Text>
+                    <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mensaje a animación/coordinación</Text>
                       {!session ? (
                         <>
-                          <Text style={styles.inputLabel}>Nombre</Text>
+                          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Nombre</Text>
                           <TextInput style={styles.input} placeholder="Ej: Juan Perez" value={contactName} onChangeText={setContactName} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
-                          <Text style={styles.inputLabel}>Contacto</Text>
+                          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Contacto</Text>
                           <TextInput style={styles.input} placeholder="Ej: nombre@email.com o telefono" value={contactInfoValue} onChangeText={setContactInfoValue} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
                         </>
                       ) : null}
-                      <Text style={styles.inputLabel}>Mensaje</Text>
+                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Mensaje</Text>
                       <TextInput
                         style={[styles.input, styles.textArea]}
                         placeholder="Escribi tu consulta para la comunidad"
@@ -3656,11 +3673,11 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
                         onChangeText={(value) => setContactMessage(value.slice(0, 500))}
                         onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)}
                         multiline placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={styles.cardText}>{contactMessage.length}/500</Text>
+                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{contactMessage.length}/500</Text>
                       <TouchableOpacity style={styles.primaryButton} onPress={sendCommunityContactMessage}>
                         <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
                       </TouchableOpacity>
-                      {contactStatus ? <Text style={styles.cardText}>{contactStatus}</Text> : null}
+                      {contactStatus ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{contactStatus}</Text> : null}
                     </View>
                   ) : null}
                 </>
@@ -3689,23 +3706,23 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
       {visibleCommunityData.map((community) => (
-        <TouchableOpacity key={community.province} style={[styles.card, styles.provinceCard]} onPress={() => setSelectedProvince(community.province)} activeOpacity={0.85}>
+        <TouchableOpacity key={community.province} style={[styles.card, styles.provinceCard, isDark && styles.surfaceCardDark]} onPress={() => setSelectedProvince(community.province)} activeOpacity={0.85}>
           <TouchableOpacity style={styles.provinceIcon} onPress={() => setSelectedProvinceLogo(community)} activeOpacity={0.85}>
             {provinceLogos[community.province] ? <Image source={provinceLogos[community.province]} style={styles.provinceLogoMiniImage} /> : <Text style={styles.provinceLogoMiniText}>{community.province.slice(0, 2).toUpperCase()}</Text>}
           </TouchableOpacity>
           <View style={styles.provinceBody}>
-            <Text style={styles.cardEyebrow}>{community.region}</Text>
-            <Text style={styles.cardTitle}>{community.province}</Text>
-            <Text style={styles.cardText}>{community.description}</Text>
-            <Text style={styles.expandHint}>{community.locations.length} comunidades activas</Text>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{community.region}</Text>
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{community.province}</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{community.description}</Text>
+            <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>{community.locations.length} comunidades activas</Text>
           </View>
         </TouchableOpacity>
       ))}
       <Modal visible={Boolean(selectedProvinceLogo)} transparent animationType="fade" onRequestClose={() => setSelectedProvinceLogo(null)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedProvinceLogo(null)}>
-          <View style={styles.provinceLogoModal}>
+          <View style={[styles.provinceLogoModal, isDark && styles.surfacePanelDark]}>
             {selectedProvinceLogo && provinceLogos[selectedProvinceLogo.province] ? <Image source={provinceLogos[selectedProvinceLogo.province]} style={styles.provinceLogoModalImage} /> : <Text style={styles.provinceLogoModalText}>{selectedProvinceLogo?.province.slice(0, 2).toUpperCase()}</Text>}
-            <Text style={styles.cardTitle}>{selectedProvinceLogo?.province}</Text>
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedProvinceLogo?.province}</Text>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -3714,15 +3731,16 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
 }
 
 function HistoryScreen({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
+  const isDark = useIsDarkTheme();
   const shouldShowFallback = !content && !editor?.contentLoaded;
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
       {shouldShowFallback ? (
-        <View style={styles.contentIntro}>
-          <Text style={styles.cardTitle}>Nuestra Historia</Text>
-          {movementHistory.map((paragraph, index) => <Text key={`${paragraph.slice(0, 12)}-${index}`} style={styles.cardText}>{paragraph}</Text>)}
+        <View style={[styles.contentIntro, isDark && styles.surfacePanelDark]}>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Nuestra Historia</Text>
+          {movementHistory.map((paragraph, index) => <Text key={`${paragraph.slice(0, 12)}-${index}`} style={[styles.cardText, isDark && styles.textDarkBody]}>{paragraph}</Text>)}
         </View>
       ) : null}
       {!content && editor?.contentLoaded ? <EmptyRemoteContent title="Historia pendiente" /> : null}
@@ -3731,6 +3749,7 @@ function HistoryScreen({ title, content, editor }: { title: string; content?: Ap
 }
 
 function ContactScreen({ title, content, editor, adminConfig }: { title: string; content?: AppContentBlock; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
+  const isDark = useIsDarkTheme();
   const shouldShowFallback = !content && !editor?.contentLoaded;
   const contactBlocks = adminConfig.contact.blocks ?? [];
   const provinceInstagram = adminConfig.contact.provinceInstagram ?? {};
@@ -3748,11 +3767,11 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
       {hasContactPanel ? (
-        <View style={styles.contentIntro}>
-          <Text style={styles.cardTitle}>Encontrar una comunidad</Text>
-          <Text style={styles.cardText}>{adminConfig.contact.helpText}</Text>
-          {adminConfig.contact.email ? <Text style={styles.cardText}>Mail: {adminConfig.contact.email}</Text> : null}
-          {adminConfig.contact.phone ? <Text style={styles.cardText}>Celular: {adminConfig.contact.phone}</Text> : null}
+        <View style={[styles.contentIntro, isDark && styles.surfacePanelDark]}>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Encontrar una comunidad</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{adminConfig.contact.helpText}</Text>
+          {adminConfig.contact.email ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Mail: {adminConfig.contact.email}</Text> : null}
+          {adminConfig.contact.phone ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Celular: {adminConfig.contact.phone}</Text> : null}
           {adminConfig.contact.instagram ? (
             <TouchableOpacity style={styles.instagramButton} onPress={() => openContactValue(adminConfig.contact.instagram)}>
               <Ionicons name="logo-instagram" size={20} color={palette.white} />
@@ -3760,16 +3779,16 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
             </TouchableOpacity>
           ) : null}
           {hasProvinceInstagram ? (
-            <View style={styles.provinceInstagramPanel}>
-              <Text style={styles.cardEyebrow}>Instagram por provincia</Text>
+            <View style={[styles.provinceInstagramPanel, isDark && styles.surfacePanelDark]}>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Instagram por provincia</Text>
               {Object.entries(provinceInstagram).filter(([, value]) => value.trim()).map(([province, value]) => (
                 <TouchableOpacity key={province} style={styles.provinceInstagramButton} onPress={() => openContactValue(value)} activeOpacity={0.86}>
                   <View style={styles.provinceInstagramLogo}>
                     {provinceLogos[province] ? <Image source={provinceLogos[province]} style={styles.provinceInstagramLogoImage} /> : <Text style={styles.provinceLogoMiniText}>{provinceDisplayNames[province]?.slice(0, 2).toUpperCase() ?? province.slice(0, 2).toUpperCase()}</Text>}
                   </View>
                   <View style={styles.adminUserHeaderText}>
-                    <Text style={styles.provinceInstagramName}>{provinceDisplayNames[province] ?? province}</Text>
-                    <Text style={styles.feedMeta}>Instagram oficial</Text>
+                    <Text style={[styles.provinceInstagramName, isDark && styles.textDarkStrong]}>{provinceDisplayNames[province] ?? province}</Text>
+                    <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Instagram oficial</Text>
                   </View>
                   <Ionicons name="logo-instagram" size={20} color={palette.red} />
                 </TouchableOpacity>
@@ -3777,10 +3796,10 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
             </View>
           ) : null}
           {contactBlocks.map((block) => (
-            <View key={block.id} style={styles.innerNewsCard}>
-              <Text style={styles.cardEyebrow}>{block.type}</Text>
-              {block.label ? <Text style={styles.cardTitle}>{block.label}</Text> : null}
-              {block.type === 'imagen' && block.value ? <Image source={{ uri: block.value }} style={styles.cardImage} /> : <Text style={styles.cardText}>{block.value}</Text>}
+            <View key={block.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{block.type}</Text>
+              {block.label ? <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{block.label}</Text> : null}
+              {block.type === 'imagen' && block.value ? <Image source={{ uri: block.value }} style={styles.cardImage} /> : <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{block.value}</Text>}
               {['enlace', 'boton', 'red_social'].includes(block.type) && block.value ? (
                 <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(block.value.startsWith('http') ? block.value : `https://${block.value}`)}>
                   <Text style={styles.secondaryButtonText}>Abrir enlace</Text>
@@ -3788,7 +3807,7 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
               ) : null}
             </View>
           ))}
-          <Text style={styles.cardText}>{adminConfig.contact.donationText}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{adminConfig.contact.donationText}</Text>
         </View>
       ) : null}
       {!content && editor?.contentLoaded ? <EmptyRemoteContent title="Contacto pendiente" /> : null}
@@ -4387,6 +4406,7 @@ function ProfileScreen({
   onViewAsSession: (session: Session) => void;
   initialPanel?: ProfilePanel;
 }) {
+  const isDark = appTheme.mode === 'dark';
   const [showCommunity, setShowCommunity] = useState(false);
   const [showCommunityManagement, setShowCommunityManagement] = useState(false);
   const [showProfilePhoto, setShowProfilePhoto] = useState(false);
@@ -6977,19 +6997,19 @@ function ProfileScreen({
                 <View style={styles.publicProfileAvatar}>
                   {selectedPublicProfile.avatarUrl ? <Image source={{ uri: selectedPublicProfile.avatarUrl }} style={styles.publicProfileAvatarImage} /> : <Ionicons name="person-outline" size={28} color={palette.red} />}
                 </View>
-                <Text style={styles.cardEyebrow}>Perfil palestrista</Text>
-                <Text style={styles.cardTitle}>{selectedPublicProfile.fullName}</Text>
-                <Text style={styles.cardText}>{roleLabel(selectedPublicProfile.role)}</Text>
-                {selectedPublicProfile.communityName ? <Text style={styles.cardText}>Comunidad: {selectedPublicProfile.communityName}</Text> : null}
-                {selectedPublicProfile.province ? <Text style={styles.cardText}>Provincia: {selectedPublicProfile.province}</Text> : null}
-                {selectedPublicProfile.contact ? <Text style={styles.cardText}>Contacto: {selectedPublicProfile.contact}</Text> : null}
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Perfil palestrista</Text>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedPublicProfile.fullName}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabel(selectedPublicProfile.role)}</Text>
+                {selectedPublicProfile.communityName ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Comunidad: {selectedPublicProfile.communityName}</Text> : null}
+                {selectedPublicProfile.province ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Provincia: {selectedPublicProfile.province}</Text> : null}
+                {selectedPublicProfile.contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {selectedPublicProfile.contact}</Text> : null}
               </View>
             ) : null}
           </View>
         </View>
       </Modal>
       {session ? (
-        <View style={styles.profileShell}>
+        <View style={[styles.profileShell, isDark && styles.surfacePanelDark]}>
           <View style={styles.profileTopRow}>
             <View />
             <TouchableOpacity style={styles.iconButton} onPress={() => setShowAccountMenu(!showAccountMenu)}>
@@ -6997,14 +7017,14 @@ function ProfileScreen({
             </TouchableOpacity>
           </View>
           {showAccountMenu ? (
-            <View style={styles.accountMenu}>
+            <View style={[styles.accountMenu, isDark && styles.surfacePanelDark]}>
               <View style={styles.accountMenuHeader}>
                 <View style={styles.accountMenuAvatar}>
                   {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.accountMenuAvatarImage} /> : <Ionicons name="person-outline" size={18} color={palette.red} />}
                 </View>
                 <View style={styles.adminUserHeaderText}>
-                  <Text style={styles.accountMenuName}>{session.fullName}</Text>
-                  <Text style={styles.accountMenuSub}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
+                  <Text style={[styles.accountMenuName, isDark && styles.textDarkStrong]}>{session.fullName}</Text>
+                  <Text style={[styles.accountMenuSub, isDark && styles.textDarkMuted]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
                 </View>
               </View>
               {[
@@ -7016,7 +7036,7 @@ function ProfileScreen({
               ].map((item) => (
                 <TouchableOpacity key={item.label} style={styles.accountMenuItem} onPress={() => { item.action(); setShowAccountMenu(false); }}>
                   <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={18} color={palette.inkMuted} />
-                  <Text style={styles.accountMenuItemText}>{item.label}</Text>
+                  <Text style={[styles.accountMenuItemText, isDark && styles.textDarkBody]}>{item.label}</Text>
                 </TouchableOpacity>
               ))}
               <TouchableOpacity style={styles.accountMenuItem} onPress={signOutReal}>
@@ -7025,19 +7045,19 @@ function ProfileScreen({
               </TouchableOpacity>
             </View>
           ) : null}
-          {profilePanel === 'vista' ? <View style={styles.profileHero}>
+          {profilePanel === 'vista' ? <View style={[styles.profileHero, isDark && styles.surfacePanelDark]}>
             <TouchableOpacity style={styles.avatarFrameLarge} onPress={uploadProfilePhoto} activeOpacity={0.88}>
               {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.avatarImageLarge} /> : <Ionicons name="camera-outline" size={42} color={palette.red} />}
             </TouchableOpacity>
             <View style={styles.profileHeroInfo}>
               <View style={styles.profileNameRow}>
-                <Text style={styles.profileName}>{session.fullName}</Text>
+                <Text style={[styles.profileName, isDark && styles.textDarkStrong]}>{session.fullName}</Text>
                 <View style={styles.verifiedRow}>
                   <Ionicons name="shield-checkmark-outline" size={22} color={palette.green} />
                 </View>
               </View>
-              {session.email ? <Text style={styles.cardText}>{session.email}</Text> : null}
-              <Text style={styles.cardText}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
+              {session.email ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.email}</Text> : null}
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
               <TouchableOpacity style={styles.photoChangeButton} onPress={uploadProfilePhoto}>
                 <Ionicons name="camera-outline" size={16} color={palette.red} />
                 <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
@@ -7051,28 +7071,28 @@ function ProfileScreen({
               { label: 'Contacto', value: session.contact, icon: 'chatbubble-ellipses-outline' },
               { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' }
             ].map((item) => (
-              <View key={item.label} style={styles.profileMetaItem}>
+              <View key={item.label} style={[styles.profileMetaItem, isDark && styles.surfaceCardDark]}>
                 <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={17} color={palette.red} />
                 <View style={styles.profileMetaText}>
-                  <Text style={styles.profileMetaLabel}>{item.label}</Text>
-                  <Text style={styles.profileMetaValue}>{item.value}</Text>
+                  <Text style={[styles.profileMetaLabel, isDark && styles.textDarkMuted]}>{item.label}</Text>
+                  <Text style={[styles.profileMetaValue, isDark && styles.textDarkStrong]}>{item.value}</Text>
                 </View>
               </View>
             ))}
           </View> : null}
-          {profilePanel === 'vista' && roleInfo ? <Text style={styles.cardText}>{roleInfo.description}</Text> : null}
-          {profilePanel === 'editar' ? <View style={styles.profileCommunityPanel}>
-            <Text style={styles.cardEyebrow}>Editar perfil</Text>
+          {profilePanel === 'vista' && roleInfo ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleInfo.description}</Text> : null}
+          {profilePanel === 'editar' ? <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Editar perfil</Text>
             {isMissingProfileScope(session) ? (
               <View style={styles.completionNotice}>
                 <Ionicons name="alert-circle-outline" size={20} color={palette.red} />
                 <Text style={styles.completionNoticeText}>Completa provincia y comunidad para usar normalmente la app.</Text>
               </View>
             ) : null}
-            <Text style={styles.cardText}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
             <TextInput style={styles.input} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName}  placeholderTextColor={inputPlaceholderColor} />
             <TextInput style={styles.input} placeholder="Contacto" value={editContact} onChangeText={setEditContact}  placeholderTextColor={inputPlaceholderColor} />
-            <Text style={styles.cardEyebrow}>Provincia</Text>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Provincia</Text>
             <TouchableOpacity style={styles.dropdownButton} onPress={() => setEditProvinceDropdownOpen(!editProvinceDropdownOpen)}>
               <Text style={styles.dropdownButtonText}>{editProvince || 'Seleccionar provincia'}</Text>
               <Ionicons name={editProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
@@ -7096,7 +7116,7 @@ function ProfileScreen({
             ) : null}
             {selectedEditProvince ? (
               <>
-                <Text style={styles.cardEyebrow}>Comunidad de origen</Text>
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Comunidad de origen</Text>
                 <TouchableOpacity style={styles.dropdownButton} onPress={() => setEditCommunityDropdownOpen(!editCommunityDropdownOpen)}>
                   <Text style={styles.dropdownButtonText}>{editCommunity || 'Seleccionar comunidad'}</Text>
                   <Ionicons name={editCommunityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
@@ -7130,10 +7150,10 @@ function ProfileScreen({
             <TouchableOpacity style={styles.primaryButton} onPress={saveProfile}>
               <Text style={styles.primaryButtonText}>Guardar perfil</Text>
             </TouchableOpacity>
-            {authMessage ? <Text style={styles.cardText}>{authMessage}</Text> : null}
+            {authMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{authMessage}</Text> : null}
           </View> : null}
           {profilePanel === 'configuracion' ? (
-            <View style={styles.profileCommunityPanel}>
+            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
               <Text style={styles.cardEyebrow}>Configuración de usuario</Text>
               <View style={styles.settingRow}>
                 <View style={styles.settingRowText}>
@@ -7882,7 +7902,7 @@ function ProfileScreen({
                   </View>
                 </View>
               ) : (
-            <View style={styles.adminPanel}>
+            <View style={[styles.adminPanel, isDark && styles.surfacePanelDark]}>
               <Text style={styles.cardEyebrow}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
               <Text style={styles.cardTitle}>Panel Dirigencial</Text>
               <Text style={styles.cardText}>{session.role === 'administrador' ? 'Gestionar roles, permisos, pestañas, secciones, comunidades, provincias, usuarios, contenido y configuración general.' : 'Revisar solicitudes y gestionar cambios de dirigencia dentro de la provincia.'}</Text>
@@ -9596,7 +9616,8 @@ function ActionButton({ label, onPress }: { label: string; onPress: () => void }
 }
 
 function SectionTitle({ title }: { title: string }) {
-  return <Text style={styles.sectionTitle}>{title}</Text>;
+  const isDark = useIsDarkTheme();
+  return <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>{title}</Text>;
 }
 
 const styles = StyleSheet.create({
@@ -10545,6 +10566,32 @@ const styles = StyleSheet.create({
   contentDark: {
     backgroundColor: themePresets.dark.colors.background
   },
+  surfacePanelDark: {
+    backgroundColor: themePresets.dark.colors.surface,
+    borderColor: themePresets.dark.colors.border,
+    shadowColor: '#000'
+  },
+  surfaceCardDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border,
+    shadowColor: '#000'
+  },
+  surfaceRowDark: {
+    backgroundColor: 'rgba(255,255,255,0.055)',
+    borderColor: themePresets.dark.colors.border
+  },
+  textDarkStrong: {
+    color: themePresets.dark.colors.text
+  },
+  textDarkBody: {
+    color: '#DDE9EE'
+  },
+  textDarkMuted: {
+    color: themePresets.dark.colors.muted
+  },
+  textDarkAccent: {
+    color: themePresets.dark.colors.secondary
+  },
   stack: {
     gap: 18
   },
@@ -10783,6 +10830,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 2
   },
+  sectionTitleDark: {
+    color: themePresets.dark.colors.text
+  },
   card: {
     backgroundColor: palette.white,
     borderWidth: 1,
@@ -10805,6 +10855,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     marginBottom: 2
+  },
+  feedCardDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border,
+    shadowColor: '#000'
   },
   feedHeader: {
     flexDirection: 'row',
@@ -10845,6 +10900,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderRadius: 0,
     paddingHorizontal: 2
+  },
+  libraryCardDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border
   },
   libraryIcon: {
     width: 54,
@@ -11638,6 +11697,10 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  calendarDayDark: {
+    backgroundColor: 'rgba(255,255,255,0.025)',
+    borderRadius: 12
   },
   calendarEventDay: {
     backgroundColor: palette.goldSoft,
