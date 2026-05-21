@@ -13,12 +13,12 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
 import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermission, fetchLibraryItems, saveLibraryItem } from './src/lib/library';
-import { assignableRolesFor, canAccessProvince, canApproveRole, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
+import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
 
 const palestraLogo = require('./assets/logo-palestra.png');
 const provinceLogos: Record<string, any> = {
@@ -191,8 +191,8 @@ const defaultAdminConfig: AppAdminConfig = {
   },
   periodoMotivador: {
     active: false,
-    title: 'Periodo Motivador',
-    body: 'Espacio de preparacion, materiales y textos asociados al periodo motivador.',
+    title: 'PM',
+    body: 'Espacio de preparacion, materiales y textos asociados al PM.',
     imageUrl: ''
   }
 };
@@ -231,7 +231,7 @@ const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof t
   { key: 'etiquetas_roles', label: 'Etiquetas', icon: 'pricetags-outline', systemOnly: true },
   { key: 'rangos_alias', label: 'Rangos', icon: 'copy-outline', systemOnly: true },
   { key: 'navegacion', label: 'Navegación', icon: 'navigate-outline', systemOnly: true },
-  { key: 'periodo_motivador', label: 'Periodo', icon: 'flame-outline', systemOnly: true },
+  { key: 'periodo_motivador', label: 'PM', icon: 'flame-outline', systemOnly: true },
   { key: 'configuracion', label: 'Config', icon: 'settings-outline', systemOnly: true }
 ];
 
@@ -256,7 +256,7 @@ const defaultTabs: Array<{ key: TabKey; label: string; icon: keyof typeof Ionico
   { key: 'comunidades', label: 'Comunidades', icon: 'people-outline' },
   { key: 'historia', label: 'Historia', icon: 'book-outline' },
   { key: 'contacto', label: 'Contacto', icon: 'chatbubbles-outline' },
-  { key: 'periodo_motivador', label: 'Periodo', icon: 'flame-outline' },
+  { key: 'periodo_motivador', label: 'PM', icon: 'flame-outline' },
   { key: 'perfil', label: 'Perfil', icon: 'person-circle-outline' }
 ];
 
@@ -372,7 +372,7 @@ function isCommunityLeaderRole(session: Session | null) {
 }
 
 function canCreateOrAdministrateCommunities(session: Session | null) {
-  return Boolean(session && ['vocal', 'coordinador_diocesano', 'coordinador_nacional', 'administrador'].includes(session.role));
+  return Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
 }
 
 function canManageMotivadorPanel(session: Session | null) {
@@ -436,6 +436,10 @@ function roleLabelForProvince(role: Role, province?: string | null, labels: Prov
   const custom = labels.find((item) => item.is_active && item.role_key === role && item.province.toLowerCase() === province.toLowerCase());
   const alias = aliases.find((item) => item.isActive && item.baseRole === role && (!item.province || item.province.toLowerCase() === province.toLowerCase()));
   return custom?.display_label || alias?.displayLabel || roleLabel(role);
+}
+
+function displayRoleLabel(role: Role, province?: string | null, labels: ProvinceRoleLabelRecord[] = [], aliases: RoleAliasConfig[] = [], assignedLabel?: string | null) {
+  return assignedLabel?.trim() || roleLabelForProvince(role, province, labels, aliases);
 }
 
 function roleShortLabel(role: Role) {
@@ -2252,7 +2256,7 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
       <SectionTitle title="Agenda de PM" />
       {items.length === 0 ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>No hay Periodos Motivadores activos</Text>
+          <Text style={styles.cardTitle}>No hay PM activos</Text>
           <Text style={styles.cardText}>Cuando se carguen PM reales y activos en Supabase, apareceran aca.</Text>
         </View>
       ) : null}
@@ -3586,8 +3590,10 @@ function ProfileScreen({
   const [adminUserProvinceDropdownOpen, setAdminUserProvinceDropdownOpen] = useState(false);
   const [adminUserCommunityDropdownOpen, setAdminUserCommunityDropdownOpen] = useState(false);
   const [adminUserRoleDropdownOpen, setAdminUserRoleDropdownOpen] = useState(false);
+  const [adminUserRoleAliasDropdownOpen, setAdminUserRoleAliasDropdownOpen] = useState(false);
   const [adminUserStatus, setAdminUserStatus] = useState('pendiente');
   const [adminUserRole, setAdminUserRole] = useState<Role>('palestrista');
+  const [adminUserDisplayRoleLabel, setAdminUserDisplayRoleLabel] = useState('');
   const [adminCreateEmail, setAdminCreateEmail] = useState('');
   const [adminCreatePassword, setAdminCreatePassword] = useState('');
   const [adminCreatePasswordVisible, setAdminCreatePasswordVisible] = useState(false);
@@ -3598,6 +3604,7 @@ function ProfileScreen({
   const [rolePermissionRows, setRolePermissionRows] = useState<RolePermissionRecord[]>([]);
   const [rolePermissionDraft, setRolePermissionDraft] = useState<Permission[]>(rolePermissions.palestrista);
   const [provinceRoleLabels, setProvinceRoleLabels] = useState<ProvinceRoleLabelRecord[]>([]);
+  const [roleAliases, setRoleAliases] = useState<RoleAliasRecord[]>([]);
   const [roleLabelProvince, setRoleLabelProvince] = useState(session?.province ?? '');
   const [roleLabelRole, setRoleLabelRole] = useState<Role>('animador_comunidad');
   const [roleLabelDraft, setRoleLabelDraft] = useState('');
@@ -3664,6 +3671,10 @@ function ProfileScreen({
   const [adminCommunityDay, setAdminCommunityDay] = useState('');
   const [adminCommunityTime, setAdminCommunityTime] = useState('');
   const [adminCommunityDescription, setAdminCommunityDescription] = useState('');
+  const [adminCommunityImageUrl, setAdminCommunityImageUrl] = useState('');
+  const [adminCommunityImagePreview, setAdminCommunityImagePreview] = useState('');
+  const [adminCommunityImageAsset, setAdminCommunityImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [adminCommunityImageUploading, setAdminCommunityImageUploading] = useState(false);
   const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
   const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
   const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; isVisible: boolean; visibleRoles: string[] | null }>>({});
@@ -3741,7 +3752,12 @@ function ProfileScreen({
   const selectedRegistrationProvince = registrationCommunities.find((item) => item.province === registerProvince);
   const selectedEditProvince = registrationCommunities.find((item) => item.province === editProvince);
   const visibleRegistrationCommunities = useMemo(() => registrationCommunities.filter((item) => canAccessProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
-  const manageableCommunities = useMemo(() => registrationCommunities.filter((item) => canManageProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
+  const manageableCommunities = useMemo(() => registrationCommunities
+    .map((province) => ({
+      ...province,
+      locations: province.locations.filter((community) => canEditCommunity(session, province.province, community.name))
+    }))
+    .filter((province) => province.locations.length > 0), [registrationCommunities, session?.province, session?.role, session?.communityOfOrigin]);
   const motivadorProvinceOptions = useMemo(() => {
     if (session?.role === 'administrador') {
       return registrationCommunities.map((item) => item.province);
@@ -4075,42 +4091,29 @@ function ProfileScreen({
       setAuthMessage('Elegir provincia o marcar alcance global.');
       return;
     }
-    const nextAlias: RoleAliasConfig = {
-      id: `alias-${Date.now()}`,
+    setAuthMessage('Guardando alias de rango...');
+    const { error } = await saveRoleAlias({
       baseRole: roleAliasBaseRole,
       displayLabel: roleAliasLabel.trim(),
       province: roleAliasIsGlobal ? null : roleAliasProvince,
       isActive: roleAliasActive
-    };
-    const nextConfig = {
-      ...adminConfigDraft,
-      settings: {
-        ...adminConfigDraft.settings,
-        roleAliases: [...(adminConfigDraft.settings.roleAliases ?? []), nextAlias]
-      }
-    };
-    setAuthMessage('Guardando alias de rango...');
-    const { error } = await saveAdminConfig(nextConfig);
+    });
     if (error) {
       setAuthMessage(error.message);
       return;
     }
-    setAdminConfigDraft(nextConfig);
-    onAdminConfigChange(nextConfig);
+    await loadRoleAliases(false);
     setRoleAliasLabel('');
-    setAuthMessage(changeDone('Alias de rango guardado.'));
+    setAuthMessage(changeDone('Alias de rango guardado y disponible para asignar.'));
   }
 
   async function toggleSavedRoleAlias(aliasId: string, active: boolean) {
-    const nextAliases = (adminConfigDraft.settings.roleAliases ?? []).map((item) => item.id === aliasId ? { ...item, isActive: active } : item);
-    const nextConfig = { ...adminConfigDraft, settings: { ...adminConfigDraft.settings, roleAliases: nextAliases } };
-    const { error } = await saveAdminConfig(nextConfig);
+    const { error } = await setRoleAliasStatus(aliasId, active);
     if (error) {
       setAuthMessage(error.message);
       return;
     }
-    setAdminConfigDraft(nextConfig);
-    onAdminConfigChange(nextConfig);
+    await loadRoleAliases(false);
     setAuthMessage(changeDone(active ? 'Alias activado.' : 'Alias desactivado.'));
   }
 
@@ -4211,7 +4214,7 @@ function ProfileScreen({
 
   async function submitMotivadorPeriod() {
     if (!canManageMotivadorPanel(session)) {
-      setAuthMessage('No tenes permisos para gestionar Periodos Motivadores.');
+      setAuthMessage('No tenes permisos para gestionar PM.');
       return;
     }
     if (!pmProvince || !pmNumber.trim() || pmSelectedDates.length === 0 || !pmRetreatHouse.trim() || !pmAddress.trim() || !pmOpeningTime.trim() || !pmClosingTime.trim()) {
@@ -4238,7 +4241,7 @@ function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone('Periodo Motivador guardado.'));
+    setAuthMessage(changeDone('PM guardado.'));
     resetMotivadorForm();
     await loadMotivadorAdminPeriods();
   }
@@ -4249,7 +4252,7 @@ function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone(status === 'archivado' ? 'Periodo Motivador archivado.' : `Estado actualizado a ${status}.`));
+    setAuthMessage(changeDone(status === 'archivado' ? 'PM archivado.' : `Estado actualizado a ${status}.`));
     await loadMotivadorAdminPeriods();
   }
 
@@ -4291,6 +4294,12 @@ function ProfileScreen({
   }, [adminModule, session?.role]);
 
   useEffect(() => {
+    if (['rangos_alias', 'usuarios', 'permisos_roles'].includes(adminModule) && session?.role === 'administrador') {
+      loadRoleAliases(false);
+    }
+  }, [adminModule, session?.role]);
+
+  useEffect(() => {
     const current = provinceRoleLabels.find((item) => item.province === roleLabelProvince && item.role_key === roleLabelRole);
     setRoleLabelDraft(current?.display_label ?? roleLabel(roleLabelRole));
     setRoleLabelDescription(current?.description ?? '');
@@ -4305,6 +4314,9 @@ function ProfileScreen({
       setAdminCommunityDay('');
       setAdminCommunityTime('');
       setAdminCommunityDescription('');
+      setAdminCommunityImageUrl('');
+      setAdminCommunityImagePreview('');
+      setAdminCommunityImageAsset(null);
       return;
     }
 
@@ -4314,6 +4326,9 @@ function ProfileScreen({
     setAdminCommunityDay(selectedAdminCommunity.meetingDay);
     setAdminCommunityTime(selectedAdminCommunity.meetingTime);
     setAdminCommunityDescription(selectedAdminCommunity.description);
+    setAdminCommunityImageUrl(selectedAdminCommunity.imageUrl ?? '');
+    setAdminCommunityImagePreview(selectedAdminCommunity.imageUrl ?? '');
+    setAdminCommunityImageAsset(null);
     setAdminCommunityGroupType(selectedAdminCommunity.group ?? 'jovenes');
     setAdminCommunityIsActive(true);
   }, [selectedAdminCommunity]);
@@ -4326,6 +4341,7 @@ function ProfileScreen({
       setAdminUserCommunity('');
       setAdminUserStatus('pendiente');
       setAdminUserRole('palestrista');
+      setAdminUserDisplayRoleLabel('');
       return;
     }
 
@@ -4337,6 +4353,7 @@ function ProfileScreen({
     setAdminUserCommunity(selectedAdminUser.community_name ?? '');
     setAdminUserStatus(selectedAdminUser.status);
     setAdminUserRole((selectedAdminUser.role || 'palestrista') as Role);
+    setAdminUserDisplayRoleLabel(selectedAdminUser.display_role_label ?? '');
   }, [selectedAdminUser]);
 
   function normalizeRequest(item: UserRequestRecord): AdminRequest {
@@ -4892,7 +4909,8 @@ function ProfileScreen({
       province: adminUserProvince,
       communityName: adminUserCommunity,
       status: adminUserStatus,
-      role: adminUserRole
+      role: adminUserRole,
+      displayRoleLabel: adminUserDisplayRoleLabel.trim() || null
     });
     if (error) {
       setAuthMessage(error.message || 'No se pudo guardar el usuario. Revisa permisos y datos.');
@@ -5059,6 +5077,9 @@ function ProfileScreen({
       return;
     }
     await loadRolePermissionDraft(permissionRole);
+    if (session?.role === permissionRole) {
+      onSessionChange({ ...session, permissions: rolePermissionDraft });
+    }
     setAuthMessage(changeDone('Permisos del rango actualizados.'));
   }
 
@@ -5096,6 +5117,17 @@ function ProfileScreen({
     }
     await loadProvinceRoleLabels();
     setAuthMessage(changeDone('Etiqueta de rango actualizada.'));
+  }
+
+  async function loadRoleAliases(showMessage = true) {
+    if (showMessage) {
+      setAuthMessage('Cargando alias de rangos...');
+    }
+    const rows = await fetchAssignableRoleAliases();
+    setRoleAliases(rows);
+    if (showMessage) {
+      setAuthMessage(rows.length > 0 ? 'Alias cargados.' : 'No hay alias asignables cargados.');
+    }
   }
 
   async function queueNotificationIfRequested(enabled: boolean, values: {
@@ -5466,24 +5498,88 @@ function ProfileScreen({
     }
   }
 
+  async function pickAdminCommunityImage() {
+    if (!selectedAdminCommunity?.id) {
+      setAuthMessage('Elegir una comunidad antes de cargar imagen.');
+      return;
+    }
+    if (!canEditCommunity(session, adminCommunityProvince, selectedAdminCommunity.name)) {
+      setAuthMessage('Tu rango no puede cambiar la imagen de esta comunidad.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage('Necesitamos permiso para elegir una imagen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.85
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    setAdminCommunityImageAsset(result.assets[0]);
+    setAdminCommunityImagePreview(result.assets[0].uri);
+    setAuthMessage('Imagen seleccionada. Revisá la vista previa y guardá la comunidad.');
+  }
+
+  async function uploadAdminCommunityImage() {
+    if (!adminCommunityImageAsset || !selectedAdminCommunity?.id) {
+      return adminCommunityImageUrl;
+    }
+    setAdminCommunityImageUploading(true);
+    try {
+      const response = await fetch(adminCommunityImageAsset.uri);
+      const bytes = await response.arrayBuffer();
+      const extension = adminCommunityImageAsset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+      const safeExtension = extension.length <= 5 ? extension : 'jpg';
+      const path = `${selectedAdminCommunity.id}/community-${Date.now()}.${safeExtension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('community-images')
+        .upload(path, bytes, {
+          contentType: adminCommunityImageAsset.mimeType ?? 'image/jpeg',
+          upsert: true
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      const { data: publicUrl } = supabase.storage.from('community-images').getPublicUrl(path);
+      return publicUrl.publicUrl;
+    } finally {
+      setAdminCommunityImageUploading(false);
+    }
+  }
+
   async function adminSaveCommunity() {
     if (!selectedAdminCommunity?.id) {
       setAuthMessage('Elegir una comunidad cargada desde Supabase para editar.');
       return;
     }
-    if (!canManageProvince(session, adminCommunityProvince)) {
+    if (!canEditCommunity(session, adminCommunityProvince, selectedAdminCommunity.name)) {
       setAuthMessage('Tu rango solo puede editar comunidades de tu provincia o de tu alcance.');
       return;
     }
 
     setAuthMessage('Guardando comunidad...');
+    let imageUrl = adminCommunityImageUrl;
+    try {
+      imageUrl = await uploadAdminCommunityImage();
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No se pudo subir la imagen de comunidad.');
+      return;
+    }
     const { error } = await updateCommunity(selectedAdminCommunity.id, {
       name: adminCommunityName,
       address: adminCommunityAddress,
       phone: adminCommunityPhone,
       meeting_day: adminCommunityDay,
       meeting_time: adminCommunityTime,
-      description: adminCommunityDescription
+      description: adminCommunityDescription,
+      image_url: imageUrl
     });
     if (error) {
       setAuthMessage(error.message);
@@ -5493,7 +5589,10 @@ function ProfileScreen({
     const items = await fetchCommunities();
     setRegistrationCommunities(items);
     setAdminCommunityId('');
-    setAuthMessage(changeDone('Comunidad actualizada.'));
+    setAdminCommunityImageAsset(null);
+    setAdminCommunityImageUrl(imageUrl);
+    setAdminCommunityImagePreview(imageUrl);
+    setAuthMessage(changeDone('Cambios guardados.'));
     if (session?.communityOfOrigin === selectedAdminCommunity.name) {
       onSessionChange({ ...session, communityOfOrigin: adminCommunityName || selectedAdminCommunity.name });
     }
@@ -6050,7 +6149,7 @@ function ProfileScreen({
                 </View>
                 <View style={styles.adminUserHeaderText}>
                   <Text style={styles.accountMenuName}>{session.fullName}</Text>
-                  <Text style={styles.accountMenuSub}>{roleLabelForProvince(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases)}</Text>
+                  <Text style={styles.accountMenuSub}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel)}</Text>
                 </View>
               </View>
               {[
@@ -6083,7 +6182,7 @@ function ProfileScreen({
                 </View>
               </View>
               {session.email ? <Text style={styles.cardText}>{session.email}</Text> : null}
-              <Text style={styles.cardText}>{roleLabelForProvince(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases)}</Text>
+              <Text style={styles.cardText}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel)}</Text>
               <TouchableOpacity style={styles.photoChangeButton} onPress={uploadProfilePhoto}>
                 <Ionicons name="camera-outline" size={16} color={palette.red} />
                 <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
@@ -6093,7 +6192,7 @@ function ProfileScreen({
           {profilePanel === 'vista' ? <View style={styles.profileMetaGrid}>
             {[
               { label: 'Provincia', value: session.province, icon: 'map-outline' },
-              { label: 'Rango', value: roleLabelForProvince(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases), icon: 'ribbon-outline' },
+              { label: 'Rango', value: displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel), icon: 'ribbon-outline' },
               { label: 'Contacto', value: session.contact, icon: 'chatbubble-ellipses-outline' },
               { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' }
             ].map((item) => (
@@ -6247,7 +6346,7 @@ function ProfileScreen({
               <Text style={styles.cardEyebrow}>{session.communityOfOrigin}</Text>
               <SectionTitle title="Mi comunidad" />
               <Text style={styles.cardText}>
-                Relación activa: {roleLabelForProvince(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases)} vinculado a {session.communityOfOrigin} en {session.province}.
+                Relación activa: {displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel)} vinculado a {session.communityOfOrigin} en {session.province}.
                 {['animador_comunidad', 'coordinador_comunidad'].includes(session.role) ? ' Este rango puede editar su comunidad asignada.' : ''}
                 {['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? ' Este rango supervisa animadores y coordinadores de comunidad de su provincia.' : ''}
                 {['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ' Este rango supervisa estructura nacional y provincias.' : ''}
@@ -6584,7 +6683,7 @@ function ProfileScreen({
               </View>
               <View style={styles.adminUserHeaderText}>
                 <Text style={styles.credentialName}>{session.fullName}</Text>
-                <Text style={styles.cardText}>{roleLabelForProvince(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases)}</Text>
+                <Text style={styles.cardText}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel)}</Text>
                 <Text style={styles.cardText}>{session.communityOfOrigin}, {session.province}</Text>
               </View>
             </View>
@@ -7391,7 +7490,7 @@ function ProfileScreen({
               {adminModule === 'permisos_roles' ? (
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Permisos de Rangos</Text>
-                  <Text style={styles.cardText}>Base administrable para activar o desactivar permisos por rango. Los cambios se guardan en Supabase y preparan la arquitectura global de permisos.</Text>
+                  <Text style={styles.cardText}>Activa o desactiva permisos reales por rango. Los cambios se guardan en Supabase, se leen al iniciar sesion y actualizan la sesion actual si corresponde.</Text>
                   <Text style={styles.cardEyebrow}>Rango</Text>
                   <TouchableOpacity style={styles.dropdownButton} onPress={() => setPermissionRoleDropdownOpen(!permissionRoleDropdownOpen)}>
                     <Text style={styles.dropdownButtonText}>{roleLabel(permissionRole)}</Text>
@@ -7514,7 +7613,7 @@ function ProfileScreen({
               {adminModule === 'rangos_alias' ? (
                 <View style={styles.adminWorkspace}>
                   <Text style={styles.cardTitle}>Duplicar / renombrar rangos</Text>
-                  <Text style={styles.cardText}>Crea alias visuales que heredan permisos del rango base. No crea roles internos nuevos ni modifica RLS.</Text>
+                  <Text style={styles.cardText}>Crea alias asignables que heredan permisos y jerarquia del rango base. Se guardan en Supabase y se aplican al usuario como nombre visible persistente.</Text>
                   <Text style={styles.cardEyebrow}>Rango base</Text>
                   <TouchableOpacity style={styles.dropdownButton} onPress={() => setRoleAliasRoleDropdownOpen(!roleAliasRoleDropdownOpen)}>
                     <Text style={styles.dropdownButtonText}>{roleLabel(roleAliasBaseRole)}</Text>
@@ -7565,17 +7664,21 @@ function ProfileScreen({
                     <Ionicons name="save-outline" size={17} color={palette.white} />
                     <Text style={styles.primaryButtonText}>Guardar alias</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => loadRoleAliases(true)}>
+                    <Ionicons name="refresh-outline" size={17} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>Cargar alias</Text>
+                  </TouchableOpacity>
                   <Text style={styles.cardEyebrow}>Alias guardados</Text>
-                  {(adminConfigDraft.settings.roleAliases ?? []).length === 0 ? <Text style={styles.cardText}>No hay alias cargados.</Text> : null}
-                  {(adminConfigDraft.settings.roleAliases ?? []).map((alias) => (
-                    <View key={alias.id} style={[styles.adminListRow, !alias.isActive && styles.lockedCard]}>
+                  {roleAliases.length === 0 ? <Text style={styles.cardText}>No hay alias cargados.</Text> : null}
+                  {roleAliases.map((alias) => (
+                    <View key={alias.id} style={[styles.adminListRow, !alias.is_active && styles.lockedCard]}>
                       <Ionicons name="copy-outline" size={20} color={palette.red} />
                       <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.adminQuickText}>{alias.displayLabel}</Text>
-                        <Text style={styles.cardText}>Base: {roleLabel(alias.baseRole)} - {alias.province ?? 'Global'} - {alias.isActive ? 'activo' : 'inactivo'}</Text>
+                        <Text style={styles.adminQuickText}>{alias.display_label}</Text>
+                        <Text style={styles.cardText}>Base: {roleLabel(alias.base_role as Role)} - {alias.province ?? 'Global'} - {alias.is_active ? 'activo' : 'inactivo'}</Text>
                       </View>
-                      <TouchableOpacity style={styles.actionPill} onPress={() => toggleSavedRoleAlias(alias.id, !alias.isActive)}>
-                        <Text style={styles.actionPillText}>{alias.isActive ? 'Desactivar' : 'Activar'}</Text>
+                      <TouchableOpacity style={styles.actionPill} onPress={() => toggleSavedRoleAlias(alias.id, !alias.is_active)}>
+                        <Text style={styles.actionPillText}>{alias.is_active ? 'Desactivar' : 'Activar'}</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -7717,7 +7820,7 @@ function ProfileScreen({
                                 </View>
                                 <View style={styles.adminUserHeaderText}>
                                   <Text style={styles.cardTitle}>{user.full_name ?? 'Usuario sin nombre'}</Text>
-                                  <Text style={styles.cardText}>{user.status} - {roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels)} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  <Text style={styles.cardText}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label)} - {user.community_name ?? 'Sin comunidad'}</Text>
                                   {session.role === 'administrador' ? <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text> : null}
                                 </View>
                               </View>
@@ -7793,18 +7896,43 @@ function ProfileScreen({
                                 </View>
                                 <Text style={styles.cardEyebrow}>Rol</Text>
                                 <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserRoleDropdownOpen(!adminUserRoleDropdownOpen)}>
-                                  <Text style={styles.dropdownButtonText}>{roleLabel(adminUserRole)}</Text>
+                                  <Text style={styles.dropdownButtonText}>{displayRoleLabel(adminUserRole, adminUserProvince, provinceRoleLabels, adminConfig.settings.roleAliases, adminUserDisplayRoleLabel)}</Text>
                                   <Ionicons name={adminUserRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
                                 </TouchableOpacity>
                                 {adminUserRoleDropdownOpen ? (
                                   <ScrollView style={styles.dropdownList} nestedScrollEnabled>
                                     {roleDefinitions.filter((role) => role.role !== 'administrador' && (role.role === selectedAdminUser?.role || assignableRoles.some((item) => item.role === role.role))).map((role) => (
-                                      <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setAdminUserRole(role.role as Role); setAdminUserRoleDropdownOpen(false); }}>
+                                      <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setAdminUserRole(role.role as Role); setAdminUserDisplayRoleLabel(''); setAdminUserRoleDropdownOpen(false); }}>
                                         <Text style={styles.dropdownItemText}>{role.label}</Text>
                                       </TouchableOpacity>
                                     ))}
                                   </ScrollView>
                                 ) : null}
+                                <Text style={styles.cardEyebrow}>Alias asignable</Text>
+                                <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserRoleAliasDropdownOpen(!adminUserRoleAliasDropdownOpen)}>
+                                  <Text style={styles.dropdownButtonText}>{adminUserDisplayRoleLabel || 'Sin alias: usar nombre del rol base'}</Text>
+                                  <Ionicons name={adminUserRoleAliasDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                </TouchableOpacity>
+                                {adminUserRoleAliasDropdownOpen ? (
+                                  <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                                    <TouchableOpacity style={styles.dropdownItem} onPress={() => { setAdminUserDisplayRoleLabel(''); setAdminUserRoleAliasDropdownOpen(false); }}>
+                                      <Text style={styles.dropdownItemText}>Sin alias</Text>
+                                    </TouchableOpacity>
+                                    {roleAliases
+                                      .filter((alias) => alias.is_active && (!alias.province || !adminUserProvince || alias.province === adminUserProvince))
+                                      .filter((alias) => alias.base_role === selectedAdminUser?.role || assignableRoles.some((item) => item.role === alias.base_role))
+                                      .map((alias) => (
+                                        <TouchableOpacity key={alias.id} style={styles.dropdownItem} onPress={() => {
+                                          setAdminUserRole(alias.base_role as Role);
+                                          setAdminUserDisplayRoleLabel(alias.display_label);
+                                          setAdminUserRoleAliasDropdownOpen(false);
+                                        }}>
+                                          <Text style={styles.dropdownItemText}>{alias.display_label} ({roleLabel(alias.base_role as Role)})</Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                  </ScrollView>
+                                ) : null}
+                                <Text style={styles.cardText}>Los alias heredan permisos y jerarquia del rol base seleccionado.</Text>
                                 <TouchableOpacity style={styles.primaryButton} onPress={saveAdminUser}>
                                   <Text style={styles.primaryButtonText}>Guardar usuario</Text>
                                 </TouchableOpacity>
@@ -8039,6 +8167,7 @@ function ProfileScreen({
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
+                  {manageableCommunities.length === 0 ? <Text style={styles.cardText}>Tu rango no tiene comunidades editables.</Text> : null}
                   {canAdministrateCommunities && selectedAdminProvince ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Crear comunidad</Text>
@@ -8090,16 +8219,27 @@ function ProfileScreen({
                                   <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={styles.input} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
+                                  <Text style={styles.cardEyebrow}>Imagen de comunidad</Text>
+                                  {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
+                                  <TouchableOpacity style={styles.secondaryButton} onPress={pickAdminCommunityImage}>
+                                    <Ionicons name="image-outline" size={17} color={palette.red} />
+                                    <Text style={styles.secondaryButtonText}>{adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'}</Text>
+                                  </TouchableOpacity>
+                                  {adminCommunityImageAsset ? <Text style={styles.cardText}>Vista previa lista. Tocá Guardar comunidad para subirla y asociarla.</Text> : null}
                                   <View style={styles.filterRow}>
-                                    <TouchableOpacity style={styles.secondaryButton} onPress={() => adminToggleCommunityStatus(itemKey, !isActive)}>
-                                      <Text style={styles.secondaryButtonText}>{isActive ? 'Deshabilitar' : 'Habilitar'}</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.secondaryButton} onPress={() => adminArchiveCommunity(itemKey)}>
-                                      <Text style={styles.secondaryButtonText}>Eliminar</Text>
-                                    </TouchableOpacity>
+                                    {canAdministrateCommunities ? (
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => adminToggleCommunityStatus(itemKey, !isActive)}>
+                                        <Text style={styles.secondaryButtonText}>{isActive ? 'Deshabilitar' : 'Habilitar'}</Text>
+                                      </TouchableOpacity>
+                                    ) : null}
+                                    {canAdministrateCommunities ? (
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => adminArchiveCommunity(itemKey)}>
+                                        <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                                      </TouchableOpacity>
+                                    ) : null}
                                   </View>
-                                  <TouchableOpacity style={styles.primaryButton} onPress={adminSaveCommunity}>
-                                    <Text style={styles.primaryButtonText}>Guardar comunidad</Text>
+                                  <TouchableOpacity style={styles.primaryButton} onPress={adminSaveCommunity} disabled={adminCommunityImageUploading}>
+                                    <Text style={styles.primaryButtonText}>{adminCommunityImageUploading ? 'Subiendo imagen...' : 'Guardar comunidad'}</Text>
                                   </TouchableOpacity>
                                 </View>
                               ) : null}

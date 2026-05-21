@@ -92,8 +92,8 @@ values (
     ),
     'periodoMotivador', jsonb_build_object(
       'active', false,
-      'title', 'Periodo Motivador',
-      'body', 'Espacio de preparacion, materiales y textos asociados al periodo motivador.',
+      'title', 'PM',
+      'body', 'Espacio de preparacion, materiales y textos asociados al PM.',
       'imageUrl', ''
     )
   )

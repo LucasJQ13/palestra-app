@@ -48,6 +48,7 @@ export type Session = {
   contact: string;
   communityOfOrigin: string;
   role: Role;
+  displayRoleLabel?: string | null;
   status: UserStatus;
   permissions: Permission[];
 };

@@ -143,7 +143,20 @@ export function canManageProvince(session: Session | null, province?: string | n
   if (session.role === 'administrador') {
     return true;
   }
-  return province === session.province && ['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role);
+  return province === session.province && ['vocal', 'coordinador_diocesano'].includes(session.role);
+}
+
+export function canEditCommunity(session: Session | null, province?: string | null, communityName?: string | null) {
+  if (!session || !province) {
+    return false;
+  }
+  if (session.role === 'administrador') {
+    return true;
+  }
+  if (session.role === 'coordinador_comunidad') {
+    return province === session.province && Boolean(communityName) && communityName === session.communityOfOrigin;
+  }
+  return province === session.province && ['vocal', 'coordinador_diocesano'].includes(session.role);
 }
 
 export function canApproveRole(session: Session | null, targetRole: Role) {

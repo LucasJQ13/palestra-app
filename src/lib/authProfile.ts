@@ -1,5 +1,5 @@
 import { Role, Session, UserStatus } from '../types/auth';
-import { getPermissionsForRole } from './permissions';
+import { getDynamicPermissionsForRole } from './permissions';
 import { supabase } from './supabase';
 
 type MyProfileRow = {
@@ -12,6 +12,7 @@ type MyProfileRow = {
   community_name: string | null;
   status: UserStatus | null;
   role: Role | null;
+  display_role_label?: string | null;
 };
 
 export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ session: Session | null; error?: string }> {
@@ -29,6 +30,7 @@ export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ 
 
   const storedRole = row.role ?? 'palestrista';
   const role = storedRole === 'invitado' ? 'palestrista' : storedRole;
+  const permissions = await getDynamicPermissionsForRole(role);
 
   return {
     session: {
@@ -40,8 +42,9 @@ export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ 
       contact: row.phone ?? 'Sin contacto',
       communityOfOrigin: row.community_name ?? 'Sin comunidad asignada',
       role,
+      displayRoleLabel: row.display_role_label ?? null,
       status: row.status ?? 'pendiente',
-      permissions: getPermissionsForRole(role)
+      permissions
     }
   };
 }

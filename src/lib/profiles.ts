@@ -27,6 +27,7 @@ export type AdminUser = {
   community_name: string | null;
   status: string;
   role: string;
+  display_role_label?: string | null;
   email_confirmed_at: string | null;
 };
 
@@ -138,6 +139,15 @@ export type ProvinceRoleLabelRecord = {
   updated_at: string;
 };
 
+export type RoleAliasRecord = {
+  id: string;
+  base_role: string;
+  display_label: string;
+  province: string | null;
+  is_active: boolean;
+  updated_at: string;
+};
+
 export async function fetchPendingProfiles(): Promise<PendingProfile[]> {
   const { data, error } = await supabase.rpc('admin_get_pending_profiles');
 
@@ -179,6 +189,7 @@ export async function updateAdminUser(values: {
   communityName: string;
   status: string;
   role: string;
+  displayRoleLabel?: string | null;
 }) {
   try {
     return await supabase.rpc('admin_update_user', {
@@ -190,7 +201,8 @@ export async function updateAdminUser(values: {
       p_province: values.province,
       p_community_name: values.communityName,
       p_status: values.status,
-      p_role: values.role
+      p_role: values.role,
+      p_display_role_label: values.displayRoleLabel ?? null
     });
   } catch (error) {
     return networkError(error);
@@ -640,6 +652,49 @@ export async function saveRolePermissions(role: string, permissionKeys: string[]
   }
 }
 
+export async function fetchAssignableRoleAliases(): Promise<RoleAliasRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_assignable_role_aliases');
+    if (error || !data) {
+      return [];
+    }
+    return data as RoleAliasRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveRoleAlias(values: {
+  id?: string | null;
+  baseRole: string;
+  displayLabel: string;
+  province?: string | null;
+  isActive: boolean;
+}) {
+  try {
+    return await supabase.rpc('admin_save_role_alias', {
+      p_alias_id: values.id ?? null,
+      p_base_role: values.baseRole,
+      p_display_label: values.displayLabel,
+      p_province: values.province ?? null,
+      p_is_active: values.isActive
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function setRoleAliasStatus(aliasId: string, isActive: boolean) {
+  try {
+    return await supabase.rpc('admin_set_role_alias_status', {
+      p_alias_id: aliasId,
+      p_is_active: isActive
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function fetchProvinceRoleLabels(): Promise<ProvinceRoleLabelRecord[]> {
   try {
     const { data, error } = await supabase.rpc('get_province_role_labels');
@@ -1050,6 +1105,7 @@ export async function updateCommunity(id: string, values: {
   meeting_day?: string;
   meeting_time?: string;
   description?: string;
+  image_url?: string | null;
 }) {
   try {
     return await supabase.rpc('admin_update_community', {
@@ -1059,7 +1115,8 @@ export async function updateCommunity(id: string, values: {
       p_phone: values.phone ?? null,
       p_meeting_day: values.meeting_day ?? null,
       p_meeting_time: values.meeting_time ?? null,
-      p_description: values.description ?? null
+      p_description: values.description ?? null,
+      p_image_url: values.image_url ?? null
     });
   } catch (error) {
     return networkError(error);

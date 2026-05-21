@@ -1,4 +1,5 @@
 import { Permission, Role } from '../types/auth';
+import { supabase } from './supabase';
 
 const basePermissions: Permission[] = ['ver_inicio', 'ver_noticias', 'ver_comunidades', 'ver_historia', 'ver_contacto'];
 
@@ -18,4 +19,25 @@ export const rolePermissions: Record<Role, Permission[]> = {
 
 export function getPermissionsForRole(role: Role) {
   return rolePermissions[role] ?? basePermissions;
+}
+
+export async function getDynamicPermissionsForRole(role: Role): Promise<Permission[]> {
+  try {
+    const { data, error } = await supabase
+      .from('role_permissions')
+      .select('permission_key')
+      .eq('role', role);
+
+    if (error || !data || data.length === 0) {
+      return getPermissionsForRole(role);
+    }
+
+    const remotePermissions = data
+      .map((item) => item.permission_key)
+      .filter((permission): permission is Permission => typeof permission === 'string');
+
+    return remotePermissions.length > 0 ? remotePermissions : getPermissionsForRole(role);
+  } catch {
+    return getPermissionsForRole(role);
+  }
 }

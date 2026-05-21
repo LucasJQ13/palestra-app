@@ -9,7 +9,7 @@ values
   ('comunidades', 'Comunidades', true, 40, null),
   ('historia', 'Nuestra Historia', true, 50, null),
   ('contacto', 'Contacto', true, 60, null),
-  ('periodo_motivador', 'Periodo Motivador', true, 70, array[
+  ('periodo_motivador', 'PM', true, 70, array[
     'sedimentador',
     'animador_comunidad',
     'coordinador_comunidad',
@@ -64,7 +64,7 @@ values
   (
     'cancionero',
     'Cancionero',
-    'Canciones para encuentros, celebraciones, comunidades y Periodos Motivadores.',
+    'Canciones para encuentros, celebraciones, comunidades y PM.',
     jsonb_build_array(
       jsonb_build_object('id', 'cancionero-titulo', 'type', 'titulo', 'value', 'Cancionero'),
       jsonb_build_object('id', 'cancionero-texto-1', 'type', 'texto', 'value', 'Este espacio queda preparado para publicar canciones y recursos comunitarios visibles para todo publico.'),
@@ -85,10 +85,10 @@ values
   ),
   (
     'periodo_motivador',
-    'Periodo Motivador',
-    'Agenda y registro de Periodos Motivadores cargados desde Supabase.',
+    'PM',
+    'Agenda y registro de PM cargados desde Supabase.',
     jsonb_build_array(
-      jsonb_build_object('id', 'pm-titulo', 'type', 'titulo', 'value', 'Periodo Motivador'),
+      jsonb_build_object('id', 'pm-titulo', 'type', 'titulo', 'value', 'PM'),
       jsonb_build_object('id', 'pm-texto-1', 'type', 'texto', 'value', 'Esta seccion muestra fechas de PM cargadas desde Supabase y vinculadas al calendario de Notilestra.')
     ),
     now()

@@ -186,7 +186,7 @@ begin
     ('comunidades', 'Comunidades', 'people-outline', true, 70, null),
     ('historia', 'Historia', 'book-outline', true, 80, null),
     ('contacto', 'Contacto', 'chatbubbles-outline', true, 90, null),
-    ('periodo_motivador', 'Periodo', 'flame-outline', true, 100, array['sedimentador','animador_comunidad','coordinador_comunidad','vocal','coordinador_diocesano','asesor','vocal_nacional','coordinador_nacional','administrador']),
+    ('periodo_motivador', 'PM', 'flame-outline', true, 100, array['sedimentador','animador_comunidad','coordinador_comunidad','vocal','coordinador_diocesano','asesor','vocal_nacional','coordinador_nacional','administrador']),
     ('perfil', 'Perfil', 'person-circle-outline', true, 110, null)
   on conflict (key) do update
   set
