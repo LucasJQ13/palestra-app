@@ -424,7 +424,34 @@ function canEditPageContent(session: Session | null, key: TabKey) {
   return canManagePublishedContent(session) && ['inicio', 'notilestra', 'materiales', 'oraciones', 'cancionero', 'comunidades', 'periodo_motivador'].includes(key);
 }
 
-function roleLabel(role: Role) {
+type GenderPreference = 'male' | 'female' | null | undefined;
+
+const genderNarratives = {
+  male: {
+    option: 'Hombre',
+    title: 'Bienaventurado seas.',
+    text: 'Querido hermano, sonríe, porque eres amado de verdad. Cada paso que das acercándote a Dios alegra el corazón de Cristo, porque Él ha esperado este momento para abrazarte y caminar a tu lado.\n\nNo temas avanzar. Incluso en medio de tus luchas, Él sigue obrando en vos. Así que toma tu cruz y sigámoslo juntos.'
+  },
+  female: {
+    option: 'Mujer',
+    title: 'Bienaventurada seas.',
+    text: 'Querida hermana, sonríe, porque eres amada de verdad. Cada paso que das acercándote a Dios alegra el corazón de Cristo, porque Él ha esperado este momento para abrazarte y caminar a tu lado.\n\nNo temas avanzar. Incluso en medio de tus luchas, Él sigue obrando en vos. Así que toma tu cruz y sigámoslo juntas.'
+  }
+} satisfies Record<'male' | 'female', { option: string; title: string; text: string }>;
+
+const genderedRoleLabels: Partial<Record<Role, { male: string; female: string }>> = {
+  animador_comunidad: { male: 'Animador de Comunidad', female: 'Animadora de Comunidad' },
+  coordinador_comunidad: { male: 'Coordinador de Comunidad', female: 'Coordinadora de Comunidad' },
+  vocal: { male: 'Vocal Diocesano', female: 'Vocal Diocesana' },
+  coordinador_diocesano: { male: 'Coordinador Diocesano', female: 'Coordinadora Diocesana' },
+  vocal_nacional: { male: 'Vocal Nacional', female: 'Vocal Nacional' },
+  coordinador_nacional: { male: 'Coordinador Nacional', female: 'Coordinadora Nacional' }
+};
+
+function roleLabel(role: Role, gender?: GenderPreference) {
+  if (gender && genderedRoleLabels[role]?.[gender]) {
+    return genderedRoleLabels[role]?.[gender] ?? role;
+  }
   return roleDefinitions.find((item) => item.role === role)?.label ?? role;
 }
 
@@ -438,34 +465,34 @@ function homeGreeting(session: Session | null) {
   }
   const name = firstNameOf(session.fullName);
   if (session.genderPreference === 'male') {
-    return `Bienvenido hno. en Cristo, ${name}. Oh Bella Ciao!`;
+    return `Bienvenido hno. en Cristo ${name}, Oh Bella Ciao!`;
   }
   if (session.genderPreference === 'female') {
-    return `Bienvenida hna. en Cristo, ${name}. Oh Bella Ciao!`;
+    return `Bienvenida hna. en Cristo ${name}, Oh Bella Ciao!`;
   }
   return `Bienvenido/a a Palestra, ${name}. Oh Bella Ciao!`;
 }
 
-function roleLabelForProvince(role: Role, province?: string | null, labels: ProvinceRoleLabelRecord[] = [], aliases: RoleAliasConfig[] = []) {
+function roleLabelForProvince(role: Role, province?: string | null, labels: ProvinceRoleLabelRecord[] = [], aliases: RoleAliasConfig[] = [], gender?: GenderPreference) {
   if (!province) {
     const globalAlias = aliases.find((item) => item.isActive && item.baseRole === role && !item.province);
-    return globalAlias?.displayLabel || roleLabel(role);
+    return globalAlias?.displayLabel || roleLabel(role, gender);
   }
   const custom = labels.find((item) => item.is_active && item.role_key === role && item.province.toLowerCase() === province.toLowerCase());
   const alias = aliases.find((item) => item.isActive && item.baseRole === role && (!item.province || item.province.toLowerCase() === province.toLowerCase()));
-  return custom?.display_label || alias?.displayLabel || roleLabel(role);
+  return custom?.display_label || alias?.displayLabel || roleLabel(role, gender);
 }
 
-function displayRoleLabel(role: Role, province?: string | null, labels: ProvinceRoleLabelRecord[] = [], aliases: RoleAliasConfig[] = [], assignedLabel?: string | null) {
-  return assignedLabel?.trim() || roleLabelForProvince(role, province, labels, aliases);
+function displayRoleLabel(role: Role, province?: string | null, labels: ProvinceRoleLabelRecord[] = [], aliases: RoleAliasConfig[] = [], assignedLabel?: string | null, gender?: GenderPreference) {
+  return assignedLabel?.trim() || roleLabelForProvince(role, province, labels, aliases, gender);
 }
 
-function roleShortLabel(role: Role) {
+function roleShortLabel(role: Role, gender?: GenderPreference) {
   const labels: Record<Role, string> = {
     invitado: 'Invitado',
     palestrista: 'Palestrista',
     sedimentador: 'Sedimentador',
-    animador_comunidad: 'Animador',
+    animador_comunidad: gender === 'female' ? 'Animadora' : 'Animador',
     coordinador_comunidad: 'Coord. Comunidad',
     vocal: 'Vocal Dioc.',
     asesor: 'Asesor',
@@ -474,7 +501,7 @@ function roleShortLabel(role: Role) {
     coordinador_nacional: 'Coord. Nacional',
     administrador: 'Admin'
   };
-  return labels[role] ?? roleLabel(role);
+  return labels[role] ?? roleLabel(role, gender);
 }
 
 function fallbackContentKey(section: string, title: string, date?: string) {
@@ -1296,6 +1323,14 @@ export default function App() {
   }, [session, activeTab]);
 
   useEffect(() => {
+    if (!session && activeTab === 'perfil') {
+      setActiveTab('inicio');
+      setTabHistory(['inicio']);
+      setAuthScreenOpen(true);
+    }
+  }, [session, activeTab]);
+
+  useEffect(() => {
     let alive = true;
 
     async function registerDeviceForPushNotifications() {
@@ -1427,7 +1462,7 @@ export default function App() {
         ) : null}
         <StatusBar barStyle={isDarkTheme ? 'light-content' : 'dark-content'} />
         <View style={[styles.header, isDarkTheme && styles.headerDark]}>
-          <View style={styles.brandBlock}>
+          <TouchableOpacity style={styles.brandBlock} onPress={() => navigateToTab('inicio')} activeOpacity={0.85}>
             <View style={styles.brandLogo}>
               <Image source={palestraLogo} style={styles.brandLogoImage} />
             </View>
@@ -1436,11 +1471,11 @@ export default function App() {
               <Text numberOfLines={1} style={styles.subtitle}>{adminConfig.identity.subtitle}</Text>
               <Text numberOfLines={1} style={styles.versionBadge}>{appVersionLabel}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
           <View style={styles.headerActions}>
             <View style={styles.headerActionTop}>
               <View style={styles.sessionBadge}>
-                <Text numberOfLines={1} style={styles.sessionBadgeText}>{session ? (compactViewport ? roleShortLabel(session.role) : roleLabel(session.role)) : 'Invitado'}</Text>
+                <Text numberOfLines={1} style={styles.sessionBadgeText}>{session ? (compactViewport ? roleShortLabel(session.role, session.genderPreference) : roleLabel(session.role, session.genderPreference)) : 'Invitado'}</Text>
               </View>
               <TouchableOpacity style={styles.headerProfileButton} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
                 <Ionicons name="person-circle-outline" size={17} color={palette.red} />
@@ -1463,7 +1498,7 @@ export default function App() {
                 </View>
                 <View style={styles.drawerHeaderText}>
                   <Text numberOfLines={1} style={styles.drawerTitle}>Palestra</Text>
-                  <Text numberOfLines={1} style={styles.drawerSubtitle}>{session ? displayRoleLabel(session.role, session.province) : 'Invitado'}</Text>
+                  <Text numberOfLines={1} style={styles.drawerSubtitle}>{session ? displayRoleLabel(session.role, session.province, [], [], null, session.genderPreference) : 'Invitado'}</Text>
                 </View>
                 <TouchableOpacity style={styles.drawerCloseButton} onPress={() => setDrawerOpen(false)} activeOpacity={0.85}>
                   <Ionicons name="close-outline" size={22} color={palette.ink} />
@@ -1489,7 +1524,7 @@ export default function App() {
         {adminSessionBeforeViewAs ? (
           <View style={styles.viewAsBanner}>
             <Ionicons name="eye-outline" size={17} color={palette.white} />
-            <Text style={styles.viewAsBannerText}>Ver como: {roleLabel(session?.role ?? 'invitado')}</Text>
+            <Text style={styles.viewAsBannerText}>Ver como: {roleLabel(session?.role ?? 'invitado', session?.genderPreference)}</Text>
             <TouchableOpacity style={styles.viewAsExitButton} onPress={stopAdminViewAs}>
               <Text style={styles.viewAsExitText}>Volver a Administrador</Text>
             </TouchableOpacity>
@@ -1867,17 +1902,15 @@ function RegisterStepNarrative({ draft, onChange }: { draft: RegisterDraft; onCh
     <View style={styles.authStepContent}>
       <Text style={styles.authHeroTitle}>Narrativa</Text>
       <Text style={styles.authHeroText}>Esto nos ayuda a hablarte con una cercanía más personal dentro de la app.</Text>
-      {([
-        ['male', 'Hombre', 'Bienaventurado seas'],
-        ['female', 'Mujer', 'Bienaventurada seas']
-      ] as const).map(([value, label, text]) => {
+      {(['male', 'female'] as const).map((value) => {
+        const narrative = genderNarratives[value];
         const selected = draft.genderPreference === value;
         return (
           <TouchableOpacity key={value} style={[styles.authNarrativeCard, selected && styles.authNarrativeCardActive]} onPress={() => onChange({ genderPreference: value })} activeOpacity={0.86}>
             <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={selected ? palette.white : 'rgba(230,243,245,0.72)'} />
             <View style={styles.authNarrativeTextBlock}>
-              <Text style={[styles.authNarrativeTitle, selected && styles.authNarrativeTitleActive]}>{label}</Text>
-              <Text style={[styles.authNarrativeText, selected && styles.authNarrativeTextActive]}>{text}</Text>
+              <Text style={[styles.authNarrativeTitle, selected && styles.authNarrativeTitleActive]}>{narrative.title}</Text>
+              <Text style={[styles.authNarrativeText, selected && styles.authNarrativeTextActive]}>{narrative.text}</Text>
             </View>
           </TouchableOpacity>
         );
@@ -1911,8 +1944,10 @@ function AuthSelect({ label, value, open, onToggle, children }: { label: string;
 
 function BirthDatePicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<'days' | 'months' | 'years'>('days');
   const [month, setMonth] = useState(() => new Date(2000, 0, 1));
   const monthLabel = month.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  const yearRangeStart = Math.floor(month.getFullYear() / 16) * 16;
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const firstDay = (first.getDay() + 6) % 7;
   const totalDays = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
@@ -1922,6 +1957,7 @@ function BirthDatePicker({ value, onChange }: { value: string; onChange: (value:
     const date = new Date(month.getFullYear(), month.getMonth(), day, 12);
     onChange(date.toISOString().slice(0, 10));
     setOpen(false);
+    setMode('days');
   }
 
   return (
@@ -1934,28 +1970,74 @@ function BirthDatePicker({ value, onChange }: { value: string; onChange: (value:
       {open ? (
         <View style={styles.birthCalendar}>
           <View style={styles.birthCalendarHeader}>
-            <TouchableOpacity onPress={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>
+            <TouchableOpacity onPress={() => {
+              if (mode === 'years') {
+                setMonth((current) => new Date(current.getFullYear() - 16, current.getMonth(), 1));
+              } else {
+                setMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
+              }
+            }}>
               <Ionicons name="chevron-back-outline" size={20} color={palette.white} />
             </TouchableOpacity>
-            <Text style={styles.birthCalendarTitle}>{monthLabel}</Text>
-            <TouchableOpacity onPress={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>
+            <View style={styles.birthCalendarTitleGroup}>
+              <TouchableOpacity onPress={() => setMode(mode === 'months' ? 'days' : 'months')}>
+                <Text style={styles.birthCalendarTitle}>{mode === 'years' ? `${yearRangeStart} - ${yearRangeStart + 15}` : month.toLocaleDateString('es-AR', { month: 'long' })}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setMode(mode === 'years' ? 'days' : 'years')}>
+                <Text style={styles.birthCalendarYear}>{month.getFullYear()}</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity onPress={() => {
+              if (mode === 'years') {
+                setMonth((current) => new Date(current.getFullYear() + 16, current.getMonth(), 1));
+              } else {
+                setMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
+              }
+            }}>
               <Ionicons name="chevron-forward-outline" size={20} color={palette.white} />
             </TouchableOpacity>
           </View>
-          <View style={styles.birthCalendarGrid}>
-            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, index) => <Text key={`${day}-${index}`} style={styles.birthWeekday}>{day}</Text>)}
-            {Array.from({ length: firstDay }).map((_, index) => <View key={`empty-${index}`} style={styles.birthDay} />)}
-            {Array.from({ length: totalDays }).map((_, index) => {
-              const day = index + 1;
-              const dateValue = new Date(month.getFullYear(), month.getMonth(), day, 12).toISOString().slice(0, 10);
-              const selected = dateValue === value;
-              return (
-                <TouchableOpacity key={day} style={[styles.birthDay, selected && styles.birthDaySelected]} onPress={() => selectDay(day)}>
-                  <Text style={[styles.birthDayText, selected && styles.birthDayTextSelected]}>{day}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {mode === 'days' ? (
+            <View style={styles.birthCalendarGrid}>
+              {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, index) => <Text key={`${day}-${index}`} style={styles.birthWeekday}>{day}</Text>)}
+              {Array.from({ length: firstDay }).map((_, index) => <View key={`empty-${index}`} style={styles.birthDay} />)}
+              {Array.from({ length: totalDays }).map((_, index) => {
+                const day = index + 1;
+                const dateValue = new Date(month.getFullYear(), month.getMonth(), day, 12).toISOString().slice(0, 10);
+                const selected = dateValue === value;
+                return (
+                  <TouchableOpacity key={day} style={[styles.birthDay, selected && styles.birthDaySelected]} onPress={() => selectDay(day)}>
+                    <Text style={[styles.birthDayText, selected && styles.birthDayTextSelected]}>{day}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : null}
+          {mode === 'months' ? (
+            <View style={styles.birthPickerGrid}>
+              {Array.from({ length: 12 }).map((_, index) => {
+                const selected = month.getMonth() === index;
+                return (
+                  <TouchableOpacity key={index} style={[styles.birthPickerCell, selected && styles.birthDaySelected]} onPress={() => { setMonth((current) => new Date(current.getFullYear(), index, 1)); setMode('days'); }}>
+                    <Text style={[styles.birthDayText, selected && styles.birthDayTextSelected]}>{new Date(2000, index, 1).toLocaleDateString('es-AR', { month: 'short' })}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : null}
+          {mode === 'years' ? (
+            <View style={styles.birthPickerGrid}>
+              {Array.from({ length: 16 }).map((_, index) => {
+                const year = yearRangeStart + index;
+                const selected = month.getFullYear() === year;
+                return (
+                  <TouchableOpacity key={year} style={[styles.birthPickerCell, selected && styles.birthDaySelected]} onPress={() => { setMonth((current) => new Date(year, current.getMonth(), 1)); setMode('months'); }}>
+                    <Text style={[styles.birthDayText, selected && styles.birthDayTextSelected]}>{year}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -4163,6 +4245,7 @@ function ProfileScreen({
   const [editContact, setEditContact] = useState(session?.contact ?? '');
   const [editProvince, setEditProvince] = useState(session?.province ?? '');
   const [editCommunity, setEditCommunity] = useState(session?.communityOfOrigin ?? '');
+  const [editGenderPreference, setEditGenderPreference] = useState<'male' | 'female' | null>(session?.genderPreference ?? null);
   const [editProvinceDropdownOpen, setEditProvinceDropdownOpen] = useState(false);
   const [editCommunityDropdownOpen, setEditCommunityDropdownOpen] = useState(false);
   const [realPendingProfiles, setRealPendingProfiles] = useState<PendingProfile[]>([]);
@@ -4544,6 +4627,7 @@ function ProfileScreen({
     setEditContact(session?.contact ?? '');
     setEditProvince(session?.province ?? '');
     setEditCommunity(session?.communityOfOrigin ?? '');
+    setEditGenderPreference(session?.genderPreference ?? null);
   }, [session]);
 
   useEffect(() => {
@@ -5322,7 +5406,8 @@ function ProfileScreen({
         fullName: editFullName || session.fullName,
         province: editProvince || session.province,
         contact: editContact || session.contact,
-        communityOfOrigin: editCommunity || session.communityOfOrigin
+        communityOfOrigin: editCommunity || session.communityOfOrigin,
+        genderPreference: editGenderPreference
       });
       return;
     }
@@ -5331,7 +5416,8 @@ function ProfileScreen({
       fullName: editFullName || session.fullName,
       phone: editContact || session.contact,
       province: editProvince || session.province,
-      communityName: editCommunity || session.communityOfOrigin
+      communityName: editCommunity || session.communityOfOrigin,
+      genderPreference: editGenderPreference
     });
 
     if (error) {
@@ -5344,7 +5430,8 @@ function ProfileScreen({
       fullName: editFullName || session.fullName,
       province: editProvince || session.province,
       contact: editContact || session.contact,
-      communityOfOrigin: editCommunity || session.communityOfOrigin
+      communityOfOrigin: editCommunity || session.communityOfOrigin,
+      genderPreference: editGenderPreference
     });
     await loadRealProfile(authData.user.id, authData.user.email ?? session.email ?? session.fullName);
     setAuthMessage(mayDowngrade
@@ -6739,7 +6826,7 @@ function ProfileScreen({
                 </View>
                 <View style={styles.adminUserHeaderText}>
                   <Text style={styles.accountMenuName}>{session.fullName}</Text>
-                  <Text style={styles.accountMenuSub}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel)}</Text>
+                  <Text style={styles.accountMenuSub}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
                 </View>
               </View>
               {[
@@ -6772,7 +6859,7 @@ function ProfileScreen({
                 </View>
               </View>
               {session.email ? <Text style={styles.cardText}>{session.email}</Text> : null}
-              <Text style={styles.cardText}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel)}</Text>
+              <Text style={styles.cardText}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
               <TouchableOpacity style={styles.photoChangeButton} onPress={uploadProfilePhoto}>
                 <Ionicons name="camera-outline" size={16} color={palette.red} />
                 <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
@@ -6782,7 +6869,7 @@ function ProfileScreen({
           {profilePanel === 'vista' ? <View style={styles.profileMetaGrid}>
             {[
               { label: 'Provincia', value: session.province, icon: 'map-outline' },
-              { label: 'Rango', value: displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel), icon: 'ribbon-outline' },
+              { label: 'Rango', value: displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference), icon: 'ribbon-outline' },
               { label: 'Contacto', value: session.contact, icon: 'chatbubble-ellipses-outline' },
               { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' }
             ].map((item) => (
@@ -6847,6 +6934,21 @@ function ProfileScreen({
                 ) : null}
               </>
             ) : null}
+            <Text style={styles.cardEyebrow}>Narrativa</Text>
+            <Text style={styles.cardText}>Elegí cómo querés que la app adapte los textos automáticos del sistema.</Text>
+            {(['male', 'female'] as const).map((option) => {
+              const selected = editGenderPreference === option;
+              const narrative = genderNarratives[option];
+              return (
+                <TouchableOpacity key={option} style={[styles.narrativeEditCard, selected && styles.narrativeEditCardActive]} onPress={() => setEditGenderPreference(option)} activeOpacity={0.86}>
+                  <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selected ? palette.white : palette.red} />
+                  <View style={styles.narrativeEditTextBlock}>
+                    <Text style={[styles.narrativeEditTitle, selected && styles.narrativeEditTitleActive]}>{narrative.title}</Text>
+                    <Text numberOfLines={3} style={[styles.narrativeEditText, selected && styles.narrativeEditTextActive]}>{narrative.text}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
             <TouchableOpacity style={styles.primaryButton} onPress={saveProfile}>
               <Text style={styles.primaryButtonText}>Guardar perfil</Text>
             </TouchableOpacity>
@@ -6941,7 +7043,7 @@ function ProfileScreen({
               <Text style={styles.cardEyebrow}>{session.communityOfOrigin}</Text>
               <SectionTitle title="Mi comunidad" />
               <Text style={styles.cardText}>
-                Relación activa: {displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel)} vinculado a {session.communityOfOrigin} en {session.province}.
+                Relación activa: {displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)} vinculado a {session.communityOfOrigin} en {session.province}.
                 {['animador_comunidad', 'coordinador_comunidad'].includes(session.role) ? ' Este rango puede editar su comunidad asignada.' : ''}
                 {['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? ' Este rango supervisa animadores y coordinadores de comunidad de su provincia.' : ''}
                 {['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ' Este rango supervisa estructura nacional y provincias.' : ''}
@@ -7278,7 +7380,7 @@ function ProfileScreen({
               </View>
               <View style={styles.adminUserHeaderText}>
                 <Text style={styles.credentialName}>{session.fullName}</Text>
-                <Text style={styles.cardText}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel)}</Text>
+                <Text style={styles.cardText}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
                 <Text style={styles.cardText}>{session.communityOfOrigin}, {session.province}</Text>
               </View>
             </View>
@@ -9594,11 +9696,11 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   authNarrativeCard: {
-    minHeight: 78,
+    minHeight: 150,
     borderRadius: 22,
     padding: 16,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 13,
     backgroundColor: 'rgba(255,255,255,0.09)',
     borderWidth: 1,
@@ -9632,6 +9734,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 22,
     padding: 14,
+    height: 342,
     backgroundColor: 'rgba(255,255,255,0.10)',
     borderWidth: 1,
     borderColor: 'rgba(230,243,245,0.14)'
@@ -9642,15 +9745,38 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12
   },
+  birthCalendarTitleGroup: {
+    alignItems: 'center',
+    gap: 2
+  },
   birthCalendarTitle: {
     color: palette.white,
     fontSize: 14,
     fontWeight: '900',
     textTransform: 'capitalize'
   },
+  birthCalendarYear: {
+    color: 'rgba(230,243,245,0.72)',
+    fontSize: 12,
+    fontWeight: '900'
+  },
   birthCalendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap'
+  },
+  birthPickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingTop: 10
+  },
+  birthPickerCell: {
+    width: '22.9%',
+    minHeight: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)'
   },
   birthWeekday: {
     width: '14.285%',
@@ -10096,6 +10222,42 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 2
+  },
+  narrativeEditCard: {
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(45, 141, 200, 0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)'
+  },
+  narrativeEditCardActive: {
+    backgroundColor: palette.red,
+    borderColor: palette.red
+  },
+  narrativeEditTextBlock: {
+    flex: 1,
+    minWidth: 0
+  },
+  narrativeEditTitle: {
+    color: palette.ink,
+    fontSize: 15,
+    fontWeight: '900'
+  },
+  narrativeEditTitleActive: {
+    color: palette.white
+  },
+  narrativeEditText: {
+    color: palette.inkMuted,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
+    marginTop: 4
+  },
+  narrativeEditTextActive: {
+    color: 'rgba(255,255,255,0.86)'
   },
   content: {
     paddingHorizontal: 18,

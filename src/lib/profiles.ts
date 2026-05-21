@@ -434,12 +434,14 @@ export async function updateMyProfile(values: {
   phone: string;
   province: string;
   communityName: string;
+  genderPreference?: 'male' | 'female' | null;
 }) {
   return supabase.rpc('update_my_profile', {
     p_full_name: values.fullName,
     p_phone: values.phone,
     p_province: values.province,
-    p_community_name: values.communityName
+    p_community_name: values.communityName,
+    p_gender_preference: values.genderPreference ?? null
   });
 }
 

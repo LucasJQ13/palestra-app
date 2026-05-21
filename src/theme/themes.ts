@@ -28,10 +28,10 @@ export const themePresets: Record<ThemeName, AppTheme> = {
       secondary: palette.blueDeep,
       background: palette.paper,
       surface: palette.white,
-      surfaceSoft: palette.whiteSoft,
+      surfaceSoft: '#F6FBFC',
       text: palette.ink,
       muted: palette.inkMuted,
-      border: palette.line,
+      border: 'rgba(45, 141, 200, 0.16)',
       accent: palette.gold,
       danger: '#B93232'
     }
@@ -40,14 +40,14 @@ export const themePresets: Record<ThemeName, AppTheme> = {
     name: 'dark',
     mode: 'dark',
     colors: {
-      primary: '#58B7EA',
-      secondary: '#8AD4F3',
-      background: '#071923',
-      surface: '#102B38',
-      surfaceSoft: '#143746',
-      text: '#F3FAFC',
+      primary: '#2D8DC8',
+      secondary: '#5DA7DB',
+      background: '#081923',
+      surface: '#102734',
+      surfaceSoft: '#163746',
+      text: '#F6FBFC',
       muted: '#A9C5D1',
-      border: '#245064',
+      border: 'rgba(230, 243, 245, 0.16)',
       accent: '#F2B84B',
       danger: '#FF8A8A'
     }
