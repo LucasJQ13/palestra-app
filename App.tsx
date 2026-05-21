@@ -3782,7 +3782,7 @@ function ContactScreen({ title, content, editor, adminConfig }: { title: string;
             <View style={[styles.provinceInstagramPanel, isDark && styles.surfacePanelDark]}>
               <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Instagram por provincia</Text>
               {Object.entries(provinceInstagram).filter(([, value]) => value.trim()).map(([province, value]) => (
-                <TouchableOpacity key={province} style={styles.provinceInstagramButton} onPress={() => openContactValue(value)} activeOpacity={0.86}>
+                <TouchableOpacity key={province} style={[styles.provinceInstagramButton, isDark && styles.surfaceRowDark]} onPress={() => openContactValue(value)} activeOpacity={0.86}>
                   <View style={styles.provinceInstagramLogo}>
                     {provinceLogos[province] ? <Image source={provinceLogos[province]} style={styles.provinceInstagramLogoImage} /> : <Text style={styles.provinceLogoMiniText}>{provinceDisplayNames[province]?.slice(0, 2).toUpperCase() ?? province.slice(0, 2).toUpperCase()}</Text>}
                   </View>
@@ -4102,6 +4102,7 @@ function GenericPageScreen({ title, content, editor }: { title: string; content?
 }
 
 function ForumScreen({ session, title }: { session: Session | null; title: string }) {
+  const isDark = useIsDarkTheme();
   const [categories, setCategories] = useState<ForumCategory[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [topics, setTopics] = useState<ForumTopic[]>([]);
@@ -4257,14 +4258,14 @@ function ForumScreen({ session, title }: { session: Session | null; title: strin
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
-      <View style={styles.contentIntro}>
-        <Text style={styles.cardTitle}>Foro Palestrista</Text>
-        <Text style={styles.cardText}>Temas nacionales y provinciales, ordenados por rango y alcance. Por ahora solo texto.</Text>
+      <View style={[styles.contentIntro, isDark && styles.surfacePanelDark]}>
+        <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Foro Palestrista</Text>
+        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Temas nacionales y provinciales, ordenados por rango y alcance. Por ahora solo texto.</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
         {categories.map((category) => (
-          <TouchableOpacity key={category.id} style={[styles.filterChip, selectedCategoryId === category.id && styles.filterChipActive]} onPress={() => setSelectedCategoryId(category.id)}>
-            <Text style={[styles.filterChipText, selectedCategoryId === category.id && styles.filterChipTextActive]}>{category.name}</Text>
+          <TouchableOpacity key={category.id} style={[styles.filterChip, isDark && styles.surfaceRowDark, selectedCategoryId === category.id && styles.filterChipActive]} onPress={() => setSelectedCategoryId(category.id)}>
+            <Text style={[styles.filterChipText, isDark && styles.textDarkStrong, selectedCategoryId === category.id && styles.filterChipTextActive]}>{category.name}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -4282,17 +4283,17 @@ function ForumScreen({ session, title }: { session: Session | null; title: strin
         </View>
       ) : null}
       {showComposer ? (
-        <View style={styles.inlineEditorPanel}>
+        <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
           <Text style={styles.cardEyebrow}>{selectedTopic ? 'Editar tema' : 'Nuevo tema'}</Text>
           <Text style={styles.inputLabel}>Titulo</Text>
-          <TextInput style={styles.input} placeholder="Escribe un titulo claro" placeholderTextColor="#7FA4B5" value={topicTitle} onChangeText={setTopicTitle} />
+          <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Escribe un titulo claro" placeholderTextColor="#7FA4B5" value={topicTitle} onChangeText={setTopicTitle} />
           <Text style={styles.inputLabel}>Contenido</Text>
-          <TextInput style={[styles.input, styles.textArea]} placeholder="Comparte el tema para conversar en comunidad" placeholderTextColor="#7FA4B5" value={topicBody} onChangeText={setTopicBody} multiline />
+          <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Comparte el tema para conversar en comunidad" placeholderTextColor="#7FA4B5" value={topicBody} onChangeText={setTopicBody} multiline />
           <Text style={styles.cardEyebrow}>Visible para</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
             {allowedRoles.map((role) => (
-              <TouchableOpacity key={role} style={[styles.filterChip, topicMinRole === role && styles.filterChipActive]} onPress={() => setTopicMinRole(role)}>
-                <Text style={[styles.filterChipText, topicMinRole === role && styles.filterChipTextActive]}>{roleLabel(role)}</Text>
+              <TouchableOpacity key={role} style={[styles.filterChip, isDark && styles.surfaceRowDark, topicMinRole === role && styles.filterChipActive]} onPress={() => setTopicMinRole(role)}>
+                <Text style={[styles.filterChipText, isDark && styles.textDarkStrong, topicMinRole === role && styles.filterChipTextActive]}>{roleLabel(role)}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -4301,37 +4302,37 @@ function ForumScreen({ session, title }: { session: Session | null; title: strin
           </TouchableOpacity>
         </View>
       ) : null}
-      {forumMessage ? <Text style={styles.cardText}>{forumMessage}</Text> : null}
+        {forumMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{forumMessage}</Text> : null}
       {selectedTopic ? (
         <View style={styles.profileCommunityPanel}>
           <TouchableOpacity style={styles.backButton} onPress={() => setSelectedTopic(null)}>
             <Ionicons name="chevron-back" size={16} color={palette.red} />
             <Text style={styles.backButtonText}>Volver a temas</Text>
           </TouchableOpacity>
-          <Text style={styles.cardEyebrow}>{selectedTopic.status} - {roleLabel(selectedTopic.minRole)} en adelante</Text>
-          <Text style={styles.cardTitle}>{selectedTopic.title}</Text>
-          <Text style={styles.cardText}>{selectedTopic.body}</Text>
-          <Text style={styles.cardText}>Por {selectedTopic.authorName} - {roleLabel(selectedTopic.authorRole)}</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{selectedTopic.status} - {roleLabel(selectedTopic.minRole)} en adelante</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedTopic.title}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{selectedTopic.body}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Por {selectedTopic.authorName} - {roleLabel(selectedTopic.authorRole)}</Text>
           {canModerateTopic(selectedTopic) ? (
             <View style={styles.inlineActions}>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => startEditTopic(selectedTopic)}>
-                <Text style={styles.secondaryButtonText}>Editar</Text>
+              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={() => startEditTopic(selectedTopic)}>
+                <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Editar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => closeTopic(selectedTopic)}>
-                <Text style={styles.secondaryButtonText}>{selectedTopic.status === 'cerrado' ? 'Reabrir' : 'Cerrar'}</Text>
+              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={() => closeTopic(selectedTopic)}>
+                <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>{selectedTopic.status === 'cerrado' ? 'Reabrir' : 'Cerrar'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => deleteTopic(selectedTopic)}>
-                <Text style={styles.secondaryButtonText}>Eliminar</Text>
+              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={() => deleteTopic(selectedTopic)}>
+                <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Eliminar</Text>
               </TouchableOpacity>
             </View>
           ) : null}
           <SectionTitle title="Respuestas" />
           {comments.length === 0 ? <Text style={styles.cardText}>Todavia no hay respuestas.</Text> : null}
           {comments.map((comment) => (
-            <View key={comment.id} style={styles.innerNewsCard}>
-              <Text style={styles.cardEyebrow}>{comment.authorName} - {roleLabel(comment.authorRole)}</Text>
+            <View key={comment.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{comment.authorName} - {roleLabel(comment.authorRole)}</Text>
               <Text style={styles.feedMeta}>{new Date(comment.createdAt).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
-              <Text style={styles.cardText}>{comment.body}</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{comment.body}</Text>
               {(comment.authorId === session?.id || canModerateTopic(selectedTopic)) ? (
                 <TouchableOpacity style={styles.actionPill} onPress={() => deleteComment(comment)}>
                   <Ionicons name="trash-outline" size={16} color={palette.red} />
@@ -4343,7 +4344,7 @@ function ForumScreen({ session, title }: { session: Session | null; title: strin
           {canCreate && selectedTopic.status === 'abierto' ? (
             <View style={styles.inlineEditorPanel}>
               <Text style={styles.inputLabel}>Comentario</Text>
-              <TextInput style={[styles.input, styles.textArea]} placeholder="Escribe una respuesta respetuosa" placeholderTextColor="#7FA4B5" value={commentDraft} onChangeText={setCommentDraft} multiline />
+              <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Escribe una respuesta respetuosa" placeholderTextColor="#7FA4B5" value={commentDraft} onChangeText={setCommentDraft} multiline />
               <TouchableOpacity style={styles.primaryButton} onPress={submitComment}>
                 <Text style={styles.primaryButtonText}>Publicar respuesta</Text>
               </TouchableOpacity>
@@ -4352,12 +4353,12 @@ function ForumScreen({ session, title }: { session: Session | null; title: strin
         </View>
       ) : (
         <View style={styles.stack}>
-          {topics.length === 0 ? <Text style={styles.cardText}>Todavia no hay temas publicados en esta categoria.</Text> : null}
+          {topics.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Todavia no hay temas publicados en esta categoria.</Text> : null}
           {topics.map((topic) => (
-            <TouchableOpacity key={topic.id} style={styles.innerNewsCard} activeOpacity={0.86} onPress={() => openTopic(topic)}>
-              <Text style={styles.cardEyebrow}>{topic.status} - {roleLabel(topic.minRole)} en adelante</Text>
-              <Text style={styles.cardTitle}>{topic.title}</Text>
-              <Text style={styles.cardText}>{topic.body}</Text>
+            <TouchableOpacity key={topic.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]} activeOpacity={0.86} onPress={() => openTopic(topic)}>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{topic.status} - {roleLabel(topic.minRole)} en adelante</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{topic.title}</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{topic.body}</Text>
               <Text style={styles.expandHint}>{topic.replyCount} respuesta/s - abrir tema</Text>
             </TouchableOpacity>
           ))}
@@ -7058,7 +7059,7 @@ function ProfileScreen({
               </View>
               {session.email ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.email}</Text> : null}
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
-              <TouchableOpacity style={styles.photoChangeButton} onPress={uploadProfilePhoto}>
+              <TouchableOpacity style={[styles.photoChangeButton, isDark && styles.darkSoftButton]} onPress={uploadProfilePhoto}>
                 <Ionicons name="camera-outline" size={16} color={palette.red} />
                 <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
               </TouchableOpacity>
@@ -7080,7 +7081,6 @@ function ProfileScreen({
               </View>
             ))}
           </View> : null}
-          {profilePanel === 'vista' && roleInfo ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleInfo.description}</Text> : null}
           {profilePanel === 'editar' ? <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Editar perfil</Text>
             {isMissingProfileScope(session) ? (
@@ -7090,26 +7090,26 @@ function ProfileScreen({
               </View>
             ) : null}
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
-            <TextInput style={styles.input} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName}  placeholderTextColor={inputPlaceholderColor} />
-            <TextInput style={styles.input} placeholder="Contacto" value={editContact} onChangeText={setEditContact}  placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName}  placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Contacto" value={editContact} onChangeText={setEditContact}  placeholderTextColor={inputPlaceholderColor} />
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Provincia</Text>
-            <TouchableOpacity style={styles.dropdownButton} onPress={() => setEditProvinceDropdownOpen(!editProvinceDropdownOpen)}>
-              <Text style={styles.dropdownButtonText}>{editProvince || 'Seleccionar provincia'}</Text>
+            <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditProvinceDropdownOpen(!editProvinceDropdownOpen)}>
+              <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editProvince || 'Seleccionar provincia'}</Text>
               <Ionicons name={editProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
             </TouchableOpacity>
             {editProvinceDropdownOpen ? (
-              <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+              <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
                 {registrationCommunities.map((item) => (
                   <TouchableOpacity
                     key={item.province}
-                    style={styles.dropdownItem}
+                    style={[styles.dropdownItem, isDark && styles.dropdownItemDark]}
                     onPress={() => {
                       setEditProvince(item.province);
                       setEditCommunity('');
                       setEditProvinceDropdownOpen(false);
                     }}
                   >
-                    <Text style={styles.dropdownItemText}>{item.province}</Text>
+                    <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{item.province}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -7117,32 +7117,32 @@ function ProfileScreen({
             {selectedEditProvince ? (
               <>
                 <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Comunidad de origen</Text>
-                <TouchableOpacity style={styles.dropdownButton} onPress={() => setEditCommunityDropdownOpen(!editCommunityDropdownOpen)}>
-                  <Text style={styles.dropdownButtonText}>{editCommunity || 'Seleccionar comunidad'}</Text>
+                <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditCommunityDropdownOpen(!editCommunityDropdownOpen)}>
+                  <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editCommunity || 'Seleccionar comunidad'}</Text>
                   <Ionicons name={editCommunityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
                 </TouchableOpacity>
                 {editCommunityDropdownOpen ? (
-                  <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                  <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
                     {selectedEditProvince.locations.map((item) => (
-                      <TouchableOpacity key={item.name} style={styles.dropdownItem} onPress={() => { setEditCommunity(item.name); setEditCommunityDropdownOpen(false); }}>
-                        <Text style={styles.dropdownItemText}>{item.name}</Text>
+                      <TouchableOpacity key={item.name} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditCommunity(item.name); setEditCommunityDropdownOpen(false); }}>
+                        <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{item.name}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
                 ) : null}
               </>
             ) : null}
-            <Text style={styles.cardEyebrow}>Narrativa</Text>
-            <Text style={styles.cardText}>Elegí cómo querés que la app adapte los textos automáticos del sistema.</Text>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Narrativa</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Elegí cómo querés que la app adapte los textos automáticos del sistema.</Text>
             {(['male', 'female'] as const).map((option) => {
               const selected = editGenderPreference === option;
               const narrative = genderNarratives[option];
               return (
-                <TouchableOpacity key={option} style={[styles.narrativeEditCard, selected && styles.narrativeEditCardActive]} onPress={() => setEditGenderPreference(option)} activeOpacity={0.86}>
+                <TouchableOpacity key={option} style={[styles.narrativeEditCard, isDark && styles.surfaceRowDark, selected && styles.narrativeEditCardActive]} onPress={() => setEditGenderPreference(option)} activeOpacity={0.86}>
                   <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selected ? palette.white : palette.red} />
                   <View style={styles.narrativeEditTextBlock}>
-                    <Text style={[styles.narrativeEditTitle, selected && styles.narrativeEditTitleActive]}>{narrative.title}</Text>
-                    <Text numberOfLines={3} style={[styles.narrativeEditText, selected && styles.narrativeEditTextActive]}>{narrative.text}</Text>
+                    <Text style={[styles.narrativeEditTitle, isDark && styles.textDarkStrong, selected && styles.narrativeEditTitleActive]}>{narrative.title}</Text>
+                    <Text numberOfLines={3} style={[styles.narrativeEditText, isDark && styles.textDarkBody, selected && styles.narrativeEditTextActive]}>{narrative.text}</Text>
                   </View>
                 </TouchableOpacity>
               );
@@ -7157,8 +7157,8 @@ function ProfileScreen({
               <Text style={styles.cardEyebrow}>Configuración de usuario</Text>
               <View style={styles.settingRow}>
                 <View style={styles.settingRowText}>
-                  <Text style={styles.cardTitle}>Mostrar puntero tactil</Text>
-                  <Text style={styles.cardText}>Ayuda visual para testing: muestra un circulo que sigue tu dedo mientras tocas la pantalla.</Text>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Mostrar puntero tactil</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Ayuda visual para testing: muestra un circulo que sigue tu dedo mientras tocas la pantalla.</Text>
                 </View>
                 <Switch
                   value={touchPointerEnabled}
@@ -7167,11 +7167,11 @@ function ProfileScreen({
                   thumbColor={touchPointerEnabled ? palette.red : palette.white}
                 />
               </View>
-              <Text style={styles.cardText}>Esta opcion queda guardada en este dispositivo y por defecto permanece apagada.</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Esta opcion queda guardada en este dispositivo y por defecto permanece apagada.</Text>
               <View style={styles.settingRow}>
                 <View style={styles.settingRowText}>
-                  <Text style={styles.cardTitle}>Tema</Text>
-                  <Text style={styles.cardText}>Preferencia visual solo para este dispositivo: Predeterminado u Oscuro.</Text>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Tema</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Preferencia visual solo para este dispositivo: Predeterminado u Oscuro.</Text>
                 </View>
               </View>
               <View style={styles.filterRow}>
@@ -7184,46 +7184,46 @@ function ProfileScreen({
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={styles.cardText}>Tema activo: {appTheme.name === 'dark' ? 'Oscuro' : 'Predeterminado'}.</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tema activo: {appTheme.name === 'dark' ? 'Oscuro' : 'Predeterminado'}.</Text>
               <View style={styles.settingRow}>
                 <View style={styles.settingRowText}>
-                  <Text style={styles.cardTitle}>Permitir notificaciones</Text>
-                  <Text style={styles.cardText}>Estado actual: {notificationPermissionStatus}. Activa este dispositivo para recibir avisos importantes.</Text>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Permitir notificaciones</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Estado actual: {notificationPermissionStatus}. Activa este dispositivo para recibir avisos importantes.</Text>
                 </View>
               </View>
-              <TouchableOpacity style={styles.secondaryButton} onPress={enablePushNotificationsFromSettings}>
+              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={enablePushNotificationsFromSettings}>
                 <Ionicons name="notifications-outline" size={17} color={palette.red} />
-                <Text style={styles.secondaryButtonText}>Solicitar permiso</Text>
+                <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Solicitar permiso</Text>
               </TouchableOpacity>
               {session.role === 'administrador' ? (
-                <View style={styles.inlineEditorPanel}>
+                <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
                   <View style={styles.settingRow}>
                     <View style={styles.settingRowText}>
-                      <Text style={styles.cardEyebrow}>Diagnóstico de notificaciones</Text>
-                      <Text style={styles.cardText}>Herramientas técnicas visibles solo para Administrador.</Text>
+                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Diagnóstico de notificaciones</Text>
+                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Herramientas técnicas visibles solo para Administrador.</Text>
                     </View>
                     <Switch value={showPushDiagnostics} onValueChange={setShowPushDiagnostics} />
                   </View>
                   {showPushDiagnostics ? (
                     <>
-                      {pushTokenPreview ? <Text style={styles.feedMeta}>Token registrado: {pushTokenPreview}</Text> : null}
-                      <Text style={styles.feedMeta}>Runtime: {appRuntimeOwner} - ProjectId: {easProjectId}</Text>
-                      {pushDebugInfo ? <Text selectable style={styles.feedMeta}>{pushDebugInfo}</Text> : null}
+                      {pushTokenPreview ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Token registrado: {pushTokenPreview}</Text> : null}
+                      <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Runtime: {appRuntimeOwner} - ProjectId: {easProjectId}</Text>
+                      {pushDebugInfo ? <Text selectable style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{pushDebugInfo}</Text> : null}
                       {pushChannelDebug ? (
                         <>
-                          <Text style={styles.cardEyebrow}>Canales Android</Text>
-                          <Text selectable style={styles.feedMeta}>{pushChannelDebug}</Text>
+                          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Canales Android</Text>
+                          <Text selectable style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{pushChannelDebug}</Text>
                         </>
                       ) : null}
-                      <TouchableOpacity style={styles.secondaryButton} onPress={sendLocalNotificationDebug}>
+                      <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={sendLocalNotificationDebug}>
                         <Ionicons name="phone-portrait-outline" size={17} color={palette.red} />
-                        <Text style={styles.secondaryButtonText}>Probar canal local Android</Text>
+                        <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Probar canal local Android</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.primaryButton} onPress={sendRemotePushDebug}>
                         <Ionicons name="notifications-outline" size={17} color={palette.white} />
                         <Text style={styles.primaryButtonText}>Enviar notificacion de prueba a este dispositivo</Text>
                       </TouchableOpacity>
-                      {pushTestResult ? <Text selectable style={styles.feedMeta}>{pushTestResult}</Text> : null}
+                      {pushTestResult ? <Text selectable style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{pushTestResult}</Text> : null}
                     </>
                   ) : null}
                 </View>
@@ -7360,17 +7360,17 @@ function ProfileScreen({
           {profilePanel === 'buzon' ? (
             <View style={styles.profileCommunityPanel}>
               <SectionTitle title="Buzon de mensajes" />
-              <Text style={styles.cardText}>Consultas enviadas y mensajes recibidos por tu comunidad o jurisdiccion.</Text>
-              <TouchableOpacity style={styles.secondaryButton} onPress={refreshMailbox}>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Consultas enviadas y mensajes recibidos por tu comunidad o jurisdiccion.</Text>
+              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={refreshMailbox}>
                 <Ionicons name="refresh-outline" size={17} color={palette.red} />
-                <Text style={styles.secondaryButtonText}>Actualizar buzon</Text>
+                <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Actualizar buzon</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.primaryButton} onPress={() => setShowMailboxComposer(!showMailboxComposer)}>
                 <Ionicons name="create-outline" size={17} color={palette.white} />
                 <Text style={styles.primaryButtonText}>Nuevo Mensaje</Text>
               </TouchableOpacity>
               {showMailboxComposer ? (
-                <View style={styles.inlineEditorPanel}>
+                <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
                   <Text style={styles.cardEyebrow}>Nuevo mensaje</Text>
                   <Text style={styles.inputLabel}>Destino</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
@@ -7520,17 +7520,17 @@ function ProfileScreen({
                 ))}
               </ScrollView>
               {visibleMailboxMessages.length === 0 ? (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>No tienes mensajes actualmente</Text>
+                <View style={[styles.card, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>No tienes mensajes actualmente</Text>
                 </View>
               ) : null}
               {visibleMailboxMessages.map((message) => (
                 <View key={message.id} style={styles.innerNewsCard}>
-                  <Text style={styles.cardEyebrow}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
-                  <Text style={styles.cardTitle}>{message.sender_name ?? 'Consulta externa'}</Text>
-                  {message.sender_contact ? <Text style={styles.cardText}>Contacto: {message.sender_contact}</Text> : null}
-                  <Text style={styles.feedMeta}>{new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
-                  <Text style={styles.cardText}>{message.message}</Text>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{message.sender_name ?? 'Consulta externa'}</Text>
+                  {message.sender_contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {message.sender_contact}</Text> : null}
+                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{message.message}</Text>
                   {message.response ? (
                     <View style={styles.notice}>
                       <Ionicons name="return-up-forward-outline" size={18} color={palette.red} />
@@ -7571,18 +7571,18 @@ function ProfileScreen({
             </View>
           ) : null}
           {profilePanel === 'vista' ? <View style={styles.profileCommunityPanel}>
-            <Text style={styles.cardEyebrow}>Credencial digital</Text>
-            <View style={styles.digitalCredential}>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Credencial digital</Text>
+            <View style={[styles.digitalCredential, isDark && styles.digitalCredentialDark]}>
               <View style={styles.credentialAvatar}>
                 {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.credentialAvatarImage} /> : <Ionicons name="person-outline" size={18} color={palette.red} />}
               </View>
               <View style={styles.adminUserHeaderText}>
-                <Text style={styles.credentialName}>{session.fullName}</Text>
-                <Text style={styles.cardText}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
-                <Text style={styles.cardText}>{session.communityOfOrigin}, {session.province}</Text>
+                <Text style={[styles.credentialName, isDark && styles.textDarkStrong]}>{session.fullName}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.communityOfOrigin}, {session.province}</Text>
               </View>
             </View>
-            <Text style={styles.cardText}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
           </View> : null}
           {profilePanel === 'vista' && session.role !== 'administrador' ? (
             <View style={styles.profileCommunityPanel}>
@@ -7628,8 +7628,8 @@ function ProfileScreen({
           ) : null}
           {profilePanel === 'vista' && session.role !== 'administrador' ? (
             <View style={styles.profileCommunityPanel}>
-              <Text style={styles.cardEyebrow}>Solicitudes enviadas</Text>
-              {sentRequests.length === 0 ? <Text style={styles.cardText}>Todavia no enviaste solicitudes.</Text> : null}
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Solicitudes enviadas</Text>
+              {sentRequests.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Todavia no enviaste solicitudes.</Text> : null}
               {sentRequests.map((item) => (
                 <View key={item.id}>
                   <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedSentRequestId(selectedSentRequestId === item.id ? '' : item.id)}>
@@ -7903,9 +7903,9 @@ function ProfileScreen({
                 </View>
               ) : (
             <View style={[styles.adminPanel, isDark && styles.surfacePanelDark]}>
-              <Text style={styles.cardEyebrow}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
-              <Text style={styles.cardTitle}>Panel Dirigencial</Text>
-              <Text style={styles.cardText}>{session.role === 'administrador' ? 'Gestionar roles, permisos, pestañas, secciones, comunidades, provincias, usuarios, contenido y configuración general.' : 'Revisar solicitudes y gestionar cambios de dirigencia dentro de la provincia.'}</Text>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Panel Dirigencial</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.role === 'administrador' ? 'Gestionar roles, permisos, pestañas, secciones, comunidades, provincias, usuarios, contenido y configuración general.' : 'Revisar solicitudes y gestionar cambios de dirigencia dentro de la provincia.'}</Text>
               {authMessage ? <Text style={styles.adminMessage}>{authMessage}</Text> : null}
               {adminConfigDraft.settings.maintenanceMode ? (
                 <View style={styles.adminStatusPill}>
@@ -7913,23 +7913,23 @@ function ProfileScreen({
                   <Text style={styles.adminStatusText}>Modo mantenimiento activo</Text>
                 </View>
               ) : null}
-              <View style={styles.adminModuleGrid}>
+              <View style={[styles.adminModuleGrid, isDark && styles.adminModuleGridDark]}>
                 {enabledAdminModules.map((item) => (
                   <TouchableOpacity
                     key={item.key}
-                    style={[styles.adminModuleButton, adminModule === item.key && styles.adminModuleButtonActive]}
+                    style={[styles.adminModuleButton, isDark && styles.adminModuleButtonDark, adminModule === item.key && styles.adminModuleButtonActive]}
                     onPress={() => setAdminModule(item.key as AdminModule)}
                   >
                     <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={18} color={adminModule === item.key ? palette.white : palette.red} />
-                    <Text style={[styles.adminModuleText, adminModule === item.key && styles.adminModuleTextActive]}>{item.label}</Text>
+                    <Text style={[styles.adminModuleText, isDark && styles.adminModuleTextDark, adminModule === item.key && styles.adminModuleTextActive]}>{item.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               {adminModule === 'resumen' ? (
                 <View style={styles.adminWorkspace}>
-                  <Text style={styles.cardTitle}>Panel Dirigencial</Text>
-                  <Text style={styles.cardText}>Consola base para controlar contenido, usuarios, comunidades, identidad y configuración general de la app.</Text>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Panel Dirigencial</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Consola base para controlar contenido, usuarios, comunidades, identidad y configuración general de la app.</Text>
                   <View style={styles.adminStatRow}>
                     {adminDraftSummary.map((item) => (
                       <TouchableOpacity key={item.label} style={styles.adminStat} activeOpacity={0.84}>
@@ -7949,16 +7949,16 @@ function ProfileScreen({
                       (item.module !== 'usuarios' || canManageUsers)
                       && (item.module !== 'comunidades' || canAdministrateCommunities)
                     )).map((item) => (
-                      <TouchableOpacity key={item.label} style={styles.adminQuickAction} onPress={() => item.module === 'muro_comunitario' ? setProfilePanel('comunidad') : setAdminModule(item.module as AdminModule)}>
+                      <TouchableOpacity key={item.label} style={[styles.adminQuickAction, isDark && styles.adminQuickActionDark]} onPress={() => item.module === 'muro_comunitario' ? setProfilePanel('comunidad') : setAdminModule(item.module as AdminModule)}>
                         <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={20} color={palette.red} />
-                        <Text style={styles.adminQuickText}>{item.label}</Text>
+                        <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                   {session.role === 'administrador' ? (
                     <View style={styles.profileCommunityPanel}>
-                      <Text style={styles.cardEyebrow}>Ver como</Text>
-                      <Text style={styles.cardText}>Simulación temporal para revisar la app con otros rangos. No cambia permisos reales ni guarda cambios en Supabase.</Text>
+                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Ver como</Text>
+                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Simulación temporal para revisar la app con otros rangos. No cambia permisos reales ni guarda cambios en Supabase.</Text>
                       <View style={styles.adminQuickGrid}>
                         {([
                           { key: 'palestrista', label: 'Palestrista' },
@@ -7966,16 +7966,16 @@ function ProfileScreen({
                           { key: 'coordinador', label: 'Coordinador' },
                           { key: 'nacional', label: 'Nacional' }
                         ] as const).map((item) => (
-                          <TouchableOpacity key={item.key} style={styles.adminQuickAction} onPress={() => onViewAsSession(internalTestSessions[item.key])}>
+                          <TouchableOpacity key={item.key} style={[styles.adminQuickAction, isDark && styles.adminQuickActionDark]} onPress={() => onViewAsSession(internalTestSessions[item.key])}>
                             <Ionicons name="eye-outline" size={20} color={palette.red} />
-                            <Text style={styles.adminQuickText}>{item.label}</Text>
+                            <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.label}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
                     </View>
                   ) : null}
-                  <Text style={styles.cardEyebrow}>Arquitectura editable</Text>
-                  <Text style={styles.cardText}>Panel reducido para Beta: identidad, home, noticias, contacto, período motivador, usuarios, comunidades y configuración real.</Text>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Arquitectura editable</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Panel reducido para Beta: identidad, home, noticias, contacto, período motivador, usuarios, comunidades y configuración real.</Text>
                 </View>
               ) : null}
 
@@ -10580,6 +10580,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.055)',
     borderColor: themePresets.dark.colors.border
   },
+  darkSoftButton: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: 'rgba(139, 201, 234, 0.34)'
+  },
   textDarkStrong: {
     color: themePresets.dark.colors.text
   },
@@ -11849,6 +11853,10 @@ const styles = StyleSheet.create({
     backgroundColor: palette.white,
     padding: 12
   },
+  digitalCredentialDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border
+  },
   credentialAvatar: {
     width: 44,
     height: 44,
@@ -12429,6 +12437,11 @@ const styles = StyleSheet.create({
     color: palette.ink,
     backgroundColor: palette.white
   },
+  inputDark: {
+    backgroundColor: '#33383B',
+    borderColor: 'rgba(139, 201, 234, 0.28)',
+    color: themePresets.dark.colors.text
+  },
   inputFocused: {
     borderColor: palette.red,
     shadowColor: palette.red,
@@ -12530,11 +12543,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10
   },
+  dropdownButtonDark: {
+    backgroundColor: '#33383B',
+    borderColor: 'rgba(139, 201, 234, 0.28)'
+  },
   dropdownButtonText: {
     color: palette.ink,
     fontSize: 14,
     fontWeight: '800',
     flex: 1
+  },
+  dropdownButtonTextDark: {
+    color: themePresets.dark.colors.text
   },
   dropdownList: {
     borderWidth: 1,
@@ -12545,6 +12565,10 @@ const styles = StyleSheet.create({
     maxHeight: 220,
     overflow: 'hidden'
   },
+  dropdownListDark: {
+    backgroundColor: '#33383B',
+    borderColor: 'rgba(139, 201, 234, 0.28)'
+  },
   dropdownItem: {
     minHeight: 42,
     paddingHorizontal: 12,
@@ -12553,10 +12577,16 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(45, 141, 200, 0.1)',
     justifyContent: 'center'
   },
+  dropdownItemDark: {
+    borderBottomColor: 'rgba(139, 201, 234, 0.16)'
+  },
   dropdownItemText: {
     color: palette.ink,
     fontSize: 14,
     fontWeight: '700'
+  },
+  dropdownItemTextDark: {
+    color: themePresets.dark.colors.text
   },
   debugPanel: {
     backgroundColor: '#FFF4CC',
@@ -12592,6 +12622,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 8
   },
+  adminModuleGridDark: {
+    backgroundColor: '#383E41'
+  },
   adminModuleButton: {
     width: '31%',
     minHeight: 66,
@@ -12604,6 +12637,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5
   },
+  adminModuleButtonDark: {
+    backgroundColor: '#454C50',
+    borderColor: themePresets.dark.colors.border
+  },
   adminModuleButtonActive: {
     backgroundColor: palette.red,
     borderColor: palette.red
@@ -12613,6 +12650,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
     textAlign: 'center'
+  },
+  adminModuleTextDark: {
+    color: themePresets.dark.colors.text
   },
   adminModuleTextActive: {
     color: palette.white
@@ -12693,6 +12733,10 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingHorizontal: 12,
     backgroundColor: 'rgba(45, 141, 200, 0.09)'
+  },
+  adminQuickActionDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border
   },
   adminQuickText: {
     color: palette.ink,
