@@ -49,6 +49,7 @@ export type Session = {
   communityOfOrigin: string;
   role: Role;
   displayRoleLabel?: string | null;
+  genderPreference?: 'male' | 'female' | null;
   status: UserStatus;
   permissions: Permission[];
 };

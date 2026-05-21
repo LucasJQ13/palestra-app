@@ -428,6 +428,24 @@ function roleLabel(role: Role) {
   return roleDefinitions.find((item) => item.role === role)?.label ?? role;
 }
 
+function firstNameOf(fullName?: string | null) {
+  return (fullName ?? '').trim().split(/\s+/)[0] || 'Palestrista';
+}
+
+function homeGreeting(session: Session | null) {
+  if (!session || session.role === 'invitado') {
+    return '';
+  }
+  const name = firstNameOf(session.fullName);
+  if (session.genderPreference === 'male') {
+    return `Bienvenido hno. en Cristo, ${name}. Oh Bella Ciao!`;
+  }
+  if (session.genderPreference === 'female') {
+    return `Bienvenida hna. en Cristo, ${name}. Oh Bella Ciao!`;
+  }
+  return `Bienvenido/a a Palestra, ${name}. Oh Bella Ciao!`;
+}
+
 function roleLabelForProvince(role: Role, province?: string | null, labels: ProvinceRoleLabelRecord[] = [], aliases: RoleAliasConfig[] = []) {
   if (!province) {
     const globalAlias = aliases.find((item) => item.isActive && item.baseRole === role && !item.province);
@@ -827,6 +845,7 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [adminSessionBeforeViewAs, setAdminSessionBeforeViewAs] = useState<Session | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [authScreenOpen, setAuthScreenOpen] = useState(false);
   const [profileInitialPanel, setProfileInitialPanel] = useState<ProfilePanel>('vista');
   const [touchPointer, setTouchPointer] = useState<{ x: number; y: number } | null>(null);
   const [touchPointerEnabled, setTouchPointerEnabled] = useState(false);
@@ -1036,10 +1055,15 @@ export default function App() {
 
     items.push({
       key: 'perfil',
-      label: 'Perfil',
+      label: session ? 'Perfil' : 'Ingresar',
       icon: 'person-circle-outline',
       active: activeTab === 'perfil' && profileInitialPanel === 'vista',
       action: () => {
+        if (!session) {
+          setDrawerOpen(false);
+          setAuthScreenOpen(true);
+          return;
+        }
         setProfileInitialPanel('vista');
         navigateToTab('perfil');
       }
@@ -1178,6 +1202,10 @@ export default function App() {
 
   function navigateToTab(nextTab: TabKey) {
     setDrawerOpen(false);
+    if (!session && nextTab === 'perfil') {
+      setAuthScreenOpen(true);
+      return;
+    }
     if (isMissingProfileScope(session) && nextTab !== 'perfil') {
       setActiveTab('perfil');
       setTabHistory(['perfil']);
@@ -1365,6 +1393,17 @@ export default function App() {
         }}
       >
         {isBooting ? <AppLoadingScreen /> : null}
+        {authScreenOpen && !session ? (
+          <AuthScreen
+            onClose={() => setAuthScreenOpen(false)}
+            onAuthenticated={(nextSession) => {
+              setSession(nextSession);
+              setAuthScreenOpen(false);
+              setActiveTab('inicio');
+              setTabHistory(['inicio']);
+            }}
+          />
+        ) : null}
         {touchPointer && touchPointerEnabled ? (
           <Animated.View
             pointerEvents="none"
@@ -1405,7 +1444,7 @@ export default function App() {
               </View>
               <TouchableOpacity style={styles.headerProfileButton} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
                 <Ionicons name="person-circle-outline" size={17} color={palette.red} />
-                {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>Mi Perfil</Text> : null}
+                {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>{session ? 'Mi Perfil' : 'Ingresar'}</Text> : null}
               </TouchableOpacity>
               <TouchableOpacity style={styles.headerMenuButton} onPress={() => setDrawerOpen(true)} activeOpacity={0.85}>
                 <Ionicons name="menu-outline" size={22} color={palette.red} />
@@ -1488,6 +1527,438 @@ export default function App() {
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>
+  );
+}
+
+type RegisterDraft = {
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  nickname: string;
+  contact: string;
+  province: string;
+  community: string;
+  email: string;
+  password: string;
+  genderPreference: 'male' | 'female' | null;
+};
+
+function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (session: Session) => void }) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [authMessage, setAuthMessage] = useState('');
+
+  async function resolveSession(email: string) {
+    const result = await getMyProfileSession(email);
+    if (result.error || !result.session) {
+      setAuthMessage(result.error ?? 'No pude leer tu perfil.');
+      return;
+    }
+    if (result.session.status === 'bloqueado') {
+      await supabase.auth.signOut();
+      setAuthMessage('Este usuario está bloqueado. Contactá a un dirigente.');
+      return;
+    }
+    onAuthenticated(result.session);
+  }
+
+  return (
+    <View style={styles.authFullscreen}>
+      <View style={styles.authGlowOne} />
+      <View style={styles.authGlowTwo} />
+      <TouchableOpacity style={styles.authCloseButton} onPress={onClose} activeOpacity={0.85}>
+        <Ionicons name="close-outline" size={24} color={palette.white} />
+      </TouchableOpacity>
+      {mode === 'login' ? (
+        <LoginScreen
+          message={authMessage}
+          onMessage={setAuthMessage}
+          onAuthenticated={resolveSession}
+          onRegister={() => {
+            setAuthMessage('');
+            setMode('register');
+          }}
+        />
+      ) : (
+        <RegisterWizard
+          message={authMessage}
+          onMessage={setAuthMessage}
+          onBackToLogin={() => {
+            setAuthMessage('');
+            setMode('login');
+          }}
+          onRegistered={resolveSession}
+        />
+      )}
+    </View>
+  );
+}
+
+function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { message: string; onMessage: (message: string) => void; onAuthenticated: (email: string) => Promise<void>; onRegister: () => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function submitLogin() {
+    if (!isValidEmail(email)) {
+      onMessage('Ingresá un mail válido.');
+      return;
+    }
+    if (!password) {
+      onMessage('Ingresá tu contraseña.');
+      return;
+    }
+    setLoading(true);
+    onMessage('Iniciando sesión...');
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    setLoading(false);
+    if (error || !data.user) {
+      onMessage(safeAuthError(error?.message));
+      return;
+    }
+    await onAuthenticated(email.trim());
+  }
+
+  async function recoverPassword() {
+    if (!isValidEmail(email)) {
+      onMessage('Escribí tu mail para enviarte la recuperación.');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    onMessage(error ? safeAuthError(error.message) : 'Te enviamos un mail para recuperar la contraseña.');
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.authScrollContent} keyboardShouldPersistTaps="handled">
+      <View style={styles.authBrandHeader}>
+        <Image source={palestraLogo} style={styles.authLogo} />
+        <Text style={styles.authBrandTitle}>Palestra</Text>
+        <Text style={styles.authBrandSubtitle}>Movimiento Católico</Text>
+      </View>
+      <Text style={styles.authHeroTitle}>Bienvenido/a, ¿iniciamos sesión?</Text>
+      <Text style={styles.authHeroText}>Qué alegría volver a encontrarte en este camino.</Text>
+
+      <View style={styles.authFormPanel}>
+        <AuthTextInput label="Mail" placeholder="tu.mail@email.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+        <View>
+          <Text style={styles.authInputLabel}>Contraseña</Text>
+          <View style={styles.authPasswordWrap}>
+            <TextInput
+              style={styles.authInputPassword}
+              placeholder="Ingresá tu contraseña"
+              placeholderTextColor="rgba(230,243,245,0.62)"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!passwordVisible}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity style={styles.authEyeButton} onPress={() => setPasswordVisible(!passwordVisible)}>
+              <Ionicons name={passwordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.white} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.authPrimaryButton} onPress={submitLogin} disabled={loading} activeOpacity={0.86}>
+          <Text style={styles.authPrimaryText}>{loading ? 'Ingresando...' : 'Iniciar sesión'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.authGhostButton} onPress={onRegister} activeOpacity={0.86}>
+          <Text style={styles.authGhostText}>Registrarme</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={recoverPassword} activeOpacity={0.75}>
+          <Text style={styles.authLinkText}>Olvidé mi contraseña</Text>
+        </TouchableOpacity>
+        {message ? <Text style={styles.authMessage}>{message}</Text> : null}
+      </View>
+    </ScrollView>
+  );
+}
+
+function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered }: { message: string; onMessage: (message: string) => void; onBackToLogin: () => void; onRegistered: (email: string) => Promise<void> }) {
+  const [step, setStep] = useState(0);
+  const [draft, setDraft] = useState<RegisterDraft>({
+    firstName: '',
+    lastName: '',
+    birthDate: '',
+    nickname: '',
+    contact: '',
+    province: '',
+    community: '',
+    email: '',
+    password: '',
+    genderPreference: null
+  });
+  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>(communities);
+  const [loading, setLoading] = useState(false);
+  const fade = useRef(new Animated.Value(1)).current;
+  const selectedProvince = registrationCommunities.find((item) => item.province === draft.province);
+
+  useEffect(() => {
+    fetchCommunities().then((items) => {
+      if (items.length > 0) {
+        setRegistrationCommunities(items);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    fade.setValue(0.75);
+    Animated.timing(fade, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true
+    }).start();
+  }, [step, fade]);
+
+  function patchDraft(values: Partial<RegisterDraft>) {
+    setDraft((current) => ({ ...current, ...values }));
+    onMessage('');
+  }
+
+  function validateStep() {
+    if (step === 0 && (!draft.firstName.trim() || !draft.lastName.trim())) {
+      onMessage('Completá nombre y apellido para continuar.');
+      return false;
+    }
+    if (step === 1 && (!draft.birthDate || !draft.contact.trim())) {
+      onMessage('Completá fecha de nacimiento y contacto.');
+      return false;
+    }
+    if (step === 2) {
+      if (!draft.province || !draft.community) {
+        onMessage('Elegí provincia y comunidad.');
+        return false;
+      }
+      if (!isValidEmail(draft.email)) {
+        onMessage('Ingresá un mail válido.');
+        return false;
+      }
+      if (draft.password.length < 6) {
+        onMessage('La contraseña debe tener al menos 6 caracteres.');
+        return false;
+      }
+    }
+    if (step === 3 && !draft.genderPreference) {
+      onMessage('Elegí una opción narrativa para personalizar el saludo.');
+      return false;
+    }
+    return true;
+  }
+
+  async function nextStep() {
+    if (!validateStep()) {
+      return;
+    }
+    if (step < 3) {
+      setStep((current) => current + 1);
+      return;
+    }
+    setLoading(true);
+    onMessage('Creando tu registro...');
+    const fullName = `${draft.firstName.trim()} ${draft.lastName.trim()}`.trim();
+    const { data, error } = await supabase.auth.signUp({
+      email: draft.email.trim(),
+      password: draft.password,
+      options: {
+        data: {
+          full_name: fullName,
+          first_name: draft.firstName.trim(),
+          last_name: draft.lastName.trim(),
+          birth_date: draft.birthDate,
+          nickname: draft.nickname.trim(),
+          phone: draft.contact.trim(),
+          province: draft.province.trim(),
+          community_name: draft.community.trim(),
+          gender_preference: draft.genderPreference
+        }
+      }
+    });
+    setLoading(false);
+    if (error || !data.user) {
+      onMessage(safeAuthError(error?.message));
+      return;
+    }
+    if (data.session) {
+      await onRegistered(draft.email.trim());
+      return;
+    }
+    onMessage('Registro creado como Palestrista pendiente. Confirmá el mail o esperá la habilitación dirigencial.');
+  }
+
+  return (
+    <View style={styles.authWizardShell}>
+      <View style={styles.authWizardTop}>
+        <TouchableOpacity style={styles.authBackButton} onPress={step === 0 ? onBackToLogin : () => setStep((current) => Math.max(0, current - 1))}>
+          <Ionicons name="arrow-back-outline" size={20} color={palette.white} />
+          <Text style={styles.authBackText}>{step === 0 ? 'Iniciar sesión' : 'Atrás'}</Text>
+        </TouchableOpacity>
+        <Text style={styles.authProgressText}>Página {step + 1} de 4</Text>
+      </View>
+      <Animated.View style={[styles.authWizardCard, { opacity: fade }]}>
+        {step === 0 ? <RegisterStepName draft={draft} onChange={patchDraft} /> : null}
+        {step === 1 ? <RegisterStepAbout draft={draft} onChange={patchDraft} /> : null}
+        {step === 2 ? <RegisterStepCommunity draft={draft} onChange={patchDraft} provinces={registrationCommunities} selectedProvince={selectedProvince} /> : null}
+        {step === 3 ? <RegisterStepNarrative draft={draft} onChange={patchDraft} /> : null}
+      </Animated.View>
+      {message ? <Text style={styles.authMessage}>{message}</Text> : null}
+      <TouchableOpacity style={styles.authPrimaryButton} onPress={nextStep} disabled={loading} activeOpacity={0.86}>
+        <Text style={styles.authPrimaryText}>{step === 3 ? (loading ? 'Registrando...' : 'Crear cuenta') : 'Continuar'}</Text>
+      </TouchableOpacity>
+      <View style={styles.authStepDots}>
+        {[0, 1, 2, 3].map((item) => <View key={item} style={[styles.authStepDot, item === step && styles.authStepDotActive]} />)}
+      </View>
+    </View>
+  );
+}
+
+function RegisterStepName({ draft, onChange }: { draft: RegisterDraft; onChange: (values: Partial<RegisterDraft>) => void }) {
+  return (
+    <View style={styles.authStepContent}>
+      <Text style={styles.authHeroTitle}>¿Cómo te llamás?</Text>
+      <Text style={styles.authHeroText}>Antes de comenzar esta aventura, nos gustaría saber quién sos y conocer un poco más de vos.</Text>
+      <AuthTextInput label="Nombre" placeholder="Ej: Lucas" value={draft.firstName} onChangeText={(value) => onChange({ firstName: value })} />
+      <AuthTextInput label="Apellido" placeholder="Ej: Quiroga" value={draft.lastName} onChangeText={(value) => onChange({ lastName: value })} />
+    </View>
+  );
+}
+
+function RegisterStepAbout({ draft, onChange }: { draft: RegisterDraft; onChange: (values: Partial<RegisterDraft>) => void }) {
+  return (
+    <View style={styles.authStepContent}>
+      <Text style={styles.authHeroTitle}>Acerca de ti</Text>
+      <Text style={styles.authHeroText}>Esto nos permitirá conocerte un poco mejor y preparar esta aventura para ti.</Text>
+      <BirthDatePicker value={draft.birthDate} onChange={(birthDate) => onChange({ birthDate })} />
+      <AuthTextInput label="Apodo" placeholder="Como te dicen en tu comunidad" value={draft.nickname} onChangeText={(value) => onChange({ nickname: value })} />
+      <AuthTextInput label="Contacto" placeholder="Teléfono o contacto personal" value={draft.contact} onChangeText={(value) => onChange({ contact: value })} keyboardType="phone-pad" />
+    </View>
+  );
+}
+
+function RegisterStepCommunity({ draft, onChange, provinces, selectedProvince }: { draft: RegisterDraft; onChange: (values: Partial<RegisterDraft>) => void; provinces: AppCommunity[]; selectedProvince?: AppCommunity }) {
+  const [provinceOpen, setProvinceOpen] = useState(false);
+  const [communityOpen, setCommunityOpen] = useState(false);
+  return (
+    <View style={styles.authStepContent}>
+      <Text style={styles.authHeroTitle}>Comunidad y acceso</Text>
+      <Text style={styles.authHeroText}>Elegí tu lugar de origen y prepará tus datos de ingreso.</Text>
+      <AuthSelect label="Provincia" value={draft.province || 'Seleccioná tu provincia'} open={provinceOpen} onToggle={() => setProvinceOpen(!provinceOpen)}>
+        {provinces.map((item) => (
+          <TouchableOpacity key={item.province} style={styles.authSelectItem} onPress={() => { onChange({ province: item.province, community: '' }); setProvinceOpen(false); setCommunityOpen(false); }}>
+            <Text style={styles.authSelectItemText}>{provinceDisplayNames[item.province] ?? item.province}</Text>
+          </TouchableOpacity>
+        ))}
+      </AuthSelect>
+      {selectedProvince ? (
+        <AuthSelect label="Comunidad" value={draft.community || 'Seleccioná tu comunidad'} open={communityOpen} onToggle={() => setCommunityOpen(!communityOpen)}>
+          {selectedProvince.locations.map((item) => (
+            <TouchableOpacity key={item.name} style={styles.authSelectItem} onPress={() => { onChange({ community: item.name }); setCommunityOpen(false); }}>
+              <Text style={styles.authSelectItemText}>{item.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </AuthSelect>
+      ) : null}
+      <AuthTextInput label="Mail" placeholder="tu.mail@email.com" value={draft.email} onChangeText={(value) => onChange({ email: value })} keyboardType="email-address" autoCapitalize="none" />
+      <AuthTextInput label="Contraseña" placeholder="Mínimo 6 caracteres" value={draft.password} onChangeText={(value) => onChange({ password: value })} secureTextEntry autoCapitalize="none" />
+    </View>
+  );
+}
+
+function RegisterStepNarrative({ draft, onChange }: { draft: RegisterDraft; onChange: (values: Partial<RegisterDraft>) => void }) {
+  return (
+    <View style={styles.authStepContent}>
+      <Text style={styles.authHeroTitle}>Narrativa</Text>
+      <Text style={styles.authHeroText}>Esto nos ayuda a hablarte con una cercanía más personal dentro de la app.</Text>
+      {([
+        ['male', 'Hombre', 'Bienaventurado seas'],
+        ['female', 'Mujer', 'Bienaventurada seas']
+      ] as const).map(([value, label, text]) => {
+        const selected = draft.genderPreference === value;
+        return (
+          <TouchableOpacity key={value} style={[styles.authNarrativeCard, selected && styles.authNarrativeCardActive]} onPress={() => onChange({ genderPreference: value })} activeOpacity={0.86}>
+            <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={selected ? palette.white : 'rgba(230,243,245,0.72)'} />
+            <View style={styles.authNarrativeTextBlock}>
+              <Text style={[styles.authNarrativeTitle, selected && styles.authNarrativeTitleActive]}>{label}</Text>
+              <Text style={[styles.authNarrativeText, selected && styles.authNarrativeTextActive]}>{text}</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function AuthTextInput(props: React.ComponentProps<typeof TextInput> & { label: string }) {
+  const { label, style, ...inputProps } = props;
+  return (
+    <View>
+      <Text style={styles.authInputLabel}>{label}</Text>
+      <TextInput {...inputProps} style={[styles.authInput, style]} placeholderTextColor="rgba(230,243,245,0.62)" />
+    </View>
+  );
+}
+
+function AuthSelect({ label, value, open, onToggle, children }: { label: string; value: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <View>
+      <Text style={styles.authInputLabel}>{label}</Text>
+      <TouchableOpacity style={styles.authSelectButton} onPress={onToggle} activeOpacity={0.84}>
+        <Text numberOfLines={1} style={styles.authSelectText}>{value}</Text>
+        <Ionicons name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.white} />
+      </TouchableOpacity>
+      {open ? <ScrollView style={styles.authSelectList} nestedScrollEnabled>{children}</ScrollView> : null}
+    </View>
+  );
+}
+
+function BirthDatePicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState(() => new Date(2000, 0, 1));
+  const monthLabel = month.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  const firstDay = (first.getDay() + 6) % 7;
+  const totalDays = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const selectedLabel = value ? new Date(`${value}T12:00:00`).toLocaleDateString('es-AR') : 'Seleccioná tu fecha';
+
+  function selectDay(day: number) {
+    const date = new Date(month.getFullYear(), month.getMonth(), day, 12);
+    onChange(date.toISOString().slice(0, 10));
+    setOpen(false);
+  }
+
+  return (
+    <View>
+      <Text style={styles.authInputLabel}>Fecha de nacimiento</Text>
+      <TouchableOpacity style={styles.authSelectButton} onPress={() => setOpen(!open)} activeOpacity={0.84}>
+        <Text style={styles.authSelectText}>{selectedLabel}</Text>
+        <Ionicons name="calendar-outline" size={18} color={palette.white} />
+      </TouchableOpacity>
+      {open ? (
+        <View style={styles.birthCalendar}>
+          <View style={styles.birthCalendarHeader}>
+            <TouchableOpacity onPress={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>
+              <Ionicons name="chevron-back-outline" size={20} color={palette.white} />
+            </TouchableOpacity>
+            <Text style={styles.birthCalendarTitle}>{monthLabel}</Text>
+            <TouchableOpacity onPress={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>
+              <Ionicons name="chevron-forward-outline" size={20} color={palette.white} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.birthCalendarGrid}>
+            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, index) => <Text key={`${day}-${index}`} style={styles.birthWeekday}>{day}</Text>)}
+            {Array.from({ length: firstDay }).map((_, index) => <View key={`empty-${index}`} style={styles.birthDay} />)}
+            {Array.from({ length: totalDays }).map((_, index) => {
+              const day = index + 1;
+              const dateValue = new Date(month.getFullYear(), month.getMonth(), day, 12).toISOString().slice(0, 10);
+              const selected = dateValue === value;
+              return (
+                <TouchableOpacity key={day} style={[styles.birthDay, selected && styles.birthDaySelected]} onPress={() => selectDay(day)}>
+                  <Text style={[styles.birthDayText, selected && styles.birthDayTextSelected]}>{day}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -1727,6 +2198,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
   const hiddenFallbackContent = adminConfig.settings.hiddenFallbackContent ?? [];
   const instagramUrl = adminConfig.contact.instagram?.startsWith('http') ? adminConfig.contact.instagram : `https://www.instagram.com/${adminConfig.contact.instagram.replace('@', '')}`;
   const instagramLabel = instagramUrl.includes('infopalestra.argentina') ? '@infopalestra.argentina' : adminConfig.contact.instagram;
+  const greeting = homeGreeting(session);
   const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = [
     { tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
     { tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
@@ -1824,7 +2296,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
       <View style={styles.hero}>
         <View style={styles.heroGlow} />
         <Text style={styles.kicker}>Argentina</Text>
-        <Text style={styles.heroTitle}>{adminConfig.home.heroTitle}</Text>
+        <Text style={styles.heroTitle}>{greeting || adminConfig.home.heroTitle}</Text>
         <Text style={styles.heroText}>{adminConfig.home.heroText}</Text>
       </View>
 
@@ -8854,6 +9326,358 @@ const styles = StyleSheet.create({
   },
   safeAreaDark: {
     backgroundColor: themePresets.dark.colors.background
+  },
+  authFullscreen: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 140,
+    backgroundColor: '#081923',
+    overflow: 'hidden'
+  },
+  authGlowOne: {
+    position: 'absolute',
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    right: -94,
+    top: -58,
+    backgroundColor: 'rgba(45, 141, 200, 0.38)'
+  },
+  authGlowTwo: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    left: -86,
+    bottom: -70,
+    backgroundColor: 'rgba(242, 184, 75, 0.18)'
+  },
+  authCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 4,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)'
+  },
+  authScrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 72,
+    paddingBottom: 36,
+    justifyContent: 'center'
+  },
+  authBrandHeader: {
+    alignItems: 'flex-start',
+    marginBottom: 34
+  },
+  authLogo: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    marginBottom: 16,
+    backgroundColor: palette.white
+  },
+  authBrandTitle: {
+    color: palette.white,
+    fontSize: 27,
+    fontWeight: '900'
+  },
+  authBrandSubtitle: {
+    color: 'rgba(230, 243, 245, 0.72)',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 3
+  },
+  authHeroTitle: {
+    color: palette.white,
+    fontSize: 34,
+    lineHeight: 39,
+    fontWeight: '900',
+    marginBottom: 12
+  },
+  authHeroText: {
+    color: 'rgba(230, 243, 245, 0.78)',
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: '600',
+    marginBottom: 24
+  },
+  authFormPanel: {
+    gap: 16,
+    marginTop: 12
+  },
+  authInputLabel: {
+    color: 'rgba(230, 243, 245, 0.82)',
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    letterSpacing: 0
+  },
+  authInput: {
+    minHeight: 56,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    color: palette.white,
+    fontSize: 16,
+    fontWeight: '700',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(230,243,245,0.16)'
+  },
+  authPasswordWrap: {
+    minHeight: 56,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(230,243,245,0.16)',
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  authInputPassword: {
+    flex: 1,
+    minHeight: 56,
+    paddingHorizontal: 16,
+    color: palette.white,
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  authEyeButton: {
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  authPrimaryButton: {
+    minHeight: 58,
+    borderRadius: 21,
+    backgroundColor: '#2d8dc8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    shadowColor: '#2d8dc8',
+    shadowOpacity: 0.26,
+    shadowRadius: 18,
+    elevation: 4
+  },
+  authPrimaryText: {
+    color: palette.white,
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  authGhostButton: {
+    minHeight: 54,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(230,243,245,0.24)',
+    backgroundColor: 'rgba(255,255,255,0.05)'
+  },
+  authGhostText: {
+    color: palette.white,
+    fontSize: 15,
+    fontWeight: '900'
+  },
+  authLinkText: {
+    color: '#9FD8E8',
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center'
+  },
+  authMessage: {
+    color: '#E6F3F5',
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '800',
+    textAlign: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  authWizardShell: {
+    flex: 1,
+    paddingHorizontal: 22,
+    paddingTop: 72,
+    paddingBottom: 28,
+    justifyContent: 'space-between',
+    gap: 16
+  },
+  authWizardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  authBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 12,
+    minHeight: 40,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.10)'
+  },
+  authBackText: {
+    color: palette.white,
+    fontWeight: '900',
+    fontSize: 12
+  },
+  authProgressText: {
+    color: 'rgba(230,243,245,0.72)',
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  authWizardCard: {
+    flex: 1,
+    justifyContent: 'center'
+  },
+  authStepContent: {
+    gap: 15
+  },
+  authStepDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 7
+  },
+  authStepDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'rgba(230,243,245,0.28)'
+  },
+  authStepDotActive: {
+    width: 24,
+    backgroundColor: '#2d8dc8'
+  },
+  authSelectButton: {
+    minHeight: 56,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(230,243,245,0.16)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10
+  },
+  authSelectText: {
+    flex: 1,
+    color: palette.white,
+    fontSize: 15,
+    fontWeight: '800'
+  },
+  authSelectList: {
+    maxHeight: 170,
+    marginTop: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(230,243,245,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(230,243,245,0.14)'
+  },
+  authSelectItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(230,243,245,0.08)'
+  },
+  authSelectItemText: {
+    color: palette.white,
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  authNarrativeCard: {
+    minHeight: 78,
+    borderRadius: 22,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    backgroundColor: 'rgba(255,255,255,0.09)',
+    borderWidth: 1,
+    borderColor: 'rgba(230,243,245,0.15)'
+  },
+  authNarrativeCardActive: {
+    backgroundColor: '#2d8dc8',
+    borderColor: '#2d8dc8'
+  },
+  authNarrativeTextBlock: {
+    flex: 1
+  },
+  authNarrativeTitle: {
+    color: palette.white,
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  authNarrativeTitleActive: {
+    color: palette.white
+  },
+  authNarrativeText: {
+    color: 'rgba(230,243,245,0.72)',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 3
+  },
+  authNarrativeTextActive: {
+    color: 'rgba(255,255,255,0.86)'
+  },
+  birthCalendar: {
+    marginTop: 10,
+    borderRadius: 22,
+    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(230,243,245,0.14)'
+  },
+  birthCalendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12
+  },
+  birthCalendarTitle: {
+    color: palette.white,
+    fontSize: 14,
+    fontWeight: '900',
+    textTransform: 'capitalize'
+  },
+  birthCalendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap'
+  },
+  birthWeekday: {
+    width: '14.285%',
+    textAlign: 'center',
+    color: 'rgba(230,243,245,0.62)',
+    fontSize: 11,
+    fontWeight: '900',
+    marginBottom: 7
+  },
+  birthDay: {
+    width: '14.285%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12
+  },
+  birthDaySelected: {
+    backgroundColor: '#2d8dc8'
+  },
+  birthDayText: {
+    color: palette.white,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  birthDayTextSelected: {
+    color: palette.white,
+    fontWeight: '900'
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
