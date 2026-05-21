@@ -448,6 +448,23 @@ const genderedRoleLabels: Partial<Record<Role, { male: string; female: string }>
   coordinador_nacional: { male: 'Coordinador Nacional', female: 'Coordinadora Nacional' }
 };
 
+const monthNames = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre'
+];
+
+const shortMonthNames = monthNames.map((item) => item.slice(0, 3));
+
 function roleLabel(role: Role, gender?: GenderPreference) {
   if (gender && genderedRoleLabels[role]?.[gender]) {
     return genderedRoleLabels[role]?.[gender] ?? role;
@@ -883,13 +900,20 @@ export default function App() {
   const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
   const [contentVersion, setContentVersion] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshLogoVisible, setRefreshLogoVisible] = useState(false);
   const [appMessage, setAppMessage] = useState('');
   const [successToastVisible, setSuccessToastVisible] = useState(false);
+  const [themeTransitionVisible, setThemeTransitionVisible] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
   const lastBackPressRef = useRef(0);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshSpinLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const touchPointerOpacity = useRef(new Animated.Value(0)).current;
+  const refreshLogoOpacity = useRef(new Animated.Value(0)).current;
+  const refreshLogoTranslateY = useRef(new Animated.Value(-34)).current;
+  const refreshLogoRotate = useRef(new Animated.Value(0)).current;
+  const themeTransitionProgress = useRef(new Animated.Value(0)).current;
   const appTheme = themePresets[themeName] ?? themePresets.default;
   const isDarkTheme = appTheme.mode === 'dark';
   const { width: viewportWidth } = useWindowDimensions();
@@ -949,7 +973,22 @@ export default function App() {
   }, []);
 
   async function updateThemePreference(nextTheme: ThemeName) {
-    setThemeName(nextTheme);
+    setThemeTransitionVisible(true);
+    themeTransitionProgress.setValue(0);
+    Animated.timing(themeTransitionProgress, {
+      toValue: 1,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true
+    }).start(() => {
+      setThemeName(nextTheme);
+      Animated.timing(themeTransitionProgress, {
+        toValue: 0,
+        duration: 320,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true
+      }).start(() => setThemeTransitionVisible(false));
+    });
     try {
       await AsyncStorage.setItem(themePreferenceKey, nextTheme);
     } catch (error) {
@@ -1007,6 +1046,56 @@ export default function App() {
         setTouchPointer(null);
       }
     });
+  }
+
+  function showRefreshLogo() {
+    setRefreshLogoVisible(true);
+    refreshLogoOpacity.setValue(0);
+    refreshLogoTranslateY.setValue(-34);
+    refreshLogoRotate.setValue(0);
+    Animated.parallel([
+      Animated.timing(refreshLogoOpacity, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true
+      }),
+      Animated.timing(refreshLogoTranslateY, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.back(1.2)),
+        useNativeDriver: true
+      })
+    ]).start();
+    const spin = Animated.loop(
+      Animated.timing(refreshLogoRotate, {
+        toValue: 1,
+        duration: 920,
+        easing: Easing.linear,
+        useNativeDriver: true
+      })
+    );
+    refreshSpinLoopRef.current = spin;
+    spin.start();
+  }
+
+  function hideRefreshLogo() {
+    refreshSpinLoopRef.current?.stop();
+    refreshSpinLoopRef.current = null;
+    Animated.parallel([
+      Animated.timing(refreshLogoOpacity, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true
+      }),
+      Animated.timing(refreshLogoTranslateY, {
+        toValue: -34,
+        duration: 220,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true
+      })
+    ]).start(() => setRefreshLogoVisible(false));
   }
 
   const resolvedTabs = useMemo<AppTabDisplay[]>(() => {
@@ -1208,7 +1297,9 @@ export default function App() {
     }
 
     setIsRefreshing(true);
-    setAppMessage(source === 'manual' ? 'Actualizando contenido...' : '');
+    if (source === 'manual') {
+      showRefreshLogo();
+    }
     try {
       await Promise.all([
         reloadTabSettings(),
@@ -1217,13 +1308,14 @@ export default function App() {
         hydrateRealSession()
       ]);
       setContentVersion((current) => current + 1);
-      setAppMessage('Contenido actualizado.');
-      setTimeout(() => setAppMessage(''), 1800);
     } catch (error) {
       console.error('refreshAppContent', error);
       setAppMessage(error instanceof Error ? error.message : 'No pude actualizar. Revisa la conexion.');
     } finally {
       setIsRefreshing(false);
+      if (source === 'manual') {
+        hideRefreshLogo();
+      }
     }
   }
 
@@ -1474,9 +1566,6 @@ export default function App() {
           </TouchableOpacity>
           <View style={styles.headerActions}>
             <View style={styles.headerActionTop}>
-              <View style={styles.sessionBadge}>
-                <Text numberOfLines={1} style={styles.sessionBadgeText}>{session ? (compactViewport ? roleShortLabel(session.role, session.genderPreference) : roleLabel(session.role, session.genderPreference)) : 'Invitado'}</Text>
-              </View>
               <TouchableOpacity style={styles.headerProfileButton} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
                 <Ionicons name="person-circle-outline" size={17} color={palette.red} />
                 {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>{session ? 'Mi Perfil' : 'Ingresar'}</Text> : null}
@@ -1485,7 +1574,6 @@ export default function App() {
                 <Ionicons name="menu-outline" size={22} color={palette.red} />
               </TouchableOpacity>
             </View>
-            {!veryCompactViewport ? <Text numberOfLines={1} style={styles.headerDateTime}>{currentDateTimeLabel}</Text> : null}
           </View>
         </View>
         <Modal visible={drawerOpen} transparent animationType="fade" onRequestClose={() => setDrawerOpen(false)}>
@@ -1543,6 +1631,47 @@ export default function App() {
             <Text style={styles.appToastText}>{appMessage}</Text>
           </View>
         ) : null}
+        {refreshLogoVisible ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.refreshLogoIndicator,
+              {
+                opacity: refreshLogoOpacity,
+                transform: [
+                  { translateY: refreshLogoTranslateY },
+                  {
+                    rotate: refreshLogoRotate.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '360deg']
+                    })
+                  }
+                ]
+              }
+            ]}
+          >
+            <Image source={palestraLogo} style={styles.refreshLogoImage} />
+          </Animated.View>
+        ) : null}
+        {themeTransitionVisible ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.themeTransitionOverlay,
+              {
+                opacity: themeTransitionProgress,
+                transform: [
+                  {
+                    scaleX: themeTransitionProgress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.06, 1]
+                    })
+                  }
+                ]
+              }
+            ]}
+          />
+        ) : null}
         <ScrollView
           contentContainerStyle={[styles.content, isDarkTheme && styles.contentDark]}
           keyboardShouldPersistTaps="handled"
@@ -1550,9 +1679,9 @@ export default function App() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={() => refreshAppContent('manual')}
-              tintColor={palette.red}
-              colors={[palette.red, palette.gold, palette.blueDeep]}
-              progressBackgroundColor={palette.white}
+              tintColor="transparent"
+              colors={['transparent']}
+              progressBackgroundColor="transparent"
             />
           )}
         >
@@ -1946,7 +2075,6 @@ function BirthDatePicker({ value, onChange }: { value: string; onChange: (value:
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'days' | 'months' | 'years'>('days');
   const [month, setMonth] = useState(() => new Date(2000, 0, 1));
-  const monthLabel = month.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
   const yearRangeStart = Math.floor(month.getFullYear() / 16) * 16;
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const firstDay = (first.getDay() + 6) % 7;
@@ -1981,7 +2109,7 @@ function BirthDatePicker({ value, onChange }: { value: string; onChange: (value:
             </TouchableOpacity>
             <View style={styles.birthCalendarTitleGroup}>
               <TouchableOpacity onPress={() => setMode(mode === 'months' ? 'days' : 'months')}>
-                <Text style={styles.birthCalendarTitle}>{mode === 'years' ? `${yearRangeStart} - ${yearRangeStart + 15}` : month.toLocaleDateString('es-AR', { month: 'long' })}</Text>
+                <Text style={styles.birthCalendarTitle}>{mode === 'years' ? `${yearRangeStart} - ${yearRangeStart + 15}` : monthNames[month.getMonth()]}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setMode(mode === 'years' ? 'days' : 'years')}>
                 <Text style={styles.birthCalendarYear}>{month.getFullYear()}</Text>
@@ -2019,7 +2147,7 @@ function BirthDatePicker({ value, onChange }: { value: string; onChange: (value:
                 const selected = month.getMonth() === index;
                 return (
                   <TouchableOpacity key={index} style={[styles.birthPickerCell, selected && styles.birthDaySelected]} onPress={() => { setMonth((current) => new Date(current.getFullYear(), index, 1)); setMode('days'); }}>
-                    <Text style={[styles.birthDayText, selected && styles.birthDayTextSelected]}>{new Date(2000, index, 1).toLocaleDateString('es-AR', { month: 'short' })}</Text>
+                    <Text style={[styles.birthDayText, selected && styles.birthDayTextSelected]}>{shortMonthNames[index]}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -6815,7 +6943,7 @@ function ProfileScreen({
           <View style={styles.profileTopRow}>
             <View />
             <TouchableOpacity style={styles.iconButton} onPress={() => setShowAccountMenu(!showAccountMenu)}>
-              <Ionicons name="menu" size={20} color={palette.red} />
+              <Ionicons name="ellipsis-vertical" size={20} color={palette.red} />
             </TouchableOpacity>
           </View>
           {showAccountMenu ? (
@@ -9952,6 +10080,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     textAlign: 'center'
+  },
+  refreshLogoIndicator: {
+    position: 'absolute',
+    top: 78,
+    alignSelf: 'center',
+    zIndex: 82,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.84)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 5
+  },
+  refreshLogoImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18
+  },
+  themeTransitionOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 130,
+    backgroundColor: '#050B10'
   },
   successToastOverlay: {
     position: 'absolute',
