@@ -904,6 +904,7 @@ export default function App() {
   const [appMessage, setAppMessage] = useState('');
   const [successToastVisible, setSuccessToastVisible] = useState(false);
   const [themeTransitionVisible, setThemeTransitionVisible] = useState(false);
+  const [themeTransitionColor, setThemeTransitionColor] = useState('#2B2B2B');
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
   const lastBackPressRef = useRef(0);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -973,18 +974,19 @@ export default function App() {
   }, []);
 
   async function updateThemePreference(nextTheme: ThemeName) {
+    setThemeTransitionColor(nextTheme === 'dark' ? themePresets.dark.colors.background : '#E6F3F5');
     setThemeTransitionVisible(true);
     themeTransitionProgress.setValue(0);
     Animated.timing(themeTransitionProgress, {
       toValue: 1,
-      duration: 260,
+      duration: 380,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true
     }).start(() => {
       setThemeName(nextTheme);
       Animated.timing(themeTransitionProgress, {
         toValue: 0,
-        duration: 320,
+        duration: 260,
         easing: Easing.inOut(Easing.cubic),
         useNativeDriver: true
       }).start(() => setThemeTransitionVisible(false));
@@ -1559,18 +1561,18 @@ export default function App() {
               <Image source={palestraLogo} style={styles.brandLogoImage} />
             </View>
             <View style={styles.brandTextBlock}>
-              <Text numberOfLines={1} style={styles.brand}>{adminConfig.identity.appName}</Text>
-              <Text numberOfLines={1} style={styles.subtitle}>{adminConfig.identity.subtitle}</Text>
+              <Text numberOfLines={1} style={[styles.brand, isDarkTheme && styles.brandDark]}>{adminConfig.identity.appName}</Text>
+              <Text numberOfLines={1} style={[styles.subtitle, isDarkTheme && styles.subtitleDark]}>{adminConfig.identity.subtitle}</Text>
               <Text numberOfLines={1} style={styles.versionBadge}>{appVersionLabel}</Text>
             </View>
           </TouchableOpacity>
           <View style={styles.headerActions}>
             <View style={styles.headerActionTop}>
-              <TouchableOpacity style={styles.headerProfileButton} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
+              <TouchableOpacity style={[styles.headerProfileButton, isDarkTheme && styles.headerPillDark]} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
                 <Ionicons name="person-circle-outline" size={17} color={palette.red} />
                 {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>{session ? 'Mi Perfil' : 'Ingresar'}</Text> : null}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.headerMenuButton} onPress={() => setDrawerOpen(true)} activeOpacity={0.85}>
+              <TouchableOpacity style={[styles.headerMenuButton, isDarkTheme && styles.headerPillDark]} onPress={() => setDrawerOpen(true)} activeOpacity={0.85}>
                 <Ionicons name="menu-outline" size={22} color={palette.red} />
               </TouchableOpacity>
             </View>
@@ -1579,28 +1581,28 @@ export default function App() {
         <Modal visible={drawerOpen} transparent animationType="fade" onRequestClose={() => setDrawerOpen(false)}>
           <View style={styles.drawerOverlay}>
             <Pressable style={styles.drawerBackdrop} onPress={() => setDrawerOpen(false)} />
-            <View style={[styles.drawerPanel, { width: drawerWidth }]}>
+            <View style={[styles.drawerPanel, isDarkTheme && styles.drawerPanelDark, { width: drawerWidth }]}>
               <View style={styles.drawerHeader}>
                 <View style={styles.drawerLogo}>
                   <Image source={palestraLogo} style={styles.brandLogoImage} />
                 </View>
                 <View style={styles.drawerHeaderText}>
-                  <Text numberOfLines={1} style={styles.drawerTitle}>Palestra</Text>
-                  <Text numberOfLines={1} style={styles.drawerSubtitle}>{session ? displayRoleLabel(session.role, session.province, [], [], null, session.genderPreference) : 'Invitado'}</Text>
+                  <Text numberOfLines={1} style={[styles.drawerTitle, isDarkTheme && styles.drawerTitleDark]}>Palestra</Text>
+                  <Text numberOfLines={1} style={[styles.drawerSubtitle, isDarkTheme && styles.drawerSubtitleDark]}>{session ? displayRoleLabel(session.role, session.province, [], [], null, session.genderPreference) : 'Invitado'}</Text>
                 </View>
-                <TouchableOpacity style={styles.drawerCloseButton} onPress={() => setDrawerOpen(false)} activeOpacity={0.85}>
-                  <Ionicons name="close-outline" size={22} color={palette.ink} />
+                <TouchableOpacity style={[styles.drawerCloseButton, isDarkTheme && styles.drawerCloseButtonDark]} onPress={() => setDrawerOpen(false)} activeOpacity={0.85}>
+                  <Ionicons name="close-outline" size={22} color={isDarkTheme ? themePresets.dark.colors.text : palette.ink} />
                 </TouchableOpacity>
               </View>
               <ScrollView style={styles.drawerScroll} contentContainerStyle={styles.drawerScrollContent} showsVerticalScrollIndicator={false}>
                 {drawerItems.map((item) => (
-                  <TouchableOpacity key={item.key} style={[styles.drawerItem, item.active && styles.drawerItemActive]} onPress={item.action} activeOpacity={0.84}>
-                    <View style={[styles.drawerIconFrame, item.active && styles.drawerIconFrameActive]}>
+                  <TouchableOpacity key={item.key} style={[styles.drawerItem, isDarkTheme && styles.drawerItemDark, item.active && styles.drawerItemActive, item.active && isDarkTheme && styles.drawerItemActiveDark]} onPress={item.action} activeOpacity={0.84}>
+                    <View style={[styles.drawerIconFrame, isDarkTheme && styles.drawerIconFrameDark, item.active && styles.drawerIconFrameActive]}>
                       <Ionicons name={item.icon} size={20} color={item.active ? palette.white : palette.red} />
                     </View>
                     <View style={styles.drawerItemTextBlock}>
-                      <Text numberOfLines={1} style={[styles.drawerItemText, item.active && styles.drawerItemTextActive]}>{item.label}</Text>
-                      {item.meta ? <Text numberOfLines={1} style={styles.drawerItemMeta}>{item.meta}</Text> : null}
+                      <Text numberOfLines={1} style={[styles.drawerItemText, isDarkTheme && styles.drawerItemTextDark, item.active && styles.drawerItemTextActive]}>{item.label}</Text>
+                      {item.meta ? <Text numberOfLines={1} style={[styles.drawerItemMeta, isDarkTheme && styles.drawerItemMetaDark]}>{item.meta}</Text> : null}
                     </View>
                     {item.active ? <Ionicons name="ellipse" size={8} color={palette.red} /> : null}
                   </TouchableOpacity>
@@ -1636,6 +1638,7 @@ export default function App() {
             pointerEvents="none"
             style={[
               styles.refreshLogoIndicator,
+              isDarkTheme && styles.refreshLogoIndicatorDark,
               {
                 opacity: refreshLogoOpacity,
                 transform: [
@@ -1654,30 +1657,77 @@ export default function App() {
           </Animated.View>
         ) : null}
         {themeTransitionVisible ? (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.themeTransitionOverlay,
-              {
-                opacity: themeTransitionProgress,
-                transform: [
-                  {
-                    scaleX: themeTransitionProgress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.06, 1]
-                    })
-                  }
-                ]
-              }
-            ]}
-          />
+          <View pointerEvents="none" style={styles.themeTransitionLayer}>
+            <Animated.View
+              style={[
+                styles.themePaintSplash,
+                {
+                  backgroundColor: themeTransitionColor,
+                  opacity: themeTransitionProgress.interpolate({
+                    inputRange: [0, 0.08, 1],
+                    outputRange: [0, 1, 1]
+                  }),
+                  transform: [
+                    {
+                      scale: themeTransitionProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.18, 18]
+                      })
+                    }
+                  ]
+                }
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.themePaintDrop,
+                styles.themePaintDropOne,
+                {
+                  backgroundColor: themeTransitionColor,
+                  opacity: themeTransitionProgress.interpolate({
+                    inputRange: [0, 0.2, 1],
+                    outputRange: [0, 0.75, 0.2]
+                  }),
+                  transform: [
+                    {
+                      scale: themeTransitionProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.1, 3.6]
+                      })
+                    }
+                  ]
+                }
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.themePaintDrop,
+                styles.themePaintDropTwo,
+                {
+                  backgroundColor: themeTransitionColor,
+                  opacity: themeTransitionProgress.interpolate({
+                    inputRange: [0, 0.28, 1],
+                    outputRange: [0, 0.64, 0.16]
+                  }),
+                  transform: [
+                    {
+                      scale: themeTransitionProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.1, 2.9]
+                      })
+                    }
+                  ]
+                }
+              ]}
+            />
+          </View>
         ) : null}
         <ScrollView
           contentContainerStyle={[styles.content, isDarkTheme && styles.contentDark]}
           keyboardShouldPersistTaps="handled"
           refreshControl={(
             <RefreshControl
-              refreshing={isRefreshing}
+              refreshing={false}
               onRefresh={() => refreshAppContent('manual')}
               tintColor="transparent"
               colors={['transparent']}
@@ -10009,7 +10059,7 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   headerDark: {
-    backgroundColor: '#0D2532',
+    backgroundColor: themePresets.dark.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: themePresets.dark.colors.border
   },
@@ -10048,10 +10098,16 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800'
   },
+  brandDark: {
+    color: themePresets.dark.colors.text
+  },
   subtitle: {
     color: palette.inkMuted,
     fontSize: 13,
     marginTop: 2
+  },
+  subtitleDark: {
+    color: themePresets.dark.colors.muted
   },
   versionBadge: {
     color: palette.red,
@@ -10099,19 +10155,48 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 5
   },
+  refreshLogoIndicatorDark: {
+    backgroundColor: 'rgba(53,56,59,0.92)',
+    borderColor: themePresets.dark.colors.border,
+    shadowColor: '#000'
+  },
   refreshLogoImage: {
     width: 36,
     height: 36,
     borderRadius: 18
   },
-  themeTransitionOverlay: {
+  themeTransitionLayer: {
     position: 'absolute',
     top: 0,
     right: 0,
     bottom: 0,
     left: 0,
     zIndex: 130,
-    backgroundColor: '#050B10'
+    overflow: 'hidden'
+  },
+  themePaintSplash: {
+    position: 'absolute',
+    top: 54,
+    right: 34,
+    width: 86,
+    height: 86,
+    borderRadius: 43
+  },
+  themePaintDrop: {
+    position: 'absolute',
+    borderRadius: 999
+  },
+  themePaintDropOne: {
+    top: 122,
+    right: 86,
+    width: 32,
+    height: 32
+  },
+  themePaintDropTwo: {
+    top: 38,
+    right: 142,
+    width: 22,
+    height: 22
   },
   successToastOverlay: {
     position: 'absolute',
@@ -10293,6 +10378,10 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 12
   },
+  drawerPanelDark: {
+    backgroundColor: themePresets.dark.colors.surface,
+    shadowColor: '#000'
+  },
   drawerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -10310,6 +10399,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.18)'
   },
+  headerPillDark: {
+    backgroundColor: themePresets.dark.colors.surface,
+    borderColor: themePresets.dark.colors.border
+  },
   drawerHeaderText: {
     flex: 1,
     minWidth: 0
@@ -10319,11 +10412,17 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '900'
   },
+  drawerTitleDark: {
+    color: themePresets.dark.colors.text
+  },
   drawerSubtitle: {
     color: palette.inkMuted,
     fontSize: 12,
     fontWeight: '800',
     marginTop: 2
+  },
+  drawerSubtitleDark: {
+    color: themePresets.dark.colors.muted
   },
   drawerCloseButton: {
     width: 36,
@@ -10334,6 +10433,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.14)'
+  },
+  drawerCloseButtonDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border
   },
   drawerScroll: {
     marginTop: 14
@@ -10351,8 +10454,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10
   },
+  drawerItemDark: {
+    backgroundColor: 'rgba(255,255,255,0.02)'
+  },
   drawerItemActive: {
     backgroundColor: 'rgba(45, 141, 200, 0.12)'
+  },
+  drawerItemActiveDark: {
+    backgroundColor: 'rgba(93, 167, 219, 0.18)'
   },
   drawerIconFrame: {
     width: 40,
@@ -10361,6 +10470,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(45, 141, 200, 0.09)'
+  },
+  drawerIconFrameDark: {
+    backgroundColor: 'rgba(93, 167, 219, 0.14)'
   },
   drawerIconFrameActive: {
     backgroundColor: palette.red
@@ -10374,6 +10486,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900'
   },
+  drawerItemTextDark: {
+    color: themePresets.dark.colors.text
+  },
   drawerItemTextActive: {
     color: palette.red
   },
@@ -10382,6 +10497,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 2
+  },
+  drawerItemMetaDark: {
+    color: themePresets.dark.colors.muted
   },
   narrativeEditCard: {
     borderRadius: 18,
