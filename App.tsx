@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, BackHandler, Easing, GestureResponderEvent, Image, KeyboardAvoidingView, Linking, Modal, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
@@ -107,6 +107,9 @@ type AppAdminConfig = {
     heroText: string;
     featuredBanner: string;
     visibleModules: string[];
+    greetingTemplateMale?: string;
+    greetingTemplateFemale?: string;
+    greetingTemplateNeutral?: string;
   };
   contact: {
     email: string;
@@ -180,7 +183,10 @@ const defaultAdminConfig: AppAdminConfig = {
     heroTitle: 'Una app para caminar juntos.',
     heroText: 'Noticias, agenda, materiales y comunicacion interna para las comunidades de Palestra.',
     featuredBanner: 'Agenda comunitaria',
-    visibleModules: ['noticias', 'comunidades', 'materiales', 'perfil']
+    visibleModules: ['noticias', 'comunidades', 'materiales', 'perfil'],
+    greetingTemplateMale: 'Bienvenido {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
+    greetingTemplateFemale: 'Bienvenida {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
+    greetingTemplateNeutral: 'Bienvenido/a a Palestra, {nombre}. Oh Bella Ciao!'
   },
   contact: {
     email: contactInfo.email,
@@ -485,18 +491,45 @@ function firstNameOf(fullName?: string | null) {
   return (fullName ?? '').trim().split(/\s+/)[0] || 'Palestrista';
 }
 
-function homeGreeting(session: Session | null) {
+function renderGreetingTemplate(template: string | undefined, variables: Record<string, string>, fallback: string) {
+  if (!template?.trim()) {
+    return fallback;
+  }
+  const rendered = template.replace(/\{([a-zA-Z_]+)\}/g, (match, key) => variables[key] ?? '');
+  return rendered.trim() || fallback;
+}
+
+function homeGreeting(session: Session | null, homeConfig: AppAdminConfig['home'] = defaultAdminConfig.home) {
   if (!session || session.role === 'invitado') {
     return '';
   }
   const name = firstNameOf(session.fullName);
+  const role = roleLabel(session.role, session.genderPreference);
   if (session.genderPreference === 'male') {
-    return `Bienvenido hno. en Cristo ${name}, Oh Bella Ciao!`;
+    const fallback = `Bienvenido hno. en Cristo ${name}, Oh Bella Ciao!`;
+    return renderGreetingTemplate(homeConfig.greetingTemplateMale, {
+      nombre: name,
+      tratamiento: 'hno.',
+      genero_bienvenida: 'Bienvenido',
+      rango: role
+    }, fallback);
   }
   if (session.genderPreference === 'female') {
-    return `Bienvenida hna. en Cristo ${name}, Oh Bella Ciao!`;
+    const fallback = `Bienvenida hna. en Cristo ${name}, Oh Bella Ciao!`;
+    return renderGreetingTemplate(homeConfig.greetingTemplateFemale, {
+      nombre: name,
+      tratamiento: 'hna.',
+      genero_bienvenida: 'Bienvenida',
+      rango: role
+    }, fallback);
   }
-  return `Bienvenido/a a Palestra, ${name}. Oh Bella Ciao!`;
+  const fallback = `Bienvenido/a a Palestra, ${name}. Oh Bella Ciao!`;
+  return renderGreetingTemplate(homeConfig.greetingTemplateNeutral, {
+    nombre: name,
+    tratamiento: 'hno./hna.',
+    genero_bienvenida: 'Bienvenido/a',
+    rango: role
+  }, fallback);
 }
 
 function roleLabelForProvince(role: Role, province?: string | null, labels: ProvinceRoleLabelRecord[] = [], aliases: RoleAliasConfig[] = [], gender?: GenderPreference) {
@@ -923,6 +956,9 @@ export default function App() {
   const refreshLogoOpacity = useRef(new Animated.Value(0)).current;
   const refreshLogoTranslateY = useRef(new Animated.Value(-34)).current;
   const refreshLogoRotate = useRef(new Animated.Value(0)).current;
+  const pullRefreshOffsetRef = useRef(0);
+  const touchPullStartYRef = useRef<number | null>(null);
+  const touchPullReadyRef = useRef(false);
   const themeTransitionProgress = useRef(new Animated.Value(0)).current;
   const appTheme = themePresets[themeName] ?? themePresets.default;
   const isDarkTheme = appTheme.mode === 'dark';
@@ -1107,6 +1143,39 @@ export default function App() {
         useNativeDriver: true
       })
     ]).start(() => setRefreshLogoVisible(false));
+  }
+
+  function handleContentScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    pullRefreshOffsetRef.current = event.nativeEvent.contentOffset.y;
+  }
+
+  function handleContentScrollEndDrag(event: NativeSyntheticEvent<NativeScrollEvent>) {
+    const pullOffset = event.nativeEvent.contentOffset.y;
+    pullRefreshOffsetRef.current = pullOffset;
+    if (pullOffset <= -70) {
+      refreshAppContent('manual');
+    }
+  }
+
+  function handleRefreshTouchStart(event: GestureResponderEvent) {
+    touchPullStartYRef.current = event.nativeEvent.pageY;
+    touchPullReadyRef.current = false;
+  }
+
+  function handleRefreshTouchMove(event: GestureResponderEvent) {
+    const startY = touchPullStartYRef.current;
+    if (startY === null || pullRefreshOffsetRef.current > 3 || isRefreshing) {
+      return;
+    }
+    touchPullReadyRef.current = event.nativeEvent.pageY - startY > 86;
+  }
+
+  function handleRefreshTouchEnd() {
+    if (touchPullReadyRef.current && !isRefreshing) {
+      refreshAppContent('manual');
+    }
+    touchPullStartYRef.current = null;
+    touchPullReadyRef.current = false;
   }
 
   const resolvedTabs = useMemo<AppTabDisplay[]>(() => {
@@ -1742,15 +1811,14 @@ export default function App() {
         <ScrollView
           contentContainerStyle={[styles.content, isDarkTheme && styles.contentDark]}
           keyboardShouldPersistTaps="handled"
-          refreshControl={(
-            <RefreshControl
-              refreshing={false}
-              onRefresh={() => refreshAppContent('manual')}
-              tintColor="transparent"
-              colors={['transparent']}
-              progressBackgroundColor="transparent"
-            />
-          )}
+          onScroll={handleContentScroll}
+          onScrollEndDrag={handleContentScrollEndDrag}
+          onTouchStart={handleRefreshTouchStart}
+          onTouchMove={handleRefreshTouchMove}
+          onTouchEnd={handleRefreshTouchEnd}
+          onTouchCancel={handleRefreshTouchEnd}
+          scrollEventThrottle={16}
+          overScrollMode="always"
         >
           <Animated.View style={{ opacity: screenOpacity }}>
             {screen}
@@ -2478,7 +2546,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
   const hiddenFallbackContent = adminConfig.settings.hiddenFallbackContent ?? [];
   const instagramUrl = adminConfig.contact.instagram?.startsWith('http') ? adminConfig.contact.instagram : `https://www.instagram.com/${adminConfig.contact.instagram.replace('@', '')}`;
   const instagramLabel = instagramUrl.includes('infopalestra.argentina') ? '@infopalestra.argentina' : adminConfig.contact.instagram;
-  const greeting = homeGreeting(session);
+  const greeting = homeGreeting(session, adminConfig.home);
   const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = [
     { tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
     { tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
@@ -7987,22 +8055,22 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'identidad' ? (
-                <View style={styles.adminWorkspace}>
-                  <Text style={styles.cardTitle}>Identidad de la app</Text>
-                  <Text style={styles.cardText}>Base editable para nombre, subtitulo, logo, portada y colores principales.</Text>
-                  <TextInput style={styles.input} placeholder="Nombre de la app" value={adminConfigDraft.identity.appName} onChangeText={(value) => updateAdminConfigSection('identity', { appName: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={styles.input} placeholder="Subtitulo" value={adminConfigDraft.identity.subtitle} onChangeText={(value) => updateAdminConfigSection('identity', { subtitle: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion institucional" value={adminConfigDraft.identity.description} onChangeText={(value) => updateAdminConfigSection('identity', { description: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={styles.input} placeholder="URL del logo" value={adminConfigDraft.identity.logoUrl} onChangeText={(value) => updateAdminConfigSection('identity', { logoUrl: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={styles.input} placeholder="URL de imagen hero/portada" value={adminConfigDraft.identity.heroImageUrl} onChangeText={(value) => updateAdminConfigSection('identity', { heroImageUrl: value })}  placeholderTextColor={inputPlaceholderColor} />
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Identidad de la app</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Base editable para nombre, subtitulo, logo, portada y colores principales.</Text>
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre de la app" value={adminConfigDraft.identity.appName} onChangeText={(value) => updateAdminConfigSection('identity', { appName: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Subtitulo" value={adminConfigDraft.identity.subtitle} onChangeText={(value) => updateAdminConfigSection('identity', { subtitle: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Descripcion institucional" value={adminConfigDraft.identity.description} onChangeText={(value) => updateAdminConfigSection('identity', { description: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="URL del logo" value={adminConfigDraft.identity.logoUrl} onChangeText={(value) => updateAdminConfigSection('identity', { logoUrl: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="URL de imagen hero/portada" value={adminConfigDraft.identity.heroImageUrl} onChangeText={(value) => updateAdminConfigSection('identity', { heroImageUrl: value })}  placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.inlineActions}>
-                    <TextInput style={[styles.input, styles.colorInput]} placeholder="#2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
-                    <TextInput style={[styles.input, styles.colorInput]} placeholder="#5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
                   </View>
-                  <View style={styles.adminPreviewPane}>
-                    <Text style={styles.cardEyebrow}>Previsualizacion</Text>
-                    <Text style={styles.cardTitle}>{adminConfigDraft.identity.appName}</Text>
-                    <Text style={styles.cardText}>{adminConfigDraft.identity.subtitle}</Text>
+                  <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark]}>
+                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Previsualizacion</Text>
+                    <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{adminConfigDraft.identity.appName}</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{adminConfigDraft.identity.subtitle}</Text>
                   </View>
                   <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Identidad')}>
                     <Text style={styles.primaryButtonText}>Guardar identidad</Text>
@@ -8011,13 +8079,23 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'home' ? (
-                <View style={styles.adminWorkspace}>
-                  <Text style={styles.cardTitle}>Home</Text>
-                  <Text style={styles.cardText}>Control visual del panel inicial, accesos rápidos y secciones visibles.</Text>
-                  <TextInput style={styles.input} placeholder="Titulo principal" value={adminConfigDraft.home.heroTitle} onChangeText={(value) => updateAdminConfigSection('home', { heroTitle: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Texto principal" value={adminConfigDraft.home.heroText} onChangeText={(value) => updateAdminConfigSection('home', { heroText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={styles.input} placeholder="Banner destacado" value={adminConfigDraft.home.featuredBanner} onChangeText={(value) => updateAdminConfigSection('home', { featuredBanner: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <Text style={styles.cardEyebrow}>Modulos visibles</Text>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Home</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Control visual del panel inicial, accesos rápidos y secciones visibles.</Text>
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo principal" value={adminConfigDraft.home.heroTitle} onChangeText={(value) => updateAdminConfigSection('home', { heroTitle: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Texto principal" value={adminConfigDraft.home.heroText} onChangeText={(value) => updateAdminConfigSection('home', { heroText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Banner destacado" value={adminConfigDraft.home.featuredBanner} onChangeText={(value) => updateAdminConfigSection('home', { featuredBanner: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Saludo editable</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Variables disponibles: {'{nombre}'}, {'{tratamiento}'}, {'{genero_bienvenida}'}, {'{rango}'}.</Text>
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Saludo masculino" value={adminConfigDraft.home.greetingTemplateMale ?? defaultAdminConfig.home.greetingTemplateMale} onChangeText={(value) => updateAdminConfigSection('home', { greetingTemplateMale: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Saludo femenino" value={adminConfigDraft.home.greetingTemplateFemale ?? defaultAdminConfig.home.greetingTemplateFemale} onChangeText={(value) => updateAdminConfigSection('home', { greetingTemplateFemale: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Saludo sin narrativa configurada" value={adminConfigDraft.home.greetingTemplateNeutral ?? defaultAdminConfig.home.greetingTemplateNeutral} onChangeText={(value) => updateAdminConfigSection('home', { greetingTemplateNeutral: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark]}>
+                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Preview</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{renderGreetingTemplate(adminConfigDraft.home.greetingTemplateMale, { nombre: 'Lucas', tratamiento: 'hno.', genero_bienvenida: 'Bienvenido', rango: 'Palestrista' }, 'Bienvenido hno. en Cristo Lucas, Oh Bella Ciao!')}</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{renderGreetingTemplate(adminConfigDraft.home.greetingTemplateFemale, { nombre: 'Maria', tratamiento: 'hna.', genero_bienvenida: 'Bienvenida', rango: 'Palestrista' }, 'Bienvenida hna. en Cristo Maria, Oh Bella Ciao!')}</Text>
+                  </View>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Modulos visibles</Text>
                   <View style={styles.filterRow}>
                     {['noticias', 'comunidades', 'materiales', 'perfil', 'agenda', 'actividad'].map((item, index) => (
                       <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipActive]} onPress={() => toggleAdminConfigList('home', item)}>
@@ -8032,7 +8110,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'contenido_publicado' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Contenido Publicado</Text>
                   <Text style={styles.cardText}>Inventario central para distinguir contenido real de Supabase y contenido base/fallback usado para que la app no quede vacía.</Text>
                   <Text style={styles.cardEyebrow}>Páginas editables en Supabase</Text>
@@ -8073,7 +8151,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'descargas' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Descargas y materiales</Text>
                   <Text style={styles.cardText}>Biblioteca editable persistida en Supabase. Se puede guardar URL o ruta de archivo y definir visibilidad por rol.</Text>
                   <TouchableOpacity style={styles.secondaryButton} onPress={loadAdminMaterials}>
@@ -8128,7 +8206,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'historia_admin' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Nuestra Historia</Text>
                   <Text style={styles.cardText}>Gestión de capítulos, preguntas frecuentes y textos institucionales desde el editor centralizado.</Text>
                   <View style={styles.adminListRow}>
@@ -8152,7 +8230,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'contacto_admin' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Contacto modular</Text>
                   <Text style={styles.cardText}>Configura canales nacionales, Instagram por provincia y bloques dinamicos visibles en Contacto.</Text>
                   {session?.role === 'administrador' ? (
@@ -8238,7 +8316,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'periodo_motivador' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Período Motivador</Text>
                   <Text style={styles.cardText}>Gestión real de PM por provincia. Solo Vocal Diocesano, Coordinador Diocesano y Administrador pueden administrar esta sección.</Text>
                   {!canManageMotivadorPanel(session) ? (
@@ -8390,7 +8468,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'permisos_roles' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Permisos de Rangos</Text>
                   <Text style={styles.cardText}>Activa o desactiva permisos reales por rango. Los cambios se guardan en Supabase, se leen al iniciar sesion y actualizan la sesion actual si corresponde.</Text>
                   <Text style={styles.cardEyebrow}>Rango</Text>
@@ -8443,7 +8521,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'etiquetas_roles' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Nombres visibles por provincia</Text>
                   <Text style={styles.cardText}>Personaliza como se ve un rango en una provincia sin cambiar su role_key interno, permisos ni jerarquia.</Text>
                   <Text style={styles.cardEyebrow}>Provincia</Text>
@@ -8513,7 +8591,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'rangos_alias' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Duplicar / renombrar rangos</Text>
                   <Text style={styles.cardText}>Crea alias asignables que heredan permisos y jerarquia del rango base. Se guardan en Supabase y se aplican al usuario como nombre visible persistente.</Text>
                   <Text style={styles.cardEyebrow}>Rango base</Text>
@@ -8588,7 +8666,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'configuracion' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Configuración general</Text>
                   <Text style={styles.cardText}>Base para mantenimiento, aviso global, permisos, módulos activos, foro y chat.</Text>
                   <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje visible durante mantenimiento" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
@@ -8614,7 +8692,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'usuarios' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Usuarios registrados</Text>
                   {session.role !== 'administrador' ? (
                     <Text style={styles.cardText}>Tu rango puede revisar y gestionar usuarios dentro de su alcance. Crear usuarios, confirmar mails y eliminar accesos queda reservado al Administrador.</Text>
@@ -8876,7 +8954,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'solicitudes' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Solicitudes</Text>
                   <View style={styles.filterRow}>
                     <TouchableOpacity style={[styles.filterChip, requestSubtab === 'pendientes' && styles.filterChipActive]} onPress={() => setRequestSubtab('pendientes')}>
@@ -8949,7 +9027,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'noticias' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Noticias</Text>
                   <Text style={styles.cardText}>Crear noticias generales, preparar borradores y marcar publicaciones destacadas.</Text>
                   <Text style={styles.cardEyebrow}>Categoria: General</Text>
@@ -8995,7 +9073,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'eventos' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                 <Text style={styles.cardTitle}>Crear evento {tabLabel('notilestra')}</Text>
                 <TextInput style={styles.input} placeholder="Titulo del evento" value={adminEventTitle} onChangeText={setAdminEventTitle}  placeholderTextColor={inputPlaceholderColor} />
                 <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion o detalle del evento" value={adminEventBody} onChangeText={setAdminEventBody} multiline  placeholderTextColor={inputPlaceholderColor} />
@@ -9051,7 +9129,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'comunidades' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Gestionar comunidades</Text>
                   <Text style={styles.cardText}>Crear, editar, habilitar, deshabilitar o archivar comunidades segun tu jurisdiccion.</Text>
                   <Text style={styles.cardEyebrow}>Provincia</Text>
@@ -9349,7 +9427,7 @@ function ProfileScreen({
               ) : null}
 
               {adminModule === 'contenido_general' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                 <Text style={styles.cardTitle}>Contenido General</Text>
                 <Text style={styles.cardText}>Modificar nombres de pestanas y editar el contenido completo de cada pagina.</Text>
                 {session?.role === 'administrador' ? (
@@ -10583,17 +10661,17 @@ const styles = StyleSheet.create({
     backgroundColor: themePresets.dark.colors.background
   },
   surfacePanelDark: {
-    backgroundColor: themePresets.dark.colors.surface,
+    backgroundColor: '#32373A',
     borderColor: themePresets.dark.colors.border,
     shadowColor: '#000'
   },
   surfaceCardDark: {
-    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    backgroundColor: '#3A4246',
     borderColor: themePresets.dark.colors.border,
     shadowColor: '#000'
   },
   surfaceRowDark: {
-    backgroundColor: 'rgba(255,255,255,0.055)',
+    backgroundColor: 'rgba(168, 221, 243, 0.08)',
     borderColor: themePresets.dark.colors.border
   },
   darkSoftButton: {
@@ -10604,7 +10682,7 @@ const styles = StyleSheet.create({
     color: themePresets.dark.colors.text
   },
   textDarkBody: {
-    color: '#DDE9EE'
+    color: '#E5F0F4'
   },
   textDarkMuted: {
     color: themePresets.dark.colors.muted
@@ -10941,7 +11019,8 @@ const styles = StyleSheet.create({
     gap: 14,
     alignItems: 'flex-start',
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.32)'
+    backgroundColor: 'rgba(255,255,255,0.32)',
+    borderRadius: 24
   },
   provinceIcon: {
     width: 54,
@@ -11045,12 +11124,9 @@ const styles = StyleSheet.create({
   communityCard: {
     borderLeftColor: 'rgba(45, 141, 200, 0.45)',
     backgroundColor: 'rgba(255,255,255,0.12)',
-    borderTopWidth: 0,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
-    borderBottomWidth: 1,
-    borderRadius: 0,
-    paddingHorizontal: 2,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 14,
     paddingVertical: 15,
     shadowOpacity: 0,
     shadowRadius: 0,
@@ -12639,7 +12715,9 @@ const styles = StyleSheet.create({
     padding: 8
   },
   adminModuleGridDark: {
-    backgroundColor: '#383E41'
+    backgroundColor: 'rgba(168, 221, 243, 0.08)',
+    borderWidth: 1,
+    borderColor: themePresets.dark.colors.border
   },
   adminModuleButton: {
     width: '31%',
@@ -12654,7 +12732,7 @@ const styles = StyleSheet.create({
     gap: 5
   },
   adminModuleButtonDark: {
-    backgroundColor: '#454C50',
+    backgroundColor: 'rgba(168, 221, 243, 0.08)',
     borderColor: themePresets.dark.colors.border
   },
   adminModuleButtonActive: {
@@ -12686,7 +12764,7 @@ const styles = StyleSheet.create({
     elevation: 0
   },
   adminWorkspaceDark: {
-    backgroundColor: '#3A3F42',
+    backgroundColor: '#32373A',
     borderColor: themePresets.dark.colors.border,
     shadowColor: '#000'
   },
@@ -12756,7 +12834,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(45, 141, 200, 0.09)'
   },
   adminQuickActionDark: {
-    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    backgroundColor: 'rgba(168, 221, 243, 0.08)',
     borderColor: themePresets.dark.colors.border
   },
   adminQuickText: {

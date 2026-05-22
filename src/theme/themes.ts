@@ -41,13 +41,13 @@ export const themePresets: Record<ThemeName, AppTheme> = {
     mode: 'dark',
     colors: {
       primary: '#5DA7DB',
-      secondary: '#8BC9EA',
+      secondary: '#A8DDF3',
       background: '#2B2B2B',
-      surface: '#35383B',
-      surfaceSoft: '#41464A',
+      surface: '#33383B',
+      surfaceSoft: '#3C4448',
       text: '#F6FBFC',
-      muted: '#C4D2D8',
-      border: 'rgba(246, 251, 252, 0.14)',
+      muted: '#D2E0E6',
+      border: 'rgba(168, 221, 243, 0.18)',
       accent: '#F2B84B',
       danger: '#FF8A8A'
     }
