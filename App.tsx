@@ -1652,17 +1652,24 @@ export default function App() {
               {
                 opacity: refreshLogoOpacity,
                 transform: [
-                  { translateY: refreshLogoTranslateY },
-                  {
-                    rotate: refreshLogoRotate.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0deg', '360deg']
-                    })
-                  }
+                  { translateY: refreshLogoTranslateY }
                 ]
               }
             ]}
           >
+            <Animated.View
+              style={[
+                styles.refreshLogoRing,
+                {
+                  transform: [{
+                    rotate: refreshLogoRotate.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '360deg']
+                    })
+                  }]
+                }
+              ]}
+            />
             <Image source={palestraLogo} style={styles.refreshLogoImage} />
           </Animated.View>
         ) : null}
@@ -7237,24 +7244,24 @@ function ProfileScreen({
             </View>
           ) : null}
           {profilePanel === 'comunidad' ? (
-            <View style={styles.profileCommunityPanel}>
-              <Text style={styles.cardEyebrow}>{session.communityOfOrigin}</Text>
+            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{session.communityOfOrigin}</Text>
               <SectionTitle title="Mi comunidad" />
-              <Text style={styles.cardText}>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>
                 Relación activa: {displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)} vinculado a {session.communityOfOrigin} en {session.province}.
                 {['animador_comunidad', 'coordinador_comunidad'].includes(session.role) ? ' Este rango puede editar su comunidad asignada.' : ''}
                 {['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? ' Este rango supervisa animadores y coordinadores de comunidad de su provincia.' : ''}
                 {['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ' Este rango supervisa estructura nacional y provincias.' : ''}
               </Text>
               {isCommunityLeader ? (
-                <View style={styles.inlineEditorPanel}>
-                  <Text style={styles.cardEyebrow}>Nuevo aviso comunitario</Text>
-                  <TextInput style={styles.input} placeholder="Titulo opcional del aviso" value={communityPostTitle} onChangeText={setCommunityPostTitle}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje para la comunidad" value={communityPostBody} onChangeText={setCommunityPostBody} multiline  placeholderTextColor={inputPlaceholderColor} />
+                <View style={[styles.inlineEditorPanel, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo aviso comunitario</Text>
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo opcional del aviso" value={communityPostTitle} onChangeText={setCommunityPostTitle}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Mensaje para la comunidad" value={communityPostBody} onChangeText={setCommunityPostBody} multiline  placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.settingRow}>
                     <View style={styles.settingRowText}>
-                      <Text style={styles.cardTitle}>Notificar a miembros</Text>
-                      <Text style={styles.cardText}>Preparar aviso push para los miembros alcanzados por este mensaje.</Text>
+                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Notificar a miembros</Text>
+                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Preparar aviso push para los miembros alcanzados por este mensaje.</Text>
                     </View>
                     <Switch value={communityPostNotify} onValueChange={setCommunityPostNotify} />
                   </View>
@@ -7268,16 +7275,16 @@ function ProfileScreen({
                 <Ionicons name="refresh-outline" size={16} color={palette.red} />
                 <Text style={styles.actionPillText}>Actualizar avisos</Text>
               </TouchableOpacity>
-              {myCommunityPublications.length === 0 ? <Text style={styles.cardText}>No hay avisos para tu comunidad actualmente</Text> : null}
+              {myCommunityPublications.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay avisos para tu comunidad actualmente</Text> : null}
               {myCommunityPublications.map((item, index) => (
-                <View key={`${item.id || item.title}-${index}`} style={styles.innerNewsCard}>
-                  <Text style={styles.cardEyebrow}>{item.visibility} - {item.status ?? 'activo'}</Text>
-                  {item.title ? <Text style={styles.cardTitle}>{item.title}</Text> : null}
-                  <Text style={styles.cardText}>{item.body}</Text>
-                  <Text style={styles.feedMeta}>
+                <View key={`${item.id || item.title}-${index}`} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{item.visibility} - {item.status ?? 'activo'}</Text>
+                  {item.title ? <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text> : null}
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.body}</Text>
+                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>
                     Por {item.authorName ?? 'Palestrista'} - {roleLabelForProvince((item.authorRole || 'palestrista') as Role, session.province, provinceRoleLabels)}
                   </Text>
-                  <Text style={styles.feedMeta}>
+                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>
                     {item.createdAt ? new Date(item.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Fecha no disponible'}
                   </Text>
                   {(item.id && (item.createdBy === session.id || roleRank(session.role) >= roleRank('vocal'))) ? (
@@ -7293,9 +7300,9 @@ function ProfileScreen({
                     </View>
                   ) : null}
                   {editingCommunityPublicationId === item.id ? (
-                    <View style={styles.inlineEditorPanel}>
-                      <TextInput style={styles.input} placeholder="Titulo del aviso" value={editingCommunityPublicationTitle} onChangeText={setEditingCommunityPublicationTitle}  placeholderTextColor={inputPlaceholderColor} />
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido del aviso" value={editingCommunityPublicationBody} onChangeText={setEditingCommunityPublicationBody} multiline  placeholderTextColor={inputPlaceholderColor} />
+                    <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+                      <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo del aviso" value={editingCommunityPublicationTitle} onChangeText={setEditingCommunityPublicationTitle}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Contenido del aviso" value={editingCommunityPublicationBody} onChangeText={setEditingCommunityPublicationBody} multiline  placeholderTextColor={inputPlaceholderColor} />
                       <View style={styles.inlineActions}>
                         <TouchableOpacity style={styles.primaryButton} onPress={() => saveCommunityPublicationEdit('activo')}>
                           <Text style={styles.primaryButtonText}>Guardar</Text>
@@ -7314,9 +7321,9 @@ function ProfileScreen({
                   <Text style={styles.secondaryButtonText}>Cargar miembros</Text>
                 </TouchableOpacity>
               ) : communityMembers.map((member) => (
-                <View key={member.id} style={styles.innerNewsCard}>
-                  <Text style={styles.cardTitle}>{member.full_name ?? member.email}</Text>
-                  <Text style={styles.cardText}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels)}</Text>
+                <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? member.email}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels)}</Text>
                   <TouchableOpacity
                     style={styles.actionPill}
                     onPress={() => openPublicProfile({
@@ -7336,8 +7343,8 @@ function ProfileScreen({
               ))}
               <SectionTitle title="Encargados" />
               {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).map((member) => (
-                <View key={`leader-${member.id}`} style={styles.innerNewsCard}>
-                  <Text style={styles.cardText}>{member.full_name ?? 'Palestrista'} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels)}</Text>
+                <View key={`leader-${member.id}`} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{member.full_name ?? 'Palestrista'} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels)}</Text>
                   <TouchableOpacity
                     style={styles.actionPill}
                     onPress={() => openPublicProfile({
@@ -7358,7 +7365,7 @@ function ProfileScreen({
             </View>
           ) : null}
           {profilePanel === 'buzon' ? (
-            <View style={styles.profileCommunityPanel}>
+            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
               <SectionTitle title="Buzon de mensajes" />
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Consultas enviadas y mensajes recibidos por tu comunidad o jurisdiccion.</Text>
               <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={refreshMailbox}>
@@ -7525,7 +7532,7 @@ function ProfileScreen({
                 </View>
               ) : null}
               {visibleMailboxMessages.map((message) => (
-                <View key={message.id} style={styles.innerNewsCard}>
+                <View key={message.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{message.sender_name ?? 'Consulta externa'}</Text>
                   {message.sender_contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {message.sender_contact}</Text> : null}
@@ -7538,10 +7545,10 @@ function ProfileScreen({
                     </View>
                   ) : null}
                   {message.can_respond && message.status !== 'cerrado' && message.status !== 'archivado' ? (
-                    <View style={styles.inlineEditorPanel}>
-                      <Text style={styles.inputLabel}>Respuesta</Text>
+                    <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Respuesta</Text>
                       <TextInput
-                        style={[styles.input, styles.textArea]}
+                        style={[styles.input, styles.textArea, isDark && styles.inputDark]}
                         placeholder="Escribe una respuesta clara"
                         value={mailboxResponses[message.id] ?? ''}
                         onChangeText={(value) => setMailboxResponses((current) => ({ ...current, [message.id]: value.slice(0, 1000) }))}
@@ -7570,7 +7577,7 @@ function ProfileScreen({
               ))}
             </View>
           ) : null}
-          {profilePanel === 'vista' ? <View style={styles.profileCommunityPanel}>
+          {profilePanel === 'vista' ? <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Credencial digital</Text>
             <View style={[styles.digitalCredential, isDark && styles.digitalCredentialDark]}>
               <View style={styles.credentialAvatar}>
@@ -7927,19 +7934,19 @@ function ProfileScreen({
               </View>
 
               {adminModule === 'resumen' ? (
-                <View style={styles.adminWorkspace}>
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Panel Dirigencial</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Consola base para controlar contenido, usuarios, comunidades, identidad y configuración general de la app.</Text>
                   <View style={styles.adminStatRow}>
                     {adminDraftSummary.map((item) => (
-                      <TouchableOpacity key={item.label} style={styles.adminStat} activeOpacity={0.84}>
+                      <TouchableOpacity key={item.label} style={[styles.adminStat, isDark && styles.surfaceCardDark]} activeOpacity={0.84}>
                         <Ionicons name={item.icon} size={18} color={palette.red} />
                         <Text style={styles.adminStatNumber}>{item.value}</Text>
-                        <Text style={styles.adminStatLabel}>{item.label}</Text>
+                        <Text style={[styles.adminStatLabel, isDark && styles.textDarkMuted]}>{item.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <Text style={styles.cardEyebrow}>Accesos rápidos</Text>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Accesos rápidos</Text>
                   <View style={styles.adminQuickGrid}>
                     {[
                       { label: isCommunityLeader ? 'Nuevo aviso comunitario' : 'Nueva noticia', module: isCommunityLeader ? 'muro_comunitario' : 'noticias', icon: 'add-circle-outline' },
@@ -7956,7 +7963,7 @@ function ProfileScreen({
                     ))}
                   </View>
                   {session.role === 'administrador' ? (
-                    <View style={styles.profileCommunityPanel}>
+                    <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
                       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Ver como</Text>
                       <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Simulación temporal para revisar la app con otros rangos. No cambia permisos reales ni guarda cambios en Supabase.</Text>
                       <View style={styles.adminQuickGrid}>
@@ -10181,10 +10188,19 @@ const styles = StyleSheet.create({
     borderColor: themePresets.dark.colors.border,
     shadowColor: '#000'
   },
+  refreshLogoRing: {
+    position: 'absolute',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 2,
+    borderColor: 'rgba(45, 141, 200, 0.24)',
+    borderTopColor: palette.red
+  },
   refreshLogoImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 18
+    width: 32,
+    height: 32,
+    borderRadius: 16
   },
   themeTransitionLayer: {
     position: 'absolute',
@@ -12668,6 +12684,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 0
+  },
+  adminWorkspaceDark: {
+    backgroundColor: '#3A3F42',
+    borderColor: themePresets.dark.colors.border,
+    shadowColor: '#000'
   },
   adminStatusPill: {
     flexDirection: 'row',
