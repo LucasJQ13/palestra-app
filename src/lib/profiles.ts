@@ -28,6 +28,7 @@ export type AdminUser = {
   status: string;
   role: string;
   display_role_label?: string | null;
+  gender_preference?: 'male' | 'female' | null;
   email_confirmed_at: string | null;
 };
 
@@ -79,6 +80,7 @@ export type CommunityMember = {
   community_name: string | null;
   province: string | null;
   avatar_url?: string | null;
+  gender_preference?: 'male' | 'female' | null;
 };
 
 export type PublicProfileRecord = {
@@ -89,6 +91,8 @@ export type PublicProfileRecord = {
   province: string | null;
   community_name: string | null;
   role: string;
+  display_role_label?: string | null;
+  gender_preference?: 'male' | 'female' | null;
 };
 
 export type MailboxMessageRecord = {

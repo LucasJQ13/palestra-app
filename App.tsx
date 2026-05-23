@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, BackHandler, Easing, GestureResponderEvent, Image, KeyboardAvoidingView, Linking, Modal, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
@@ -167,6 +167,16 @@ type PublicProfilePreview = {
   communityName?: string | null;
   avatarUrl?: string | null;
   contact?: string | null;
+  displayRoleLabel?: string | null;
+  genderPreference?: GenderPreference;
+};
+
+type GlobalSearchResult = {
+  id: string;
+  title: string;
+  subtitle: string;
+  type: 'usuario' | 'comunidad' | 'archivo' | 'noticia' | 'pm' | 'aviso' | 'descarga' | 'contenido';
+  tab?: TabKey;
 };
 
 const defaultAdminConfig: AppAdminConfig = {
@@ -183,7 +193,7 @@ const defaultAdminConfig: AppAdminConfig = {
     heroTitle: 'Una app para caminar juntos.',
     heroText: 'Noticias, agenda, materiales y comunicacion interna para las comunidades de Palestra.',
     featuredBanner: 'Agenda comunitaria',
-    visibleModules: ['noticias', 'comunidades', 'materiales', 'perfil'],
+    visibleModules: ['noticias', 'comunidades', 'materiales', 'foro', 'perfil', 'agenda'],
     greetingTemplateMale: 'Bienvenido {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
     greetingTemplateFemale: 'Bienvenida {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
     greetingTemplateNeutral: 'Bienvenido/a a Palestra, {nombre}. Oh Bella Ciao!'
@@ -942,7 +952,11 @@ export default function App() {
   const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
   const [contentVersion, setContentVersion] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshLogoVisible, setRefreshLogoVisible] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+  const [globalSearchMessage, setGlobalSearchMessage] = useState('');
   const [appMessage, setAppMessage] = useState('');
   const [successToastVisible, setSuccessToastVisible] = useState(false);
   const [themeTransitionVisible, setThemeTransitionVisible] = useState(false);
@@ -950,15 +964,8 @@ export default function App() {
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
   const lastBackPressRef = useRef(0);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const refreshSpinLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const touchPointerOpacity = useRef(new Animated.Value(0)).current;
-  const refreshLogoOpacity = useRef(new Animated.Value(0)).current;
-  const refreshLogoTranslateY = useRef(new Animated.Value(-34)).current;
-  const refreshLogoRotate = useRef(new Animated.Value(0)).current;
-  const pullRefreshOffsetRef = useRef(0);
-  const touchPullStartYRef = useRef<number | null>(null);
-  const touchPullReadyRef = useRef(false);
   const themeTransitionProgress = useRef(new Animated.Value(0)).current;
   const appTheme = themePresets[themeName] ?? themePresets.default;
   const isDarkTheme = appTheme.mode === 'dark';
@@ -1093,89 +1100,6 @@ export default function App() {
         setTouchPointer(null);
       }
     });
-  }
-
-  function showRefreshLogo() {
-    setRefreshLogoVisible(true);
-    refreshLogoOpacity.setValue(0);
-    refreshLogoTranslateY.setValue(-34);
-    refreshLogoRotate.setValue(0);
-    Animated.parallel([
-      Animated.timing(refreshLogoOpacity, {
-        toValue: 1,
-        duration: 180,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true
-      }),
-      Animated.timing(refreshLogoTranslateY, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.out(Easing.back(1.2)),
-        useNativeDriver: true
-      })
-    ]).start();
-    const spin = Animated.loop(
-      Animated.timing(refreshLogoRotate, {
-        toValue: 1,
-        duration: 920,
-        easing: Easing.linear,
-        useNativeDriver: true
-      })
-    );
-    refreshSpinLoopRef.current = spin;
-    spin.start();
-  }
-
-  function hideRefreshLogo() {
-    refreshSpinLoopRef.current?.stop();
-    refreshSpinLoopRef.current = null;
-    Animated.parallel([
-      Animated.timing(refreshLogoOpacity, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.in(Easing.quad),
-        useNativeDriver: true
-      }),
-      Animated.timing(refreshLogoTranslateY, {
-        toValue: -34,
-        duration: 220,
-        easing: Easing.in(Easing.quad),
-        useNativeDriver: true
-      })
-    ]).start(() => setRefreshLogoVisible(false));
-  }
-
-  function handleContentScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
-    pullRefreshOffsetRef.current = event.nativeEvent.contentOffset.y;
-  }
-
-  function handleContentScrollEndDrag(event: NativeSyntheticEvent<NativeScrollEvent>) {
-    const pullOffset = event.nativeEvent.contentOffset.y;
-    pullRefreshOffsetRef.current = pullOffset;
-    if (pullOffset <= -70) {
-      refreshAppContent('manual');
-    }
-  }
-
-  function handleRefreshTouchStart(event: GestureResponderEvent) {
-    touchPullStartYRef.current = event.nativeEvent.pageY;
-    touchPullReadyRef.current = false;
-  }
-
-  function handleRefreshTouchMove(event: GestureResponderEvent) {
-    const startY = touchPullStartYRef.current;
-    if (startY === null || pullRefreshOffsetRef.current > 3 || isRefreshing) {
-      return;
-    }
-    touchPullReadyRef.current = event.nativeEvent.pageY - startY > 86;
-  }
-
-  function handleRefreshTouchEnd() {
-    if (touchPullReadyRef.current && !isRefreshing) {
-      refreshAppContent('manual');
-    }
-    touchPullStartYRef.current = null;
-    touchPullReadyRef.current = false;
   }
 
   const resolvedTabs = useMemo<AppTabDisplay[]>(() => {
@@ -1377,9 +1301,6 @@ export default function App() {
     }
 
     setIsRefreshing(true);
-    if (source === 'manual') {
-      showRefreshLogo();
-    }
     try {
       await Promise.all([
         reloadTabSettings(),
@@ -1393,9 +1314,159 @@ export default function App() {
       setAppMessage(error instanceof Error ? error.message : 'No pude actualizar. Revisa la conexion.');
     } finally {
       setIsRefreshing(false);
-      if (source === 'manual') {
-        hideRefreshLogo();
-      }
+    }
+  }
+
+  async function runGlobalSearch() {
+    const query = globalSearchQuery.trim().toLowerCase();
+    if (query.length < 2) {
+      setGlobalSearchResults([]);
+      setGlobalSearchMessage('Escribe al menos 2 caracteres.');
+      return;
+    }
+
+    setGlobalSearchLoading(true);
+    setGlobalSearchMessage('');
+    try {
+      const [
+        communitiesRemote,
+        materialsRemote,
+        contentRemote,
+        newsRemote,
+        agendaRemote,
+        pmRemote,
+        communityPublicationsRemote,
+        adminUsersRemote
+      ] = await Promise.all([
+        fetchCommunities(),
+        fetchAppMaterials(),
+        fetchAppContent(),
+        fetchNews(session),
+        fetchNotilestra(session),
+        fetchMotivadorPeriods(session),
+        fetchCommunityPublications(session),
+        canManageUsersPanel(session) ? fetchAdminUsers() : Promise.resolve([] as AdminUser[])
+      ]);
+
+      const matches = (values: Array<string | null | undefined>) => values
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+
+      const nextResults: GlobalSearchResult[] = [];
+
+      adminUsersRemote.forEach((user) => {
+        if (matches([user.full_name, user.email, user.province, user.community_name, user.role, user.display_role_label])) {
+          nextResults.push({
+            id: `user-${user.id}`,
+            type: 'usuario',
+            title: user.full_name ?? user.email ?? 'Usuario',
+            subtitle: `${displayRoleLabel((user.role || 'palestrista') as Role, user.province, [], adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - ${user.community_name ?? user.province ?? 'Sin comunidad'}`,
+            tab: 'perfil'
+          });
+        }
+      });
+
+      communitiesRemote.forEach((province) => {
+        province.locations.forEach((community) => {
+          if (matches([province.province, community.name, community.address, community.description, community.phone])) {
+            nextResults.push({
+              id: `community-${community.id ?? province.province}-${community.name}`,
+              type: 'comunidad',
+              title: community.name,
+              subtitle: `${province.province} - ${community.address}`,
+              tab: 'comunidades'
+            });
+          }
+        });
+      });
+
+      materialsRemote.forEach((material) => {
+        if (matches([material.title, material.description, material.category, material.required_permission, material.visibility])) {
+          nextResults.push({
+            id: `material-${material.id}`,
+            type: 'descarga',
+            title: material.title,
+            subtitle: `${material.category ?? 'Material'} - ${material.visibility}`,
+            tab: 'materiales'
+          });
+        }
+      });
+
+      newsRemote.forEach((item: any, index: number) => {
+        if (matches([item.title, item.body, item.scope, item.province])) {
+          nextResults.push({
+            id: `news-${item.id ?? index}`,
+            type: 'noticia',
+            title: item.title,
+            subtitle: item.scope ?? 'Noticia',
+            tab: 'inicio'
+          });
+        }
+      });
+
+      agendaRemote.forEach((item: any, index: number) => {
+        if (matches([item.title, item.body, item.scope, item.date])) {
+          nextResults.push({
+            id: `agenda-${item.id ?? index}`,
+            type: 'noticia',
+            title: item.title,
+            subtitle: `${item.scope ?? 'Agenda'} - ${item.date}`,
+            tab: 'notilestra'
+          });
+        }
+      });
+
+      pmRemote.forEach((item: any, index: number) => {
+        if (matches([item.title, item.body, item.scope, item.province, item.date])) {
+          nextResults.push({
+            id: `pm-${item.id ?? index}`,
+            type: 'pm',
+            title: item.title,
+            subtitle: `${item.scope ?? 'PM'} - ${item.date}`,
+            tab: 'periodo_motivador'
+          });
+        }
+      });
+
+      communityPublicationsRemote.forEach((item: any, index: number) => {
+        if (matches([item.title, item.body, item.communityName, item.scope, item.visibility])) {
+          nextResults.push({
+            id: `community-publication-${item.id ?? index}`,
+            type: 'aviso',
+            title: item.title,
+            subtitle: item.scope ?? item.communityName ?? 'Aviso comunitario',
+            tab: 'perfil'
+          });
+        }
+      });
+
+      contentRemote.forEach((item) => {
+        const blocksText = Array.isArray(item.blocks) ? item.blocks.map((block) => `${block.type ?? ''} ${block.value ?? ''}`).join(' ') : '';
+        if (matches([item.tab_key, item.title, item.body, blocksText])) {
+          nextResults.push({
+            id: `content-${item.tab_key}`,
+            type: 'contenido',
+            title: item.title || item.tab_key,
+            subtitle: `Contenido editable - ${tabLabel(item.tab_key as TabKey)}`,
+            tab: item.tab_key as TabKey
+          });
+        }
+      });
+
+      setGlobalSearchResults(nextResults.slice(0, 80));
+      setGlobalSearchMessage(nextResults.length ? '' : 'No encontré resultados remotos para esa búsqueda.');
+    } catch (error) {
+      console.error('global search', error);
+      setGlobalSearchMessage('No pude buscar en Supabase. Revisa la conexión.');
+    } finally {
+      setGlobalSearchLoading(false);
+    }
+  }
+
+  function openGlobalSearchResult(result: GlobalSearchResult) {
+    setGlobalSearchOpen(false);
+    if (result.tab) {
+      navigateToTab(result.tab);
     }
   }
 
@@ -1647,6 +1718,9 @@ export default function App() {
           </TouchableOpacity>
           <View style={styles.headerActions}>
             <View style={styles.headerActionTop}>
+              <TouchableOpacity style={[styles.headerMenuButton, isDarkTheme && styles.headerPillDark]} onPress={() => setGlobalSearchOpen(true)} activeOpacity={0.85}>
+                <Ionicons name="search-outline" size={21} color={palette.red} />
+              </TouchableOpacity>
               <TouchableOpacity style={[styles.headerProfileButton, isDarkTheme && styles.headerPillDark]} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
                 <Ionicons name="person-circle-outline" size={17} color={palette.red} />
                 {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>{session ? 'Mi Perfil' : 'Ingresar'}</Text> : null}
@@ -1660,7 +1734,7 @@ export default function App() {
         <Modal visible={drawerOpen} transparent animationType="fade" onRequestClose={() => setDrawerOpen(false)}>
           <View style={styles.drawerOverlay}>
             <Pressable style={styles.drawerBackdrop} onPress={() => setDrawerOpen(false)} />
-            <View style={[styles.drawerPanel, isDarkTheme && styles.drawerPanelDark, { width: drawerWidth }]}>
+            <SafeAreaView edges={['top', 'bottom']} style={[styles.drawerPanel, isDarkTheme && styles.drawerPanelDark, { width: drawerWidth }]}>
               <View style={styles.drawerHeader}>
                 <View style={styles.drawerLogo}>
                   <Image source={palestraLogo} style={styles.brandLogoImage} />
@@ -1687,7 +1761,45 @@ export default function App() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </View>
+            </SafeAreaView>
+          </View>
+        </Modal>
+        <Modal visible={globalSearchOpen} transparent animationType="fade" onRequestClose={() => setGlobalSearchOpen(false)} statusBarTranslucent>
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalKeyboardAvoider}>
+              <View style={[styles.modalPanel, styles.globalSearchPanel, isDarkTheme && styles.surfacePanelDark]}>
+                <TouchableOpacity style={styles.modalCloseButton} onPress={() => setGlobalSearchOpen(false)} activeOpacity={0.8}>
+                  <Ionicons name="close" size={22} color={palette.red} />
+                </TouchableOpacity>
+                <Text style={[styles.cardEyebrow, isDarkTheme && styles.textDarkAccent]}>Búsqueda global</Text>
+                <Text style={[styles.cardText, isDarkTheme && styles.textDarkBody]}>Busca contenido remoto disponible en Supabase.</Text>
+                <View style={styles.globalSearchRow}>
+                  <TextInput
+                    style={[styles.input, styles.globalSearchInput, isDarkTheme && styles.inputDark]}
+                    placeholder="Usuarios, comunidades, PMs, noticias..."
+                    value={globalSearchQuery}
+                    onChangeText={setGlobalSearchQuery}
+                    onSubmitEditing={runGlobalSearch}
+                    returnKeyType="search"
+                    autoCapitalize="none"
+                    placeholderTextColor={inputPlaceholderColor}
+                  />
+                  <TouchableOpacity style={styles.globalSearchButton} onPress={runGlobalSearch} disabled={globalSearchLoading} activeOpacity={0.84}>
+                    <Ionicons name={globalSearchLoading ? 'hourglass-outline' : 'search-outline'} size={20} color={palette.white} />
+                  </TouchableOpacity>
+                </View>
+                {globalSearchMessage ? <Text style={[styles.cardText, isDarkTheme && styles.textDarkBody]}>{globalSearchMessage}</Text> : null}
+                <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.globalSearchResults}>
+                  {globalSearchResults.map((result) => (
+                    <TouchableOpacity key={result.id} style={[styles.innerNewsCard, isDarkTheme && styles.surfaceRowDark]} onPress={() => openGlobalSearchResult(result)} activeOpacity={0.86}>
+                      <Text style={[styles.cardEyebrow, isDarkTheme && styles.textDarkAccent]}>{result.type}</Text>
+                      <Text style={[styles.cardTitle, isDarkTheme && styles.textDarkStrong]}>{result.title}</Text>
+                      <Text style={[styles.cardText, isDarkTheme && styles.textDarkBody]}>{result.subtitle}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
         {adminSessionBeforeViewAs ? (
@@ -1711,36 +1823,6 @@ export default function App() {
           <View pointerEvents="none" style={styles.appToast}>
             <Text style={styles.appToastText}>{appMessage}</Text>
           </View>
-        ) : null}
-        {refreshLogoVisible ? (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.refreshLogoIndicator,
-              isDarkTheme && styles.refreshLogoIndicatorDark,
-              {
-                opacity: refreshLogoOpacity,
-                transform: [
-                  { translateY: refreshLogoTranslateY }
-                ]
-              }
-            ]}
-          >
-            <Animated.View
-              style={[
-                styles.refreshLogoRing,
-                {
-                  transform: [{
-                    rotate: refreshLogoRotate.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0deg', '360deg']
-                    })
-                  }]
-                }
-              ]}
-            />
-            <Image source={palestraLogo} style={styles.refreshLogoImage} />
-          </Animated.View>
         ) : null}
         {themeTransitionVisible ? (
           <View pointerEvents="none" style={styles.themeTransitionLayer}>
@@ -1808,22 +1890,31 @@ export default function App() {
             />
           </View>
         ) : null}
-        <ScrollView
-          contentContainerStyle={[styles.content, isDarkTheme && styles.contentDark]}
-          keyboardShouldPersistTaps="handled"
-          onScroll={handleContentScroll}
-          onScrollEndDrag={handleContentScrollEndDrag}
-          onTouchStart={handleRefreshTouchStart}
-          onTouchMove={handleRefreshTouchMove}
-          onTouchEnd={handleRefreshTouchEnd}
-          onTouchCancel={handleRefreshTouchEnd}
-          scrollEventThrottle={16}
-          overScrollMode="always"
+        <KeyboardAvoidingView
+          style={styles.contentKeyboardAvoider}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 12}
         >
-          <Animated.View style={{ opacity: screenOpacity }}>
-            {screen}
-          </Animated.View>
-        </ScrollView>
+          <ScrollView
+            contentContainerStyle={[styles.content, isDarkTheme && styles.contentDark]}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            overScrollMode="always"
+            refreshControl={(
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={() => refreshAppContent('manual')}
+                colors={[palette.red]}
+                tintColor={palette.red}
+                progressBackgroundColor={isDarkTheme ? themePresets.dark.colors.surface : palette.white}
+              />
+            )}
+          >
+            <Animated.View style={{ opacity: screenOpacity }}>
+              {screen}
+            </Animated.View>
+          </ScrollView>
+        </KeyboardAvoidingView>
         </SafeAreaView>
       </AppThemeContext.Provider>
     </SafeAreaProvider>
@@ -2547,18 +2638,20 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
   const instagramUrl = adminConfig.contact.instagram?.startsWith('http') ? adminConfig.contact.instagram : `https://www.instagram.com/${adminConfig.contact.instagram.replace('@', '')}`;
   const instagramLabel = instagramUrl.includes('infopalestra.argentina') ? '@infopalestra.argentina' : adminConfig.contact.instagram;
   const greeting = homeGreeting(session, adminConfig.home);
-  const homeTiles: Array<{ tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = [
-    { tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
-    { tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
-    { tab: 'materiales', title: 'Materiales', meta: 'Archivos internos', icon: 'folder-open-outline', color: palette.gold },
-    { tab: 'foro', title: 'Foro', meta: 'Nacional y provincias', icon: 'chatbubbles-outline', color: '#4AA06D' },
-    { tab: 'perfil', title: session ? 'Perfil' : 'Ingresar', meta: session ? roleLabel(session.role) : 'Cuenta personal', icon: 'person-circle-outline', color: palette.inkMuted }
-  ];
+  const enabledHomeModules = new Set(adminConfig.home.visibleModules?.length ? adminConfig.home.visibleModules : defaultAdminConfig.home.visibleModules);
+  const homeModuleEnabled = (moduleKey: string) => enabledHomeModules.has(moduleKey);
+  const homeTiles = ([
+    { module: 'noticias', tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
+    { module: 'comunidades', tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
+    { module: 'materiales', tab: 'materiales', title: 'Materiales', meta: 'Archivos internos', icon: 'folder-open-outline', color: palette.gold },
+    { module: 'foro', tab: 'foro', title: 'Foro', meta: 'Nacional y provincias', icon: 'chatbubbles-outline', color: '#4AA06D' },
+    { module: 'perfil', tab: 'perfil', title: session ? 'Perfil' : 'Ingresar', meta: session ? roleLabel(session.role, session.genderPreference) : 'Cuenta personal', icon: 'person-circle-outline', color: palette.inkMuted }
+  ] satisfies Array<{ module: string; tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }>).filter((tile) => homeModuleEnabled(tile.module));
   const dashboardStats = [
-    { label: 'Provincias', value: String(communities.length), icon: 'map-outline' as keyof typeof Ionicons.glyphMap },
-    { label: 'Comunidades', value: String(communities.reduce((total, item) => total + item.locations.length, 0)), icon: 'people-circle-outline' as keyof typeof Ionicons.glyphMap },
-    { label: 'Materiales', value: String(materials.length), icon: 'library-outline' as keyof typeof Ionicons.glyphMap }
-  ];
+    { module: 'comunidades', label: 'Provincias', value: String(communities.length), icon: 'map-outline' as keyof typeof Ionicons.glyphMap },
+    { module: 'comunidades', label: 'Comunidades', value: String(communities.reduce((total, item) => total + item.locations.length, 0)), icon: 'people-circle-outline' as keyof typeof Ionicons.glyphMap },
+    { module: 'materiales', label: 'Materiales', value: String(materials.length), icon: 'library-outline' as keyof typeof Ionicons.glyphMap }
+  ].filter((item) => homeModuleEnabled(item.module));
   const nextEvents = notilestra
     .filter((item) => !hiddenFallbackContent.includes(fallbackContentKey('notilestra', item.title, item.date)))
     .slice(0, 2);
@@ -2650,8 +2743,8 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
 
       <EditableIntro content={content} editor={editor} />
 
-      <SectionTitle title="Accesos rápidos" />
-      <View style={styles.homeTileGrid}>
+      {homeTiles.length > 0 ? <SectionTitle title="Accesos rápidos" /> : null}
+      {homeTiles.length > 0 ? <View style={styles.homeTileGrid}>
         {homeTiles.map((tile) => (
           <TouchableOpacity key={tile.tab} style={styles.homeTile} activeOpacity={0.88} onPress={() => onNavigate(tile.tab)}>
             <View style={[styles.homeTileIcon, { backgroundColor: tile.color }]}>
@@ -2661,10 +2754,10 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             <Text style={[styles.homeTileMeta, isDark && styles.textDarkMuted]}>{tile.meta}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </View> : null}
 
-      <SectionTitle title="Resumen" />
-      <View style={styles.dashboardStrip}>
+      {dashboardStats.length > 0 ? <SectionTitle title="Resumen" /> : null}
+      {dashboardStats.length > 0 ? <View style={styles.dashboardStrip}>
         {dashboardStats.map((item) => (
           <View key={item.label} style={[styles.dashboardStat, isDark && styles.surfaceCardDark]}>
             <Ionicons name={item.icon} size={18} color={isDark ? themePresets.dark.colors.secondary : palette.red} />
@@ -2672,7 +2765,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             <Text style={[styles.dashboardLabel, isDark && styles.textDarkMuted]}>{item.label}</Text>
           </View>
         ))}
-      </View>
+      </View> : null}
 
       <TouchableOpacity style={styles.instagramButton} activeOpacity={0.88} onPress={() => Linking.openURL(instagramUrl)}>
         <Ionicons name="logo-instagram" size={22} color={palette.white} />
@@ -2683,8 +2776,8 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
         <Ionicons name="chevron-forward" size={18} color={palette.white} />
       </TouchableOpacity>
 
-      <SectionTitle title="Agenda comunitaria" />
-      <View style={[styles.featurePanel, isDark && styles.surfacePanelDark]}>
+      {homeModuleEnabled('agenda') ? <SectionTitle title="Agenda comunitaria" /> : null}
+      {homeModuleEnabled('agenda') ? <View style={[styles.featurePanel, isDark && styles.surfacePanelDark]}>
         <View style={styles.featurePanelHeader}>
           <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Proximamente</Text>
           <TouchableOpacity style={[styles.iconButton, styles.viewAllButton]} activeOpacity={0.8} onPress={() => onNavigate('notilestra')}>
@@ -2703,11 +2796,11 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             </View>
           </View>
         ))}
-      </View>
+      </View> : null}
 
-      <SectionTitle title="Info Palestrista" />
-      {homeActionMessage ? <Text style={styles.noticeText}>{homeActionMessage}</Text> : null}
-      {visibleHomeNews.map((item, index) => (
+      {homeModuleEnabled('noticias') ? <SectionTitle title="Info Palestrista" /> : null}
+      {homeModuleEnabled('noticias') && homeActionMessage ? <Text style={styles.noticeText}>{homeActionMessage}</Text> : null}
+      {homeModuleEnabled('noticias') ? visibleHomeNews.map((item, index) => (
         <TouchableOpacity key={`${item.title}-${index}`} style={[styles.card, styles.feedCard, isDark && styles.feedCardDark]} activeOpacity={0.86} onPress={() => {
           if (!(homeEditId && isRemoteNewsItem(item) && item.id === homeEditId)) {
             setExpandedNews(expandedNews === item.title ? null : item.title);
@@ -2759,7 +2852,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             <Ionicons name={expandedNews === item.title ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
           </View>
         </TouchableOpacity>
-      ))}
+      )) : null}
 
       {!canAccessPrivate(session) ? (
         <View style={styles.notice}>
@@ -3348,17 +3441,18 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
   }
 
   async function openMaterialFile(material: typeof visibleMaterials[number]) {
-    if (!('fileUrl' in material) || !material.fileUrl) {
+    if (!('fileUrl' in material) || (!material.fileUrl && !material.filePath)) {
       setUploadMessage('No se encontro el archivo de descarga.');
       return;
     }
     try {
-      const canOpen = await Linking.canOpenURL(material.fileUrl);
+      const targetUrl = material.fileUrl || supabase.storage.from('materials').getPublicUrl(material.filePath as string).data.publicUrl;
+      const canOpen = await Linking.canOpenURL(targetUrl);
       if (!canOpen) {
         setUploadMessage('No se pudo abrir el enlace del archivo.');
         return;
       }
-      await Linking.openURL(material.fileUrl);
+      await Linking.openURL(targetUrl);
     } catch {
       setUploadMessage('No se pudo descargar el archivo. Puede que ya no exista en Storage.');
     }
@@ -3525,10 +3619,10 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{material.title}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
                   {locked ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Requiere permiso: {material.permission}</Text> : null}
-                  {!locked && 'fileUrl' in material && material.fileUrl ? (
+                  {!locked && 'fileUrl' in material && (material.fileUrl || material.filePath) ? (
                     <TouchableOpacity style={styles.secondaryButton} onPress={() => openMaterialFile(material)}>
                       <Ionicons name="download-outline" size={16} color={palette.red} />
-                      <Text style={styles.secondaryButtonText}>Descargar PDF</Text>
+                      <Text style={styles.secondaryButtonText}>Descargar documento</Text>
                     </TouchableOpacity>
                   ) : null}
                   {canEditThisMaterial ? (
@@ -4767,7 +4861,7 @@ function ProfileScreen({
     return groups;
   }, {});
   const userProvinceOptions = Object.keys(adminUsersByProvince).sort((a, b) => a.localeCompare(b));
-  const visibleAdminUsers = selectedUsersProvince ? (adminUsersByProvince[selectedUsersProvince] ?? []) : [];
+  const visibleAdminUsers = selectedUsersProvince ? (adminUsersByProvince[selectedUsersProvince] ?? []).filter((user) => canEditAdminUser(session, user)) : [];
   const activeNationalCoordinator = adminUsers.find((user) => user.role === 'coordinador_nacional' && user.status === 'aprobado');
   const activeDiocesanCoordinator = selectedUsersProvince
     ? adminUsersByProvince[selectedUsersProvince]?.find((user) => user.role === 'coordinador_diocesano' && user.status === 'aprobado')
@@ -7054,7 +7148,9 @@ function ProfileScreen({
         province: remoteProfile.province ?? current.province,
         communityName: remoteProfile.community_name ?? current.communityName,
         contact: remoteProfile.phone ?? current.contact,
-        avatarUrl: remoteProfile.avatar_url ?? current.avatarUrl
+        avatarUrl: remoteProfile.avatar_url ?? current.avatarUrl,
+        displayRoleLabel: remoteProfile.display_role_label ?? current.displayRoleLabel,
+        genderPreference: remoteProfile.gender_preference ?? current.genderPreference
       };
     });
   }
@@ -7075,7 +7171,7 @@ function ProfileScreen({
                 </View>
                 <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Perfil palestrista</Text>
                 <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedPublicProfile.fullName}</Text>
-                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabel(selectedPublicProfile.role)}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(selectedPublicProfile.role, selectedPublicProfile.province, provinceRoleLabels, adminConfig.settings.roleAliases, selectedPublicProfile.displayRoleLabel, selectedPublicProfile.genderPreference)}</Text>
                 {selectedPublicProfile.communityName ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Comunidad: {selectedPublicProfile.communityName}</Text> : null}
                 {selectedPublicProfile.province ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Provincia: {selectedPublicProfile.province}</Text> : null}
                 {selectedPublicProfile.contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {selectedPublicProfile.contact}</Text> : null}
@@ -7391,7 +7487,7 @@ function ProfileScreen({
               ) : communityMembers.map((member) => (
                 <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? member.email}</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels)}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
                   <TouchableOpacity
                     style={styles.actionPill}
                     onPress={() => openPublicProfile({
@@ -7401,7 +7497,8 @@ function ProfileScreen({
                       province: member.province,
                       communityName: member.community_name,
                       contact: member.email,
-                      avatarUrl: member.avatar_url
+                      avatarUrl: member.avatar_url,
+                      genderPreference: member.gender_preference ?? null
                     })}
                   >
                     <Ionicons name="person-circle-outline" size={16} color={palette.red} />
@@ -7412,7 +7509,7 @@ function ProfileScreen({
               <SectionTitle title="Encargados" />
               {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).map((member) => (
                 <View key={`leader-${member.id}`} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{member.full_name ?? 'Palestrista'} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels)}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{member.full_name ?? 'Palestrista'} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
                   <TouchableOpacity
                     style={styles.actionPill}
                     onPress={() => openPublicProfile({
@@ -7422,7 +7519,8 @@ function ProfileScreen({
                       province: member.province,
                       communityName: member.community_name,
                       contact: '',
-                      avatarUrl: member.avatar_url
+                      avatarUrl: member.avatar_url,
+                      genderPreference: member.gender_preference ?? null
                     })}
                   >
                     <Ionicons name="person-circle-outline" size={16} color={palette.red} />
@@ -7551,7 +7649,7 @@ function ProfileScreen({
                                 <Ionicons name={selectedUser ? 'checkbox-outline' : 'square-outline'} size={18} color={selectedUser ? palette.red : palette.inkMuted} />
                                 <View style={styles.adminUserHeaderText}>
                                   <Text style={styles.dropdownItemText}>{user.full_name ?? 'Usuario'}</Text>
-                                  <Text style={styles.feedMeta}>{roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  <Text style={styles.feedMeta}>{roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.gender_preference ?? null)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
                                 </View>
                               </TouchableOpacity>
                             );
@@ -8097,7 +8195,7 @@ function ProfileScreen({
                   </View>
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Modulos visibles</Text>
                   <View style={styles.filterRow}>
-                    {['noticias', 'comunidades', 'materiales', 'perfil', 'agenda', 'actividad'].map((item, index) => (
+                    {['noticias', 'comunidades', 'materiales', 'foro', 'perfil', 'agenda', 'actividad'].map((item, index) => (
                       <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipActive]} onPress={() => toggleAdminConfigList('home', item)}>
                         <Text style={[styles.filterChipText, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipTextActive]}>{item}</Text>
                       </TouchableOpacity>
@@ -8800,7 +8898,7 @@ function ProfileScreen({
                                 </View>
                                 <View style={styles.adminUserHeaderText}>
                                   <Text style={styles.cardTitle}>{user.full_name ?? 'Usuario sin nombre'}</Text>
-                                  <Text style={styles.cardText}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label)} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  <Text style={styles.cardText}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - {user.community_name ?? 'Sin comunidad'}</Text>
                                   {session.role === 'administrador' ? <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text> : null}
                                 </View>
                               </View>
@@ -8814,7 +8912,9 @@ function ProfileScreen({
                                   province: user.province,
                                   communityName: user.community_name,
                                   avatarUrl: user.avatar_url,
-                                  contact: user.phone ?? ''
+                                  contact: user.phone ?? '',
+                                  displayRoleLabel: user.display_role_label ?? null,
+                                  genderPreference: user.gender_preference ?? null
                                 })}
                               >
                                 <Ionicons name="person-circle-outline" size={16} color={palette.red} />
@@ -10243,43 +10343,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center'
   },
-  refreshLogoIndicator: {
-    position: 'absolute',
-    top: 78,
-    alignSelf: 'center',
-    zIndex: 82,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(255,255,255,0.84)',
-    borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.16,
-    shadowRadius: 14,
-    elevation: 5
-  },
-  refreshLogoIndicatorDark: {
-    backgroundColor: 'rgba(53,56,59,0.92)',
-    borderColor: themePresets.dark.colors.border,
-    shadowColor: '#000'
-  },
-  refreshLogoRing: {
-    position: 'absolute',
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 2,
-    borderColor: 'rgba(45, 141, 200, 0.24)',
-    borderTopColor: palette.red
-  },
-  refreshLogoImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16
-  },
   themeTransitionLayer: {
     position: 'absolute',
     top: 0,
@@ -10659,6 +10722,9 @@ const styles = StyleSheet.create({
   },
   contentDark: {
     backgroundColor: themePresets.dark.colors.background
+  },
+  contentKeyboardAvoider: {
+    flex: 1
   },
   surfacePanelDark: {
     backgroundColor: '#32373A',
@@ -11276,6 +11342,31 @@ const styles = StyleSheet.create({
     maxWidth: 520,
     maxHeight: '90%',
     zIndex: 2
+  },
+  globalSearchPanel: {
+    maxHeight: '88%',
+    paddingTop: 22
+  },
+  globalSearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  globalSearchInput: {
+    flex: 1,
+    marginTop: 0
+  },
+  globalSearchButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.red
+  },
+  globalSearchResults: {
+    gap: 10,
+    paddingBottom: 18
   },
   modalScrollContent: {
     paddingBottom: 34,
