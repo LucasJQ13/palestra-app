@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
@@ -46,7 +46,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.0';
+const appBetaVersion = '0.1.26';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
@@ -107,6 +107,7 @@ type AppAdminConfig = {
     heroText: string;
     featuredBanner: string;
     visibleModules: string[];
+    quickAccessLabels: Record<string, string>;
     greetingTemplateMale?: string;
     greetingTemplateFemale?: string;
     greetingTemplateNeutral?: string;
@@ -177,6 +178,7 @@ type GlobalSearchResult = {
   subtitle: string;
   type: 'usuario' | 'comunidad' | 'archivo' | 'noticia' | 'pm' | 'aviso' | 'descarga' | 'contenido';
   tab?: TabKey;
+  publicProfile?: PublicProfilePreview;
 };
 
 const defaultAdminConfig: AppAdminConfig = {
@@ -194,6 +196,13 @@ const defaultAdminConfig: AppAdminConfig = {
     heroText: 'Noticias, agenda, materiales y comunicacion interna para las comunidades de Palestra.',
     featuredBanner: 'Agenda comunitaria',
     visibleModules: ['noticias', 'comunidades', 'materiales', 'foro', 'perfil', 'agenda'],
+    quickAccessLabels: {
+      noticias: 'Noticias',
+      comunidades: 'Comunidad',
+      materiales: 'Materiales',
+      foro: 'Foro',
+      perfil: 'Perfil'
+    },
     greetingTemplateMale: 'Bienvenido {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
     greetingTemplateFemale: 'Bienvenida {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
     greetingTemplateNeutral: 'Bienvenido/a a Palestra, {nombre}. Oh Bella Ciao!'
@@ -227,7 +236,14 @@ function normalizeAdminConfig(config?: Partial<AppAdminConfig> | null): AppAdmin
     ...defaultAdminConfig,
     ...config,
     identity: { ...defaultAdminConfig.identity, ...(config?.identity ?? {}) },
-    home: { ...defaultAdminConfig.home, ...(config?.home ?? {}) },
+    home: {
+      ...defaultAdminConfig.home,
+      ...(config?.home ?? {}),
+      quickAccessLabels: {
+        ...defaultAdminConfig.home.quickAccessLabels,
+        ...(config?.home?.quickAccessLabels ?? {})
+      }
+    },
     contact: { ...defaultAdminConfig.contact, ...(config?.contact ?? {}) },
     settings: { ...defaultAdminConfig.settings, ...(config?.settings ?? {}) },
     periodoMotivador: { ...defaultAdminConfig.periodoMotivador, ...(config?.periodoMotivador ?? {}) }
@@ -957,6 +973,7 @@ export default function App() {
   const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
   const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
   const [globalSearchMessage, setGlobalSearchMessage] = useState('');
+  const [globalSearchProfile, setGlobalSearchProfile] = useState<PublicProfilePreview | null>(null);
   const [appMessage, setAppMessage] = useState('');
   const [successToastVisible, setSuccessToastVisible] = useState(false);
   const [themeTransitionVisible, setThemeTransitionVisible] = useState(false);
@@ -1356,12 +1373,24 @@ export default function App() {
 
       adminUsersRemote.forEach((user) => {
         if (matches([user.full_name, user.email, user.province, user.community_name, user.role, user.display_role_label])) {
+          const role = (user.role || 'palestrista') as Role;
           nextResults.push({
             id: `user-${user.id}`,
             type: 'usuario',
             title: user.full_name ?? user.email ?? 'Usuario',
-            subtitle: `${displayRoleLabel((user.role || 'palestrista') as Role, user.province, [], adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - ${user.community_name ?? user.province ?? 'Sin comunidad'}`,
-            tab: 'perfil'
+            subtitle: `${displayRoleLabel(role, user.province, [], adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - ${user.community_name ?? user.province ?? 'Sin comunidad'}`,
+            tab: 'perfil',
+            publicProfile: {
+              id: user.id,
+              fullName: user.full_name ?? user.email ?? 'Usuario',
+              role,
+              province: user.province,
+              communityName: user.community_name,
+              avatarUrl: user.avatar_url,
+              contact: user.phone ?? user.email ?? '',
+              displayRoleLabel: user.display_role_label ?? null,
+              genderPreference: user.gender_preference ?? null
+            }
           });
         }
       });
@@ -1465,6 +1494,11 @@ export default function App() {
 
   function openGlobalSearchResult(result: GlobalSearchResult) {
     setGlobalSearchOpen(false);
+    if (result.publicProfile) {
+      setGlobalSearchProfile(result.publicProfile);
+      navigateToTab('perfil');
+      return;
+    }
     if (result.tab) {
       navigateToTab(result.tab);
     }
@@ -1646,8 +1680,8 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} />;
-  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel]);
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} initialPublicProfile={globalSearchProfile} onInitialPublicProfileHandled={() => setGlobalSearchProfile(null)} />;
+  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel, globalSearchProfile]);
 
   return (
     <SafeAreaProvider>
@@ -1937,6 +1971,7 @@ type RegisterDraft = {
 function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (session: Session) => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [authMessage, setAuthMessage] = useState('');
+  const insets = useSafeAreaInsets();
 
   async function resolveSession(email: string) {
     const result = await getMyProfileSession(email);
@@ -1953,7 +1988,13 @@ function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthe
   }
 
   return (
-    <View style={styles.authFullscreen}>
+    <SafeAreaView
+      edges={['top', 'bottom']}
+      style={[
+        styles.authFullscreen,
+        { paddingTop: Math.max(insets.top, 18), paddingBottom: Math.max(insets.bottom, 14) }
+      ]}
+    >
       <View style={styles.authGlowOne} />
       <View style={styles.authGlowTwo} />
       <TouchableOpacity style={styles.authCloseButton} onPress={onClose} activeOpacity={0.85}>
@@ -1980,7 +2021,7 @@ function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthe
           onRegistered={resolveSession}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -2294,6 +2335,36 @@ function AuthSelect({ label, value, open, onToggle, children }: { label: string;
         <Ionicons name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.white} />
       </TouchableOpacity>
       {open ? <ScrollView style={styles.authSelectList} nestedScrollEnabled>{children}</ScrollView> : null}
+    </View>
+  );
+}
+
+function RoleDropdown({ label, value, open, onToggle, onSelect, roles }: { label: string; value: Role; open: boolean; onToggle: () => void; onSelect: (role: Role) => void; roles?: typeof roleDefinitions }) {
+  const options = (roles ?? roleDefinitions).filter((role) => role.role !== 'invitado');
+  const selected = options.find((role) => role.role === value);
+  return (
+    <View>
+      <Text style={styles.cardEyebrow}>{label}</Text>
+      <TouchableOpacity style={styles.dropdownButton} onPress={onToggle} activeOpacity={0.84}>
+        <Text style={styles.dropdownButtonText}>{selected?.label ?? roleLabel(value)}</Text>
+        <Ionicons name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.red} />
+      </TouchableOpacity>
+      {open ? (
+        <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+          {options.map((role) => (
+            <TouchableOpacity
+              key={role.role}
+              style={[styles.dropdownItem, role.role === value && styles.communityChoiceActive]}
+              onPress={() => {
+                onSelect(role.role as Role);
+                onToggle();
+              }}
+            >
+              <Text style={[styles.dropdownItemText, role.role === value && styles.filterChipTextActive]}>{role.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      ) : null}
     </View>
   );
 }
@@ -2626,8 +2697,10 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
 function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void; adminConfig: AppAdminConfig }) {
   const isDark = useIsDarkTheme();
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
-  const [homeNews, setHomeNews] = useState<HomeFeedItem[]>(news);
+  const [homeNews, setHomeNews] = useState<HomeFeedItem[]>([]);
   const [communityAgenda, setCommunityAgenda] = useState<CommunityPublication[]>([]);
+  const [homeCommunities, setHomeCommunities] = useState<AppCommunity[]>([]);
+  const [homeMaterials, setHomeMaterials] = useState<AppMaterialRecord[]>([]);
   const [homeRefreshKey, setHomeRefreshKey] = useState(0);
   const [homeEditId, setHomeEditId] = useState<string | null>(null);
   const [homeEditTitle, setHomeEditTitle] = useState('');
@@ -2640,17 +2713,18 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
   const greeting = homeGreeting(session, adminConfig.home);
   const enabledHomeModules = new Set(adminConfig.home.visibleModules?.length ? adminConfig.home.visibleModules : defaultAdminConfig.home.visibleModules);
   const homeModuleEnabled = (moduleKey: string) => enabledHomeModules.has(moduleKey);
+  const quickLabel = (moduleKey: string, fallback: string) => adminConfig.home.quickAccessLabels?.[moduleKey]?.trim() || fallback;
   const homeTiles = ([
-    { module: 'noticias', tab: 'notilestra', title: 'Noticias', meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
-    { module: 'comunidades', tab: 'comunidades', title: 'Comunidades', meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
-    { module: 'materiales', tab: 'materiales', title: 'Materiales', meta: 'Archivos internos', icon: 'folder-open-outline', color: palette.gold },
-    { module: 'foro', tab: 'foro', title: 'Foro', meta: 'Nacional y provincias', icon: 'chatbubbles-outline', color: '#4AA06D' },
-    { module: 'perfil', tab: 'perfil', title: session ? 'Perfil' : 'Ingresar', meta: session ? roleLabel(session.role, session.genderPreference) : 'Cuenta personal', icon: 'person-circle-outline', color: palette.inkMuted }
+    { module: 'noticias', tab: 'notilestra', title: quickLabel('noticias', 'Noticias'), meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
+    { module: 'comunidades', tab: 'comunidades', title: quickLabel('comunidades', 'Comunidad'), meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
+    { module: 'materiales', tab: 'materiales', title: quickLabel('materiales', 'Materiales'), meta: 'Archivos internos', icon: 'folder-open-outline', color: palette.gold },
+    { module: 'foro', tab: 'foro', title: quickLabel('foro', 'Foro'), meta: 'Nacional y provincias', icon: 'chatbubbles-outline', color: '#4AA06D' },
+    { module: 'perfil', tab: 'perfil', title: session ? quickLabel('perfil', 'Perfil') : 'Ingresar', meta: session ? roleLabel(session.role, session.genderPreference) : 'Cuenta personal', icon: 'person-circle-outline', color: palette.inkMuted }
   ] satisfies Array<{ module: string; tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }>).filter((tile) => homeModuleEnabled(tile.module));
   const dashboardStats = [
-    { module: 'comunidades', label: 'Provincias', value: String(communities.length), icon: 'map-outline' as keyof typeof Ionicons.glyphMap },
-    { module: 'comunidades', label: 'Comunidades', value: String(communities.reduce((total, item) => total + item.locations.length, 0)), icon: 'people-circle-outline' as keyof typeof Ionicons.glyphMap },
-    { module: 'materiales', label: 'Materiales', value: String(materials.length), icon: 'library-outline' as keyof typeof Ionicons.glyphMap }
+    { module: 'comunidades', label: 'Provincias', value: String(homeCommunities.length), icon: 'map-outline' as keyof typeof Ionicons.glyphMap },
+    { module: 'comunidades', label: 'Comunidades', value: String(homeCommunities.reduce((total, item) => total + item.locations.length, 0)), icon: 'people-circle-outline' as keyof typeof Ionicons.glyphMap },
+    { module: 'materiales', label: 'Materiales', value: String(homeMaterials.length), icon: 'library-outline' as keyof typeof Ionicons.glyphMap }
   ].filter((item) => homeModuleEnabled(item.module));
   const nextEvents = notilestra
     .filter((item) => !hiddenFallbackContent.includes(fallbackContentKey('notilestra', item.title, item.date)))
@@ -2659,14 +2733,12 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
 
   useEffect(() => {
     let alive = true;
-    fetchNews(session).then((items) => {
+    Promise.all([fetchNews(session), fetchCommunityPublications(session), fetchCommunities(), fetchAppMaterials()]).then(([items, communityItems, communityRemote, materialRemote]) => {
       if (alive) {
-        fetchCommunityPublications(session).then((communityItems) => {
-          if (alive) {
-            setHomeNews([...communityItems, ...items]);
-            setCommunityAgenda(communityItems.filter((item) => item.kind === 'fecha'));
-          }
-        });
+        setHomeNews([...communityItems, ...items]);
+        setCommunityAgenda(communityItems.filter((item) => item.kind === 'fecha'));
+        setHomeCommunities(communityRemote);
+        setHomeMaterials(materialRemote);
       }
     });
     return () => {
@@ -3267,7 +3339,7 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
           const text = `${item.title} ${item.body} ${item.scope}`.toLowerCase();
           return text.includes('periodo motivador') || text.includes(' pm ') || text.includes('retiro');
         });
-        setItems(pmPeriods.length > 0 ? pmPeriods : pmItems);
+        setItems(pmPeriods.length > 0 ? groupMotivadorFeedItems(pmPeriods) : groupMotivadorFeedItems(pmItems));
       }
     });
     return () => {
@@ -3329,12 +3401,14 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploadVisibility, setUploadVisibility] = useState<'publico' | 'desde_rango' | 'solo_rango'>('desde_rango');
   const [uploadRole, setUploadRole] = useState<Role>('sedimentador');
+  const [uploadRoleDropdownOpen, setUploadRoleDropdownOpen] = useState(false);
   const [uploadMessage, setUploadMessage] = useState('');
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
   const [materialEditTitle, setMaterialEditTitle] = useState('');
   const [materialEditDescription, setMaterialEditDescription] = useState('');
   const [materialEditVisibility, setMaterialEditVisibility] = useState<'publico' | 'desde_rango' | 'solo_rango'>('desde_rango');
   const [materialEditRole, setMaterialEditRole] = useState<Role>('sedimentador');
+  const [materialEditRoleDropdownOpen, setMaterialEditRoleDropdownOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -3361,26 +3435,28 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       createdBy: material.created_by,
       provinceId: material.province_id,
       sortOrder: material.sort_order
-    })).filter((material) => {
-      if (!material.fileUrl && !material.filePath) {
-        return false;
-      }
-      if (material.visibility === 'publico') {
-        return true;
-      }
-      if (!session) {
-        return false;
-      }
-      const selectedRole = material.permission?.replace('rango_', '') as Role | undefined;
-      if (!selectedRole || !roleDefinitions.some((item) => item.role === selectedRole)) {
-        return !material.permission || hasPermission(session, material.permission as Permission);
-      }
+    })).filter((material) => canDownloadMaterial(material))
+    : [];
+
+  function canDownloadMaterial(material: { visibility?: string | null; permission?: Permission | string | null; fileUrl?: string | null; filePath?: string | null }) {
+    if (!material.fileUrl && !material.filePath) {
+      return false;
+    }
+    if (material.visibility === 'publico') {
+      return true;
+    }
+    if (!session) {
+      return false;
+    }
+    const selectedRole = material.permission?.replace('rango_', '') as Role | undefined;
+    if (selectedRole && roleDefinitions.some((item) => item.role === selectedRole)) {
       if (material.visibility === 'solo_rango') {
         return session.role === selectedRole;
       }
       return roleRank(session.role) >= roleRank(selectedRole);
-    })
-    : [];
+    }
+    return !material.permission || hasPermission(session, material.permission as Permission);
+  }
 
   function canManageMaterial(material: { createdBy?: string | null }) {
     return Boolean(session && (material.createdBy === session.id || canManagePublishedContent(session)));
@@ -3549,13 +3625,13 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
             ))}
           </View>
           {uploadVisibility !== 'publico' ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-              {roleDefinitions.filter((role) => role.role !== 'invitado').map((role) => (
-                <TouchableOpacity key={role.role} style={[styles.filterChip, uploadRole === role.role && styles.filterChipActive]} onPress={() => setUploadRole(role.role as Role)}>
-                  <Text style={[styles.filterChipText, uploadRole === role.role && styles.filterChipTextActive]}>{role.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <RoleDropdown
+              label="Rango"
+              value={uploadRole}
+              open={uploadRoleDropdownOpen}
+              onToggle={() => setUploadRoleDropdownOpen((current) => !current)}
+              onSelect={setUploadRole}
+            />
           ) : null}
           <TouchableOpacity style={styles.secondaryButton} onPress={uploadPdfMaterial}>
             <Ionicons name="document-attach-outline" size={17} color={palette.red} />
@@ -3570,7 +3646,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
         </View>
       ) : null}
       {visibleMaterials.map((material, index) => {
-        const locked = material.permission && !hasPermission(session, material.permission as Permission);
+        const locked = !canDownloadMaterial(material);
         const canEditThisMaterial = 'id' in material && canManageMaterial(material);
         const isEditingThisMaterial = 'id' in material && editingMaterialId === material.id;
         return (
@@ -3596,13 +3672,13 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
                     ))}
                   </View>
                   {materialEditVisibility !== 'publico' ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                      {roleDefinitions.filter((role) => role.role !== 'invitado').map((role) => (
-                        <TouchableOpacity key={role.role} style={[styles.filterChip, materialEditRole === role.role && styles.filterChipActive]} onPress={() => setMaterialEditRole(role.role as Role)}>
-                          <Text style={[styles.filterChipText, materialEditRole === role.role && styles.filterChipTextActive]}>{role.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+                    <RoleDropdown
+                      label="Rango"
+                      value={materialEditRole}
+                      open={materialEditRoleDropdownOpen}
+                      onToggle={() => setMaterialEditRoleDropdownOpen((current) => !current)}
+                      onSelect={setMaterialEditRole}
+                    />
                   ) : null}
                   <View style={styles.inlineActions}>
                     <TouchableOpacity style={styles.primaryButton} onPress={() => saveEditedMaterial(material)}>
@@ -3647,7 +3723,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
 
 function CommunitiesScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const isDark = useIsDarkTheme();
-  const [communityData, setCommunityData] = useState<AppCommunity[]>(communities);
+  const [communityData, setCommunityData] = useState<AppCommunity[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
   const [selectedProvinceLogo, setSelectedProvinceLogo] = useState<AppCommunity | null>(null);
@@ -4555,7 +4631,9 @@ function ProfileScreen({
   onSavedFeedback,
   onErrorFeedback,
   onViewAsSession,
-  initialPanel = 'vista'
+  initialPanel = 'vista',
+  initialPublicProfile,
+  onInitialPublicProfileHandled
 }: {
   session: Session | null;
   onSessionChange: (session: Session | null) => void;
@@ -4575,6 +4653,8 @@ function ProfileScreen({
   onErrorFeedback: (message?: string) => void;
   onViewAsSession: (session: Session) => void;
   initialPanel?: ProfilePanel;
+  initialPublicProfile?: PublicProfilePreview | null;
+  onInitialPublicProfileHandled?: () => void;
 }) {
   const isDark = appTheme.mode === 'dark';
   const [showCommunity, setShowCommunity] = useState(false);
@@ -5045,6 +5125,15 @@ function ProfileScreen({
       setProfilePanel(initialPanel);
     }
   }, [initialPanel]);
+
+  useEffect(() => {
+    if (!initialPublicProfile) {
+      return;
+    }
+    setProfilePanel('vista');
+    openPublicProfile(initialPublicProfile);
+    onInitialPublicProfileHandled?.();
+  }, [initialPublicProfile?.id]);
 
   useEffect(() => {
     fetchProvinceRoleLabels().then(setProvinceRoleLabels);
@@ -6560,6 +6649,7 @@ function ProfileScreen({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
+      aspect: [2, 1],
       quality: 0.85
     });
     if (result.canceled || !result.assets[0]) {
@@ -8201,6 +8291,26 @@ function ProfileScreen({
                       </TouchableOpacity>
                     ))}
                   </View>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nombres de accesos rápidos</Text>
+                  {(['noticias', 'comunidades', 'materiales', 'foro', 'perfil'] as const).map((item) => (
+                    <TextInput
+                      key={`quick-${item}`}
+                      style={styles.input}
+                      placeholder={`Acceso ${item}`}
+                      value={adminConfigDraft.home.quickAccessLabels?.[item] ?? ''}
+                      onChangeText={(value) => setAdminConfigDraft((current) => ({
+                        ...current,
+                        home: {
+                          ...current.home,
+                          quickAccessLabels: {
+                            ...(current.home.quickAccessLabels ?? {}),
+                            [item]: value
+                          }
+                        }
+                      }))}
+                      placeholderTextColor={inputPlaceholderColor}
+                    />
+                  ))}
                   <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Home')}>
                     <Text style={styles.primaryButtonText}>Guardar Home</Text>
                   </TouchableOpacity>
@@ -9300,6 +9410,7 @@ function ProfileScreen({
                                   <TextInput style={styles.input} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
                                   <Text style={styles.cardEyebrow}>Imagen de comunidad</Text>
+                                  <Text style={styles.cardText}>Imagen recomendada: 1200x600 px. La app abre recorte 2:1 para encuadrar antes de guardar.</Text>
                                   {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
                                   <TouchableOpacity style={styles.secondaryButton} onPress={pickAdminCommunityImage}>
                                     <Ionicons name="image-outline" size={17} color={palette.red} />
