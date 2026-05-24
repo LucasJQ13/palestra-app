@@ -277,6 +277,28 @@ export async function createUserRequest(requestType: string, details: string) {
   }
 }
 
+export async function createEmailConfirmationRequest(values: {
+  userId: string;
+  email: string;
+  fullName: string;
+  province: string;
+  communityName: string;
+  contact: string;
+}) {
+  try {
+    return await supabase.rpc('create_email_confirmation_request', {
+      p_user_id: values.userId,
+      p_email: values.email,
+      p_full_name: values.fullName,
+      p_province: values.province,
+      p_community_name: values.communityName,
+      p_contact: values.contact
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function fetchMyCommunityMembers(): Promise<CommunityMember[]> {
   try {
     const { data, error } = await supabase.rpc('get_my_community_members');
@@ -733,11 +755,12 @@ export async function saveProvinceRoleLabel(values: {
   }
 }
 
-export async function createNews(title: string, body: string, isPublic: boolean) {
+export async function createNews(title: string, body: string, isPublic: boolean, province?: string | null) {
   return supabase.rpc('admin_create_news', {
     p_title: title,
     p_body: body,
-    p_is_public: isPublic
+    p_is_public: isPublic,
+    p_province: province ?? null
   });
 }
 
@@ -1112,6 +1135,8 @@ export async function updateCommunity(id: string, values: {
   meeting_time?: string;
   description?: string;
   image_url?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }) {
   try {
     return await supabase.rpc('admin_update_community', {
@@ -1122,7 +1147,9 @@ export async function updateCommunity(id: string, values: {
       p_meeting_day: values.meeting_day ?? null,
       p_meeting_time: values.meeting_time ?? null,
       p_description: values.description ?? null,
-      p_image_url: values.image_url ?? null
+      p_image_url: values.image_url ?? null,
+      p_latitude: values.latitude ?? null,
+      p_longitude: values.longitude ?? null
     });
   } catch (error) {
     return networkError(error);

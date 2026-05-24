@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -46,7 +46,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.26';
+const appBetaVersion = '0.1.27';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
@@ -404,6 +404,10 @@ function canManagePublishedContent(session: Session | null) {
   return Boolean(session && roleRank(session.role) >= roleRank('vocal'));
 }
 
+function canManageNewsContent(session: Session | null) {
+  return Boolean(session && ['vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role));
+}
+
 function canManageNationalPublishedContent(session: Session | null) {
   return Boolean(session && ['vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role));
 }
@@ -450,19 +454,7 @@ function canManageGlobalInstagram(session: Session | null) {
 }
 
 function canEditPageContent(session: Session | null, key: TabKey) {
-  if (!session) {
-    return false;
-  }
-  if (['historia', 'contacto'].includes(key)) {
-    return canEditStaticInstitutionalPage(session);
-  }
-  if (key === 'himno') {
-    return session.role === 'administrador';
-  }
-  if (session.role === 'administrador') {
-    return true;
-  }
-  return canManagePublishedContent(session) && ['inicio', 'notilestra', 'materiales', 'oraciones', 'cancionero', 'comunidades', 'periodo_motivador'].includes(key);
+  return session?.role === 'administrador';
 }
 
 type GenderPreference = 'male' | 'female' | null | undefined;
@@ -1968,9 +1960,15 @@ type RegisterDraft = {
   genderPreference: 'male' | 'female' | null;
 };
 
+type PendingRegistrationProfile = RegisterDraft & {
+  userId: string;
+  fullName: string;
+};
+
 function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (session: Session) => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [authMessage, setAuthMessage] = useState('');
+  const [pendingRegistration, setPendingRegistration] = useState<PendingRegistrationProfile | null>(null);
   const insets = useSafeAreaInsets();
 
   async function resolveSession(email: string) {
@@ -2000,7 +1998,18 @@ function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthe
       <TouchableOpacity style={styles.authCloseButton} onPress={onClose} activeOpacity={0.85}>
         <Ionicons name="close-outline" size={24} color={palette.white} />
       </TouchableOpacity>
-      {mode === 'login' ? (
+      {pendingRegistration ? (
+        <LimitedPendingProfile
+          profile={pendingRegistration}
+          message={authMessage}
+          onMessage={setAuthMessage}
+          onBackToLogin={() => {
+            setPendingRegistration(null);
+            setMode('login');
+            setAuthMessage('');
+          }}
+        />
+      ) : mode === 'login' ? (
         <LoginScreen
           message={authMessage}
           onMessage={setAuthMessage}
@@ -2019,6 +2028,10 @@ function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthe
             setMode('login');
           }}
           onRegistered={resolveSession}
+          onPendingRegistration={(profile) => {
+            setPendingRegistration(profile);
+            setAuthMessage('Mail de confirmación enviado. Revisá tu correo para confirmar tu cuenta.');
+          }}
         />
       )}
     </SafeAreaView>
@@ -2104,7 +2117,51 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
   );
 }
 
-function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered }: { message: string; onMessage: (message: string) => void; onBackToLogin: () => void; onRegistered: (email: string) => Promise<void> }) {
+function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: { profile: PendingRegistrationProfile; message: string; onMessage: (message: string) => void; onBackToLogin: () => void }) {
+  async function requestAdminHelp() {
+    onMessage('Enviando mensaje...');
+    const { error } = await createEmailConfirmationRequest({
+      userId: profile.userId,
+      email: profile.email,
+      fullName: profile.fullName,
+      province: profile.province,
+      communityName: profile.community,
+      contact: profile.contact
+    });
+    onMessage(error ? error.message : 'Mensaje enviado');
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.authScrollContent} keyboardShouldPersistTaps="handled">
+      <View style={styles.authBrandHeader}>
+        <Image source={palestraLogo} style={styles.authLogo} />
+        <Text style={styles.authBrandTitle}>Perfil pendiente</Text>
+        <Text style={styles.authBrandSubtitle}>Revisá tu correo para confirmar tu cuenta</Text>
+      </View>
+      <View style={styles.authFormPanel}>
+        <Text style={styles.authInputLabel}>Nombre</Text>
+        <Text style={styles.authHeroText}>{profile.firstName}</Text>
+        <Text style={styles.authInputLabel}>Apellido</Text>
+        <Text style={styles.authHeroText}>{profile.lastName}</Text>
+        <Text style={styles.authInputLabel}>Provincia</Text>
+        <Text style={styles.authHeroText}>{profile.province}</Text>
+        <Text style={styles.authInputLabel}>Contacto</Text>
+        <Text style={styles.authHeroText}>{profile.contact}</Text>
+        <Text style={styles.authInputLabel}>Comunidad</Text>
+        <Text style={styles.authHeroText}>{profile.community}</Text>
+        <TouchableOpacity style={styles.authPrimaryButton} onPress={requestAdminHelp} activeOpacity={0.86}>
+          <Text style={styles.authPrimaryText}>En caso de no poder confirmar el mail, contactar con un dirigente</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.authGhostButton} onPress={onBackToLogin} activeOpacity={0.86}>
+          <Text style={styles.authGhostText}>Volver al inicio de sesión</Text>
+        </TouchableOpacity>
+        {message ? <Text style={styles.authMessage}>{message}</Text> : null}
+      </View>
+    </ScrollView>
+  );
+}
+
+function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPendingRegistration }: { message: string; onMessage: (message: string) => void; onBackToLogin: () => void; onRegistered: (email: string) => Promise<void>; onPendingRegistration: (profile: PendingRegistrationProfile) => void }) {
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<RegisterDraft>({
     firstName: '',
@@ -2213,7 +2270,11 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered }: { m
       await onRegistered(draft.email.trim());
       return;
     }
-    onMessage('Registro creado como Palestrista pendiente. Confirmá el mail o esperá la habilitación dirigencial.');
+    onPendingRegistration({
+      ...draft,
+      userId: data.user.id,
+      fullName
+    });
   }
 
   return (
@@ -3738,7 +3799,9 @@ function CommunitiesScreen({ session, title, content, refreshKey, editor }: { se
   const community = province?.locations.find((item) => item.name === selectedCommunity);
 
   function openCommunityLocation(location: AppCommunity['locations'][number]) {
-    const query = `${location.address}, ${province?.province ?? ''}, Argentina`;
+    const query = location.latitude != null && location.longitude != null
+      ? `${location.latitude},${location.longitude}`
+      : `${location.address}, ${province?.province ?? ''}, Argentina`;
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
   }
 
@@ -4663,6 +4726,7 @@ function ProfileScreen({
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [userRequestText, setUserRequestText] = useState('');
   const [selectedSentRequestId, setSelectedSentRequestId] = useState('');
+  const [showSentRequests, setShowSentRequests] = useState(false);
   const [profilePanel, setProfilePanel] = useState<ProfilePanel>(initialPanel);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -4746,6 +4810,9 @@ function ProfileScreen({
   const [adminNewsDraft, setAdminNewsDraft] = useState(false);
   const [adminNewsFeatured, setAdminNewsFeatured] = useState(false);
   const [adminNewsNotify, setAdminNewsNotify] = useState(false);
+  const [adminNewsScope, setAdminNewsScope] = useState<'nacional' | 'provincial'>('provincial');
+  const [adminNewsProvince, setAdminNewsProvince] = useState('');
+  const [adminNewsProvinceDropdownOpen, setAdminNewsProvinceDropdownOpen] = useState(false);
   const [newsDrafts, setNewsDrafts] = useState<NewsDraftRecord[]>([]);
   const [adminMaterials, setAdminMaterials] = useState<AppMaterialRecord[]>([]);
   const [materialTitle, setMaterialTitle] = useState('');
@@ -4795,6 +4862,8 @@ function ProfileScreen({
   const [adminCommunityImagePreview, setAdminCommunityImagePreview] = useState('');
   const [adminCommunityImageAsset, setAdminCommunityImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [adminCommunityImageUploading, setAdminCommunityImageUploading] = useState(false);
+  const [adminCommunityLatitude, setAdminCommunityLatitude] = useState('');
+  const [adminCommunityLongitude, setAdminCommunityLongitude] = useState('');
   const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
   const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
   const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; isVisible: boolean; visibleRoles: string[] | null }>>({});
@@ -4880,6 +4949,12 @@ function ProfileScreen({
     .filter((province) => province.locations.length > 0), [registrationCommunities, session?.province, session?.role, session?.communityOfOrigin]);
   const motivadorProvinceOptions = useMemo(() => {
     if (session?.role === 'administrador') {
+      return registrationCommunities.map((item) => item.province);
+    }
+    return session?.province ? [session.province] : [];
+  }, [registrationCommunities, session?.province, session?.role]);
+  const newsProvinceOptions = useMemo(() => {
+    if (['vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session?.role ?? 'invitado')) {
       return registrationCommunities.map((item) => item.province);
     }
     return session?.province ? [session.province] : [];
@@ -5043,6 +5118,12 @@ function ProfileScreen({
     if (item.key === 'usuarios') {
       return canManageUsers;
     }
+    if (item.key === 'home') {
+      return session?.role === 'administrador';
+    }
+    if (item.key === 'noticias') {
+      return canManageNewsContent(session);
+    }
     if (hasPermission(session, 'gestionar_sistema')) {
       return true;
     }
@@ -5051,9 +5132,6 @@ function ProfileScreen({
     }
     if (item.key === 'periodo_motivador') {
       return canManageMotivadorPanel(session);
-    }
-    if (canManagePublishedContent(session) && ['home', 'noticias'].includes(item.key)) {
-      return true;
     }
     if (canAdministrateCommunities && item.key === 'comunidades') {
       return true;
@@ -5418,6 +5496,22 @@ function ProfileScreen({
   }, [adminModule, session?.role, session?.province, motivadorProvinceOptions.length]);
 
   useEffect(() => {
+    if (!canManageNewsContent(session)) {
+      setAdminNewsScope('provincial');
+      setAdminNewsProvince('');
+      return;
+    }
+    if (session && ['vocal', 'coordinador_diocesano'].includes(session.role)) {
+      setAdminNewsScope('provincial');
+      setAdminNewsProvince(session.province);
+      return;
+    }
+    if (!adminNewsProvince && newsProvinceOptions.length > 0) {
+      setAdminNewsProvince(newsProvinceOptions[0]);
+    }
+  }, [session?.role, session?.province, newsProvinceOptions.length]);
+
+  useEffect(() => {
     if (adminModule === 'etiquetas_roles' && session?.role === 'administrador') {
       loadProvinceRoleLabels();
     }
@@ -5447,6 +5541,8 @@ function ProfileScreen({
       setAdminCommunityImageUrl('');
       setAdminCommunityImagePreview('');
       setAdminCommunityImageAsset(null);
+      setAdminCommunityLatitude('');
+      setAdminCommunityLongitude('');
       return;
     }
 
@@ -5459,6 +5555,8 @@ function ProfileScreen({
     setAdminCommunityImageUrl(selectedAdminCommunity.imageUrl ?? '');
     setAdminCommunityImagePreview(selectedAdminCommunity.imageUrl ?? '');
     setAdminCommunityImageAsset(null);
+    setAdminCommunityLatitude(selectedAdminCommunity.latitude != null ? String(selectedAdminCommunity.latitude) : '');
+    setAdminCommunityLongitude(selectedAdminCommunity.longitude != null ? String(selectedAdminCommunity.longitude) : '');
     setAdminCommunityGroupType(selectedAdminCommunity.group ?? 'jovenes');
     setAdminCommunityIsActive(true);
   }, [selectedAdminCommunity]);
@@ -6305,22 +6403,33 @@ function ProfileScreen({
   }
 
   async function adminCreateNews() {
+    if (!canManageNewsContent(session)) {
+      setAuthMessage('Tu rango no puede publicar noticias.');
+      return;
+    }
     if (!adminNewsTitle.trim() || !adminNewsBody.trim()) {
       setAuthMessage('Completa titulo y texto antes de publicar la noticia.');
       return;
     }
+    const forcedProvincial = session && ['vocal', 'coordinador_diocesano'].includes(session.role);
+    const finalScope = forcedProvincial ? 'provincial' : adminNewsScope;
+    const finalProvince = finalScope === 'provincial' ? (forcedProvincial ? session?.province : adminNewsProvince) : null;
+    if (finalScope === 'provincial' && !finalProvince) {
+      setAuthMessage('Elegí provincia para publicar la noticia provincial.');
+      return;
+    }
 
     setAuthMessage('Publicando noticia...');
-    const { data: newsId, error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true);
-    const newsTargetKind = session && ['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? 'provincia' : 'nacional';
+    const { data: newsId, error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true, finalProvince);
+    const newsTargetKind = finalScope === 'provincial' ? 'provincia' : 'nacional';
     const notificationWarning = !error ? await queueNotificationIfRequested(adminNewsNotify, {
       notificationType: 'aviso_dirigencial',
       title: adminNewsTitle.trim(),
       body: adminNewsBody.trim(),
       targetKind: newsTargetKind,
-      targetValue: newsTargetKind === 'provincia' ? session?.province ?? null : null,
+      targetValue: newsTargetKind === 'provincia' ? finalProvince ?? null : null,
       targetScope: newsTargetKind,
-      province: newsTargetKind === 'provincia' ? session?.province ?? null : null,
+      province: newsTargetKind === 'provincia' ? finalProvince ?? null : null,
       minRole: 'palestrista',
       tabKey: 'notilestra',
       sourceType: 'news',
@@ -6334,6 +6443,7 @@ function ProfileScreen({
       setAdminNewsDraft(false);
       setAdminNewsFeatured(false);
       setAdminNewsNotify(false);
+      setAdminNewsScope(forcedProvincial ? 'provincial' : 'nacional');
       await onContentChanged();
     }
   }
@@ -6714,7 +6824,9 @@ function ProfileScreen({
       meeting_day: adminCommunityDay,
       meeting_time: adminCommunityTime,
       description: adminCommunityDescription,
-      image_url: imageUrl
+      image_url: imageUrl,
+      latitude: adminCommunityLatitude.trim() ? Number(adminCommunityLatitude) : null,
+      longitude: adminCommunityLongitude.trim() ? Number(adminCommunityLongitude) : null
     });
     if (error) {
       setAuthMessage(error.message);
@@ -6841,6 +6953,13 @@ function ProfileScreen({
     if (assignRole && !canApproveRole(session, assignRole)) {
       setAuthMessage(`Tu rango no puede aprobar el rol ${roleLabel(assignRole)}.`);
       return;
+    }
+    if (status === 'aprobada' && request?.title === 'Confirmacion de mail' && request.userId) {
+      const confirmation = await confirmAdminUserEmail(request.userId);
+      if (confirmation.error) {
+        setAuthMessage(confirmation.error.message);
+        return;
+      }
     }
     const { error } = await resolveUserRequest(id, status === 'denegada' ? 'rechazada' : status, adminRequestMessage || 'Sin mensaje del administrador', assignRole);
     if (!error) {
@@ -7243,6 +7362,61 @@ function ProfileScreen({
         genderPreference: remoteProfile.gender_preference ?? current.genderPreference
       };
     });
+  }
+
+  async function requestEmailConfirmationHelp() {
+    if (!session) {
+      return;
+    }
+    const { error } = await createEmailConfirmationRequest({
+      userId: session.id ?? '',
+      email: session.email ?? '',
+      fullName: session.fullName,
+      province: session.province,
+      communityName: session.communityOfOrigin,
+      contact: session.contact
+    });
+    setAuthMessage(error ? error.message : 'Mensaje enviado');
+    if (!error) {
+      await loadMyRequests();
+    }
+  }
+
+  if (session && session.status === 'pendiente' && !session.emailConfirmedAt) {
+    return (
+      <View style={styles.stack}>
+        <SectionTitle title="Perfil pendiente" />
+        <View style={[styles.profileShell, isDark && styles.surfacePanelDark]}>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mail pendiente de confirmacion</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{session.fullName}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Revisa tu correo para confirmar tu cuenta. Mientras tanto solo esta disponible esta vista limitada.</Text>
+          {authMessage ? <Text style={styles.authMessage}>{authMessage}</Text> : null}
+          <View style={styles.profileMetaGrid}>
+            {[
+              { label: 'Nombre', value: session.fullName.split(' ')[0] || session.fullName, icon: 'person-outline' },
+              { label: 'Apellido', value: session.fullName.split(' ').slice(1).join(' ') || 'Pendiente', icon: 'person-add-outline' },
+              { label: 'Provincia', value: session.province, icon: 'map-outline' },
+              { label: 'Contacto', value: session.contact, icon: 'chatbubble-ellipses-outline' },
+              { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' }
+            ].map((item) => (
+              <View key={item.label} style={[styles.profileMetaItem, isDark && styles.surfaceCardDark]}>
+                <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={17} color={palette.red} />
+                <View style={styles.profileMetaText}>
+                  <Text style={[styles.profileMetaLabel, isDark && styles.textDarkMuted]}>{item.label}</Text>
+                  <Text style={[styles.profileMetaValue, isDark && styles.textDarkStrong]}>{item.value}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity style={styles.primaryButton} onPress={requestEmailConfirmationHelp}>
+            <Text style={styles.primaryButtonText}>En caso de no poder confirmar el mail, contactar con un dirigente</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => onSessionChange(null)}>
+            <Text style={styles.secondaryButtonText}>Cerrar sesion</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -7891,7 +8065,22 @@ function ProfileScreen({
           ) : null}
           {profilePanel === 'vista' && session.role !== 'administrador' ? (
             <View style={styles.profileCommunityPanel}>
-              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Solicitudes enviadas</Text>
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={async () => {
+                  const next = !showSentRequests;
+                  setShowSentRequests(next);
+                  if (next) {
+                    await loadMyRequests();
+                  }
+                }}
+              >
+                <Ionicons name="mail-open-outline" size={18} color={palette.red} />
+                <Text style={styles.secondaryButtonText}>Solicitudes enviadas</Text>
+              </TouchableOpacity>
+              {showSentRequests ? (
+                <View style={styles.profileCommunityPanel}>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Historial de solicitudes</Text>
               {sentRequests.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Todavia no enviaste solicitudes.</Text> : null}
               {sentRequests.map((item) => (
                 <View key={item.id}>
@@ -7916,6 +8105,8 @@ function ProfileScreen({
                   ) : null}
                 </View>
               ))}
+            </View>
+          ) : null}
             </View>
           ) : null}
           {(hasPermission(session, 'gestionar_sistema') || canAdministrateCommunities || hasPermission(session, 'gestionar_contenido') || hasPermission(session, 'gestionar_permisos') || canReviewLeadershipRequests || isCommunityLeader) ? (
@@ -9210,7 +9401,7 @@ function ProfileScreen({
                       ) : null}
                       <View style={styles.inlineActions}>
                         <TouchableOpacity style={styles.primaryButton} onPress={() => resolveAdminRequest(item.id, 'aprobada')}>
-                          <Text style={styles.primaryButtonText}>Aprobar</Text>
+                          <Text style={styles.primaryButtonText}>{item.title === 'Confirmacion de mail' ? 'Confirmar mail' : 'Aprobar'}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.secondaryButton} onPress={() => resolveAdminRequest(item.id, 'denegada')}>
                           <Text style={styles.secondaryButtonText}>Denegar</Text>
@@ -9239,8 +9430,43 @@ function ProfileScreen({
               {adminModule === 'noticias' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Noticias</Text>
-                  <Text style={styles.cardText}>Crear noticias generales, preparar borradores y marcar publicaciones destacadas.</Text>
-                  <Text style={styles.cardEyebrow}>Categoria: General</Text>
+                  <Text style={styles.cardText}>Crear noticias segun tu alcance real. Asesores y rangos comunitarios no pueden publicar.</Text>
+                  <Text style={styles.cardEyebrow}>Alcance</Text>
+                  {['vocal', 'coordinador_diocesano'].includes(session?.role ?? 'invitado') ? (
+                    <Text style={styles.cardText}>Noticia Provincial - {session?.province}</Text>
+                  ) : (
+                    <View style={styles.filterRow}>
+                      {(['nacional', 'provincial'] as const).map((scope) => (
+                        <TouchableOpacity key={scope} style={[styles.filterChip, adminNewsScope === scope && styles.filterChipActive]} onPress={() => setAdminNewsScope(scope)}>
+                          <Text style={[styles.filterChipText, adminNewsScope === scope && styles.filterChipTextActive]}>{scope === 'nacional' ? 'Noticia Nacional' : 'Noticia Provincial'}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  {adminNewsScope === 'provincial' || ['vocal', 'coordinador_diocesano'].includes(session?.role ?? 'invitado') ? (
+                    <View>
+                      <Text style={styles.cardEyebrow}>Provincia</Text>
+                      {['vocal', 'coordinador_diocesano'].includes(session?.role ?? 'invitado') ? (
+                        <Text style={styles.cardText}>{session?.province}</Text>
+                      ) : (
+                        <>
+                          <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminNewsProvinceDropdownOpen(!adminNewsProvinceDropdownOpen)}>
+                            <Text style={styles.dropdownButtonText}>{adminNewsProvince || 'Seleccionar provincia'}</Text>
+                            <Ionicons name={adminNewsProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                          </TouchableOpacity>
+                          {adminNewsProvinceDropdownOpen ? (
+                            <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                              {newsProvinceOptions.map((province) => (
+                                <TouchableOpacity key={province} style={styles.dropdownItem} onPress={() => { setAdminNewsProvince(province); setAdminNewsProvinceDropdownOpen(false); }}>
+                                  <Text style={styles.dropdownItemText}>{province}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          ) : null}
+                        </>
+                      )}
+                    </View>
+                  ) : null}
                   <TextInput style={styles.input} placeholder="Titulo de la noticia" value={adminNewsTitle} onChangeText={setAdminNewsTitle}  placeholderTextColor={inputPlaceholderColor} />
                   <TextInput style={styles.input} placeholder="Bajada o resumen breve" value={adminNewsImage} onChangeText={setAdminNewsImage}  placeholderTextColor={inputPlaceholderColor} />
                   <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo de la noticia" value={adminNewsBody} onChangeText={setAdminNewsBody} multiline  placeholderTextColor={inputPlaceholderColor} />
@@ -9405,6 +9631,38 @@ function ProfileScreen({
                                 <View style={styles.adminInlineEditor}>
                                   <TextInput style={styles.input} placeholder="Nombre" value={adminCommunityName} onChangeText={setAdminCommunityName}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={styles.input} placeholder="Dirección" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
+                                  <View style={styles.profileCommunityPanel}>
+                                    <Text style={styles.cardEyebrow}>Mapa y pin de ubicación</Text>
+                                    <Text style={styles.cardText}>Ajustá las coordenadas finales del pin. Los usuarios comunes seguirán abriendo Maps con el botón Ubicación.</Text>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityAddress}, ${adminCommunityProvince}, Argentina`)}`)}>
+                                      <Ionicons name="map-outline" size={17} color={palette.red} />
+                                      <Text style={styles.secondaryButtonText}>Ver dirección estimada</Text>
+                                    </TouchableOpacity>
+                                    <View style={styles.inlineActions}>
+                                      <TextInput style={[styles.input, styles.coordInput]} placeholder="Latitud" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
+                                      <TextInput style={[styles.input, styles.coordInput]} placeholder="Longitud" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
+                                    </View>
+                                    <View style={styles.inlineActions}>
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminCommunityLatitude((value) => String((Number(value || '0') + 0.0005).toFixed(6)))}>
+                                        <Text style={styles.secondaryButtonText}>Pin norte</Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminCommunityLatitude((value) => String((Number(value || '0') - 0.0005).toFixed(6)))}>
+                                        <Text style={styles.secondaryButtonText}>Pin sur</Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminCommunityLongitude((value) => String((Number(value || '0') - 0.0005).toFixed(6)))}>
+                                        <Text style={styles.secondaryButtonText}>Oeste</Text>
+                                      </TouchableOpacity>
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminCommunityLongitude((value) => String((Number(value || '0') + 0.0005).toFixed(6)))}>
+                                        <Text style={styles.secondaryButtonText}>Este</Text>
+                                      </TouchableOpacity>
+                                    </View>
+                                    {adminCommunityLatitude && adminCommunityLongitude ? (
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityLatitude},${adminCommunityLongitude}`)}`)}>
+                                        <Ionicons name="navigate-outline" size={17} color={palette.red} />
+                                        <Text style={styles.secondaryButtonText}>Previsualizar pin final</Text>
+                                      </TouchableOpacity>
+                                    ) : null}
+                                  </View>
                                   <TextInput style={styles.input} placeholder="Numero de contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={styles.input} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
@@ -12730,6 +12988,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: palette.ink,
     backgroundColor: palette.white
+  },
+  coordInput: {
+    flex: 1,
+    minWidth: 130
   },
   inputDark: {
     backgroundColor: '#33383B',

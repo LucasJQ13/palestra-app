@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 type MyProfileRow = {
   user_id: string;
   email: string | null;
+  email_confirmed_at?: string | null;
   full_name: string | null;
   avatar_url: string | null;
   phone: string | null;
@@ -38,6 +39,7 @@ export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ 
       id: row.user_id,
       fullName: row.full_name ?? row.email ?? fallbackEmail,
       email: row.email ?? fallbackEmail,
+      emailConfirmedAt: row.email_confirmed_at ?? null,
       avatarUrl: row.avatar_url,
       province: row.province ?? 'Sin provincia',
       contact: row.phone ?? 'Sin contacto',

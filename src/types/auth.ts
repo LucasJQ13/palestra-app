@@ -43,6 +43,7 @@ export type Session = {
   id?: string;
   fullName: string;
   email?: string;
+  emailConfirmedAt?: string | null;
   avatarUrl?: string | null;
   province: string;
   contact: string;

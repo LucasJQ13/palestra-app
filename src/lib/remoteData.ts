@@ -1,5 +1,4 @@
-import { communities as fallbackCommunities } from '../data/content';
-import { news as fallbackNews, notilestra as fallbackNotilestra } from '../data/content';
+import { communities as fallbackCommunities, notilestra as fallbackNotilestra } from '../data/content';
 import { Session } from '../types/auth';
 import { canAccessProvince, roleRank } from './roles';
 import { supabase } from './supabase';
@@ -14,6 +13,8 @@ type RemoteCommunityRow = {
   meeting_time: string | null;
   description: string | null;
   image_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
   is_active?: boolean | null;
   archived_at?: string | null;
   provinces: {
@@ -22,7 +23,13 @@ type RemoteCommunityRow = {
   } | null;
 };
 
-export type AppCommunity = (typeof fallbackCommunities)[number];
+export type AppCommunityLocation = (typeof fallbackCommunities)[number]['locations'][number] & {
+  latitude?: number | null;
+  longitude?: number | null;
+};
+export type AppCommunity = Omit<(typeof fallbackCommunities)[number], 'locations'> & {
+  locations: AppCommunityLocation[];
+};
 export type RemoteAgendaItem = {
   id?: string;
   source?: 'event' | 'motivador';
@@ -54,16 +61,16 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
   try {
     result = await supabase
       .from('communities')
-      .select('id, name, group_type, address, phone, meeting_day, meeting_time, description, image_url, is_active, archived_at, provinces(name, region)')
+      .select('id, name, group_type, address, phone, meeting_day, meeting_time, description, image_url, latitude, longitude, is_active, archived_at, provinces(name, region)')
       .is('archived_at', null)
       .order('name');
   } catch {
-    return fallbackCommunities;
+    return [];
   }
   const { data, error } = result;
 
   if (error || !data) {
-    return fallbackCommunities;
+    return [];
   }
 
   const grouped = new Map<string, AppCommunity>();
@@ -88,6 +95,8 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
       description: row.description ?? 'Descripcion pendiente.',
       imageUrl: row.image_url ?? 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png',
       group: row.group_type,
+      latitude: row.latitude ?? null,
+      longitude: row.longitude ?? null,
       isActive: row.is_active ?? true
     });
 
@@ -108,12 +117,12 @@ export async function fetchNews(session?: Session | null) {
       .order('created_at', { ascending: false })
       .limit(20);
   } catch {
-    return fallbackNews;
+    return [];
   }
   const { data, error } = result;
 
   if (error || !data || data.length === 0) {
-    return fallbackNews;
+    return [];
   }
 
   return data
@@ -121,7 +130,7 @@ export async function fetchNews(session?: Session | null) {
     .map((item: any) => ({
     id: item.id,
     source: 'news' as const,
-    scope: item.provinces?.name ? `${item.is_public ? 'Publico' : 'Interno'} - ${item.provinces.name}` : item.is_public ? 'Publico nacional' : 'Interno nacional',
+    scope: item.provinces?.name ? 'Noticia Provincial' : 'Noticia Nacional',
     title: item.title,
     body: item.body,
     province: item.provinces?.name ?? 'Nacional',
