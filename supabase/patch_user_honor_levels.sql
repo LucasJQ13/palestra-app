@@ -71,7 +71,7 @@ as $$
   ),
   years_data as (
     select
-      role,
+      role::text as role_key,
       greatest(0, date_part('year', age(current_date, started_on))::integer) as years,
       honor_level_id
     from profile_data
@@ -89,7 +89,7 @@ as $$
       (
         select candidate.id
         from public.honor_level_definitions candidate
-        where candidate.role_key = years_data.role
+        where candidate.role_key = years_data.role_key
           and candidate.is_active = true
           and candidate.min_years <= years_data.years
         order by candidate.min_years desc, candidate.sort_order asc
