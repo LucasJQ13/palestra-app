@@ -20,6 +20,9 @@ import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveFo
 import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermission, fetchLibraryItems, saveLibraryItem } from './src/lib/library';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
 import { ExternalCatholicNewsItem, fetchExternalCatholicNews } from './src/lib/externalNews';
+import { ExternalNewsCarousel } from './src/components/ExternalNewsCarousel';
+import { AppRuntimeConfig, defaultRuntimeConfig, fetchAppRuntimeConfig } from './src/lib/runtimeConfig';
+import { UserHonorLevel, fetchUserHonorLevel } from './src/lib/honorLevels';
 
 const palestraLogo = require('./assets/logo-palestra.png');
 const AppThemeContext = React.createContext<AppTheme>(themePresets.default);
@@ -47,7 +50,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.30';
+const appBetaVersion = '0.1.31';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const authDeepLinkBaseUrl = 'palestra://auth/callback';
@@ -976,6 +979,7 @@ export default function App() {
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
   const [contentLoaded, setContentLoaded] = useState(false);
   const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
+  const [runtimeConfig, setRuntimeConfig] = useState<AppRuntimeConfig>(defaultRuntimeConfig);
   const [authConfirmationOpen, setAuthConfirmationOpen] = useState(false);
   const [contentVersion, setContentVersion] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -1280,6 +1284,10 @@ export default function App() {
     }
   }
 
+  async function reloadRuntimeConfig() {
+    setRuntimeConfig(await fetchAppRuntimeConfig());
+  }
+
   async function refreshPublishedContent() {
     await reloadAppContent();
     setContentVersion((current) => current + 1);
@@ -1336,6 +1344,7 @@ export default function App() {
         reloadTabSettings(),
         reloadAppContent(),
         reloadAdminConfig(),
+        reloadRuntimeConfig(),
         hydrateRealSession()
       ]);
       setContentVersion((current) => current + 1);
@@ -1580,6 +1589,7 @@ export default function App() {
     reloadTabSettings();
     reloadAppContent();
     reloadAdminConfig();
+    reloadRuntimeConfig();
 
     async function handleInitialUrl() {
       const url = await Linking.getInitialURL();
@@ -1698,7 +1708,7 @@ export default function App() {
       return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={navigateToTab} adminConfig={adminConfig} />;
     }
     if (activeTab === 'notilestra') {
-      return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} editor={pageEditorProps('notilestra')} adminConfig={adminConfig} />;
+      return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} editor={pageEditorProps('notilestra')} adminConfig={adminConfig} runtimeConfig={runtimeConfig} />;
     }
     if (activeTab === 'materiales') {
       return <MaterialsScreen session={session} title={tabLabel('materiales')} content={appContent.find((item) => item.tab_key === 'materiales')} refreshKey={contentVersion} editor={pageEditorProps('materiales')} />;
@@ -1730,8 +1740,8 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <DynamicNavigationSectionScreen session={session} tab={resolvedTabs.find((tab) => tab.key === activeTab)} title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} refreshKey={contentVersion} onNavigate={navigateToTab} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} initialPublicProfile={globalSearchProfile} onInitialPublicProfileHandled={() => setGlobalSearchProfile(null)} />;
-  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel, globalSearchProfile]);
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} runtimeConfig={runtimeConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} initialPublicProfile={globalSearchProfile} onInitialPublicProfileHandled={() => setGlobalSearchProfile(null)} />;
+  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, runtimeConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel, globalSearchProfile]);
 
   return (
     <SafeAreaProvider>
@@ -1792,6 +1802,12 @@ export default function App() {
           />
         ) : null}
         <StatusBar barStyle={isDarkTheme ? 'light-content' : 'dark-content'} />
+        {runtimeConfig.maintenanceMode || runtimeConfig.globalMessage ? (
+          <View style={[styles.runtimeBanner, runtimeConfig.maintenanceMode && styles.runtimeBannerWarning]}>
+            <Ionicons name={runtimeConfig.maintenanceMode ? 'warning-outline' : 'information-circle-outline'} size={17} color={palette.white} />
+            <Text style={styles.runtimeBannerText}>{runtimeConfig.maintenanceMode ? 'Modo mantenimiento activo.' : runtimeConfig.globalMessage}</Text>
+          </View>
+        ) : null}
         <View style={[styles.header, isDarkTheme && styles.headerDark]}>
           <TouchableOpacity style={styles.brandBlock} onPress={() => navigateToTab('inicio')} activeOpacity={0.85}>
             <View style={styles.brandLogo}>
@@ -2917,9 +2933,6 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
     { module: 'comunidades', label: 'Comunidades', value: String(homeCommunities.reduce((total, item) => total + item.locations.length, 0)), icon: 'people-circle-outline' as keyof typeof Ionicons.glyphMap },
     { module: 'materiales', label: 'Materiales', value: String(homeMaterials.length), icon: 'library-outline' as keyof typeof Ionicons.glyphMap }
   ].filter((item) => homeModuleEnabled(item.module));
-  const nextEvents = notilestra
-    .filter((item) => !hiddenFallbackContent.includes(fallbackContentKey('notilestra', item.title, item.date)))
-    .slice(0, 2);
   const visibleHomeNews = homeNews.filter((item) => isRemoteNewsItem(item) || !hiddenFallbackContent.includes(fallbackContentKey('home', item.title)));
 
   useEffect(() => {
@@ -3047,7 +3060,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             <Text style={styles.linkText}>Ver todas</Text>
           </TouchableOpacity>
         </View>
-        {(communityAgenda.length > 0 ? communityAgenda.slice(0, 3) : nextEvents).map((item, index) => (
+        {communityAgenda.slice(0, 3).map((item, index) => (
           <View key={`${item.title}-${index}`} style={[styles.miniEventRow, isDark && styles.surfaceRowDark]}>
             <View style={styles.miniEventDate}>
               <Text style={styles.miniEventDay}>{new Date(`${'date' in item ? item.date : item.eventDate}T00:00:00`).getDate()}</Text>
@@ -3059,6 +3072,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             </View>
           </View>
         ))}
+        {communityAgenda.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay fechas comunitarias cargadas en Supabase.</Text> : null}
       </View> : null}
 
       {homeModuleEnabled('noticias') ? <SectionTitle title="Info Palestrista" /> : null}
@@ -3127,7 +3141,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
   );
 }
 
-function NotilestraScreen({ session, title, content, refreshKey, editor, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; adminConfig: AppAdminConfig }) {
+function NotilestraScreen({ session, title, content, refreshKey, editor, adminConfig, runtimeConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; adminConfig: AppAdminConfig; runtimeConfig: AppRuntimeConfig }) {
   const isDark = useIsDarkTheme();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [selectedCalendarItems, setSelectedCalendarItems] = useState<Array<{ date: string; title: string; body?: string; imageUrl?: string; scope?: string; mapUrl?: string }>>([]);
@@ -3136,7 +3150,8 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
   const [subtab, setSubtab] = useState<'noticias' | 'favoritos' | 'recordatorios'>('noticias');
   const [notilestraItems, setNotilestraItems] = useState<AgendaItem[]>(notilestra);
   const [externalNews, setExternalNews] = useState<ExternalCatholicNewsItem[]>([]);
-  const [externalNewsIndex, setExternalNewsIndex] = useState(0);
+  const [externalNewsLoading, setExternalNewsLoading] = useState(false);
+  const [externalNewsError, setExternalNewsError] = useState<string | null>(null);
   const [notilestraRefreshKey, setNotilestraRefreshKey] = useState(0);
   const [notilestraEditId, setNotilestraEditId] = useState<string | null>(null);
   const [notilestraEditTitle, setNotilestraEditTitle] = useState('');
@@ -3157,16 +3172,36 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
         setNotilestraItems([...items, ...pmItems].sort((a, b) => Date.parse(a.date) - Date.parse(b.date)));
       }
     });
-    fetchExternalCatholicNews().then((items) => {
-      if (alive) {
-        setExternalNews(items);
-        setExternalNewsIndex(0);
-      }
-    });
+    if (runtimeConfig.featureFlags.externalCatholicNews !== false) {
+      setExternalNewsLoading(true);
+      setExternalNewsError(null);
+      fetchExternalCatholicNews()
+        .then((items) => {
+          if (alive) {
+            setExternalNews(items);
+            setExternalNewsError(items.length === 0 ? 'No pudimos cargar noticias externas en este momento.' : null);
+          }
+        })
+        .catch(() => {
+          if (alive) {
+            setExternalNews([]);
+            setExternalNewsError('No pudimos cargar noticias externas en este momento.');
+          }
+        })
+        .finally(() => {
+          if (alive) {
+            setExternalNewsLoading(false);
+          }
+        });
+    } else {
+      setExternalNews([]);
+      setExternalNewsError(null);
+      setExternalNewsLoading(false);
+    }
     return () => {
       alive = false;
     };
-  }, [refreshKey, notilestraRefreshKey, session?.province, session?.role]);
+  }, [refreshKey, notilestraRefreshKey, session?.province, session?.role, runtimeConfig.featureFlags.externalCatholicNews]);
 
   useEffect(() => {
     let alive = true;
@@ -3241,7 +3276,6 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
     tomorrow.setDate(tomorrow.getDate() + 1);
     return eventDate.toDateString() === tomorrow.toDateString();
   });
-  const activeExternalNews = externalNews[externalNewsIndex];
   const [dismissedReminderPopup, setDismissedReminderPopup] = useState(false);
 
   function openCalendarDay(day: number) {
@@ -3394,27 +3428,8 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
           </TouchableOpacity>
         ))}
       </View>
-      {subtab === 'noticias' && activeExternalNews ? (
-        <View style={[styles.externalNewsCard, isDark && styles.surfacePanelDark]}>
-          <View style={styles.externalNewsHeader}>
-            <View>
-              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Noticias catolicas externas</Text>
-              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{activeExternalNews.source}</Text>
-            </View>
-            <View style={styles.externalNewsControls}>
-              {externalNews.map((item, index) => (
-                <TouchableOpacity key={item.id} style={[styles.externalNewsDot, index === externalNewsIndex && styles.externalNewsDotActive]} onPress={() => setExternalNewsIndex(index)} />
-              ))}
-            </View>
-          </View>
-          {activeExternalNews.imageUrl ? <Image source={{ uri: activeExternalNews.imageUrl }} style={styles.externalNewsImage} /> : null}
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]} numberOfLines={2}>{activeExternalNews.title}</Text>
-          {activeExternalNews.publishedAt ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{activeExternalNews.publishedAt}</Text> : null}
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(activeExternalNews.link)} activeOpacity={0.85}>
-            <Ionicons name="open-outline" size={17} color={palette.red} />
-            <Text style={styles.secondaryButtonText}>Leer en la fuente</Text>
-          </TouchableOpacity>
-        </View>
+      {subtab === 'noticias' && runtimeConfig.featureFlags.externalCatholicNews !== false ? (
+        <ExternalNewsCarousel items={externalNews} loading={externalNewsLoading} error={externalNewsError} dark={isDark} />
       ) : null}
       <View style={[styles.calendarCard, isDark && styles.surfacePanelDark]}>
         <View style={styles.calendarHeader}>
@@ -3657,13 +3672,10 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       createdBy: material.created_by,
       provinceId: material.province_id,
       sortOrder: material.sort_order
-    })).filter((material) => canDownloadMaterial(material))
+    })).filter((material) => canViewMaterial(material))
     : [];
 
-  function canDownloadMaterial(material: { visibility?: string | null; permission?: Permission | string | null; fileUrl?: string | null; filePath?: string | null }) {
-    if (!material.fileUrl && !material.filePath) {
-      return false;
-    }
+  function canViewMaterial(material: { visibility?: string | null; permission?: Permission | string | null }) {
     if (material.visibility === 'publico') {
       return true;
     }
@@ -3678,6 +3690,10 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       return roleRank(session.role) >= roleRank(selectedRole);
     }
     return !material.permission || hasPermission(session, material.permission as Permission);
+  }
+
+  function canDownloadMaterial(material: { fileUrl?: string | null; filePath?: string | null }) {
+    return Boolean(material.fileUrl || material.filePath);
   }
 
   function canManageMaterial(material: { createdBy?: string | null }) {
@@ -3868,7 +3884,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
         </View>
       ) : null}
       {visibleMaterials.map((material, index) => {
-        const locked = !canDownloadMaterial(material);
+        const locked = !canViewMaterial(material);
         const canEditThisMaterial = 'id' in material && canManageMaterial(material);
         const isEditingThisMaterial = 'id' in material && editingMaterialId === material.id;
         return (
@@ -3917,10 +3933,10 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{material.title}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
                   {locked ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Requiere permiso: {material.permission}</Text> : null}
-                  {!locked && 'fileUrl' in material && (material.fileUrl || material.filePath) ? (
+                  {!locked ? (
                     <TouchableOpacity style={styles.secondaryButton} onPress={() => openMaterialFile(material)}>
                       <Ionicons name="download-outline" size={16} color={palette.red} />
-                      <Text style={styles.secondaryButtonText}>Descargar documento</Text>
+                      <Text style={styles.secondaryButtonText}>{canDownloadMaterial(material) ? 'Descargar documento' : 'Archivo no disponible'}</Text>
                     </TouchableOpacity>
                   ) : null}
                   {canEditThisMaterial ? (
@@ -5003,6 +5019,7 @@ function ProfileScreen({
   tabs,
   appContent,
   adminConfig,
+  runtimeConfig,
   touchPointerEnabled,
   onTouchPointerEnabledChange,
   themeName,
@@ -5024,6 +5041,7 @@ function ProfileScreen({
   tabs: AppTabDisplay[];
   appContent: AppContentBlock[];
   adminConfig: AppAdminConfig;
+  runtimeConfig: AppRuntimeConfig;
   touchPointerEnabled: boolean;
   onTouchPointerEnabledChange: (value: boolean) => void;
   themeName: ThemeName;
@@ -5049,6 +5067,7 @@ function ProfileScreen({
   const [selectedSentRequestId, setSelectedSentRequestId] = useState('');
   const [showSentRequests, setShowSentRequests] = useState(false);
   const [profilePanel, setProfilePanel] = useState<ProfilePanel>(initialPanel);
+  const [honorLevel, setHonorLevel] = useState<UserHonorLevel | null>(null);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -5489,6 +5508,24 @@ function ProfileScreen({
   useEffect(() => {
     setAdminConfigDraft(adminConfig);
   }, [adminConfig]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!session?.id || runtimeConfig.featureFlags.honorLevels === false) {
+      setHonorLevel(null);
+      return () => {
+        alive = false;
+      };
+    }
+    fetchUserHonorLevel(session.id).then((level) => {
+      if (alive) {
+        setHonorLevel(level);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [session?.id, runtimeConfig.featureFlags.honorLevels]);
 
   useEffect(() => {
     let alive = true;
@@ -7867,6 +7904,7 @@ function ProfileScreen({
               </View>
               {session.email ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.email}</Text> : null}
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
+              {honorLevel ? <Text style={[styles.profileHonorText, isDark && styles.textDarkAccent]}>{honorLevel.displayName} · {honorLevel.perseveranceYears} años</Text> : null}
               <TouchableOpacity style={[styles.photoChangeButton, isDark && styles.darkSoftButton]} onPress={uploadProfilePhoto}>
                 <Ionicons name="camera-outline" size={16} color={palette.red} />
                 <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
@@ -7877,6 +7915,7 @@ function ProfileScreen({
             {[
               { label: 'Provincia', value: session.province, icon: 'map-outline' },
               { label: 'Rango', value: displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference), icon: 'ribbon-outline' },
+              ...(honorLevel ? [{ label: 'Nivel', value: honorLevel.displayName, icon: 'sparkles-outline' }] : []),
               { label: 'Contacto', value: session.contact, icon: 'chatbubble-ellipses-outline' },
               { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' }
             ].map((item) => (
@@ -8389,6 +8428,7 @@ function ProfileScreen({
               <View style={styles.adminUserHeaderText}>
                 <Text style={[styles.credentialName, isDark && styles.textDarkStrong]}>{session.fullName}</Text>
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
+                {honorLevel ? <Text style={[styles.cardText, isDark && styles.textDarkAccent]}>{honorLevel.displayName}</Text> : null}
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.communityOfOrigin}, {session.province}</Text>
               </View>
             </View>
@@ -11089,6 +11129,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: themePresets.dark.colors.border
   },
+  runtimeBanner: {
+    backgroundColor: palette.red,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  runtimeBannerWarning: {
+    backgroundColor: '#9D3B31'
+  },
+  runtimeBannerText: {
+    color: palette.white,
+    fontSize: 13,
+    fontWeight: '900',
+    flex: 1
+  },
   brandBlock: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -12933,6 +12990,11 @@ const styles = StyleSheet.create({
     color: palette.ink,
     fontSize: 13,
     fontWeight: '800'
+  },
+  profileHonorText: {
+    color: palette.red,
+    fontSize: 13,
+    fontWeight: '900'
   },
   digitalCredential: {
     flexDirection: 'row',

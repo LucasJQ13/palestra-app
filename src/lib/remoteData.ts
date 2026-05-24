@@ -1,4 +1,4 @@
-import { communities as fallbackCommunities, notilestra as fallbackNotilestra } from '../data/content';
+import { communities as fallbackCommunities } from '../data/content';
 import { Session } from '../types/auth';
 import { canAccessProvince, roleRank } from './roles';
 import { supabase } from './supabase';
@@ -452,12 +452,12 @@ export async function fetchNotilestra(session?: Session | null) {
       .order('starts_at', { ascending: true })
       .limit(30);
   } catch {
-    return fallbackNotilestra;
+    return [];
   }
   const { data, error } = result;
 
   if (error || !data || data.length === 0) {
-    return fallbackNotilestra;
+    return [];
   }
 
   return data
