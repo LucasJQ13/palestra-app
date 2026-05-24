@@ -21,7 +21,7 @@ import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermiss
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
 import { ExternalCatholicNewsItem, fetchExternalCatholicNews } from './src/lib/externalNews';
 import { ExternalNewsCarousel } from './src/components/ExternalNewsCarousel';
-import { AppRuntimeConfig, defaultRuntimeConfig, fetchAppRuntimeConfig } from './src/lib/runtimeConfig';
+import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
 import { UserHonorLevel, fetchUserHonorLevel } from './src/lib/honorLevels';
 
 const palestraLogo = require('./assets/logo-palestra.png');
@@ -50,7 +50,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.31';
+const appBetaVersion = '0.1.32';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const authDeepLinkBaseUrl = 'palestra://auth/callback';
@@ -59,6 +59,7 @@ const authPasswordResetUrl = `${authDeepLinkBaseUrl}?flow=password-reset`;
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
 const themePreferenceKey = 'palestra.themePreference';
 const pushDeviceIdKey = 'palestra.push.deviceId';
+const localReminderNotificationKey = 'palestra.localReminderNotifications';
 const inputPlaceholderColor = '#5E8396';
 const officialInstagramUrl = 'https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA==';
 const easProjectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? 'sin-project-id';
@@ -661,6 +662,99 @@ function splitAgendaPreferences(records: UserAgendaPreferenceRecord[]) {
     favorites: records.filter((item) => item.preference_type === 'favorite').map((item) => item.item_key),
     reminders: records.filter((item) => item.preference_type === 'reminder').map((item) => item.item_key)
   };
+}
+
+function reminderNotificationStorageKey(session: Session | null) {
+  return `${localReminderNotificationKey}.${session?.id ?? session?.email ?? 'guest'}`;
+}
+
+function reminderTriggerDate(item: AgendaItem) {
+  const eventDate = new Date(`${item.date}T09:00:00`);
+  if (Number.isNaN(eventDate.getTime())) {
+    return null;
+  }
+  return eventDate;
+}
+
+async function readReminderNotificationMap(session: Session | null): Promise<Record<string, string>> {
+  try {
+    const raw = await AsyncStorage.getItem(reminderNotificationStorageKey(session));
+    return raw ? JSON.parse(raw) as Record<string, string> : {};
+  } catch {
+    return {};
+  }
+}
+
+async function writeReminderNotificationMap(session: Session | null, values: Record<string, string>) {
+  await AsyncStorage.setItem(reminderNotificationStorageKey(session), JSON.stringify(values));
+}
+
+async function scheduleLocalReminderNotification(session: Session | null, item: AgendaItem) {
+  if (Platform.OS === 'web') {
+    return null;
+  }
+  const triggerDate = reminderTriggerDate(item);
+  if (!triggerDate || triggerDate.getTime() <= Date.now()) {
+    return null;
+  }
+
+  const permission = await Notifications.getPermissionsAsync();
+  let status = permission.status;
+  if (status !== 'granted') {
+    status = (await Notifications.requestPermissionsAsync()).status;
+  }
+  if (status !== 'granted') {
+    return null;
+  }
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('reminders', {
+      name: 'Recordatorios',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#2d8dc8',
+      sound: 'default',
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC
+    });
+  }
+
+  const itemKey = agendaPreferenceKey(item);
+  const scheduled = await readReminderNotificationMap(session);
+  if (scheduled[itemKey]) {
+    await Notifications.cancelScheduledNotificationAsync(scheduled[itemKey]).catch(() => undefined);
+  }
+  const notificationId = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: item.source === 'motivador' ? 'Recordatorio de PM' : 'Recordatorio Palestra',
+      body: `${item.title} - ${new Date(`${item.date}T00:00:00`).toLocaleDateString('es-AR')}`,
+      sound: 'default',
+      data: {
+        tabKey: item.source === 'motivador' ? 'periodo_motivador' : 'notilestra',
+        sourceType: item.source ?? 'agenda',
+        sourceId: item.id ?? itemKey
+      }
+    },
+    trigger: {
+      channelId: Platform.OS === 'android' ? 'reminders' : undefined,
+      date: triggerDate
+    } as Notifications.NotificationTriggerInput
+  });
+  await writeReminderNotificationMap(session, { ...scheduled, [itemKey]: notificationId });
+  return notificationId;
+}
+
+async function cancelLocalReminderNotification(session: Session | null, itemKey: string) {
+  if (Platform.OS === 'web') {
+    return;
+  }
+  const scheduled = await readReminderNotificationMap(session);
+  const notificationId = scheduled[itemKey];
+  if (notificationId) {
+    await Notifications.cancelScheduledNotificationAsync(notificationId).catch(() => undefined);
+  }
+  const next = { ...scheduled };
+  delete next[itemKey];
+  await writeReminderNotificationMap(session, next);
 }
 
 function groupMotivadorFeedItems(items: AgendaItem[]) {
@@ -1549,6 +1643,16 @@ export default function App() {
     setActiveTab(nextTab);
   }
 
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const tabKey = response.notification.request.content.data?.tabKey;
+      if (typeof tabKey === 'string') {
+        navigateToTab(tabKey);
+      }
+    });
+    return () => subscription.remove();
+  }, [session?.id, activeTab]);
+
   function goBackInApp() {
     if (drawerOpen) {
       setDrawerOpen(false);
@@ -1740,7 +1844,7 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <DynamicNavigationSectionScreen session={session} tab={resolvedTabs.find((tab) => tab.key === activeTab)} title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} refreshKey={contentVersion} onNavigate={navigateToTab} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} runtimeConfig={runtimeConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} initialPublicProfile={globalSearchProfile} onInitialPublicProfileHandled={() => setGlobalSearchProfile(null)} />;
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} runtimeConfig={runtimeConfig} onRuntimeConfigChange={setRuntimeConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} initialPublicProfile={globalSearchProfile} onInitialPublicProfileHandled={() => setGlobalSearchProfile(null)} />;
   }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, runtimeConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel, globalSearchProfile]);
 
   return (
@@ -3172,10 +3276,10 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
         setNotilestraItems([...items, ...pmItems].sort((a, b) => Date.parse(a.date) - Date.parse(b.date)));
       }
     });
-    if (runtimeConfig.featureFlags.externalCatholicNews !== false) {
+    if (runtimeConfig.featureFlags.externalCatholicNews !== false && runtimeConfig.catholicNews.enabled) {
       setExternalNewsLoading(true);
       setExternalNewsError(null);
-      fetchExternalCatholicNews()
+      fetchExternalCatholicNews(runtimeConfig.catholicNews)
         .then((items) => {
           if (alive) {
             setExternalNews(items);
@@ -3201,7 +3305,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
     return () => {
       alive = false;
     };
-  }, [refreshKey, notilestraRefreshKey, session?.province, session?.role, runtimeConfig.featureFlags.externalCatholicNews]);
+  }, [refreshKey, notilestraRefreshKey, session?.province, session?.role, runtimeConfig.featureFlags.externalCatholicNews, runtimeConfig.catholicNews]);
 
   useEffect(() => {
     let alive = true;
@@ -3240,6 +3344,29 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
       alive = false;
     };
   }, [preferenceStorageKey, session?.id]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' || reminders.length === 0 || notilestraItems.length === 0) {
+      return;
+    }
+    let alive = true;
+    async function restoreScheduledReminders() {
+      const scheduled = await readReminderNotificationMap(session);
+      for (const item of groupMotivadorFeedItems(notilestraItems)) {
+        if (!alive) {
+          return;
+        }
+        const itemKey = agendaPreferenceKey(item);
+        if (reminders.includes(itemKey) && !scheduled[itemKey]) {
+          await scheduleLocalReminderNotification(session, item).catch((error) => console.error('restore reminder notification', error));
+        }
+      }
+    }
+    restoreScheduledReminders();
+    return () => {
+      alive = false;
+    };
+  }, [reminders, notilestraItems, session?.id]);
 
   const eventDays = notilestraItems
     .filter((item) => {
@@ -3321,12 +3448,24 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
     }
   }
 
-  function toggleReminder(item: AgendaItem) {
+  async function toggleReminder(item: AgendaItem) {
     const itemKey = agendaPreferenceKey(item);
     const enabled = !reminders.includes(itemKey);
     const nextReminders = enabled ? [...reminders, itemKey] : reminders.filter((key) => key !== itemKey);
     setReminders(nextReminders);
     persistNotilestraPreferences(favorites, nextReminders);
+    try {
+      if (enabled) {
+        const notificationId = await scheduleLocalReminderNotification(session, item);
+        setNotilestraActionMessage(notificationId ? 'Recordatorio guardado y notificacion programada.' : 'Recordatorio guardado. No se pudo programar notificacion local para esta fecha/dispositivo.');
+      } else {
+        await cancelLocalReminderNotification(session, itemKey);
+        setNotilestraActionMessage('Recordatorio eliminado y notificacion cancelada.');
+      }
+    } catch (error) {
+      console.error('local reminder notification', error);
+      setNotilestraActionMessage('Recordatorio guardado, pero no se pudo programar la notificacion local.');
+    }
     if (session?.id) {
       setUserAgendaPreference({
         itemKey,
@@ -3428,7 +3567,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
           </TouchableOpacity>
         ))}
       </View>
-      {subtab === 'noticias' && runtimeConfig.featureFlags.externalCatholicNews !== false ? (
+      {subtab === 'noticias' && runtimeConfig.featureFlags.externalCatholicNews !== false && runtimeConfig.catholicNews.enabled ? (
         <ExternalNewsCarousel items={externalNews} loading={externalNewsLoading} error={externalNewsError} dark={isDark} />
       ) : null}
       <View style={[styles.calendarCard, isDark && styles.surfacePanelDark]}>
@@ -5020,6 +5159,7 @@ function ProfileScreen({
   appContent,
   adminConfig,
   runtimeConfig,
+  onRuntimeConfigChange,
   touchPointerEnabled,
   onTouchPointerEnabledChange,
   themeName,
@@ -5042,6 +5182,7 @@ function ProfileScreen({
   appContent: AppContentBlock[];
   adminConfig: AppAdminConfig;
   runtimeConfig: AppRuntimeConfig;
+  onRuntimeConfigChange: (config: AppRuntimeConfig) => void;
   touchPointerEnabled: boolean;
   onTouchPointerEnabledChange: (value: boolean) => void;
   themeName: ThemeName;
@@ -5192,6 +5333,7 @@ function ProfileScreen({
   const [pmFilterDropdownOpen, setPmFilterDropdownOpen] = useState<'' | 'province' | 'gender' | 'status' | 'time' | 'year'>('');
   const [adminModule, setAdminModule] = useState<AdminModule>('resumen');
   const [adminConfigDraft, setAdminConfigDraft] = useState<AppAdminConfig>(adminConfig);
+  const [runtimeConfigDraft, setRuntimeConfigDraft] = useState<AppRuntimeConfig>(runtimeConfig);
   const [adminCommunityProvince, setAdminCommunityProvince] = useState('');
   const [adminCommunityId, setAdminCommunityId] = useState('');
   const [adminCommunityName, setAdminCommunityName] = useState('');
@@ -5510,6 +5652,10 @@ function ProfileScreen({
   }, [adminConfig]);
 
   useEffect(() => {
+    setRuntimeConfigDraft(runtimeConfig);
+  }, [runtimeConfig]);
+
+  useEffect(() => {
     let alive = true;
     if (!session?.id || runtimeConfig.featureFlags.honorLevels === false) {
       setHonorLevel(null);
@@ -5603,6 +5749,39 @@ function ProfileScreen({
         ...patch
       }
     }));
+  }
+
+  function updateRuntimeCatholicNews(patch: Partial<Omit<AppRuntimeConfig['catholicNews'], 'sources'>> & { sources?: Partial<Record<CatholicNewsSourceKey, boolean>> }) {
+    setRuntimeConfigDraft((current) => ({
+      ...current,
+      catholicNews: {
+        ...current.catholicNews,
+        ...patch,
+        sources: {
+          ...current.catholicNews.sources,
+          ...(patch.sources ?? {})
+        }
+      },
+      featureFlags: {
+        ...current.featureFlags,
+        externalCatholicNews: patch.enabled ?? current.featureFlags.externalCatholicNews
+      }
+    }));
+  }
+
+  async function saveRuntimeConfigDraft() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede guardar configuracion remota.');
+      return;
+    }
+    setAuthMessage('Guardando configuracion remota...');
+    const { error } = await saveAppRuntimeConfig(runtimeConfigDraft);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    onRuntimeConfigChange(runtimeConfigDraft);
+    setAuthMessage(changeDone('Configuracion remota guardada en Supabase.'));
   }
 
   function toggleAdminConfigList(section: 'home', key: string) {
@@ -9558,6 +9737,62 @@ function ProfileScreen({
                   </TouchableOpacity>
                 </View>
               ) : null}
+
+                  {adminModule === 'configuracion' && session?.role === 'administrador' ? (
+                    <View style={styles.inlineEditorPanel}>
+                      <Text style={styles.cardEyebrow}>Noticias de la Iglesia</Text>
+                      <Text style={styles.cardText}>Controla el carrusel externo visible en Noticias. Se guarda en app_runtime_config.</Text>
+                      <TouchableOpacity style={[styles.adminListRow, runtimeConfigDraft.catholicNews.enabled && styles.adminListRowActive]} onPress={() => updateRuntimeCatholicNews({ enabled: !runtimeConfigDraft.catholicNews.enabled })}>
+                        <Ionicons name={runtimeConfigDraft.catholicNews.enabled ? 'toggle' : 'toggle-outline'} size={24} color={runtimeConfigDraft.catholicNews.enabled ? palette.red : palette.inkMuted} />
+                        <Text style={styles.adminQuickText}>{runtimeConfigDraft.catholicNews.enabled ? 'Carrusel activo' : 'Carrusel desactivado'}</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.inputLabel}>Cantidad maxima de noticias</Text>
+                      <View style={styles.filterRow}>
+                        {[3, 5, 7, 9].map((amount) => (
+                          <TouchableOpacity key={amount} style={[styles.filterChip, runtimeConfigDraft.catholicNews.maxItems === amount && styles.filterChipActive]} onPress={() => updateRuntimeCatholicNews({ maxItems: amount })}>
+                            <Text style={[styles.filterChipText, runtimeConfigDraft.catholicNews.maxItems === amount && styles.filterChipTextActive]}>{amount}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <Text style={styles.cardEyebrow}>Fuentes</Text>
+                      {([
+                        { key: 'vatican', label: 'Vatican News' },
+                        { key: 'episcopado', label: 'Episcopado Argentino' },
+                        { key: 'aci', label: 'ACI Prensa' }
+                      ] as Array<{ key: CatholicNewsSourceKey; label: string }>).map((source) => {
+                        const active = runtimeConfigDraft.catholicNews.sources[source.key] !== false;
+                        return (
+                          <TouchableOpacity key={source.key} style={[styles.adminListRow, active && styles.adminListRowActive]} onPress={() => updateRuntimeCatholicNews({ sources: { [source.key]: !active } as Partial<Record<CatholicNewsSourceKey, boolean>> })}>
+                            <Ionicons name={active ? 'checkbox-outline' : 'square-outline'} size={22} color={active ? palette.red : palette.inkMuted} />
+                            <Text style={styles.adminQuickText}>{source.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      <Text style={styles.cardEyebrow}>Orden visual</Text>
+                      <View style={styles.filterRow}>
+                        {runtimeConfigDraft.catholicNews.sourceOrder.map((sourceKey, index) => (
+                          <TouchableOpacity
+                            key={`${sourceKey}-${index}`}
+                            style={styles.filterChip}
+                            onPress={() => {
+                              const order = [...runtimeConfigDraft.catholicNews.sourceOrder];
+                              if (index === 0) {
+                                order.push(order.shift() as CatholicNewsSourceKey);
+                              } else {
+                                [order[index - 1], order[index]] = [order[index], order[index - 1]];
+                              }
+                              updateRuntimeCatholicNews({ sourceOrder: order });
+                            }}
+                          >
+                            <Text style={styles.filterChipText}>{index + 1}. {sourceKey}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <TouchableOpacity style={styles.primaryButton} onPress={saveRuntimeConfigDraft}>
+                        <Text style={styles.primaryButtonText}>Guardar carrusel externo</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
 
               {adminModule === 'usuarios' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>

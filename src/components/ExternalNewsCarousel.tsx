@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../theme/palette';
 import { ExternalCatholicNewsItem } from '../lib/externalNews';
@@ -13,7 +13,14 @@ type Props = {
 
 export function ExternalNewsCarousel({ items, loading, error, dark = false }: Props) {
   const [index, setIndex] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
   const activeItem = items[index] ?? null;
+  const slideWidth = 294;
+
+  function goTo(nextIndex: number) {
+    setIndex(nextIndex);
+    scrollRef.current?.scrollTo({ x: nextIndex * slideWidth, animated: true });
+  }
 
   if (loading) {
     return (
@@ -38,7 +45,7 @@ export function ExternalNewsCarousel({ items, loading, error, dark = false }: Pr
       <View style={styles.header}>
         <View>
           <Text style={[styles.eyebrow, dark && styles.accentDark]}>Noticias de la Iglesia</Text>
-          <Text style={[styles.meta, dark && styles.bodyDark]}>{activeItem.source}</Text>
+          <Text style={[styles.meta, dark && styles.bodyDark]}>Fuentes externas verificadas</Text>
         </View>
         <View style={styles.dots}>
           {items.map((item, itemIndex) => (
@@ -46,23 +53,41 @@ export function ExternalNewsCarousel({ items, loading, error, dark = false }: Pr
               key={item.id}
               accessibilityLabel={`Ver noticia externa ${itemIndex + 1}`}
               style={[styles.dot, itemIndex === index && styles.dotActive]}
-              onPress={() => setIndex(itemIndex)}
+              onPress={() => goTo(itemIndex)}
             />
           ))}
         </View>
       </View>
-      {activeItem.imageUrl ? <Image source={{ uri: activeItem.imageUrl }} style={styles.image} /> : null}
-      <Text style={[styles.title, dark && styles.textDark]} numberOfLines={2}>{activeItem.title}</Text>
-      {activeItem.publishedAt ? <Text style={[styles.meta, dark && styles.bodyDark]}>{activeItem.publishedAt}</Text> : null}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        snapToInterval={slideWidth}
+        decelerationRate="fast"
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(event) => {
+          const width = event.nativeEvent.layoutMeasurement.width || 1;
+          setIndex(Math.round(event.nativeEvent.contentOffset.x / width));
+        }}
+      >
+        {items.map((item) => (
+          <View key={item.id} style={styles.slide}>
+            <Text style={[styles.meta, dark && styles.bodyDark]}>{item.source}</Text>
+            {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.image} /> : null}
+            <Text style={[styles.title, dark && styles.textDark]} numberOfLines={3}>{item.title}</Text>
+            {item.publishedAt ? <Text style={[styles.meta, dark && styles.bodyDark]}>{item.publishedAt}</Text> : null}
+            <TouchableOpacity style={styles.linkButton} onPress={() => Linking.openURL(item.link)} activeOpacity={0.85}>
+              <Ionicons name="open-outline" size={17} color={palette.red} />
+              <Text style={styles.linkText}>Leer en la fuente</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.navButton} onPress={() => setIndex((current) => current === 0 ? items.length - 1 : current - 1)}>
+        <TouchableOpacity style={styles.navButton} onPress={() => goTo(index === 0 ? items.length - 1 : index - 1)}>
           <Ionicons name="chevron-back" size={18} color={palette.red} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.linkButton} onPress={() => Linking.openURL(activeItem.link)} activeOpacity={0.85}>
-          <Ionicons name="open-outline" size={17} color={palette.red} />
-          <Text style={styles.linkText}>Leer en la fuente</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navButton} onPress={() => setIndex((current) => current === items.length - 1 ? 0 : current + 1)}>
+        <Text style={[styles.meta, dark && styles.bodyDark]}>{activeItem.source}</Text>
+        <TouchableOpacity style={styles.navButton} onPress={() => goTo(index === items.length - 1 ? 0 : index + 1)}>
           <Ionicons name="chevron-forward" size={18} color={palette.red} />
         </TouchableOpacity>
       </View>
@@ -145,9 +170,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: palette.whiteSoft
   },
+  slide: {
+    width: 294,
+    gap: 10,
+    paddingRight: 12
+  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8
   },
   navButton: {

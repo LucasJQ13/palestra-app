@@ -1,3 +1,5 @@
+import { CatholicNewsConfig, CatholicNewsSourceKey, defaultCatholicNewsConfig } from './runtimeConfig';
+
 export type ExternalCatholicNewsItem = {
   id: string;
   title: string;
@@ -7,11 +9,17 @@ export type ExternalCatholicNewsItem = {
   publishedAt?: string;
 };
 
-const catholicNewsFeeds = [
-  {
-    source: 'Vatican News',
-    url: 'https://www.vaticannews.va/es.rss.xml'
-  }
+type CatholicNewsSource = {
+  key: CatholicNewsSourceKey;
+  source: string;
+  url: string;
+  kind: 'rss' | 'html';
+};
+
+const catholicNewsSources: CatholicNewsSource[] = [
+  { key: 'vatican', source: 'Vatican News', url: 'https://www.vaticannews.va/es.rss.xml', kind: 'rss' },
+  { key: 'episcopado', source: 'Episcopado Argentino', url: 'https://episcopado.org/novedades', kind: 'html' },
+  { key: 'aci', source: 'ACI Prensa', url: 'https://www.aciprensa.com/rss/noticias.xml', kind: 'rss' }
 ];
 
 function stripCdata(value: string) {
@@ -35,40 +43,99 @@ function readTag(xml: string, tag: string) {
 function readImage(xml: string) {
   const enclosure = xml.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*>/i)?.[1];
   const media = xml.match(/<media:content[^>]+url=["']([^"']+)["'][^>]*>/i)?.[1];
+  const mediaThumb = xml.match(/<media:thumbnail[^>]+url=["']([^"']+)["'][^>]*>/i)?.[1];
   const image = xml.match(/<image[^>]+url=["']([^"']+)["'][^>]*>/i)?.[1];
-  return enclosure || media || image || undefined;
+  return enclosure || media || mediaThumb || image || undefined;
 }
 
-export async function fetchExternalCatholicNews(): Promise<ExternalCatholicNewsItem[]> {
-  const results: ExternalCatholicNewsItem[] = [];
+function absoluteUrl(url: string, baseUrl: string) {
+  if (!url) {
+    return '';
+  }
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+  return new URL(url, baseUrl).toString();
+}
 
-  for (const feed of catholicNewsFeeds) {
+function parseRssItems(xml: string, feed: CatholicNewsSource, limit: number): ExternalCatholicNewsItem[] {
+  const items = xml.match(/<item[\s\S]*?<\/item>/gi) ?? [];
+  return items.slice(0, limit).flatMap((item, index) => {
+    const title = readTag(item, 'title');
+    const link = readTag(item, 'link');
+    if (!title || !link) {
+      return [];
+    }
+    return [{
+      id: `${feed.key}-${index}-${link}`,
+      title,
+      source: feed.source,
+      link: absoluteUrl(link, feed.url),
+      imageUrl: readImage(item),
+      publishedAt: readTag(item, 'pubDate')
+    }];
+  });
+}
+
+function stripHtml(value: string) {
+  return decodeXml(value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim();
+}
+
+function parseEpiscopadoItems(html: string, feed: CatholicNewsSource, limit: number): ExternalCatholicNewsItem[] {
+  const results: ExternalCatholicNewsItem[] = [];
+  const seen = new Set<string>();
+  const anchorRegex = /<a[^>]+href=["']([^"']*(?:\/ver\/|ver\/)\d+[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = anchorRegex.exec(html)) && results.length < limit) {
+    const link = absoluteUrl(match[1], feed.url);
+    const title = stripHtml(match[2]);
+    if (!title || title.length < 8 || seen.has(link)) {
+      continue;
+    }
+    const nearby = html.slice(match.index, Math.min(html.length, match.index + 900));
+    const date = nearby.match(/\b\d{2}\/\d{2}\/\d{4}\b/)?.[0];
+    const image = nearby.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
+    seen.add(link);
+    results.push({
+      id: `${feed.key}-${results.length}-${link}`,
+      title,
+      source: feed.source,
+      link,
+      imageUrl: image ? absoluteUrl(image, feed.url) : undefined,
+      publishedAt: date
+    });
+  }
+
+  return results;
+}
+
+export async function fetchExternalCatholicNews(config: CatholicNewsConfig = defaultCatholicNewsConfig): Promise<ExternalCatholicNewsItem[]> {
+  if (!config.enabled) {
+    return [];
+  }
+
+  const results: ExternalCatholicNewsItem[] = [];
+  const orderedSources = config.sourceOrder
+    .map((sourceKey) => catholicNewsSources.find((source) => source.key === sourceKey))
+    .filter((source): source is CatholicNewsSource => Boolean(source))
+    .filter((source) => config.sources[source.key] !== false);
+
+  for (const feed of orderedSources) {
     try {
       const response = await fetch(feed.url);
       if (!response.ok) {
         continue;
       }
-      const xml = await response.text();
-      const items = xml.match(/<item[\s\S]*?<\/item>/gi) ?? [];
-      items.slice(0, 3).forEach((item, index) => {
-        const title = readTag(item, 'title');
-        const link = readTag(item, 'link');
-        if (!title || !link) {
-          return;
-        }
-        results.push({
-          id: `${feed.source}-${index}-${link}`,
-          title,
-          source: feed.source,
-          link,
-          imageUrl: readImage(item),
-          publishedAt: readTag(item, 'pubDate')
-        });
-      });
+      const text = await response.text();
+      const sourceItems = feed.kind === 'rss'
+        ? parseRssItems(text, feed, config.maxItems)
+        : parseEpiscopadoItems(text, feed, config.maxItems);
+      results.push(...sourceItems);
     } catch {
-      // Fuente externa opcional: la app debe seguir estable aunque el RSS falle.
+      // Fuentes externas opcionales: la app debe seguir estable aunque una falle.
     }
   }
 
-  return results.slice(0, 3);
+  return results.slice(0, config.maxItems);
 }
