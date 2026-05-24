@@ -1135,8 +1135,6 @@ export async function updateCommunity(id: string, values: {
   meeting_time?: string;
   description?: string;
   image_url?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
 }) {
   try {
     return await supabase.rpc('admin_update_community', {
@@ -1147,9 +1145,7 @@ export async function updateCommunity(id: string, values: {
       p_meeting_day: values.meeting_day ?? null,
       p_meeting_time: values.meeting_time ?? null,
       p_description: values.description ?? null,
-      p_image_url: values.image_url ?? null,
-      p_latitude: values.latitude ?? null,
-      p_longitude: values.longitude ?? null
+      p_image_url: values.image_url ?? null
     });
   } catch (error) {
     return networkError(error);

@@ -46,7 +46,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.27';
+const appBetaVersion = '0.1.28';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
@@ -418,6 +418,10 @@ function isCommunityLeaderRole(session: Session | null) {
 
 function canCreateOrAdministrateCommunities(session: Session | null) {
   return Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
+}
+
+function canUseCommunityAdmin(session: Session | null) {
+  return Boolean(session && ['coordinador_comunidad', 'vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
 }
 
 function canManageMotivadorPanel(session: Session | null) {
@@ -4862,8 +4866,6 @@ function ProfileScreen({
   const [adminCommunityImagePreview, setAdminCommunityImagePreview] = useState('');
   const [adminCommunityImageAsset, setAdminCommunityImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [adminCommunityImageUploading, setAdminCommunityImageUploading] = useState(false);
-  const [adminCommunityLatitude, setAdminCommunityLatitude] = useState('');
-  const [adminCommunityLongitude, setAdminCommunityLongitude] = useState('');
   const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
   const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
   const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; isVisible: boolean; visibleRoles: string[] | null }>>({});
@@ -4965,6 +4967,7 @@ function ProfileScreen({
   const selectedAdminUserProvince = visibleRegistrationCommunities.find((item) => item.province === adminUserProvince);
   const assignableRoles = useMemo(() => assignableRolesFor(session), [session?.role]);
   const selectedEditableContent = appContent.find((item) => item.tab_key === selectedContentTab);
+  const canOpenCommunityAdmin = canUseCommunityAdmin(session);
   const editableTabs = useMemo(
     () => (tabs.length > 0 ? tabs : defaultTabs.map((tab, index) => ({ ...tab, visible: true, sortOrder: index, visibleRoles: null }))),
     [tabs]
@@ -5124,17 +5127,17 @@ function ProfileScreen({
     if (item.key === 'noticias') {
       return canManageNewsContent(session);
     }
+    if (item.key === 'comunidades') {
+      return canOpenCommunityAdmin;
+    }
     if (hasPermission(session, 'gestionar_sistema')) {
       return true;
     }
-    if (['resumen', 'solicitudes', 'comunidades'].includes(item.key)) {
+    if (['resumen', 'solicitudes'].includes(item.key)) {
       return true;
     }
     if (item.key === 'periodo_motivador') {
       return canManageMotivadorPanel(session);
-    }
-    if (canAdministrateCommunities && item.key === 'comunidades') {
-      return true;
     }
     if (canEditStaticInstitutionalPage(session) && ['contacto_admin'].includes(item.key)) {
       return true;
@@ -5496,6 +5499,16 @@ function ProfileScreen({
   }, [adminModule, session?.role, session?.province, motivadorProvinceOptions.length]);
 
   useEffect(() => {
+    if (adminModule !== 'comunidades' || manageableCommunities.length === 0) {
+      return;
+    }
+    if (!manageableCommunities.some((item) => item.province === adminCommunityProvince)) {
+      setAdminCommunityProvince(manageableCommunities[0].province);
+      setAdminCommunityId('');
+    }
+  }, [adminModule, manageableCommunities, adminCommunityProvince]);
+
+  useEffect(() => {
     if (!canManageNewsContent(session)) {
       setAdminNewsScope('provincial');
       setAdminNewsProvince('');
@@ -5541,8 +5554,6 @@ function ProfileScreen({
       setAdminCommunityImageUrl('');
       setAdminCommunityImagePreview('');
       setAdminCommunityImageAsset(null);
-      setAdminCommunityLatitude('');
-      setAdminCommunityLongitude('');
       return;
     }
 
@@ -5555,8 +5566,6 @@ function ProfileScreen({
     setAdminCommunityImageUrl(selectedAdminCommunity.imageUrl ?? '');
     setAdminCommunityImagePreview(selectedAdminCommunity.imageUrl ?? '');
     setAdminCommunityImageAsset(null);
-    setAdminCommunityLatitude(selectedAdminCommunity.latitude != null ? String(selectedAdminCommunity.latitude) : '');
-    setAdminCommunityLongitude(selectedAdminCommunity.longitude != null ? String(selectedAdminCommunity.longitude) : '');
     setAdminCommunityGroupType(selectedAdminCommunity.group ?? 'jovenes');
     setAdminCommunityIsActive(true);
   }, [selectedAdminCommunity]);
@@ -6824,9 +6833,7 @@ function ProfileScreen({
       meeting_day: adminCommunityDay,
       meeting_time: adminCommunityTime,
       description: adminCommunityDescription,
-      image_url: imageUrl,
-      latitude: adminCommunityLatitude.trim() ? Number(adminCommunityLatitude) : null,
-      longitude: adminCommunityLongitude.trim() ? Number(adminCommunityLongitude) : null
+      image_url: imageUrl
     });
     if (error) {
       setAuthMessage(error.message);
@@ -8397,11 +8404,11 @@ function ProfileScreen({
                   <View style={styles.adminQuickGrid}>
                     {[
                       { label: isCommunityLeader ? 'Nuevo aviso comunitario' : 'Nueva noticia', module: isCommunityLeader ? 'muro_comunitario' : 'noticias', icon: 'add-circle-outline' },
-                      { label: 'Crear comunidad', module: 'comunidades', icon: 'location-outline' },
+                      { label: canAdministrateCommunities ? 'Crear comunidad' : 'Comunidades', module: 'comunidades', icon: 'location-outline' },
                       { label: 'Revisar usuarios', module: 'usuarios', icon: 'people-outline' }
                     ].filter((item) => (
                       (item.module !== 'usuarios' || canManageUsers)
-                      && (item.module !== 'comunidades' || canAdministrateCommunities)
+                      && (item.module !== 'comunidades' || canOpenCommunityAdmin)
                     )).map((item) => (
                       <TouchableOpacity key={item.label} style={[styles.adminQuickAction, isDark && styles.adminQuickActionDark]} onPress={() => item.module === 'muro_comunitario' ? setProfilePanel('comunidad') : setAdminModule(item.module as AdminModule)}>
                         <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={20} color={palette.red} />
@@ -9632,36 +9639,11 @@ function ProfileScreen({
                                   <TextInput style={styles.input} placeholder="Nombre" value={adminCommunityName} onChangeText={setAdminCommunityName}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={styles.input} placeholder="Dirección" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
                                   <View style={styles.profileCommunityPanel}>
-                                    <Text style={styles.cardEyebrow}>Mapa y pin de ubicación</Text>
-                                    <Text style={styles.cardText}>Ajustá las coordenadas finales del pin. Los usuarios comunes seguirán abriendo Maps con el botón Ubicación.</Text>
+                                    <Text style={styles.cardEyebrow}>Ubicacion</Text>
                                     <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityAddress}, ${adminCommunityProvince}, Argentina`)}`)}>
                                       <Ionicons name="map-outline" size={17} color={palette.red} />
-                                      <Text style={styles.secondaryButtonText}>Ver dirección estimada</Text>
+                                      <Text style={styles.secondaryButtonText}>Ver direccion en Maps</Text>
                                     </TouchableOpacity>
-                                    <View style={styles.inlineActions}>
-                                      <TextInput style={[styles.input, styles.coordInput]} placeholder="Latitud" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
-                                      <TextInput style={[styles.input, styles.coordInput]} placeholder="Longitud" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
-                                    </View>
-                                    <View style={styles.inlineActions}>
-                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminCommunityLatitude((value) => String((Number(value || '0') + 0.0005).toFixed(6)))}>
-                                        <Text style={styles.secondaryButtonText}>Pin norte</Text>
-                                      </TouchableOpacity>
-                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminCommunityLatitude((value) => String((Number(value || '0') - 0.0005).toFixed(6)))}>
-                                        <Text style={styles.secondaryButtonText}>Pin sur</Text>
-                                      </TouchableOpacity>
-                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminCommunityLongitude((value) => String((Number(value || '0') - 0.0005).toFixed(6)))}>
-                                        <Text style={styles.secondaryButtonText}>Oeste</Text>
-                                      </TouchableOpacity>
-                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminCommunityLongitude((value) => String((Number(value || '0') + 0.0005).toFixed(6)))}>
-                                        <Text style={styles.secondaryButtonText}>Este</Text>
-                                      </TouchableOpacity>
-                                    </View>
-                                    {adminCommunityLatitude && adminCommunityLongitude ? (
-                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityLatitude},${adminCommunityLongitude}`)}`)}>
-                                        <Ionicons name="navigate-outline" size={17} color={palette.red} />
-                                        <Text style={styles.secondaryButtonText}>Previsualizar pin final</Text>
-                                      </TouchableOpacity>
-                                    ) : null}
                                   </View>
                                   <TextInput style={styles.input} placeholder="Numero de contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
@@ -12988,10 +12970,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: palette.ink,
     backgroundColor: palette.white
-  },
-  coordInput: {
-    flex: 1,
-    minWidth: 130
   },
   inputDark: {
     backgroundColor: '#33383B',

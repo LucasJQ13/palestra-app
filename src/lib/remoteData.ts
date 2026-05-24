@@ -57,17 +57,33 @@ export type PublicationComment = {
 };
 
 export async function fetchCommunities(): Promise<AppCommunity[]> {
-  let result;
+  let data: unknown[] | null = null;
+  let error: { message?: string } | null = null;
   try {
-    result = await supabase
+    const result = await supabase
       .from('communities')
       .select('id, name, group_type, address, phone, meeting_day, meeting_time, description, image_url, latitude, longitude, is_active, archived_at, provinces(name, region)')
       .is('archived_at', null)
       .order('name');
+    data = result.data as unknown[] | null;
+    error = result.error;
   } catch {
     return [];
   }
-  const { data, error } = result;
+
+  if (error) {
+    try {
+      const fallbackResult = await supabase
+        .from('communities')
+        .select('id, name, group_type, address, phone, meeting_day, meeting_time, description, image_url, is_active, archived_at, provinces(name, region)')
+        .is('archived_at', null)
+        .order('name');
+      data = fallbackResult.data as unknown[] | null;
+      error = fallbackResult.error;
+    } catch {
+      return [];
+    }
+  }
 
   if (error || !data) {
     return [];
