@@ -19,6 +19,7 @@ import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
 import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermission, fetchLibraryItems, saveLibraryItem } from './src/lib/library';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
+import { ExternalCatholicNewsItem, fetchExternalCatholicNews } from './src/lib/externalNews';
 
 const palestraLogo = require('./assets/logo-palestra.png');
 const AppThemeContext = React.createContext<AppTheme>(themePresets.default);
@@ -46,10 +47,12 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.29';
+const appBetaVersion = '0.1.30';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
-const authConfirmedPreviewUrl = 'palestra://auth/callback?preview=mail-confirmed';
+const authDeepLinkBaseUrl = 'palestra://auth/callback';
+const authConfirmedPreviewUrl = `${authDeepLinkBaseUrl}?preview=mail-confirmed`;
+const authPasswordResetUrl = `${authDeepLinkBaseUrl}?flow=password-reset`;
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
 const themePreferenceKey = 'palestra.themePreference';
 const pushDeviceIdKey = 'palestra.push.deviceId';
@@ -1608,15 +1611,24 @@ export default function App() {
     if (!url.startsWith('palestra://auth/callback')) {
       return;
     }
-    setAuthConfirmationOpen(true);
     try {
       const parsed = new URL(url);
+      const flow = parsed.searchParams.get('flow') ?? parsed.searchParams.get('type');
+      if (flow === 'password-reset' || flow === 'recovery') {
+        setAuthConfirmationOpen(false);
+        setActiveTab('perfil');
+        setAuthScreenOpen(true);
+        setAppMessage('Link de recuperacion recibido. Inicia sesion o actualiza tu contrasena desde Mi Perfil.');
+        return;
+      }
+      setAuthConfirmationOpen(true);
       const code = parsed.searchParams.get('code');
       if (code) {
         await supabase.auth.exchangeCodeForSession(code);
         await hydrateRealSession();
       }
     } catch (error) {
+      setAuthConfirmationOpen(true);
       console.error('auth callback link', error);
     }
   }
@@ -2044,7 +2056,7 @@ function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthe
     >
       <View style={styles.authGlowOne} />
       <View style={styles.authGlowTwo} />
-      <TouchableOpacity style={styles.authCloseButton} onPress={onClose} activeOpacity={0.85}>
+      <TouchableOpacity style={[styles.authCloseButton, { top: Math.max(insets.top + 12, 34) }]} onPress={onClose} activeOpacity={0.85}>
         <Ionicons name="close-outline" size={24} color={palette.white} />
       </TouchableOpacity>
       {pendingRegistration ? (
@@ -2118,7 +2130,9 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
       onMessage('Escribí tu mail para enviarte la recuperación.');
       return;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: authPasswordResetUrl
+    });
     onMessage(error ? safeAuthError(error.message) : 'Te enviamos un mail para recuperar la contraseña.');
   }
 
@@ -3121,6 +3135,8 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
   const [reminders, setReminders] = useState<string[]>([]);
   const [subtab, setSubtab] = useState<'noticias' | 'favoritos' | 'recordatorios'>('noticias');
   const [notilestraItems, setNotilestraItems] = useState<AgendaItem[]>(notilestra);
+  const [externalNews, setExternalNews] = useState<ExternalCatholicNewsItem[]>([]);
+  const [externalNewsIndex, setExternalNewsIndex] = useState(0);
   const [notilestraRefreshKey, setNotilestraRefreshKey] = useState(0);
   const [notilestraEditId, setNotilestraEditId] = useState<string | null>(null);
   const [notilestraEditTitle, setNotilestraEditTitle] = useState('');
@@ -3139,6 +3155,12 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
     Promise.all([fetchNotilestra(session), fetchMotivadorPeriods(session)]).then(([items, pmItems]) => {
       if (alive) {
         setNotilestraItems([...items, ...pmItems].sort((a, b) => Date.parse(a.date) - Date.parse(b.date)));
+      }
+    });
+    fetchExternalCatholicNews().then((items) => {
+      if (alive) {
+        setExternalNews(items);
+        setExternalNewsIndex(0);
       }
     });
     return () => {
@@ -3219,6 +3241,7 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
     tomorrow.setDate(tomorrow.getDate() + 1);
     return eventDate.toDateString() === tomorrow.toDateString();
   });
+  const activeExternalNews = externalNews[externalNewsIndex];
   const [dismissedReminderPopup, setDismissedReminderPopup] = useState(false);
 
   function openCalendarDay(day: number) {
@@ -3371,6 +3394,28 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
           </TouchableOpacity>
         ))}
       </View>
+      {subtab === 'noticias' && activeExternalNews ? (
+        <View style={[styles.externalNewsCard, isDark && styles.surfacePanelDark]}>
+          <View style={styles.externalNewsHeader}>
+            <View>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Noticias catolicas externas</Text>
+              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{activeExternalNews.source}</Text>
+            </View>
+            <View style={styles.externalNewsControls}>
+              {externalNews.map((item, index) => (
+                <TouchableOpacity key={item.id} style={[styles.externalNewsDot, index === externalNewsIndex && styles.externalNewsDotActive]} onPress={() => setExternalNewsIndex(index)} />
+              ))}
+            </View>
+          </View>
+          {activeExternalNews.imageUrl ? <Image source={{ uri: activeExternalNews.imageUrl }} style={styles.externalNewsImage} /> : null}
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]} numberOfLines={2}>{activeExternalNews.title}</Text>
+          {activeExternalNews.publishedAt ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{activeExternalNews.publishedAt}</Text> : null}
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(activeExternalNews.link)} activeOpacity={0.85}>
+            <Ionicons name="open-outline" size={17} color={palette.red} />
+            <Text style={styles.secondaryButtonText}>Leer en la fuente</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
       <View style={[styles.calendarCard, isDark && styles.surfacePanelDark]}>
         <View style={styles.calendarHeader}>
           <TouchableOpacity onPress={() => setMonthOffset(monthOffset - 1)} style={styles.iconButton}>
@@ -5124,6 +5169,8 @@ function ProfileScreen({
   const [pmGenderFilter, setPmGenderFilter] = useState<'todos' | 'masculino' | 'femenino'>('todos');
   const [pmStatusFilter, setPmStatusFilter] = useState<'todos' | 'activo' | 'inactivo' | 'borrador'>('todos');
   const [pmTimeFilter, setPmTimeFilter] = useState<'todos' | 'proximos' | 'pasados'>('todos');
+  const [pmYearFilter, setPmYearFilter] = useState('todos');
+  const [pmFilterDropdownOpen, setPmFilterDropdownOpen] = useState<'' | 'province' | 'gender' | 'status' | 'time' | 'year'>('');
   const [adminModule, setAdminModule] = useState<AdminModule>('resumen');
   const [adminConfigDraft, setAdminConfigDraft] = useState<AppAdminConfig>(adminConfig);
   const [adminCommunityProvince, setAdminCommunityProvince] = useState('');
@@ -5298,6 +5345,9 @@ function ProfileScreen({
   const activeDiocesanCoordinator = selectedUsersProvince
     ? adminUsersByProvince[selectedUsersProvince]?.find((user) => user.role === 'coordinador_diocesano' && user.status === 'aprobado')
     : null;
+  const motivadorYearOptions = Array.from(new Set(adminMotivadorPeriods.map((period) => String(new Date(`${period.starts_on}T00:00:00`).getFullYear()))))
+    .filter((year) => year !== 'NaN')
+    .sort((a, b) => Number(b) - Number(a));
   const filteredMotivadorPeriods = adminMotivadorPeriods.filter((period) => {
     if (pmProvinceFilter && period.province !== pmProvinceFilter) {
       return false;
@@ -5306,6 +5356,9 @@ function ProfileScreen({
       return false;
     }
     if (pmStatusFilter !== 'todos' && period.status !== pmStatusFilter) {
+      return false;
+    }
+    if (pmYearFilter !== 'todos' && String(new Date(`${period.starts_on}T00:00:00`).getFullYear()) !== pmYearFilter) {
       return false;
     }
     const today = new Date();
@@ -7673,6 +7726,35 @@ function ProfileScreen({
     }
   }
 
+  function renderPmFilterDropdown<T extends string>(
+    key: 'province' | 'gender' | 'status' | 'time' | 'year',
+    label: string,
+    value: T,
+    options: Array<{ label: string; value: T }>,
+    onSelect: (value: T) => void
+  ) {
+    const currentLabel = options.find((option) => option.value === value)?.label ?? label;
+    const open = pmFilterDropdownOpen === key;
+    return (
+      <View style={styles.pmFilterField}>
+        <Text style={styles.cardEyebrow}>{label}</Text>
+        <TouchableOpacity style={styles.dropdownButton} onPress={() => setPmFilterDropdownOpen(open ? '' : key)} activeOpacity={0.85}>
+          <Text style={styles.dropdownButtonText}>{currentLabel}</Text>
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+        </TouchableOpacity>
+        {open ? (
+          <View style={styles.pmFilterDropdownList}>
+            {options.map((option) => (
+              <TouchableOpacity key={`${key}-${option.value}`} style={styles.dropdownItem} onPress={() => { onSelect(option.value); setPmFilterDropdownOpen(''); }}>
+                <Text style={styles.dropdownItemText}>{option.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
   if (session && session.status === 'pendiente' && !session.emailConfirmedAt) {
     return (
       <View style={styles.stack}>
@@ -9134,27 +9216,55 @@ function ProfileScreen({
                         ) : null}
                       </View>
                       <SectionTitle title="PM cargados" />
-                      <View style={styles.filterRow}>
-                        {session?.role === 'administrador' ? [''].concat(motivadorProvinceOptions).map((province) => (
-                          <TouchableOpacity key={province || 'todas'} style={[styles.filterChip, pmProvinceFilter === province && styles.filterChipActive]} onPress={() => setPmProvinceFilter(province)}>
-                            <Text style={[styles.filterChipText, pmProvinceFilter === province && styles.filterChipTextActive]}>{province || 'Todas'}</Text>
-                          </TouchableOpacity>
-                        )) : null}
-                        {(['todos', 'masculino', 'femenino'] as const).map((gender) => (
-                          <TouchableOpacity key={gender} style={[styles.filterChip, pmGenderFilter === gender && styles.filterChipActive]} onPress={() => setPmGenderFilter(gender)}>
-                            <Text style={[styles.filterChipText, pmGenderFilter === gender && styles.filterChipTextActive]}>{gender}</Text>
-                          </TouchableOpacity>
-                        ))}
-                        {(['todos', 'activo', 'inactivo', 'borrador'] as const).map((status) => (
-                          <TouchableOpacity key={status} style={[styles.filterChip, pmStatusFilter === status && styles.filterChipActive]} onPress={() => setPmStatusFilter(status)}>
-                            <Text style={[styles.filterChipText, pmStatusFilter === status && styles.filterChipTextActive]}>{status}</Text>
-                          </TouchableOpacity>
-                        ))}
-                        {(['todos', 'proximos', 'pasados'] as const).map((period) => (
-                          <TouchableOpacity key={period} style={[styles.filterChip, pmTimeFilter === period && styles.filterChipActive]} onPress={() => setPmTimeFilter(period)}>
-                            <Text style={[styles.filterChipText, pmTimeFilter === period && styles.filterChipTextActive]}>{period}</Text>
-                          </TouchableOpacity>
-                        ))}
+                      <View style={styles.pmFilterGrid}>
+                        {session?.role === 'administrador' ? renderPmFilterDropdown(
+                          'province',
+                          'Provincia',
+                          pmProvinceFilter,
+                          [{ label: 'Todas', value: '' }, ...motivadorProvinceOptions.map((province) => ({ label: province, value: province }))],
+                          setPmProvinceFilter
+                        ) : null}
+                        {renderPmFilterDropdown(
+                          'gender',
+                          'Tipo',
+                          pmGenderFilter,
+                          [
+                            { label: 'Todos', value: 'todos' },
+                            { label: 'Masculino', value: 'masculino' },
+                            { label: 'Femenino', value: 'femenino' }
+                          ],
+                          setPmGenderFilter
+                        )}
+                        {renderPmFilterDropdown(
+                          'status',
+                          'Estado',
+                          pmStatusFilter,
+                          [
+                            { label: 'Todos', value: 'todos' },
+                            { label: 'Activo', value: 'activo' },
+                            { label: 'Inactivo', value: 'inactivo' },
+                            { label: 'Borrador', value: 'borrador' }
+                          ],
+                          setPmStatusFilter
+                        )}
+                        {renderPmFilterDropdown(
+                          'time',
+                          'Fecha',
+                          pmTimeFilter,
+                          [
+                            { label: 'Todos', value: 'todos' },
+                            { label: 'Proximos', value: 'proximos' },
+                            { label: 'Pasados', value: 'pasados' }
+                          ],
+                          setPmTimeFilter
+                        )}
+                        {renderPmFilterDropdown(
+                          'year',
+                          'Año',
+                          pmYearFilter,
+                          [{ label: 'Todos', value: 'todos' }, ...motivadorYearOptions.map((year) => ({ label: year, value: year }))],
+                          setPmYearFilter
+                        )}
                       </View>
                       {filteredMotivadorPeriods.length === 0 ? <Text style={styles.cardText}>No hay PM cargados para los filtros seleccionados.</Text> : null}
                       {filteredMotivadorPeriods.map((period) => (
@@ -12113,6 +12223,58 @@ const styles = StyleSheet.create({
   globalSearchResults: {
     gap: 10,
     paddingBottom: 18
+  },
+  externalNewsCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    backgroundColor: palette.white,
+    padding: 16,
+    gap: 11,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3
+  },
+  externalNewsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  externalNewsControls: {
+    flexDirection: 'row',
+    gap: 6
+  },
+  externalNewsDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: 'rgba(45, 141, 200, 0.24)'
+  },
+  externalNewsDotActive: {
+    width: 20,
+    backgroundColor: palette.red
+  },
+  externalNewsImage: {
+    width: '100%',
+    height: 128,
+    borderRadius: 16,
+    backgroundColor: palette.whiteSoft
+  },
+  pmFilterGrid: {
+    gap: 12
+  },
+  pmFilterField: {
+    gap: 6,
+    zIndex: 2
+  },
+  pmFilterDropdownList: {
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 18,
+    backgroundColor: palette.white,
+    overflow: 'hidden'
   },
   modalScrollContent: {
     paddingBottom: 34,
