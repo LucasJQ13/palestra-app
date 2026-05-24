@@ -1,12 +1,13 @@
 {
   "name": "palestra-app",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "web": "expo start --web",
+    "preview:mail-confirmed": "node scripts/preview-mail-confirmed.js",
     "typecheck": "tsc --noEmit",
     "build:apk": "npx eas-cli build -p android --profile beta-apk --clear-cache",
     "build:apk:fast": "npx eas-cli build -p android --profile beta-apk",

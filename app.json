@@ -2,7 +2,7 @@
   "expo": {
     "name": "Palestra",
     "slug": "palestra-argentina",
-    "version": "0.1.28",
+    "version": "0.1.29",
     "orientation": "portrait",
     "icon": "./assets/logo-palestra.png",
     "scheme": "palestra",
@@ -26,6 +26,22 @@
       "package": "org.palestra.argentina",
       "googleServicesFile": "./google-services.json",
       "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "palestra",
+              "host": "auth",
+              "pathPrefix": "/callback"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "permissions": [
         "POST_NOTIFICATIONS"
       ]

@@ -773,10 +773,13 @@ export async function createEvent(title: string, description: string, startsAt: 
   });
 }
 
+export type AppTabSectionType = 'simple' | 'library' | 'links' | 'image_text' | 'form' | 'internal';
+
 export type AppTabSetting = {
   key: string;
   label: string;
   icon_name?: string | null;
+  section_type?: AppTabSectionType | null;
   is_visible: boolean;
   sort_order: number;
   visible_roles: string[] | null;
@@ -785,7 +788,7 @@ export type AppTabSetting = {
 export async function fetchAppTabs() {
   const withIcon = await supabase
     .from('app_tabs')
-    .select('key, label, icon_name, is_visible, sort_order, visible_roles')
+    .select('key, label, icon_name, section_type, is_visible, sort_order, visible_roles')
     .order('sort_order');
 
   if (!withIcon.error && withIcon.data) {
@@ -804,22 +807,24 @@ export async function fetchAppTabs() {
   return data as AppTabSetting[];
 }
 
-export async function updateAppTab(key: string, label: string, isVisible: boolean, visibleRoles?: string[] | null, iconName?: string | null) {
+export async function updateAppTab(key: string, label: string, isVisible: boolean, visibleRoles?: string[] | null, iconName?: string | null, sectionType?: AppTabSectionType | null) {
   return supabase.rpc('admin_update_tab', {
     p_key: key,
     p_label: label,
     p_is_visible: isVisible,
     p_visible_roles: visibleRoles ?? null,
-    p_icon_name: iconName ?? null
+    p_icon_name: iconName ?? null,
+    p_section_type: sectionType ?? null
   });
 }
 
-export async function createAppTab(key: string, label: string, visibleRoles?: string[] | null, iconName?: string | null) {
+export async function createAppTab(key: string, label: string, visibleRoles?: string[] | null, iconName?: string | null, sectionType?: AppTabSectionType | null) {
   return supabase.rpc('admin_create_tab', {
     p_key: key,
     p_label: label,
     p_visible_roles: visibleRoles ?? null,
-    p_icon_name: iconName ?? null
+    p_icon_name: iconName ?? null,
+    p_section_type: sectionType ?? null
   });
 }
 
@@ -830,6 +835,7 @@ export async function updateAppTabPosition(values: {
   sortOrder: number;
   visibleRoles?: string[] | null;
   iconName?: string | null;
+  sectionType?: AppTabSectionType | null;
 }) {
   return supabase.rpc('admin_set_tab_position', {
     p_key: values.key,
@@ -837,7 +843,8 @@ export async function updateAppTabPosition(values: {
     p_is_visible: values.isVisible,
     p_sort_order: values.sortOrder,
     p_visible_roles: values.visibleRoles ?? null,
-    p_icon_name: values.iconName ?? null
+    p_icon_name: values.iconName ?? null,
+    p_section_type: values.sectionType ?? null
   });
 }
 
@@ -859,7 +866,7 @@ export type AppContentBlock = {
 
 export type ContentEditorBlock = {
   id: string;
-  type: 'titulo' | 'texto' | 'imagen';
+  type: 'titulo' | 'texto' | 'imagen' | 'enlace' | 'campo' | 'modulo';
   value: string;
 };
 

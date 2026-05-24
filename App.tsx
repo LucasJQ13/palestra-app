@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -46,9 +46,10 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.28';
+const appBetaVersion = '0.1.29';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
+const authConfirmedPreviewUrl = 'palestra://auth/callback?preview=mail-confirmed';
 const touchPointerPreferenceKey = 'palestra.showTouchPointer';
 const themePreferenceKey = 'palestra.themePreference';
 const pushDeviceIdKey = 'palestra.push.deviceId';
@@ -305,10 +306,20 @@ type AppTabDisplay = {
   key: string;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
+  sectionType: AppTabSectionType;
   visible: boolean;
   sortOrder: number;
   visibleRoles: string[] | null;
 };
+
+const navigationSectionTypes: Array<{ key: AppTabSectionType; label: string; description: string }> = [
+  { key: 'simple', label: 'Pagina simple', description: 'Titulo, texto e imagen opcional.' },
+  { key: 'library', label: 'Biblioteca / Archivos', description: 'Lista remota de documentos descargables.' },
+  { key: 'links', label: 'Enlaces', description: 'Botones configurables por bloque enlace.' },
+  { key: 'image_text', label: 'Imagen + texto', description: 'Imagen principal y bloque textual.' },
+  { key: 'form', label: 'Formulario / Contacto', description: 'Formulario real que envia a buzon interno.' },
+  { key: 'internal', label: 'Modulo interno', description: 'Redirige a una seccion base existente.' }
+];
 
 const defaultTabByKey = new Map(defaultTabs.map((tab) => [tab.key, tab]));
 const protectedTabKeys = new Set(['inicio', 'perfil']);
@@ -962,6 +973,7 @@ export default function App() {
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
   const [contentLoaded, setContentLoaded] = useState(false);
   const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
+  const [authConfirmationOpen, setAuthConfirmationOpen] = useState(false);
   const [contentVersion, setContentVersion] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -1123,6 +1135,7 @@ export default function App() {
           ...tab,
           label: setting?.label ?? tab.label,
           icon: isIoniconName(setting?.icon_name) ? setting.icon_name : tab.icon,
+          sectionType: setting?.section_type ?? 'internal',
           visible: setting?.is_visible ?? true,
           sortOrder: setting?.sort_order ?? 999,
           visibleRoles: setting?.visible_roles ?? null
@@ -1134,6 +1147,7 @@ export default function App() {
         key: setting.key,
         label: setting.label,
         icon: isIoniconName(setting.icon_name) ? setting.icon_name : 'document-text-outline' as keyof typeof Ionicons.glyphMap,
+        sectionType: setting.section_type ?? 'simple',
         visible: setting.is_visible,
         sortOrder: setting.sort_order,
         visibleRoles: setting.visible_roles ?? null
@@ -1564,6 +1578,16 @@ export default function App() {
     reloadAppContent();
     reloadAdminConfig();
 
+    async function handleInitialUrl() {
+      const url = await Linking.getInitialURL();
+      if (url) {
+        handleDeepLinkUrl(url);
+      }
+    }
+
+    handleInitialUrl();
+    const urlSubscription = Linking.addEventListener('url', ({ url }) => handleDeepLinkUrl(url));
+
     const { data: listener } = supabase.auth.onAuthStateChange((_event, authSession) => {
       if (!authSession?.user) {
         setSession(null);
@@ -1576,8 +1600,26 @@ export default function App() {
 
     return () => {
       listener.subscription.unsubscribe();
+      urlSubscription.remove();
     };
   }, []);
+
+  async function handleDeepLinkUrl(url: string) {
+    if (!url.startsWith('palestra://auth/callback')) {
+      return;
+    }
+    setAuthConfirmationOpen(true);
+    try {
+      const parsed = new URL(url);
+      const code = parsed.searchParams.get('code');
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+        await hydrateRealSession();
+      }
+    } catch (error) {
+      console.error('auth callback link', error);
+    }
+  }
 
   useEffect(() => {
     if (Platform.OS !== 'android') {
@@ -1674,7 +1716,7 @@ export default function App() {
       return <ForumScreen session={session} title="Foro" />;
     }
     if (activeTab !== 'perfil') {
-      return <GenericPageScreen title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} />;
+      return <DynamicNavigationSectionScreen session={session} tab={resolvedTabs.find((tab) => tab.key === activeTab)} title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} refreshKey={contentVersion} onNavigate={navigateToTab} />;
     }
     return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} initialPublicProfile={globalSearchProfile} onInitialPublicProfileHandled={() => setGlobalSearchProfile(null)} />;
   }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel, globalSearchProfile]);
@@ -1713,6 +1755,9 @@ export default function App() {
             }}
           />
         ) : null}
+        <Modal visible={authConfirmationOpen} transparent animationType="fade" onRequestClose={() => setAuthConfirmationOpen(false)}>
+          <AuthConfirmationScreen onEnter={() => { setAuthConfirmationOpen(false); setAuthScreenOpen(true); setActiveTab('perfil'); }} />
+        </Modal>
         {touchPointer && touchPointerEnabled ? (
           <Animated.View
             pointerEvents="none"
@@ -2121,6 +2166,23 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
   );
 }
 
+function AuthConfirmationScreen({ onEnter }: { onEnter: () => void }) {
+  return (
+    <View style={styles.modalOverlay}>
+      <View style={styles.authConfirmPanel}>
+        <View style={styles.authConfirmLogo}>
+          <Image source={palestraLogo} style={styles.brandLogoImage} />
+        </View>
+        <Text style={styles.authConfirmTitle}>Mail confirmado</Text>
+        <Text style={styles.authConfirmText}>Tu correo fue confirmado correctamente. Ya podés ingresar a Palestra APP.</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={onEnter} activeOpacity={0.86}>
+          <Text style={styles.primaryButtonText}>Ingresar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: { profile: PendingRegistrationProfile; message: string; onMessage: (message: string) => void; onBackToLogin: () => void }) {
   async function requestAdminHelp() {
     onMessage('Enviando mensaje...');
@@ -2252,6 +2314,7 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
       email: draft.email.trim(),
       password: draft.password,
       options: {
+        emailRedirectTo: authConfirmedPreviewUrl,
         data: {
           full_name: fullName,
           first_name: draft.firstName.trim(),
@@ -2614,7 +2677,9 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
         editor.tabKey,
         draftLabel.trim(),
         editor.tab?.visible ?? true,
-        editor.tab?.visibleRoles ?? null
+        editor.tab?.visibleRoles ?? null,
+        editor.tab?.icon,
+        editor.tab?.sectionType
       );
       if (tabError) {
         setEditorMessage(tabError.message);
@@ -2639,9 +2704,19 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
   }
 
   function addInlineBlock(type: ContentEditorBlock['type']) {
+    const defaultValue =
+      type === 'imagen'
+        ? 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
+        : type === 'enlace'
+          ? 'Etiqueta|https://palestra.org.ar'
+          : type === 'campo'
+            ? 'destino=Panel de solicitudes'
+            : type === 'modulo'
+              ? 'inicio'
+              : '';
     setDraftBlocks((current) => [
       ...current,
-      { id: `${type}-${Date.now()}`, type, value: type === 'imagen' ? 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png' : '' }
+      { id: `${type}-${Date.now()}`, type, value: defaultValue }
     ]);
   }
 
@@ -2677,6 +2752,21 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
             }
             if (block.type === 'imagen') {
               return <Image key={blockKey} source={{ uri: block.value }} style={styles.cardImage} />;
+            }
+            if (block.type === 'enlace') {
+              const [label, url] = splitConfigValue(block.value);
+              return (
+                <TouchableOpacity key={blockKey} style={styles.secondaryButton} onPress={() => Linking.openURL(normalizeExternalUrl(url || label))}>
+                  <Ionicons name="link-outline" size={18} color={palette.red} />
+                  <Text style={styles.secondaryButtonText}>{label || url}</Text>
+                </TouchableOpacity>
+              );
+            }
+            if (block.type === 'campo') {
+              return <Text key={blockKey} style={[styles.cardText, isDark && styles.textDarkBody]}>Campo: {block.value}</Text>;
+            }
+            if (block.type === 'modulo') {
+              return <Text key={blockKey} style={[styles.cardText, isDark && styles.textDarkBody]}>Modulo interno: {tabLabelFromKey(block.value)}</Text>;
             }
             return <Text key={blockKey} style={[styles.cardText, isDark && styles.textDarkBody]}>{block.value}</Text>;
           })}
@@ -2715,6 +2805,18 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
                 <Ionicons name="image-outline" size={16} color={palette.red} />
                 <Text style={styles.smallActionText}>Imagen</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={styles.smallActionButton} onPress={() => addInlineBlock('enlace')}>
+                <Ionicons name="link-outline" size={16} color={palette.red} />
+                <Text style={styles.smallActionText}>Enlace</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.smallActionButton} onPress={() => addInlineBlock('campo')}>
+                <Ionicons name="mail-outline" size={16} color={palette.red} />
+                <Text style={styles.smallActionText}>Campo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.smallActionButton} onPress={() => addInlineBlock('modulo')}>
+                <Ionicons name="apps-outline" size={16} color={palette.red} />
+                <Text style={styles.smallActionText}>Modulo</Text>
+              </TouchableOpacity>
             </View>
             {draftBlocks.map((block, index) => (
               <View key={`${block.id}-${index}`} style={[styles.inlineBlockEditor, isDark && styles.surfaceRowDark]}>
@@ -2734,7 +2836,17 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
                 </View>
                 <TextInput
                   style={[styles.input, block.type === 'texto' && styles.textArea]}
-                  placeholder={block.type === 'imagen' ? 'URL de imagen' : 'Contenido'}
+                  placeholder={
+                    block.type === 'imagen'
+                      ? 'URL de imagen'
+                      : block.type === 'enlace'
+                        ? 'Etiqueta|https://...'
+                        : block.type === 'campo'
+                          ? 'destino=Panel de solicitudes'
+                          : block.type === 'modulo'
+                            ? 'inicio, noticias, comunidades, descargas...'
+                            : 'Contenido'
+                  }
                   value={block.value}
                   onChangeText={(value) => updateInlineBlock(block.id, value)}
                   multiline={block.type !== 'titulo'} placeholderTextColor={inputPlaceholderColor} />
@@ -4413,6 +4525,166 @@ function GenericPageScreen({ title, content, editor }: { title: string; content?
   );
 }
 
+function DynamicNavigationSectionScreen({ session, tab, title, content, editor, refreshKey, onNavigate }: { session: Session | null; tab?: AppTabDisplay; title: string; content?: AppContentBlock; editor?: PageEditorProps; refreshKey: number; onNavigate: (tab: TabKey) => void }) {
+  const type = tab?.sectionType ?? 'simple';
+  const blocks = content?.blocks ?? [];
+
+  if (type === 'library') {
+    return <MaterialsScreen session={session} title={title} content={content} refreshKey={refreshKey} editor={editor} />;
+  }
+
+  if (type === 'internal') {
+    const target = blocks.find((block) => block.type === 'modulo')?.value?.trim();
+    const targetTab = target && defaultTabByKey.has(target) ? target : 'inicio';
+    return (
+      <View style={styles.stack}>
+        <SectionTitle title={title} />
+        <EditableIntro content={content} editor={editor} />
+        <TouchableOpacity style={styles.primaryButton} onPress={() => onNavigate(targetTab)}>
+          <Ionicons name="open-outline" size={18} color={palette.white} />
+          <Text style={styles.primaryButtonText}>Abrir {tabLabelFromKey(targetTab)}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (type === 'links') {
+    const links = blocks.filter((block) => block.type === 'enlace');
+    return (
+      <View style={styles.stack}>
+        <SectionTitle title={title} />
+        <EditableIntro content={content} editor={editor} />
+        {links.map((link) => {
+          const [label, url] = splitConfigValue(link.value);
+          const target = normalizeExternalUrl(url || label);
+          return (
+            <TouchableOpacity key={link.id} style={styles.secondaryButton} onPress={() => Linking.openURL(target)}>
+              <Ionicons name="link-outline" size={18} color={palette.red} />
+              <Text style={styles.secondaryButtonText}>{label || target}</Text>
+            </TouchableOpacity>
+          );
+        })}
+        {links.length === 0 ? <Text style={styles.cardText}>No hay enlaces cargados.</Text> : null}
+      </View>
+    );
+  }
+
+  if (type === 'form') {
+    return <DynamicContactForm title={title} content={content} editor={editor} />;
+  }
+
+  if (type === 'image_text') {
+    const image = blocks.find((block) => block.type === 'imagen')?.value;
+    const textBlocks = blocks.filter((block) => block.type !== 'imagen');
+    return (
+      <View style={styles.stack}>
+        <SectionTitle title={title} />
+        <EditableIntro content={content} editor={editor} />
+        <View style={styles.card}>
+          {image ? <Image source={{ uri: image }} style={styles.cardImage} /> : null}
+          {textBlocks.map((block) => <Text key={block.id} style={block.type === 'titulo' ? styles.cardTitle : styles.cardText}>{block.value}</Text>)}
+        </View>
+      </View>
+    );
+  }
+
+  return <GenericPageScreen title={title} content={content} editor={editor} />;
+}
+
+function DynamicContactForm({ title, content, editor }: { title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState('');
+  const destination = content?.blocks?.find((block) => block.type === 'campo' && block.value.startsWith('destino='))?.value.replace('destino=', '').trim() ?? '';
+
+  async function submit() {
+    if (!name.trim() || !contact.trim() || !message.trim()) {
+      setStatus('Completa nombre, contacto y mensaje.');
+      return;
+    }
+    setStatus('Enviando...');
+    const { error } = await supabase.from('community_contact_messages').insert({
+      sender_name: name.trim(),
+      sender_contact: contact.trim(),
+      message: `${destination ? `[${destination}] ` : ''}${message.trim()}`,
+      status: 'nuevo'
+    });
+    setStatus(error ? error.message : 'Mensaje enviado');
+    if (!error) {
+      setName('');
+      setContact('');
+      setMessage('');
+    }
+  }
+
+  return (
+    <View style={styles.stack}>
+      <SectionTitle title={title} />
+      <EditableIntro content={content} editor={editor} />
+      <View style={styles.card}>
+        <TextInput style={styles.input} placeholder="Nombre" value={name} onChangeText={setName} placeholderTextColor={inputPlaceholderColor} />
+        <TextInput style={styles.input} placeholder="Contacto" value={contact} onChangeText={setContact} placeholderTextColor={inputPlaceholderColor} />
+        <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje" value={message} onChangeText={setMessage} multiline placeholderTextColor={inputPlaceholderColor} />
+        <TouchableOpacity style={styles.primaryButton} onPress={submit}>
+          <Text style={styles.primaryButtonText}>Enviar</Text>
+        </TouchableOpacity>
+        {status ? <Text style={styles.cardText}>{status}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+function splitConfigValue(value: string) {
+  const parts = value.split('|').map((item) => item.trim());
+  return [parts[0] ?? '', parts[1] ?? ''];
+}
+
+function normalizeExternalUrl(value: string) {
+  if (!value) {
+    return 'https://palestra.org.ar';
+  }
+  return value.startsWith('http') ? value : `https://${value}`;
+}
+
+function buildInitialBlocksForSection(sectionType: AppTabSectionType, title: string): ContentEditorBlock[] {
+  const now = Date.now();
+  if (sectionType === 'links') {
+    return [
+      { id: `titulo-${now}`, type: 'titulo', value: title },
+      { id: `enlace-${now}`, type: 'enlace', value: 'Instagram Palestra|https://www.instagram.com/infopalestra.argentina' }
+    ];
+  }
+  if (sectionType === 'image_text') {
+    return [
+      { id: `titulo-${now}`, type: 'titulo', value: title },
+      { id: `imagen-${now}`, type: 'imagen', value: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png' },
+      { id: `texto-${now}`, type: 'texto', value: 'Contenido inicial de la seccion.' }
+    ];
+  }
+  if (sectionType === 'form') {
+    return [
+      { id: `titulo-${now}`, type: 'titulo', value: title },
+      { id: `texto-${now}`, type: 'texto', value: 'Envianos tu consulta.' },
+      { id: `campo-${now}`, type: 'campo', value: 'destino=Panel de solicitudes' }
+    ];
+  }
+  if (sectionType === 'internal') {
+    return [
+      { id: `titulo-${now}`, type: 'titulo', value: title },
+      { id: `modulo-${now}`, type: 'modulo', value: 'inicio' }
+    ];
+  }
+  return [
+    { id: `titulo-${now}`, type: 'titulo', value: title },
+    { id: `texto-${now}`, type: 'texto', value: 'Contenido inicial de la pagina.' }
+  ];
+}
+
+function tabLabelFromKey(key: string) {
+  return defaultTabs.find((tab) => tab.key === key)?.label ?? key;
+}
+
 function ForumScreen({ session, title }: { session: Session | null; title: string }) {
   const isDark = useIsDarkTheme();
   const [categories, setCategories] = useState<ForumCategory[]>([]);
@@ -4868,10 +5140,11 @@ function ProfileScreen({
   const [adminCommunityImageUploading, setAdminCommunityImageUploading] = useState(false);
   const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
   const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
-  const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; isVisible: boolean; visibleRoles: string[] | null }>>({});
+  const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; sectionType: AppTabSectionType; isVisible: boolean; visibleRoles: string[] | null }>>({});
   const [newTabLabel, setNewTabLabel] = useState('');
   const [newTabKey, setNewTabKey] = useState('');
   const [newTabIcon, setNewTabIcon] = useState('document-text-outline');
+  const [newTabSectionType, setNewTabSectionType] = useState<AppTabSectionType>('simple');
   const [newTabRoles, setNewTabRoles] = useState<string[]>(['sedimentador', 'coordinador_comunidad', 'animador_comunidad', 'vocal', 'coordinador_diocesano', 'asesor', 'vocal_nacional', 'coordinador_nacional', 'administrador']);
   const [selectedNavigationTabKey, setSelectedNavigationTabKey] = useState('');
   const [navigationRolesDropdownOpen, setNavigationRolesDropdownOpen] = useState(false);
@@ -4969,7 +5242,7 @@ function ProfileScreen({
   const selectedEditableContent = appContent.find((item) => item.tab_key === selectedContentTab);
   const canOpenCommunityAdmin = canUseCommunityAdmin(session);
   const editableTabs = useMemo(
-    () => (tabs.length > 0 ? tabs : defaultTabs.map((tab, index) => ({ ...tab, visible: true, sortOrder: index, visibleRoles: null }))),
+    () => (tabs.length > 0 ? tabs : defaultTabs.map((tab, index) => ({ ...tab, sectionType: 'internal' as AppTabSectionType, visible: true, sortOrder: index, visibleRoles: null }))),
     [tabs]
   );
   const selectedNavigationTab = editableTabs.find((tab) => tab.key === selectedNavigationTabKey) ?? editableTabs[0];
@@ -4977,6 +5250,7 @@ function ProfileScreen({
     ? (editingTabs[selectedNavigationTab.key] ?? {
       label: selectedNavigationTab.label,
       iconName: selectedNavigationTab.icon,
+      sectionType: selectedNavigationTab.sectionType,
       isVisible: selectedNavigationTab.visible,
       visibleRoles: selectedNavigationTab.visibleRoles
     })
@@ -5008,7 +5282,7 @@ function ProfileScreen({
       .some((value) => String(value).toLowerCase().includes(query));
   });
   const navigationVisibleCount = editableTabs.filter((tab) => {
-    const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+    const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
     return draft.isVisible;
   }).length;
   const navigationLockedCount = editableTabs.filter((tab) => protectedTabKeys.has(tab.key) || defaultTabByKey.has(tab.key)).length;
@@ -5907,6 +6181,7 @@ function ProfileScreen({
       email: authEmail.trim(),
       password: authPassword,
       options: {
+        emailRedirectTo: authConfirmedPreviewUrl,
         data: {
           full_name: registerFullName.trim() || authEmail.trim(),
           phone: registerContact.trim(),
@@ -6578,7 +6853,7 @@ function ProfileScreen({
       return;
     }
     const tab = editableTabs.find((item) => item.key === key);
-    const draft = editingTabs[key] ?? { label: fallbackLabel, iconName: tab?.icon ?? 'document-text-outline', isVisible: true, visibleRoles: tab?.visibleRoles ?? null };
+    const draft = editingTabs[key] ?? { label: fallbackLabel, iconName: tab?.icon ?? 'document-text-outline', sectionType: tab?.sectionType ?? 'simple', isVisible: true, visibleRoles: tab?.visibleRoles ?? null };
     if (!draft.label.trim()) {
       setAuthMessage('El nombre visible no puede quedar vacio.');
       return;
@@ -6587,7 +6862,7 @@ function ProfileScreen({
       setAuthMessage(`El icono "${draft.iconName}" no existe en Ionicons.`);
       return;
     }
-    const { error } = await updateAppTab(key, draft.label.trim() || fallbackLabel, draft.isVisible, draft.visibleRoles, draft.iconName);
+    const { error } = await updateAppTab(key, draft.label.trim() || fallbackLabel, draft.isVisible, draft.visibleRoles, draft.iconName, draft.sectionType);
     setAuthMessage(error ? error.message : changeDone('Pestana actualizada.'));
     await onTabsChanged();
   }
@@ -6614,18 +6889,16 @@ function ProfileScreen({
       setAuthMessage(`El icono "${newTabIcon}" no existe en Ionicons.`);
       return;
     }
-    const { error } = await createAppTab(key, newTabLabel.trim(), newTabRoles, newTabIcon);
+    const { error } = await createAppTab(key, newTabLabel.trim(), newTabRoles, newTabIcon, newTabSectionType);
     if (error) {
       setAuthMessage(error.message);
       return;
     }
-    await updateAppContent(key, newTabLabel.trim(), 'Contenido inicial de la pagina.', [
-      { id: `titulo-${Date.now()}`, type: 'titulo', value: newTabLabel.trim() },
-      { id: `texto-${Date.now()}`, type: 'texto', value: 'Contenido inicial de la pagina.' }
-    ]);
+    await updateAppContent(key, newTabLabel.trim(), 'Contenido inicial de la pagina.', buildInitialBlocksForSection(newTabSectionType, newTabLabel.trim()));
     setNewTabLabel('');
     setNewTabKey('');
     setNewTabIcon('document-text-outline');
+    setNewTabSectionType('simple');
     await onTabsChanged();
     await onContentChanged();
     setAuthMessage(changeDone('Pagina creada con visibilidad por rol.'));
@@ -6648,14 +6921,15 @@ function ProfileScreen({
 
     setAuthMessage('Actualizando orden de accesos...');
     for (const [orderIndex, tab] of nextOrder.entries()) {
-      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
       const { error } = await updateAppTabPosition({
         key: tab.key,
         label: draft.label || tab.label,
         isVisible: draft.isVisible,
         sortOrder: (orderIndex + 1) * 10,
         visibleRoles: draft.visibleRoles,
-        iconName: draft.iconName || tab.icon
+        iconName: draft.iconName || tab.icon,
+        sectionType: draft.sectionType
       });
       if (error) {
         setAuthMessage(error.message);
@@ -6668,7 +6942,7 @@ function ProfileScreen({
 
   function updateTabRole(key: string, role: Role, checked: boolean) {
     const tab = editableTabs.find((item) => item.key === key);
-    const currentDraft = editingTabs[key] ?? { label: tab?.label ?? key, iconName: tab?.icon ?? 'document-text-outline', isVisible: tab?.visible ?? true, visibleRoles: tab?.visibleRoles ?? null };
+    const currentDraft = editingTabs[key] ?? { label: tab?.label ?? key, iconName: tab?.icon ?? 'document-text-outline', sectionType: tab?.sectionType ?? 'simple', isVisible: tab?.visible ?? true, visibleRoles: tab?.visibleRoles ?? null };
     const currentRoles = currentDraft.visibleRoles ?? roleDefinitions.map((item) => item.role);
     const nextRoles = checked ? Array.from(new Set([...currentRoles, role])) : currentRoles.filter((item) => item !== role);
     setEditingTabs((current) => ({ ...current, [key]: { ...currentDraft, visibleRoles: nextRoles } }));
@@ -6927,9 +7201,19 @@ function ProfileScreen({
   }
 
   function addContentBlock(type: ContentEditorBlock['type']) {
+    const defaultValue =
+      type === 'imagen'
+        ? 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
+        : type === 'enlace'
+          ? 'Etiqueta|https://palestra.org.ar'
+          : type === 'campo'
+            ? 'destino=Panel de solicitudes'
+            : type === 'modulo'
+              ? 'inicio'
+              : '';
     setContentBlocks((current) => [
       ...current,
-      { id: `${type}-${Date.now()}`, type, value: type === 'imagen' ? 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png' : '' }
+      { id: `${type}-${Date.now()}`, type, value: defaultValue }
     ]);
   }
 
@@ -8178,7 +8462,7 @@ function ProfileScreen({
                       </View>
                       <View style={styles.navPreviewBar}>
                         {editableTabs.slice(0, 7).map((tab) => {
-                          const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                          const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
                           const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
                           const selected = selectedNavigationTab?.key === tab.key;
                           return (
@@ -8193,7 +8477,7 @@ function ProfileScreen({
 
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationRail}>
                       {editableTabs.map((tab, index) => {
-                        const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                        const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
                         const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
                         const selected = selectedNavigationTab?.key === tab.key;
                         return (
@@ -8251,6 +8535,25 @@ function ProfileScreen({
                             </TouchableOpacity>
                           ))}
                         </ScrollView>
+
+                        <Text style={styles.cardEyebrow}>Tipo de seccion</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                          {navigationSectionTypes.map((type) => {
+                            const selected = selectedNavigationDraft.sectionType === type.key;
+                            const lockedInternal = defaultTabByKey.has(selectedNavigationTab.key) && type.key !== 'internal';
+                            return (
+                              <TouchableOpacity
+                                key={`dedicated-type-${type.key}`}
+                                style={[styles.filterChip, selected && styles.filterChipActive, lockedInternal && styles.disabledChip]}
+                                disabled={lockedInternal}
+                                onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, sectionType: type.key } }))}
+                              >
+                                <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{type.label}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                        <Text style={styles.feedMeta}>{navigationSectionTypes.find((type) => type.key === selectedNavigationDraft.sectionType)?.description ?? 'Pagina simple.'}</Text>
 
                         <View style={styles.navigationActionGrid}>
                           <TouchableOpacity style={styles.navigationMiniAction} onPress={() => adminMoveTab(selectedNavigationTab.key, -1)} disabled={editableTabs[0]?.key === selectedNavigationTab.key}>
@@ -8330,6 +8633,15 @@ function ProfileScreen({
                           </TouchableOpacity>
                         ))}
                       </ScrollView>
+                      <Text style={styles.cardEyebrow}>Tipo de seccion</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                        {navigationSectionTypes.map((type) => (
+                          <TouchableOpacity key={`new-dedicated-type-${type.key}`} style={[styles.filterChip, newTabSectionType === type.key && styles.filterChipActive]} onPress={() => setNewTabSectionType(type.key)}>
+                            <Text style={[styles.filterChipText, newTabSectionType === type.key && styles.filterChipTextActive]}>{type.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                      <Text style={styles.feedMeta}>{navigationSectionTypes.find((type) => type.key === newTabSectionType)?.description}</Text>
                       <TouchableOpacity style={styles.navigationRolesButton} onPress={() => setNewNavigationRolesDropdownOpen(!newNavigationRolesDropdownOpen)} activeOpacity={0.85}>
                         <View style={styles.adminUserHeaderText}>
                           <Text style={styles.cardEyebrow}>Roles visibles</Text>
@@ -9725,7 +10037,7 @@ function ProfileScreen({
                     </View>
                     <View style={styles.navPreviewBar}>
                       {editableTabs.slice(0, 7).map((tab) => {
-                        const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                        const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
                         const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
                         const selected = selectedNavigationTab?.key === tab.key;
                         return (
@@ -9740,7 +10052,7 @@ function ProfileScreen({
 
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationRail}>
                     {editableTabs.map((tab, index) => {
-                      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
                       const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
                       const selected = selectedNavigationTab?.key === tab.key;
                       return (
@@ -9796,6 +10108,25 @@ function ProfileScreen({
                           </TouchableOpacity>
                         ))}
                       </ScrollView>
+
+                      <Text style={styles.cardEyebrow}>Tipo de seccion</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                        {navigationSectionTypes.map((type) => {
+                          const selected = selectedNavigationDraft.sectionType === type.key;
+                          const lockedInternal = defaultTabByKey.has(selectedNavigationTab.key) && type.key !== 'internal';
+                          return (
+                            <TouchableOpacity
+                              key={`type-${type.key}`}
+                              style={[styles.filterChip, selected && styles.filterChipActive, lockedInternal && styles.disabledChip]}
+                              disabled={lockedInternal}
+                              onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, sectionType: type.key } }))}
+                            >
+                              <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{type.label}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                      <Text style={styles.feedMeta}>{navigationSectionTypes.find((type) => type.key === selectedNavigationDraft.sectionType)?.description ?? 'Pagina simple.'}</Text>
 
                       <View style={styles.navigationActionGrid}>
                         <TouchableOpacity style={styles.navigationMiniAction} onPress={() => adminMoveTab(selectedNavigationTab.key, -1)} disabled={editableTabs[0]?.key === selectedNavigationTab.key}>
@@ -9856,6 +10187,15 @@ function ProfileScreen({
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
+                    <Text style={styles.cardEyebrow}>Tipo de seccion</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                      {navigationSectionTypes.map((type) => (
+                        <TouchableOpacity key={`new-type-${type.key}`} style={[styles.filterChip, newTabSectionType === type.key && styles.filterChipActive]} onPress={() => setNewTabSectionType(type.key)}>
+                          <Text style={[styles.filterChipText, newTabSectionType === type.key && styles.filterChipTextActive]}>{type.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <Text style={styles.feedMeta}>{navigationSectionTypes.find((type) => type.key === newTabSectionType)?.description}</Text>
                     <Text style={styles.cardEyebrow}>Roles visibles</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
                       {visibleHierarchyFor(session).map((role) => (
@@ -9898,7 +10238,7 @@ function ProfileScreen({
                     </TouchableOpacity>
                     <Text style={styles.cardEyebrow}>Accesos, orden y visibilidad</Text>
                     {editableTabs.map((tab, index) => {
-                      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
                       return (
                         <View key={tab.key} style={styles.tabEditorRow}>
                           <Text style={styles.cardEyebrow}>{tab.key}</Text>
@@ -9968,13 +10308,32 @@ function ProfileScreen({
                   <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('imagen')}>
                     <Text style={styles.secondaryButtonText}>+ Imagen</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('enlace')}>
+                    <Text style={styles.secondaryButtonText}>+ Enlace</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('campo')}>
+                    <Text style={styles.secondaryButtonText}>+ Campo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('modulo')}>
+                    <Text style={styles.secondaryButtonText}>+ Modulo</Text>
+                  </TouchableOpacity>
                 </View>
                 {contentBlocks.map((block, index) => (
                   <View key={`${block.id}-${index}`} style={styles.blockEditorCard}>
                     <Text style={styles.cardEyebrow}>{block.type}</Text>
                     <TextInput
                       style={[styles.input, block.type === 'texto' && styles.textArea]}
-                      placeholder={block.type === 'imagen' ? 'URL de imagen' : 'Contenido'}
+                      placeholder={
+                        block.type === 'imagen'
+                          ? 'URL de imagen'
+                          : block.type === 'enlace'
+                            ? 'Etiqueta|https://...'
+                            : block.type === 'campo'
+                              ? 'destino=Panel de solicitudes'
+                              : block.type === 'modulo'
+                                ? 'inicio, noticias, comunidades, descargas...'
+                                : 'Contenido'
+                      }
                       value={block.value}
                       onChangeText={(value) => updateContentBlock(block.id, value)}
                       multiline={block.type !== 'titulo'}
@@ -11684,6 +12043,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 18
   },
+  authConfirmPanel: {
+    width: '100%',
+    maxWidth: 390,
+    borderRadius: 26,
+    backgroundColor: palette.white,
+    padding: 24,
+    alignItems: 'center',
+    gap: 14,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.24,
+    shadowRadius: 24,
+    elevation: 12
+  },
+  authConfirmLogo: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: palette.whiteSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)'
+  },
+  authConfirmTitle: {
+    fontSize: 28,
+    color: palette.ink,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
+  authConfirmText: {
+    color: palette.inkMuted,
+    fontSize: 16,
+    lineHeight: 23,
+    textAlign: 'center',
+    fontWeight: '700'
+  },
   modalBackdropTouch: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 1
@@ -12890,6 +13285,9 @@ const styles = StyleSheet.create({
     backgroundColor: palette.red,
     borderColor: palette.red
   },
+  disabledChip: {
+    opacity: 0.42
+  },
   filterChipText: {
     color: palette.ink,
     fontWeight: '800'
@@ -13836,4 +14234,3 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(45, 141, 200, 0.1)'
   }
 });
-
