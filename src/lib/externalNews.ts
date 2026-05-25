@@ -42,7 +42,7 @@ function decodeXml(value: string) {
 }
 
 function cleanText(value: string) {
-  return decodeXml(value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim();
+  return decodeXml(value).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function readTag(xml: string, tag: string) {
@@ -54,8 +54,10 @@ function readImage(xml: string) {
   const enclosure = xml.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*>/i)?.[1];
   const media = xml.match(/<media:content[^>]+url=["']([^"']+)["'][^>]*>/i)?.[1];
   const mediaThumb = xml.match(/<media:thumbnail[^>]+url=["']([^"']+)["'][^>]*>/i)?.[1];
-  const image = xml.match(/<image[^>]+url=["']([^"']+)["'][^>]*>/i)?.[1];
-  return enclosure || media || mediaThumb || image || undefined;
+  const imageUrlAttr = xml.match(/<image[^>]+url=["']([^"']+)["'][^>]*>/i)?.[1];
+  const imageTag = readTag(xml, 'image');
+  const url = enclosure || media || mediaThumb || imageUrlAttr || imageTag || undefined;
+  return url ? decodeXml(url) : undefined;
 }
 
 function absoluteUrl(url: string, baseUrl: string) {
@@ -72,7 +74,7 @@ function parseRssItems(xml: string, feed: CatholicNewsSource, limit: number): Ex
   const items = xml.match(/<item[\s\S]*?<\/item>/gi) ?? [];
   return items.slice(0, limit).flatMap((item, index) => {
     const title = readTag(item, 'title');
-    const link = readTag(item, 'link');
+    const link = readTag(item, 'link') || item.match(/<link[^>]+href=["']([^"']+)["'][^>]*>/i)?.[1] || '';
     if (!title || !link) {
       return [];
     }
