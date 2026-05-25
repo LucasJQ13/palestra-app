@@ -969,8 +969,15 @@ export async function saveAdminInstagram(instagram: string) {
   }
 }
 
-export async function fetchAppMaterials(): Promise<AppMaterialRecord[]> {
+export async function fetchAppMaterials(includeAdminHidden = false): Promise<AppMaterialRecord[]> {
   try {
+    if (includeAdminHidden) {
+      const { data: adminData, error: adminError } = await supabase.rpc('admin_get_materials');
+      if (!adminError && adminData) {
+        return adminData as AppMaterialRecord[];
+      }
+    }
+
     const { data, error } = await supabase
       .from('materials')
       .select('id, title, description, category, visibility, required_permission, file_url, file_path, sort_order, archived_at, created_at, created_by, province_id')

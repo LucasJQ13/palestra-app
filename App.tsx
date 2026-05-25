@@ -50,7 +50,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.34';
+const appBetaVersion = '0.1.35';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const authDeepLinkBaseUrl = 'palestra://auth/callback';
@@ -1472,7 +1472,7 @@ export default function App() {
         adminUsersRemote
       ] = await Promise.all([
         fetchCommunities(),
-        fetchAppMaterials(),
+        fetchAppMaterials(session?.role === 'administrador'),
         fetchAppContent(),
         fetchNews(session),
         fetchNotilestra(session),
@@ -3041,7 +3041,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
 
   useEffect(() => {
     let alive = true;
-    Promise.all([fetchNews(session), fetchCommunityPublications(session), fetchCommunities(), fetchAppMaterials()]).then(([items, communityItems, communityRemote, materialRemote]) => {
+    Promise.all([fetchNews(session), fetchCommunityPublications(session), fetchCommunities(), fetchAppMaterials(session?.role === 'administrador')]).then(([items, communityItems, communityRemote, materialRemote]) => {
       if (alive) {
         setHomeNews([...communityItems, ...items]);
         setCommunityAgenda(communityItems.filter((item) => item.kind === 'fecha'));
@@ -3796,7 +3796,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
 
   useEffect(() => {
     let alive = true;
-    Promise.all([fetchAppMaterials(), fetchChurchDocumentButtons()]).then(([items, documents]) => {
+    Promise.all([fetchAppMaterials(session?.role === 'administrador'), fetchChurchDocumentButtons()]).then(([items, documents]) => {
       if (alive) {
         setRemoteMaterials(items);
         setChurchDocuments(documents);
@@ -3892,7 +3892,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
     }
     setEditingMaterialId(null);
     setUploadMessage(changeDone('Material actualizado.'));
-    setRemoteMaterials(await fetchAppMaterials());
+    setRemoteMaterials(await fetchAppMaterials(session?.role === 'administrador'));
   }
 
   async function deleteMaterial(material: typeof visibleMaterials[number]) {
@@ -3905,7 +3905,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       return;
     }
     setUploadMessage(changeDone('Material eliminado.'));
-    setRemoteMaterials(await fetchAppMaterials());
+    setRemoteMaterials(await fetchAppMaterials(session?.role === 'administrador'));
   }
 
   async function openMaterialFile(material: typeof visibleMaterials[number]) {
@@ -4130,7 +4130,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       setUploadDescription('');
       setShowUpload(false);
       setUploadMessage(changeDone('PDF subido correctamente.'));
-      setRemoteMaterials(await fetchAppMaterials());
+      setRemoteMaterials(await fetchAppMaterials(session?.role === 'administrador'));
     } catch (error) {
       setUploadMessage(error instanceof Error ? error.message : 'No pude subir el PDF.');
     }
@@ -7282,7 +7282,7 @@ function ProfileScreen({
   }
 
   async function loadAdminMaterials() {
-    const [items, documents] = await Promise.all([fetchAppMaterials(), fetchChurchDocumentButtons(true)]);
+    const [items, documents] = await Promise.all([fetchAppMaterials(session?.role === 'administrador'), fetchChurchDocumentButtons(true)]);
     setAdminMaterials(items);
     setAdminChurchDocuments(documents);
     setAuthMessage(items.length > 0 || documents.length > 0 ? 'Descargas cargadas.' : 'No hay descargas guardadas.');
