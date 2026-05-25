@@ -3830,8 +3830,14 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
     if (!session) {
       return false;
     }
+    if (session.role === 'administrador') {
+      return true;
+    }
     const selectedRole = material.permission?.replace('rango_', '') as Role | undefined;
     if (selectedRole && roleDefinitions.some((item) => item.role === selectedRole)) {
+      if (selectedRole === 'sedimentador') {
+        return roleRank(session.role) >= roleRank('sedimentador');
+      }
       if (material.visibility === 'solo_rango') {
         return session.role === selectedRole;
       }
@@ -3845,7 +3851,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
   }
 
   function canManageMaterial(material: { createdBy?: string | null }) {
-    return Boolean(session && (material.createdBy === session.id || canManagePublishedContent(session)));
+    return Boolean(session && (session.role === 'administrador' || material.createdBy === session.id || canManagePublishedContent(session)));
   }
 
   function startEditMaterial(material: typeof visibleMaterials[number]) {
