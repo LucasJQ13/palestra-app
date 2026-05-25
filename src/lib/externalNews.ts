@@ -16,11 +16,19 @@ type CatholicNewsSource = {
   kind: 'rss' | 'html';
 };
 
-const catholicNewsSources: CatholicNewsSource[] = [
+const defaultCatholicNewsSources: CatholicNewsSource[] = [
   { key: 'vatican', source: 'Vatican News', url: 'https://www.vaticannews.va/es.rss.xml', kind: 'rss' },
   { key: 'episcopado', source: 'Episcopado Argentino', url: 'https://episcopado.org/novedades', kind: 'html' },
   { key: 'aci', source: 'ACI Prensa', url: 'https://www.aciprensa.com/rss/noticias.xml', kind: 'rss' }
 ];
+
+function configuredSources(config: CatholicNewsConfig): CatholicNewsSource[] {
+  return defaultCatholicNewsSources.map((source) => ({
+    ...source,
+    source: config.sourceLabels[source.key]?.trim() || source.source,
+    url: config.sourceUrls[source.key]?.trim() || source.url
+  }));
+}
 
 function stripCdata(value: string) {
   return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
@@ -129,6 +137,7 @@ export async function fetchExternalCatholicNews(config: CatholicNewsConfig = def
 
   const bySource: ExternalCatholicNewsItem[][] = [];
   const sourceLimit = 2;
+  const catholicNewsSources = configuredSources(config);
   const orderedSources = config.sourceOrder
     .map((sourceKey) => catholicNewsSources.find((source) => source.key === sourceKey))
     .filter((source): source is CatholicNewsSource => Boolean(source))

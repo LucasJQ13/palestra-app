@@ -50,7 +50,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.33';
+const appBetaVersion = '0.1.34';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const authDeepLinkBaseUrl = 'palestra://auth/callback';
@@ -3773,6 +3773,13 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
   const isDark = useIsDarkTheme();
   const [remoteMaterials, setRemoteMaterials] = useState<AppMaterialRecord[]>([]);
   const [churchDocuments, setChurchDocuments] = useState<ChurchDocumentButtonRecord[]>([]);
+  const [showChurchDocumentAdmin, setShowChurchDocumentAdmin] = useState(false);
+  const [churchDocumentEditingId, setChurchDocumentEditingId] = useState<string | null>(null);
+  const [churchDocumentTitle, setChurchDocumentTitle] = useState('');
+  const [churchDocumentLogoUrl, setChurchDocumentLogoUrl] = useState('');
+  const [churchDocumentTargetUrl, setChurchDocumentTargetUrl] = useState('');
+  const [churchDocumentEnabled, setChurchDocumentEnabled] = useState(true);
+  const [churchDocumentSortOrder, setChurchDocumentSortOrder] = useState('1');
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
@@ -3926,6 +3933,140 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
     }
   }
 
+  async function reloadChurchDocuments(includeDisabled = false) {
+    setChurchDocuments(await fetchChurchDocumentButtons(includeDisabled));
+  }
+
+  function resetChurchDocumentForm() {
+    setChurchDocumentEditingId(null);
+    setChurchDocumentTitle('');
+    setChurchDocumentLogoUrl('');
+    setChurchDocumentTargetUrl('');
+    setChurchDocumentEnabled(true);
+    setChurchDocumentSortOrder(String(Math.min(churchDocuments.length + 1, 6)));
+  }
+
+  function editChurchDocument(document: ChurchDocumentButtonRecord) {
+    setChurchDocumentEditingId(document.id);
+    setChurchDocumentTitle(document.title);
+    setChurchDocumentLogoUrl(document.logo_url ?? '');
+    setChurchDocumentTargetUrl(document.target_url);
+    setChurchDocumentEnabled(document.enabled);
+    setChurchDocumentSortOrder(String(document.sort_order ?? 1));
+    setShowChurchDocumentAdmin(true);
+  }
+
+  async function uploadChurchDocumentLogoFromDownloads() {
+    if (session?.role !== 'administrador') {
+      setUploadMessage('Solo Administrador puede subir logos.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setUploadMessage('Necesito permiso para seleccionar imagen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.82,
+      allowsEditing: true,
+      aspect: [1, 1]
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    try {
+      setUploadMessage('Subiendo logo...');
+      const asset = result.assets[0];
+      const response = await fetch(asset.uri);
+      const bytes = await response.arrayBuffer();
+      const extension = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+      const path = `church-documents/${Date.now()}.${extension.replace(/[^a-zA-Z0-9]/g, '') || 'jpg'}`;
+      const { error } = await supabase.storage
+        .from('materials')
+        .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: true });
+      if (error) {
+        setUploadMessage(error.message);
+        return;
+      }
+      const { data } = supabase.storage.from('materials').getPublicUrl(path);
+      setChurchDocumentLogoUrl(data.publicUrl);
+      setUploadMessage('Logo cargado.');
+    } catch (error) {
+      setUploadMessage(error instanceof Error ? error.message : 'No se pudo subir el logo.');
+    }
+  }
+
+  async function saveChurchDocumentFromDownloads() {
+    if (session?.role !== 'administrador') {
+      setUploadMessage('Solo Administrador puede gestionar documentos de la Iglesia.');
+      return;
+    }
+    if (!churchDocumentTitle.trim() || !churchDocumentTargetUrl.trim()) {
+      setUploadMessage('Completa titulo y link destino.');
+      return;
+    }
+    if (!/^https?:\/\//i.test(churchDocumentTargetUrl.trim())) {
+      setUploadMessage('El link debe empezar con https://');
+      return;
+    }
+    if (!churchDocumentEditingId && churchDocuments.length >= 6) {
+      setUploadMessage('Solo se permiten hasta 6 botones.');
+      return;
+    }
+    const { error } = await saveChurchDocumentButton({
+      id: churchDocumentEditingId,
+      title: churchDocumentTitle.trim(),
+      logoUrl: churchDocumentLogoUrl.trim() || null,
+      targetUrl: churchDocumentTargetUrl.trim(),
+      enabled: churchDocumentEnabled,
+      sortOrder: Number(churchDocumentSortOrder) || 1
+    });
+    if (error) {
+      setUploadMessage(error.message);
+      return;
+    }
+    resetChurchDocumentForm();
+    await reloadChurchDocuments(session?.role === 'administrador');
+    setUploadMessage(changeDone('Boton guardado.'));
+  }
+
+  async function deleteChurchDocumentFromDownloads(id: string) {
+    const { error } = await archiveChurchDocumentButton(id);
+    if (error) {
+      setUploadMessage(error.message);
+      return;
+    }
+    await reloadChurchDocuments(true);
+    setUploadMessage(changeDone('Boton eliminado.'));
+  }
+
+  async function toggleChurchDocumentFromDownloads(document: ChurchDocumentButtonRecord) {
+    const { error } = await saveChurchDocumentButton({
+      id: document.id,
+      title: document.title,
+      logoUrl: document.logo_url,
+      targetUrl: document.target_url,
+      enabled: !document.enabled,
+      sortOrder: document.sort_order
+    });
+    if (error) {
+      setUploadMessage(error.message);
+      return;
+    }
+    await reloadChurchDocuments(true);
+  }
+
+  function duplicateChurchDocumentFromDownloads(document: ChurchDocumentButtonRecord) {
+    setChurchDocumentEditingId(null);
+    setChurchDocumentTitle(`${document.title} copia`);
+    setChurchDocumentLogoUrl(document.logo_url ?? '');
+    setChurchDocumentTargetUrl(document.target_url);
+    setChurchDocumentEnabled(document.enabled);
+    setChurchDocumentSortOrder(String(Math.min(churchDocuments.length + 1, 6)));
+    setShowChurchDocumentAdmin(true);
+  }
+
   async function uploadPdfMaterial() {
     if (!session || !canManagePublishedContent(session)) {
       setUploadMessage('Solo Vocal Diocesano en adelante puede subir contenido.');
@@ -4035,14 +4176,64 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       <View style={[styles.card, isDark && styles.surfaceCardDark]}>
         <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Documentos de la Iglesia</Text>
         <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Textos oficiales y recursos externos seleccionados.</Text>
+        {session?.role === 'administrador' ? (
+          <TouchableOpacity style={styles.primaryButton} onPress={() => {
+            setShowChurchDocumentAdmin((current) => !current);
+            reloadChurchDocuments(true);
+          }}>
+            <Ionicons name="add-circle-outline" size={17} color={palette.white} />
+            <Text style={styles.primaryButtonText}>Agregar boton</Text>
+          </TouchableOpacity>
+        ) : null}
+        {showChurchDocumentAdmin && session?.role === 'administrador' ? (
+          <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{churchDocumentEditingId ? 'Editar boton' : 'Nuevo boton'}</Text>
+            <TextInput style={styles.input} placeholder="Titulo visible" value={churchDocumentTitle} onChangeText={setChurchDocumentTitle} placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={styles.input} placeholder="Link destino https://..." value={churchDocumentTargetUrl} onChangeText={setChurchDocumentTargetUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={styles.input} placeholder="Logo URL o subir imagen" value={churchDocumentLogoUrl} onChangeText={setChurchDocumentLogoUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+            <TouchableOpacity style={styles.secondaryButton} onPress={uploadChurchDocumentLogoFromDownloads}>
+              <Ionicons name="image-outline" size={17} color={palette.red} />
+              <Text style={styles.secondaryButtonText}>Subir logo/imagen</Text>
+            </TouchableOpacity>
+            <View style={styles.inlineActions}>
+              <TextInput style={[styles.input, styles.colorInput]} placeholder="Orden" value={churchDocumentSortOrder} onChangeText={setChurchDocumentSortOrder} keyboardType="numeric" placeholderTextColor={inputPlaceholderColor} />
+              <TouchableOpacity style={[styles.actionPill, churchDocumentEnabled && styles.actionPillActive]} onPress={() => setChurchDocumentEnabled((current) => !current)}>
+                <Text style={[styles.actionPillText, churchDocumentEnabled && styles.actionPillTextActive]}>{churchDocumentEnabled ? 'Habilitado' : 'Deshabilitado'}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.inlineActions}>
+              <TouchableOpacity style={styles.primaryButton} onPress={saveChurchDocumentFromDownloads}>
+                <Text style={styles.primaryButtonText}>{churchDocumentEditingId ? 'Guardar boton' : 'Crear boton'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryButton} onPress={resetChurchDocumentForm}>
+                <Text style={styles.secondaryButtonText}>Limpiar</Text>
+              </TouchableOpacity>
+            </View>
+            {churchDocuments.map((document) => (
+              <View key={document.id} style={[styles.adminListRow, !document.enabled && styles.lockedCard]}>
+                {document.logo_url ? <Image source={{ uri: document.logo_url }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="key-outline" size={18} color={palette.red} /></View>}
+                <View style={styles.adminUserHeaderText}>
+                  <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{document.title}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Orden {document.sort_order} - {document.enabled ? 'activo' : 'inactivo'}</Text>
+                </View>
+                <View style={styles.inlineActions}>
+                  <TouchableOpacity style={styles.actionPill} onPress={() => editChurchDocument(document)}><Text style={styles.actionPillText}>Editar</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.actionPill} onPress={() => duplicateChurchDocumentFromDownloads(document)}><Text style={styles.actionPillText}>Duplicar</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.actionPill} onPress={() => toggleChurchDocumentFromDownloads(document)}><Text style={styles.actionPillText}>{document.enabled ? 'Ocultar' : 'Activar'}</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.actionPill} onPress={() => deleteChurchDocumentFromDownloads(document.id)}><Text style={styles.actionPillText}>Borrar</Text></TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
         <View style={styles.churchDocumentGrid}>
-          {churchDocuments.slice(0, 6).map((document) => (
+          {churchDocuments.filter((document) => document.enabled).slice(0, 6).map((document) => (
             <TouchableOpacity key={document.id} style={[styles.churchDocumentButton, isDark && styles.surfaceRowDark]} onPress={() => openChurchDocument(document)} activeOpacity={0.86}>
               {document.logo_url ? <Image source={{ uri: document.logo_url }} style={styles.churchDocumentLogo} /> : <View style={styles.churchDocumentLogoFallback}><Ionicons name="key-outline" size={22} color={palette.red} /></View>}
               <Text style={[styles.churchDocumentTitle, isDark && styles.textDarkStrong]} numberOfLines={2}>{document.title}</Text>
             </TouchableOpacity>
           ))}
-          {churchDocuments.length === 0 ? (
+          {churchDocuments.filter((document) => document.enabled).length === 0 ? (
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Todavia no hay documentos de la Iglesia cargados.</Text>
           ) : null}
         </View>
@@ -5788,7 +5979,11 @@ function ProfileScreen({
     }));
   }
 
-  function updateRuntimeCatholicNews(patch: Partial<Omit<AppRuntimeConfig['catholicNews'], 'sources'>> & { sources?: Partial<Record<CatholicNewsSourceKey, boolean>> }) {
+  function updateRuntimeCatholicNews(patch: Partial<Omit<AppRuntimeConfig['catholicNews'], 'sources' | 'sourceLabels' | 'sourceUrls'>> & {
+    sources?: Partial<Record<CatholicNewsSourceKey, boolean>>;
+    sourceLabels?: Partial<Record<CatholicNewsSourceKey, string>>;
+    sourceUrls?: Partial<Record<CatholicNewsSourceKey, string>>;
+  }) {
     setRuntimeConfigDraft((current) => ({
       ...current,
       catholicNews: {
@@ -5797,6 +5992,14 @@ function ProfileScreen({
         sources: {
           ...current.catholicNews.sources,
           ...(patch.sources ?? {})
+        },
+        sourceLabels: {
+          ...current.catholicNews.sourceLabels,
+          ...(patch.sourceLabels ?? {})
+        },
+        sourceUrls: {
+          ...current.catholicNews.sourceUrls,
+          ...(patch.sourceUrls ?? {})
         }
       },
       featureFlags: {
@@ -9995,10 +10198,27 @@ function ProfileScreen({
                       ] as Array<{ key: CatholicNewsSourceKey; label: string }>).map((source) => {
                         const active = runtimeConfigDraft.catholicNews.sources[source.key] !== false;
                         return (
-                          <TouchableOpacity key={source.key} style={[styles.adminListRow, active && styles.adminListRowActive]} onPress={() => updateRuntimeCatholicNews({ sources: { [source.key]: !active } as Partial<Record<CatholicNewsSourceKey, boolean>> })}>
-                            <Ionicons name={active ? 'checkbox-outline' : 'square-outline'} size={22} color={active ? palette.red : palette.inkMuted} />
-                            <Text style={styles.adminQuickText}>{source.label}</Text>
-                          </TouchableOpacity>
+                          <View key={source.key} style={[styles.profileCommunityPanel, active && styles.adminListRowActive]}>
+                            <TouchableOpacity style={styles.adminListRow} onPress={() => updateRuntimeCatholicNews({ sources: { [source.key]: !active } as Partial<Record<CatholicNewsSourceKey, boolean>> })}>
+                              <Ionicons name={active ? 'checkbox-outline' : 'square-outline'} size={22} color={active ? palette.red : palette.inkMuted} />
+                              <Text style={styles.adminQuickText}>{runtimeConfigDraft.catholicNews.sourceLabels[source.key] || source.label}</Text>
+                            </TouchableOpacity>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Nombre visible de la fuente"
+                              value={runtimeConfigDraft.catholicNews.sourceLabels[source.key] ?? source.label}
+                              onChangeText={(value) => updateRuntimeCatholicNews({ sourceLabels: { [source.key]: value } as Partial<Record<CatholicNewsSourceKey, string>> })}
+                              placeholderTextColor={inputPlaceholderColor}
+                            />
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Link RSS o pagina fuente"
+                              value={runtimeConfigDraft.catholicNews.sourceUrls[source.key] ?? ''}
+                              onChangeText={(value) => updateRuntimeCatholicNews({ sourceUrls: { [source.key]: value } as Partial<Record<CatholicNewsSourceKey, string>> })}
+                              autoCapitalize="none"
+                              placeholderTextColor={inputPlaceholderColor}
+                            />
+                          </View>
                         );
                       })}
                       <Text style={styles.cardEyebrow}>Orden visual</Text>

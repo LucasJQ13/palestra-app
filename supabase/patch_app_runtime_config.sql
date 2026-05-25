@@ -3,7 +3,7 @@
 create table if not exists public.app_runtime_config (
   id text primary key default 'default',
   min_supported_version text not null default '0.1.0',
-  recommended_version text not null default '0.1.33',
+  recommended_version text not null default '0.1.34',
   maintenance_mode boolean not null default false,
   global_message text,
   feature_flags jsonb not null default '{}'::jsonb,
@@ -40,7 +40,7 @@ insert into public.app_runtime_config (
 values (
   'default',
   '0.1.0',
-  '0.1.33',
+  '0.1.34',
   false,
   null,
   jsonb_build_object(
@@ -56,6 +56,16 @@ values (
       'vatican', true,
       'episcopado', true,
       'aci', true
+    ),
+    'sourceLabels', jsonb_build_object(
+      'vatican', 'Vatican News',
+      'episcopado', 'Episcopado Argentino',
+      'aci', 'ACI Prensa'
+    ),
+    'sourceUrls', jsonb_build_object(
+      'vatican', 'https://www.vaticannews.va/es.rss.xml',
+      'episcopado', 'https://episcopado.org/novedades',
+      'aci', 'https://www.aciprensa.com/rss/noticias.xml'
     )
   )
 )

@@ -17,6 +17,8 @@ export type CatholicNewsConfig = {
   maxItems: number;
   sourceOrder: CatholicNewsSourceKey[];
   sources: Record<CatholicNewsSourceKey, boolean>;
+  sourceLabels: Record<CatholicNewsSourceKey, string>;
+  sourceUrls: Record<CatholicNewsSourceKey, string>;
 };
 
 export const defaultCatholicNewsConfig: CatholicNewsConfig = {
@@ -27,12 +29,22 @@ export const defaultCatholicNewsConfig: CatholicNewsConfig = {
     vatican: true,
     episcopado: true,
     aci: true
+  },
+  sourceLabels: {
+    vatican: 'Vatican News',
+    episcopado: 'Episcopado Argentino',
+    aci: 'ACI Prensa'
+  },
+  sourceUrls: {
+    vatican: 'https://www.vaticannews.va/es.rss.xml',
+    episcopado: 'https://episcopado.org/novedades',
+    aci: 'https://www.aciprensa.com/rss/noticias.xml'
   }
 };
 
 export const defaultRuntimeConfig: AppRuntimeConfig = {
   minSupportedVersion: '0.1.0',
-  recommendedVersion: '0.1.33',
+  recommendedVersion: '0.1.34',
   maintenanceMode: false,
   globalMessage: null,
   featureFlags: {
@@ -47,6 +59,8 @@ export const defaultRuntimeConfig: AppRuntimeConfig = {
 function normalizeCatholicNewsConfig(value: unknown): CatholicNewsConfig {
   const raw = (value ?? {}) as Partial<CatholicNewsConfig>;
   const rawSources = (raw.sources ?? {}) as Partial<Record<CatholicNewsSourceKey, boolean>>;
+  const rawLabels = (raw.sourceLabels ?? {}) as Partial<Record<CatholicNewsSourceKey, string>>;
+  const rawUrls = (raw.sourceUrls ?? {}) as Partial<Record<CatholicNewsSourceKey, string>>;
   const order = Array.isArray(raw.sourceOrder)
     ? raw.sourceOrder.filter((item): item is CatholicNewsSourceKey => ['vatican', 'episcopado', 'aci'].includes(String(item)))
     : defaultCatholicNewsConfig.sourceOrder;
@@ -58,6 +72,14 @@ function normalizeCatholicNewsConfig(value: unknown): CatholicNewsConfig {
     sources: {
       ...defaultCatholicNewsConfig.sources,
       ...rawSources
+    },
+    sourceLabels: {
+      ...defaultCatholicNewsConfig.sourceLabels,
+      ...rawLabels
+    },
+    sourceUrls: {
+      ...defaultCatholicNewsConfig.sourceUrls,
+      ...rawUrls
     }
   };
 }
