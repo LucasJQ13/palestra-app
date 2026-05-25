@@ -27,6 +27,7 @@ Ejecutar en Supabase SQL Editor. Los scripts son idempotentes cuando usan `creat
 15. `supabase/patch_church_document_buttons.sql`
 16. `supabase/patch_user_honor_levels.sql`
 17. `supabase/patch_admin_materials_visibility.sql`
+18. `supabase/patch_profile_perseverance_preferences.sql`
 
 ## Reaplicar si algo queda desactualizado
 

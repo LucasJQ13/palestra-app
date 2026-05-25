@@ -2,7 +2,7 @@
   "expo": {
     "name": "Palestra",
     "slug": "palestra-argentina",
-    "version": "0.1.35",
+    "version": "0.1.36",
     "orientation": "portrait",
     "icon": "./assets/logo-palestra.png",
     "scheme": "palestra",

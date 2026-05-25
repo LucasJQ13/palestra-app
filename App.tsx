@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, AppTabSetting, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, AppTabSetting, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -22,7 +22,6 @@ import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity
 import { ExternalCatholicNewsItem, fetchExternalCatholicNews } from './src/lib/externalNews';
 import { ExternalNewsCarousel } from './src/components/ExternalNewsCarousel';
 import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
-import { UserHonorLevel, fetchUserHonorLevel } from './src/lib/honorLevels';
 
 const palestraLogo = require('./assets/logo-palestra.png');
 const AppThemeContext = React.createContext<AppTheme>(themePresets.default);
@@ -50,7 +49,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.35';
+const appBetaVersion = '0.1.36';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const authDeepLinkBaseUrl = 'palestra://auth/callback';
@@ -61,6 +60,8 @@ const themePreferenceKey = 'palestra.themePreference';
 const pushDeviceIdKey = 'palestra.push.deviceId';
 const localReminderNotificationKey = 'palestra.localReminderNotifications';
 const inputPlaceholderColor = '#5E8396';
+const currentYear = new Date().getFullYear();
+const perseveranceStartYears = Array.from({ length: currentYear - 1961 + 1 }, (_, index) => String(currentYear - index));
 const officialInstagramUrl = 'https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA==';
 const easProjectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? 'sin-project-id';
 const appRuntimeOwner = String((Constants as any).appOwnership ?? (Constants as any).executionEnvironment ?? 'standalone');
@@ -178,6 +179,10 @@ type PublicProfilePreview = {
   contact?: string | null;
   displayRoleLabel?: string | null;
   genderPreference?: GenderPreference;
+  nickname?: string | null;
+  credentialNameMode?: 'name' | 'nickname' | 'both' | null;
+  perseveranceStartYear?: number | null;
+  pmMotto?: string | null;
 };
 
 type GlobalSearchResult = {
@@ -531,6 +536,41 @@ function firstNameOf(fullName?: string | null) {
   return (fullName ?? '').trim().split(/\s+/)[0] || 'Palestrista';
 }
 
+function perseveranceYearsFromStart(startYear?: number | null) {
+  if (!startYear || startYear < 1961 || startYear > currentYear) {
+    return null;
+  }
+  return Math.max(0, currentYear - startYear);
+}
+
+function perseveranceLabel(startYear?: number | null) {
+  const years = perseveranceYearsFromStart(startYear);
+  if (years === null) {
+    return '';
+  }
+  return `${years} ${years === 1 ? 'año' : 'años'} de perseverancia`;
+}
+
+function credentialDisplayName(session: Session | PublicProfilePreview | null) {
+  if (!session) {
+    return '';
+  }
+  const fullName = 'fullName' in session ? session.fullName : '';
+  const nickname = session.nickname?.trim();
+  const mode = session.credentialNameMode ?? 'name';
+  if (mode === 'nickname' && nickname) {
+    return nickname;
+  }
+  if (mode === 'both' && nickname) {
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0]} "${nickname}" ${parts.slice(1).join(' ')}`;
+    }
+    return `${fullName} "${nickname}"`.trim();
+  }
+  return fullName || nickname || 'Palestrista';
+}
+
 function renderGreetingTemplate(template: string | undefined, variables: Record<string, string>, fallback: string) {
   if (!template?.trim()) {
     return fallback;
@@ -543,7 +583,7 @@ function homeGreeting(session: Session | null, homeConfig: AppAdminConfig['home'
   if (!session || session.role === 'invitado') {
     return '';
   }
-  const name = firstNameOf(session.fullName);
+  const name = session.useNicknameInGreetings && session.nickname?.trim() ? session.nickname.trim() : firstNameOf(session.fullName);
   const role = roleLabel(session.role, session.genderPreference);
   if (session.genderPreference === 'male') {
     const fallback = `Bienvenido hno. en Cristo ${name}, Oh Bella Ciao!`;
@@ -1488,7 +1528,7 @@ export default function App() {
       const nextResults: GlobalSearchResult[] = [];
 
       adminUsersRemote.forEach((user) => {
-        if (matches([user.full_name, user.email, user.province, user.community_name, user.role, user.display_role_label])) {
+        if (matches([user.full_name, user.nickname, user.email, user.province, user.community_name, user.role, user.display_role_label, user.pm_motto])) {
           const role = (user.role || 'palestrista') as Role;
           nextResults.push({
             id: `user-${user.id}`,
@@ -1505,7 +1545,11 @@ export default function App() {
               avatarUrl: user.avatar_url,
               contact: user.phone ?? user.email ?? '',
               displayRoleLabel: user.display_role_label ?? null,
-              genderPreference: user.gender_preference ?? null
+              genderPreference: user.gender_preference ?? null,
+              nickname: user.nickname ?? null,
+              credentialNameMode: user.credential_name_mode ?? 'name',
+              perseveranceStartYear: user.perseverance_start_year ?? null,
+              pmMotto: user.pm_motto ?? null
             }
           });
         }
@@ -2136,6 +2180,7 @@ type RegisterDraft = {
   contact: string;
   province: string;
   community: string;
+  perseveranceStartYear: string;
   email: string;
   password: string;
   genderPreference: 'male' | 'female' | null;
@@ -2179,6 +2224,11 @@ function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthe
       <TouchableOpacity style={[styles.authCloseButton, { top: Math.max(insets.top + 12, 34) }]} onPress={onClose} activeOpacity={0.85}>
         <Ionicons name="close-outline" size={24} color={palette.white} />
       </TouchableOpacity>
+      <KeyboardAvoidingView
+        style={styles.authKeyboardAvoider}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : Math.max(insets.top, 18)}
+      >
       {pendingRegistration ? (
         <LimitedPendingProfile
           profile={pendingRegistration}
@@ -2215,6 +2265,7 @@ function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; onAuthe
           }}
         />
       )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -2257,7 +2308,7 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.authScrollContent} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={styles.authScrollContent} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} overScrollMode="always">
       <View style={styles.authBrandHeader}>
         <Image source={palestraLogo} style={styles.authLogo} />
         <Text style={styles.authBrandTitle}>Palestra</Text>
@@ -2332,7 +2383,7 @@ function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.authScrollContent} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={styles.authScrollContent} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} overScrollMode="always">
       <View style={styles.authBrandHeader}>
         <Image source={palestraLogo} style={styles.authLogo} />
         <Text style={styles.authBrandTitle}>Perfil pendiente</Text>
@@ -2371,6 +2422,7 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
     contact: '',
     province: '',
     community: '',
+    perseveranceStartYear: '',
     email: '',
     password: '',
     genderPreference: null
@@ -2413,8 +2465,8 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
       return false;
     }
     if (step === 2) {
-      if (!draft.province || !draft.community) {
-        onMessage('Elegí provincia y comunidad.');
+      if (!draft.province || !draft.community || !draft.perseveranceStartYear) {
+        onMessage('Elegir provincia, comunidad y año de inicio es obligatorio.');
         return false;
       }
       if (!isValidEmail(draft.email)) {
@@ -2458,6 +2510,7 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
           phone: draft.contact.trim(),
           province: draft.province.trim(),
           community_name: draft.community.trim(),
+          perseverance_start_year: draft.perseveranceStartYear,
           gender_preference: draft.genderPreference
         }
       }
@@ -2479,6 +2532,7 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
   }
 
   return (
+    <ScrollView contentContainerStyle={styles.authWizardScrollContent} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} overScrollMode="always">
     <View style={styles.authWizardShell}>
       <View style={styles.authWizardTop}>
         <TouchableOpacity style={styles.authBackButton} onPress={step === 0 ? onBackToLogin : () => setStep((current) => Math.max(0, current - 1))}>
@@ -2501,6 +2555,7 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
         {[0, 1, 2, 3].map((item) => <View key={item} style={[styles.authStepDot, item === step && styles.authStepDotActive]} />)}
       </View>
     </View>
+    </ScrollView>
   );
 }
 
@@ -2509,8 +2564,8 @@ function RegisterStepName({ draft, onChange }: { draft: RegisterDraft; onChange:
     <View style={styles.authStepContent}>
       <Text style={styles.authHeroTitle}>¿Cómo te llamás?</Text>
       <Text style={styles.authHeroText}>Antes de comenzar esta aventura, nos gustaría saber quién sos y conocer un poco más de vos.</Text>
-      <AuthTextInput label="Nombre" placeholder="Ej: Lucas" value={draft.firstName} onChangeText={(value) => onChange({ firstName: value })} />
-      <AuthTextInput label="Apellido" placeholder="Ej: Quiroga" value={draft.lastName} onChangeText={(value) => onChange({ lastName: value })} />
+      <AuthTextInput label="Nombre" value={draft.firstName} onChangeText={(value) => onChange({ firstName: value })} />
+      <AuthTextInput label="Apellido" value={draft.lastName} onChangeText={(value) => onChange({ lastName: value })} />
     </View>
   );
 }
@@ -2521,8 +2576,8 @@ function RegisterStepAbout({ draft, onChange }: { draft: RegisterDraft; onChange
       <Text style={styles.authHeroTitle}>Acerca de ti</Text>
       <Text style={styles.authHeroText}>Esto nos permitirá conocerte un poco mejor y preparar esta aventura para ti.</Text>
       <BirthDatePicker value={draft.birthDate} onChange={(birthDate) => onChange({ birthDate })} />
-      <AuthTextInput label="Apodo" placeholder="Como te dicen en tu comunidad" value={draft.nickname} onChangeText={(value) => onChange({ nickname: value })} />
-      <AuthTextInput label="Contacto" placeholder="Teléfono o contacto personal" value={draft.contact} onChangeText={(value) => onChange({ contact: value })} keyboardType="phone-pad" />
+      <AuthTextInput label="Apodo" value={draft.nickname} onChangeText={(value) => onChange({ nickname: value })} />
+      <AuthTextInput label="Contacto" value={draft.contact} onChangeText={(value) => onChange({ contact: value })} keyboardType="phone-pad" />
     </View>
   );
 }
@@ -2530,6 +2585,7 @@ function RegisterStepAbout({ draft, onChange }: { draft: RegisterDraft; onChange
 function RegisterStepCommunity({ draft, onChange, provinces, selectedProvince }: { draft: RegisterDraft; onChange: (values: Partial<RegisterDraft>) => void; provinces: AppCommunity[]; selectedProvince?: AppCommunity }) {
   const [provinceOpen, setProvinceOpen] = useState(false);
   const [communityOpen, setCommunityOpen] = useState(false);
+  const [perseveranceYearOpen, setPerseveranceYearOpen] = useState(false);
   return (
     <View style={styles.authStepContent}>
       <Text style={styles.authHeroTitle}>Comunidad y acceso</Text>
@@ -2550,8 +2606,15 @@ function RegisterStepCommunity({ draft, onChange, provinces, selectedProvince }:
           ))}
         </AuthSelect>
       ) : null}
-      <AuthTextInput label="Mail" placeholder="tu.mail@email.com" value={draft.email} onChangeText={(value) => onChange({ email: value })} keyboardType="email-address" autoCapitalize="none" />
-      <AuthTextInput label="Contraseña" placeholder="Mínimo 6 caracteres" value={draft.password} onChangeText={(value) => onChange({ password: value })} secureTextEntry autoCapitalize="none" />
+      <AuthSelect label="Año de inicio en el Movimiento" value={draft.perseveranceStartYear || 'Seleccionar año'} open={perseveranceYearOpen} onToggle={() => setPerseveranceYearOpen(!perseveranceYearOpen)}>
+        {perseveranceStartYears.map((year) => (
+          <TouchableOpacity key={year} style={styles.authSelectItem} onPress={() => { onChange({ perseveranceStartYear: year }); setPerseveranceYearOpen(false); }}>
+            <Text style={styles.authSelectItemText}>{year}</Text>
+          </TouchableOpacity>
+        ))}
+      </AuthSelect>
+      <AuthTextInput label="Mail" value={draft.email} onChangeText={(value) => onChange({ email: value })} keyboardType="email-address" autoCapitalize="none" />
+      <AuthTextInput label="Contraseña" value={draft.password} onChangeText={(value) => onChange({ password: value })} secureTextEntry autoCapitalize="none" />
     </View>
   );
 }
@@ -5435,7 +5498,6 @@ function ProfileScreen({
   const [selectedSentRequestId, setSelectedSentRequestId] = useState('');
   const [showSentRequests, setShowSentRequests] = useState(false);
   const [profilePanel, setProfilePanel] = useState<ProfilePanel>(initialPanel);
-  const [honorLevel, setHonorLevel] = useState<UserHonorLevel | null>(null);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -5457,15 +5519,23 @@ function ProfileScreen({
   const [registerContact, setRegisterContact] = useState('');
   const [registerProvince, setRegisterProvince] = useState('');
   const [registerCommunity, setRegisterCommunity] = useState('');
+  const [registerPerseveranceStartYear, setRegisterPerseveranceStartYear] = useState('');
   const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>(communities);
   const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
   const [communityDropdownOpen, setCommunityDropdownOpen] = useState(false);
+  const [registerPerseveranceYearDropdownOpen, setRegisterPerseveranceYearDropdownOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [editFullName, setEditFullName] = useState(session?.fullName ?? '');
   const [editContact, setEditContact] = useState(session?.contact ?? '');
   const [editProvince, setEditProvince] = useState(session?.province ?? '');
   const [editCommunity, setEditCommunity] = useState(session?.communityOfOrigin ?? '');
   const [editGenderPreference, setEditGenderPreference] = useState<'male' | 'female' | null>(session?.genderPreference ?? null);
+  const [editNickname, setEditNickname] = useState(session?.nickname ?? '');
+  const [editUseNicknameInGreetings, setEditUseNicknameInGreetings] = useState(Boolean(session?.useNicknameInGreetings));
+  const [editCredentialNameMode, setEditCredentialNameMode] = useState<'name' | 'nickname' | 'both'>(session?.credentialNameMode ?? 'name');
+  const [editPerseveranceStartYear, setEditPerseveranceStartYear] = useState(session?.perseveranceStartYear ? String(session.perseveranceStartYear) : '');
+  const [editPerseveranceYearDropdownOpen, setEditPerseveranceYearDropdownOpen] = useState(false);
+  const [editPmMotto, setEditPmMotto] = useState(session?.pmMotto ?? '');
   const [editProvinceDropdownOpen, setEditProvinceDropdownOpen] = useState(false);
   const [editCommunityDropdownOpen, setEditCommunityDropdownOpen] = useState(false);
   const [realPendingProfiles, setRealPendingProfiles] = useState<PendingProfile[]>([]);
@@ -5486,6 +5556,12 @@ function ProfileScreen({
   const [adminUserStatus, setAdminUserStatus] = useState('pendiente');
   const [adminUserRole, setAdminUserRole] = useState<Role>('palestrista');
   const [adminUserDisplayRoleLabel, setAdminUserDisplayRoleLabel] = useState('');
+  const [adminUserNickname, setAdminUserNickname] = useState('');
+  const [adminUserUseNicknameInGreetings, setAdminUserUseNicknameInGreetings] = useState(false);
+  const [adminUserCredentialNameMode, setAdminUserCredentialNameMode] = useState<'name' | 'nickname' | 'both'>('name');
+  const [adminUserPerseveranceStartYear, setAdminUserPerseveranceStartYear] = useState('');
+  const [adminUserPerseveranceYearDropdownOpen, setAdminUserPerseveranceYearDropdownOpen] = useState(false);
+  const [adminUserPmMotto, setAdminUserPmMotto] = useState('');
   const [adminCreateEmail, setAdminCreateEmail] = useState('');
   const [adminCreatePassword, setAdminCreatePassword] = useState('');
   const [adminCreatePasswordVisible, setAdminCreatePasswordVisible] = useState(false);
@@ -5879,6 +5955,11 @@ function ProfileScreen({
     setEditProvince(session?.province ?? '');
     setEditCommunity(session?.communityOfOrigin ?? '');
     setEditGenderPreference(session?.genderPreference ?? null);
+    setEditNickname(session?.nickname ?? '');
+    setEditUseNicknameInGreetings(Boolean(session?.useNicknameInGreetings));
+    setEditCredentialNameMode(session?.credentialNameMode ?? 'name');
+    setEditPerseveranceStartYear(session?.perseveranceStartYear ? String(session.perseveranceStartYear) : '');
+    setEditPmMotto(session?.pmMotto ?? '');
   }, [session]);
 
   useEffect(() => {
@@ -5888,24 +5969,6 @@ function ProfileScreen({
   useEffect(() => {
     setRuntimeConfigDraft(runtimeConfig);
   }, [runtimeConfig]);
-
-  useEffect(() => {
-    let alive = true;
-    if (!session?.id || runtimeConfig.featureFlags.honorLevels === false) {
-      setHonorLevel(null);
-      return () => {
-        alive = false;
-      };
-    }
-    fetchUserHonorLevel(session.id).then((level) => {
-      if (alive) {
-        setHonorLevel(level);
-      }
-    });
-    return () => {
-      alive = false;
-    };
-  }, [session?.id, runtimeConfig.featureFlags.honorLevels]);
 
   useEffect(() => {
     let alive = true;
@@ -6368,6 +6431,11 @@ function ProfileScreen({
       setAdminUserStatus('pendiente');
       setAdminUserRole('palestrista');
       setAdminUserDisplayRoleLabel('');
+      setAdminUserNickname('');
+      setAdminUserUseNicknameInGreetings(false);
+      setAdminUserCredentialNameMode('name');
+      setAdminUserPerseveranceStartYear('');
+      setAdminUserPmMotto('');
       return;
     }
 
@@ -6380,6 +6448,11 @@ function ProfileScreen({
     setAdminUserStatus(selectedAdminUser.status);
     setAdminUserRole((selectedAdminUser.role || 'palestrista') as Role);
     setAdminUserDisplayRoleLabel(selectedAdminUser.display_role_label ?? '');
+    setAdminUserNickname(selectedAdminUser.nickname ?? '');
+    setAdminUserUseNicknameInGreetings(Boolean(selectedAdminUser.use_nickname_in_greetings));
+    setAdminUserCredentialNameMode(selectedAdminUser.credential_name_mode ?? 'name');
+    setAdminUserPerseveranceStartYear(selectedAdminUser.perseverance_start_year ? String(selectedAdminUser.perseverance_start_year) : '');
+    setAdminUserPmMotto(selectedAdminUser.pm_motto ?? '');
   }, [selectedAdminUser]);
 
   function normalizeRequest(item: UserRequestRecord): AdminRequest {
@@ -6637,6 +6710,9 @@ function ProfileScreen({
       if (!registerCommunity) {
         nextErrors.community = 'Selecciona tu comunidad';
       }
+      if (!registerPerseveranceStartYear) {
+        nextErrors.perseverance = 'Selecciona el año de inicio';
+      }
       if (authPassword.length < 6) {
         nextErrors.password = 'La contraseña debe tener al menos 6 caracteres';
       }
@@ -6701,7 +6777,8 @@ function ProfileScreen({
           full_name: registerFullName.trim() || authEmail.trim(),
           phone: registerContact.trim(),
           province: registerProvince.trim(),
-          community_name: registerCommunity.trim()
+          community_name: registerCommunity.trim(),
+          perseverance_start_year: registerPerseveranceStartYear
         }
       }
     });
@@ -6751,6 +6828,13 @@ function ProfileScreen({
       return;
     }
     const mayDowngrade = (editProvince !== session.province && provinceDowngradesRole(session.role)) || (editCommunity !== session.communityOfOrigin && communityDowngradesRole(session.role));
+    const coreProfileChanged = (
+      (editFullName || session.fullName) !== session.fullName
+      || (editContact || session.contact) !== session.contact
+      || (editProvince || session.province) !== session.province
+      || (editCommunity || session.communityOfOrigin) !== session.communityOfOrigin
+      || editGenderPreference !== (session.genderPreference ?? null)
+    );
 
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
@@ -6761,18 +6845,31 @@ function ProfileScreen({
         province: editProvince || session.province,
         contact: editContact || session.contact,
         communityOfOrigin: editCommunity || session.communityOfOrigin,
-        genderPreference: editGenderPreference
+        genderPreference: editGenderPreference,
+        nickname: editNickname.trim() || null,
+        useNicknameInGreetings: editUseNicknameInGreetings,
+        credentialNameMode: editCredentialNameMode,
+        perseveranceStartYear: editPerseveranceStartYear ? Number(editPerseveranceStartYear) : null,
+        pmMotto: roleRank(session.role) >= roleRank('sedimentador') ? (editPmMotto.trim() || null) : null
       });
       return;
     }
 
-    const { error } = await updateMyProfile({
+    const profileDetails = {
+      nickname: editNickname.trim() || null,
+      useNicknameInGreetings: editUseNicknameInGreetings,
+      credentialNameMode: editCredentialNameMode,
+      perseveranceStartYear: editPerseveranceStartYear ? Number(editPerseveranceStartYear) : null,
+      pmMotto: roleRank(session.role) >= roleRank('sedimentador') ? (editPmMotto.trim() || null) : null
+    };
+    const { error } = coreProfileChanged ? await updateMyProfile({
       fullName: editFullName || session.fullName,
       phone: editContact || session.contact,
       province: editProvince || session.province,
       communityName: editCommunity || session.communityOfOrigin,
-      genderPreference: editGenderPreference
-    });
+      genderPreference: editGenderPreference,
+      ...profileDetails
+    }) : await updateMyProfileDetails(profileDetails);
 
     if (error) {
       setAuthMessage(error.message);
@@ -6785,7 +6882,12 @@ function ProfileScreen({
       province: editProvince || session.province,
       contact: editContact || session.contact,
       communityOfOrigin: editCommunity || session.communityOfOrigin,
-      genderPreference: editGenderPreference
+      genderPreference: editGenderPreference,
+      nickname: editNickname.trim() || null,
+      useNicknameInGreetings: editUseNicknameInGreetings,
+      credentialNameMode: editCredentialNameMode,
+      perseveranceStartYear: editPerseveranceStartYear ? Number(editPerseveranceStartYear) : null,
+      pmMotto: roleRank(session.role) >= roleRank('sedimentador') ? (editPmMotto.trim() || null) : null
     });
     await loadRealProfile(authData.user.id, authData.user.email ?? session.email ?? session.fullName);
     setAuthMessage(mayDowngrade
@@ -6940,7 +7042,12 @@ function ProfileScreen({
       communityName: adminUserCommunity,
       status: adminUserStatus,
       role: adminUserRole,
-      displayRoleLabel: adminUserDisplayRoleLabel.trim() || null
+      displayRoleLabel: adminUserDisplayRoleLabel.trim() || null,
+      nickname: adminUserNickname.trim() || null,
+      useNicknameInGreetings: adminUserUseNicknameInGreetings,
+      credentialNameMode: adminUserCredentialNameMode,
+      perseveranceStartYear: adminUserPerseveranceStartYear ? Number(adminUserPerseveranceStartYear) : null,
+      pmMotto: roleRank(adminUserRole) >= roleRank('sedimentador') ? (adminUserPmMotto.trim() || null) : null
     });
     if (error) {
       setAuthMessage(error.message || 'No se pudo guardar el usuario. Revisa permisos y datos.');
@@ -8313,7 +8420,11 @@ function ProfileScreen({
         contact: remoteProfile.phone ?? current.contact,
         avatarUrl: remoteProfile.avatar_url ?? current.avatarUrl,
         displayRoleLabel: remoteProfile.display_role_label ?? current.displayRoleLabel,
-        genderPreference: remoteProfile.gender_preference ?? current.genderPreference
+        genderPreference: remoteProfile.gender_preference ?? current.genderPreference,
+        nickname: remoteProfile.nickname ?? current.nickname,
+        credentialNameMode: remoteProfile.credential_name_mode ?? current.credentialNameMode,
+        perseveranceStartYear: remoteProfile.perseverance_start_year ?? current.perseveranceStartYear,
+        pmMotto: remoteProfile.pm_motto ?? current.pmMotto
       };
     });
   }
@@ -8422,6 +8533,8 @@ function ProfileScreen({
                 {selectedPublicProfile.communityName ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Comunidad: {selectedPublicProfile.communityName}</Text> : null}
                 {selectedPublicProfile.province ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Provincia: {selectedPublicProfile.province}</Text> : null}
                 {selectedPublicProfile.contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {selectedPublicProfile.contact}</Text> : null}
+                {perseveranceLabel(selectedPublicProfile.perseveranceStartYear) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{perseveranceLabel(selectedPublicProfile.perseveranceStartYear)}</Text> : null}
+                {selectedPublicProfile.pmMotto && roleRank(selectedPublicProfile.role) >= roleRank('sedimentador') ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Lema PM: {selectedPublicProfile.pmMotto}</Text> : null}
               </View>
             ) : null}
           </View>
@@ -8464,6 +8577,12 @@ function ProfileScreen({
               </TouchableOpacity>
             </View>
           ) : null}
+          {profilePanel === 'vista' && !session.perseveranceStartYear ? (
+            <TouchableOpacity style={styles.completionNotice} onPress={() => setProfilePanel('editar')} activeOpacity={0.86}>
+              <Ionicons name="time-outline" size={20} color={palette.red} />
+              <Text style={styles.completionNoticeText}>Agregar años de perseverancia</Text>
+            </TouchableOpacity>
+          ) : null}
           {profilePanel === 'vista' ? <View style={[styles.profileHero, isDark && styles.surfacePanelDark]}>
             <TouchableOpacity style={styles.avatarFrameLarge} onPress={uploadProfilePhoto} activeOpacity={0.88}>
               {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.avatarImageLarge} /> : <Ionicons name="camera-outline" size={42} color={palette.red} />}
@@ -8477,7 +8596,8 @@ function ProfileScreen({
               </View>
               {session.email ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.email}</Text> : null}
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
-              {honorLevel ? <Text style={[styles.profileHonorText, isDark && styles.textDarkAccent]}>{honorLevel.displayName} · {honorLevel.perseveranceYears} años</Text> : null}
+              {perseveranceLabel(session.perseveranceStartYear) ? <Text style={[styles.profileHonorText, isDark && styles.textDarkAccent]}>{perseveranceLabel(session.perseveranceStartYear)}</Text> : null}
+              {session.pmMotto && roleRank(session.role) >= roleRank('sedimentador') ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.pmMotto}</Text> : null}
               <TouchableOpacity style={[styles.photoChangeButton, isDark && styles.darkSoftButton]} onPress={uploadProfilePhoto}>
                 <Ionicons name="camera-outline" size={16} color={palette.red} />
                 <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
@@ -8488,7 +8608,7 @@ function ProfileScreen({
             {[
               { label: 'Provincia', value: session.province, icon: 'map-outline' },
               { label: 'Rango', value: displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference), icon: 'ribbon-outline' },
-              ...(honorLevel ? [{ label: 'Nivel', value: honorLevel.displayName, icon: 'sparkles-outline' }] : []),
+              ...(perseveranceLabel(session.perseveranceStartYear) ? [{ label: 'Perseverancia', value: perseveranceLabel(session.perseveranceStartYear), icon: 'time-outline' }] : []),
               { label: 'Contacto', value: session.contact, icon: 'chatbubble-ellipses-outline' },
               { label: 'Comunidad', value: session.communityOfOrigin, icon: 'people-outline' }
             ].map((item) => (
@@ -8511,7 +8631,49 @@ function ProfileScreen({
             ) : null}
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
             <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName}  placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Apodo" value={editNickname} onChangeText={setEditNickname}  placeholderTextColor={inputPlaceholderColor} />
             <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Contacto" value={editContact} onChangeText={setEditContact}  placeholderTextColor={inputPlaceholderColor} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowText}>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Usar apodo en saludos</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Home y saludos usan tu apodo si esta cargado.</Text>
+              </View>
+              <Switch
+                value={editUseNicknameInGreetings}
+                onValueChange={setEditUseNicknameInGreetings}
+                trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
+                thumbColor={editUseNicknameInGreetings ? palette.red : palette.white}
+              />
+            </View>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mostrar en credencial</Text>
+            <View style={styles.filterRow}>
+              {(['name', 'nickname', 'both'] as const).map((mode) => (
+                <TouchableOpacity key={mode} style={[styles.filterChip, editCredentialNameMode === mode && styles.filterChipActive]} onPress={() => setEditCredentialNameMode(mode)}>
+                  <Text style={[styles.filterChipText, editCredentialNameMode === mode && styles.filterChipTextActive]}>{mode === 'name' ? 'Nombre' : mode === 'nickname' ? 'Apodo' : 'Ambos'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Año de inicio en el Movimiento</Text>
+            <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditPerseveranceYearDropdownOpen(!editPerseveranceYearDropdownOpen)}>
+              <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editPerseveranceStartYear || 'Seleccionar año'}</Text>
+              <Ionicons name={editPerseveranceYearDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+            </TouchableOpacity>
+            {editPerseveranceYearDropdownOpen ? (
+              <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                {perseveranceStartYears.map((year) => (
+                  <TouchableOpacity key={year} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditPerseveranceStartYear(year); setEditPerseveranceYearDropdownOpen(false); }}>
+                    <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{year}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : null}
+            {perseveranceLabel(Number(editPerseveranceStartYear)) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{perseveranceLabel(Number(editPerseveranceStartYear))}</Text> : null}
+            {roleRank(session.role) >= roleRank('sedimentador') ? (
+              <>
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Lema o idea fuerza del PM</Text>
+                <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Lema o idea fuerza del PM" value={editPmMotto} onChangeText={setEditPmMotto}  placeholderTextColor={inputPlaceholderColor} />
+              </>
+            ) : null}
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Provincia</Text>
             <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditProvinceDropdownOpen(!editProvinceDropdownOpen)}>
               <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editProvince || 'Seleccionar provincia'}</Text>
@@ -8999,9 +9161,10 @@ function ProfileScreen({
                 {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.credentialAvatarImage} /> : <Ionicons name="person-outline" size={18} color={palette.red} />}
               </View>
               <View style={styles.adminUserHeaderText}>
-                <Text style={[styles.credentialName, isDark && styles.textDarkStrong]}>{session.fullName}</Text>
+                <Text style={[styles.credentialName, isDark && styles.textDarkStrong]}>{credentialDisplayName(session)}</Text>
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
-                {honorLevel ? <Text style={[styles.cardText, isDark && styles.textDarkAccent]}>{honorLevel.displayName}</Text> : null}
+                {perseveranceLabel(session.perseveranceStartYear) ? <Text style={[styles.cardText, isDark && styles.textDarkAccent]}>{perseveranceLabel(session.perseveranceStartYear)}</Text> : null}
+                {session.pmMotto && roleRank(session.role) >= roleRank('sedimentador') ? <Text style={[styles.cardText, isDark && styles.textDarkBody]} numberOfLines={1}>{session.pmMotto}</Text> : null}
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.communityOfOrigin}, {session.province}</Text>
               </View>
             </View>
@@ -10363,6 +10526,7 @@ function ProfileScreen({
                                 <View style={styles.adminUserHeaderText}>
                                   <Text style={styles.cardTitle}>{user.full_name ?? 'Usuario sin nombre'}</Text>
                                   <Text style={styles.cardText}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  {perseveranceLabel(user.perseverance_start_year) ? <Text style={styles.feedMeta}>{perseveranceLabel(user.perseverance_start_year)}</Text> : null}
                                   {session.role === 'administrador' ? <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text> : null}
                                 </View>
                               </View>
@@ -10378,7 +10542,11 @@ function ProfileScreen({
                                   avatarUrl: user.avatar_url,
                                   contact: user.phone ?? '',
                                   displayRoleLabel: user.display_role_label ?? null,
-                                  genderPreference: user.gender_preference ?? null
+                                  genderPreference: user.gender_preference ?? null,
+                                  nickname: user.nickname ?? null,
+                                  credentialNameMode: user.credential_name_mode ?? 'name',
+                                  perseveranceStartYear: user.perseverance_start_year ?? null,
+                                  pmMotto: user.pm_motto ?? null
                                 })}
                               >
                                 <Ionicons name="person-circle-outline" size={16} color={palette.red} />
@@ -10398,6 +10566,48 @@ function ProfileScreen({
                                   null
                                 )}
                                 <TextInput style={styles.input} placeholder="Contacto" value={adminUserPhone} onChangeText={setAdminUserPhone}  placeholderTextColor={inputPlaceholderColor} />
+                                <TextInput style={styles.input} placeholder="Apodo" value={adminUserNickname} onChangeText={setAdminUserNickname}  placeholderTextColor={inputPlaceholderColor} />
+                                <View style={styles.settingRow}>
+                                  <View style={styles.settingRowText}>
+                                    <Text style={styles.cardTitle}>Usar apodo en saludos</Text>
+                                    <Text style={styles.cardText}>Aplica en Home y saludos si el apodo esta cargado.</Text>
+                                  </View>
+                                  <Switch
+                                    value={adminUserUseNicknameInGreetings}
+                                    onValueChange={setAdminUserUseNicknameInGreetings}
+                                    trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
+                                    thumbColor={adminUserUseNicknameInGreetings ? palette.red : palette.white}
+                                  />
+                                </View>
+                                <Text style={styles.cardEyebrow}>Mostrar en credencial</Text>
+                                <View style={styles.filterRow}>
+                                  {(['name', 'nickname', 'both'] as const).map((mode) => (
+                                    <TouchableOpacity key={mode} style={[styles.filterChip, adminUserCredentialNameMode === mode && styles.filterChipActive]} onPress={() => setAdminUserCredentialNameMode(mode)}>
+                                      <Text style={[styles.filterChipText, adminUserCredentialNameMode === mode && styles.filterChipTextActive]}>{mode === 'name' ? 'Nombre' : mode === 'nickname' ? 'Apodo' : 'Ambos'}</Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </View>
+                                <Text style={styles.cardEyebrow}>Año de inicio en el Movimiento</Text>
+                                <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserPerseveranceYearDropdownOpen(!adminUserPerseveranceYearDropdownOpen)}>
+                                  <Text style={styles.dropdownButtonText}>{adminUserPerseveranceStartYear || 'Seleccionar año'}</Text>
+                                  <Ionicons name={adminUserPerseveranceYearDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                </TouchableOpacity>
+                                {adminUserPerseveranceYearDropdownOpen ? (
+                                  <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                                    {perseveranceStartYears.map((year) => (
+                                      <TouchableOpacity key={year} style={styles.dropdownItem} onPress={() => { setAdminUserPerseveranceStartYear(year); setAdminUserPerseveranceYearDropdownOpen(false); }}>
+                                        <Text style={styles.dropdownItemText}>{year}</Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </ScrollView>
+                                ) : null}
+                                {perseveranceLabel(Number(adminUserPerseveranceStartYear)) ? <Text style={styles.cardText}>{perseveranceLabel(Number(adminUserPerseveranceStartYear))}</Text> : null}
+                                {roleRank(adminUserRole) >= roleRank('sedimentador') ? (
+                                  <>
+                                    <Text style={styles.cardEyebrow}>Lema o idea fuerza del PM</Text>
+                                    <TextInput style={styles.input} placeholder="Lema o idea fuerza del PM" value={adminUserPmMotto} onChangeText={setAdminUserPmMotto}  placeholderTextColor={inputPlaceholderColor} />
+                                  </>
+                                ) : null}
                                 <Text style={styles.cardEyebrow}>Provincia</Text>
                                 <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserProvinceDropdownOpen(!adminUserProvinceDropdownOpen)}>
                                   <Text style={styles.dropdownButtonText}>{adminUserProvince || 'Seleccionar provincia'}</Text>
@@ -11223,7 +11433,7 @@ function ProfileScreen({
               <Text style={styles.inputLabel}>Nombre completo</Text>
               <TextInput
                 style={[styles.input, authFocusedField === 'fullName' && styles.inputFocused, authErrors.fullName && styles.inputError]}
-                placeholder="Ej: Juan Perez"
+                placeholder=""
                 value={registerFullName}
                 onChangeText={(value) => { setRegisterFullName(value); setAuthErrors((current) => ({ ...current, fullName: '' })); }}
                 onFocus={() => setAuthFocusedField('fullName')}
@@ -11231,7 +11441,7 @@ function ProfileScreen({
                placeholderTextColor={inputPlaceholderColor} />
               {authErrors.fullName ? <Text style={styles.formErrorText}>{authErrors.fullName}</Text> : null}
               <Text style={styles.inputLabel}>Contacto</Text>
-              <TextInput style={[styles.input, authFocusedField === 'contact' && styles.inputFocused]} placeholder="Telefono o contacto opcional" value={registerContact} onChangeText={setRegisterContact} onFocus={() => setAuthFocusedField('contact')} onBlur={() => setAuthFocusedField('')}  placeholderTextColor={inputPlaceholderColor} />
+              <TextInput style={[styles.input, authFocusedField === 'contact' && styles.inputFocused]} placeholder="" value={registerContact} onChangeText={setRegisterContact} onFocus={() => setAuthFocusedField('contact')} onBlur={() => setAuthFocusedField('')}  placeholderTextColor={inputPlaceholderColor} />
               <Text style={styles.inputLabel}>Provincia</Text>
               <TouchableOpacity style={styles.dropdownButton} onPress={() => setProvinceDropdownOpen(!provinceDropdownOpen)}>
                 <Text style={styles.dropdownButtonText}>{registerProvince || 'Selecciona tu provincia'}</Text>
@@ -11275,12 +11485,27 @@ function ProfileScreen({
                   ) : null}
                 </>
               ) : null}
+              <Text style={styles.inputLabel}>Año de inicio en el Movimiento</Text>
+              <TouchableOpacity style={styles.dropdownButton} onPress={() => setRegisterPerseveranceYearDropdownOpen(!registerPerseveranceYearDropdownOpen)}>
+                <Text style={styles.dropdownButtonText}>{registerPerseveranceStartYear || 'Seleccionar año'}</Text>
+                <Ionicons name={registerPerseveranceYearDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+              </TouchableOpacity>
+              {authErrors.perseverance ? <Text style={styles.formErrorText}>{authErrors.perseverance}</Text> : null}
+              {registerPerseveranceYearDropdownOpen ? (
+                <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                  {perseveranceStartYears.map((year) => (
+                    <TouchableOpacity key={year} style={styles.dropdownItem} onPress={() => { setRegisterPerseveranceStartYear(year); setAuthErrors((current) => ({ ...current, perseverance: '' })); setRegisterPerseveranceYearDropdownOpen(false); }}>
+                      <Text style={styles.dropdownItemText}>{year}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              ) : null}
             </>
           ) : null}
           <Text style={styles.inputLabel}>Mail</Text>
           <TextInput
             style={[styles.input, authFocusedField === 'email' && styles.inputFocused, authErrors.email && styles.inputError]}
-            placeholder={authMode === 'register' ? 'Ej: nombre@email.com' : 'Ingresa tu correo electronico'}
+            placeholder={authMode === 'register' ? '' : 'Ingresa tu correo electronico'}
             value={authEmail}
             onChangeText={(value) => { setAuthEmail(value); setAuthErrors((current) => ({ ...current, email: '' })); }}
             autoCapitalize="none"
@@ -11405,12 +11630,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.16)'
   },
+  authKeyboardAvoider: {
+    flex: 1,
+    width: '100%'
+  },
   authScrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 72,
-    paddingBottom: 36,
+    paddingBottom: 96,
     justifyContent: 'center'
+  },
+  authWizardScrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 76,
+    paddingBottom: 116,
+    justifyContent: 'flex-start'
   },
   authBrandHeader: {
     alignItems: 'flex-start',
@@ -11542,10 +11778,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10
   },
   authWizardShell: {
-    flex: 1,
-    paddingHorizontal: 22,
-    paddingTop: 72,
-    paddingBottom: 28,
+    width: '100%',
+    minHeight: 520,
     justifyContent: 'space-between',
     gap: 16
   },
@@ -11575,8 +11809,8 @@ const styles = StyleSheet.create({
     fontWeight: '900'
   },
   authWizardCard: {
-    flex: 1,
-    justifyContent: 'center'
+    justifyContent: 'center',
+    minHeight: 300
   },
   authStepContent: {
     gap: 15

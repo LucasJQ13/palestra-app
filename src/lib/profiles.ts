@@ -29,6 +29,11 @@ export type AdminUser = {
   role: string;
   display_role_label?: string | null;
   gender_preference?: 'male' | 'female' | null;
+  nickname?: string | null;
+  use_nickname_in_greetings?: boolean | null;
+  credential_name_mode?: 'name' | 'nickname' | 'both' | null;
+  perseverance_start_year?: number | null;
+  pm_motto?: string | null;
   email_confirmed_at: string | null;
 };
 
@@ -93,6 +98,10 @@ export type PublicProfileRecord = {
   role: string;
   display_role_label?: string | null;
   gender_preference?: 'male' | 'female' | null;
+  nickname?: string | null;
+  credential_name_mode?: 'name' | 'nickname' | 'both' | null;
+  perseverance_start_year?: number | null;
+  pm_motto?: string | null;
 };
 
 export type MailboxMessageRecord = {
@@ -194,9 +203,14 @@ export async function updateAdminUser(values: {
   status: string;
   role: string;
   displayRoleLabel?: string | null;
+  nickname?: string | null;
+  useNicknameInGreetings?: boolean | null;
+  credentialNameMode?: 'name' | 'nickname' | 'both' | null;
+  perseveranceStartYear?: number | null;
+  pmMotto?: string | null;
 }) {
   try {
-    return await supabase.rpc('admin_update_user', {
+    const baseResult = await supabase.rpc('admin_update_user', {
       p_profile_id: values.id,
       p_email: values.email,
       p_password: values.password || null,
@@ -207,6 +221,17 @@ export async function updateAdminUser(values: {
       p_status: values.status,
       p_role: values.role,
       p_display_role_label: values.displayRoleLabel ?? null
+    });
+    if (baseResult.error) {
+      return baseResult;
+    }
+    return await supabase.rpc('admin_update_profile_details', {
+      p_profile_id: values.id,
+      p_nickname: values.nickname ?? null,
+      p_use_nickname_in_greetings: values.useNicknameInGreetings ?? false,
+      p_credential_name_mode: values.credentialNameMode ?? 'name',
+      p_perseverance_start_year: values.perseveranceStartYear ?? null,
+      p_pm_motto: values.pmMotto ?? null
     });
   } catch (error) {
     return networkError(error);
@@ -461,13 +486,44 @@ export async function updateMyProfile(values: {
   province: string;
   communityName: string;
   genderPreference?: 'male' | 'female' | null;
+  nickname?: string | null;
+  useNicknameInGreetings?: boolean | null;
+  credentialNameMode?: 'name' | 'nickname' | 'both' | null;
+  perseveranceStartYear?: number | null;
+  pmMotto?: string | null;
 }) {
-  return supabase.rpc('update_my_profile', {
+  const baseResult = await supabase.rpc('update_my_profile', {
     p_full_name: values.fullName,
     p_phone: values.phone,
     p_province: values.province,
     p_community_name: values.communityName,
     p_gender_preference: values.genderPreference ?? null
+  });
+  if (baseResult.error) {
+    return baseResult;
+  }
+  return supabase.rpc('update_my_profile_details', {
+    p_nickname: values.nickname ?? null,
+    p_use_nickname_in_greetings: values.useNicknameInGreetings ?? false,
+    p_credential_name_mode: values.credentialNameMode ?? 'name',
+    p_perseverance_start_year: values.perseveranceStartYear ?? null,
+    p_pm_motto: values.pmMotto ?? null
+  });
+}
+
+export async function updateMyProfileDetails(values: {
+  nickname?: string | null;
+  useNicknameInGreetings?: boolean | null;
+  credentialNameMode?: 'name' | 'nickname' | 'both' | null;
+  perseveranceStartYear?: number | null;
+  pmMotto?: string | null;
+}) {
+  return supabase.rpc('update_my_profile_details', {
+    p_nickname: values.nickname ?? null,
+    p_use_nickname_in_greetings: values.useNicknameInGreetings ?? false,
+    p_credential_name_mode: values.credentialNameMode ?? 'name',
+    p_perseverance_start_year: values.perseveranceStartYear ?? null,
+    p_pm_motto: values.pmMotto ?? null
   });
 }
 

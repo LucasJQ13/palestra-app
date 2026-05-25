@@ -15,6 +15,11 @@ type MyProfileRow = {
   role: Role | null;
   display_role_label?: string | null;
   gender_preference?: 'male' | 'female' | null;
+  nickname?: string | null;
+  use_nickname_in_greetings?: boolean | null;
+  credential_name_mode?: 'name' | 'nickname' | 'both' | null;
+  perseverance_start_year?: number | null;
+  pm_motto?: string | null;
 };
 
 export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ session: Session | null; error?: string }> {
@@ -47,6 +52,11 @@ export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ 
       role,
       displayRoleLabel: row.display_role_label ?? null,
       genderPreference: row.gender_preference ?? null,
+      nickname: row.nickname ?? null,
+      useNicknameInGreetings: row.use_nickname_in_greetings ?? false,
+      credentialNameMode: row.credential_name_mode ?? 'name',
+      perseveranceStartYear: row.perseverance_start_year ?? null,
+      pmMotto: row.pm_motto ?? null,
       status: row.status ?? 'pendiente',
       permissions
     }

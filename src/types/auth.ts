@@ -51,6 +51,11 @@ export type Session = {
   role: Role;
   displayRoleLabel?: string | null;
   genderPreference?: 'male' | 'female' | null;
+  nickname?: string | null;
+  useNicknameInGreetings?: boolean | null;
+  credentialNameMode?: 'name' | 'nickname' | 'both' | null;
+  perseveranceStartYear?: number | null;
+  pmMotto?: string | null;
   status: UserStatus;
   permissions: Permission[];
 };
