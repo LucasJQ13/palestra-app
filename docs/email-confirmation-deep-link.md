@@ -23,6 +23,7 @@ En `Authentication > URL Configuration` configurar:
   - `palestra://auth/callback?flow=password-reset`
 
 Si `Site URL` queda en `http://localhost:3000` o el deep link no esta en allowlist, Supabase confirma el mail pero redirige a localhost.
+La app procesa tanto callbacks con `code` como callbacks con `access_token`/`refresh_token` para que la pantalla `Mail confirmado` no sea solo visual: despues del callback vuelve a consultar Supabase Auth y refresca el perfil real.
 
 ## Uso desde la app
 

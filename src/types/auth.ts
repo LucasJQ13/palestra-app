@@ -12,6 +12,7 @@ export type Role =
   | 'administrador';
 
 export type UserStatus = 'pendiente' | 'aprobado' | 'bloqueado';
+export type PersonalPmType = 'pmm' | 'pmf';
 
 export type Permission =
   | 'ver_inicio'
@@ -55,6 +56,10 @@ export type Session = {
   useNicknameInGreetings?: boolean | null;
   credentialNameMode?: 'name' | 'nickname' | 'both' | null;
   perseveranceStartYear?: number | null;
+  personalPmType?: PersonalPmType | null;
+  personalPmNumber?: number | null;
+  personalPmProvince?: string | null;
+  personalPmMotto?: string | null;
   pmMotto?: string | null;
   status: UserStatus;
   permissions: Permission[];

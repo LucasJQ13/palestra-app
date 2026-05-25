@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
 import { AppTheme, ThemeName, themePresets } from './src/theme/themes';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
-import { Permission, Role, Session, UserStatus } from './src/types/auth';
+import { Permission, PersonalPmType, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
 import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, AppTabSetting, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from './src/lib/profiles';
@@ -49,7 +49,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.36';
+const appBetaVersion = '0.1.37';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const authDeepLinkBaseUrl = 'palestra://auth/callback';
@@ -182,6 +182,10 @@ type PublicProfilePreview = {
   nickname?: string | null;
   credentialNameMode?: 'name' | 'nickname' | 'both' | null;
   perseveranceStartYear?: number | null;
+  personalPmType?: PersonalPmType | null;
+  personalPmNumber?: number | null;
+  personalPmProvince?: string | null;
+  personalPmMotto?: string | null;
   pmMotto?: string | null;
 };
 
@@ -549,6 +553,32 @@ function perseveranceLabel(startYear?: number | null) {
     return '';
   }
   return `${years} ${years === 1 ? 'año' : 'años'} de perseverancia`;
+}
+
+function personalPmTypeLabel(type?: PersonalPmType | string | null) {
+  if (type === 'pmm') {
+    return 'PMM';
+  }
+  if (type === 'pmf') {
+    return 'PMF';
+  }
+  return '';
+}
+
+function personalPmSummary(values: {
+  type?: PersonalPmType | string | null;
+  number?: number | string | null;
+  province?: string | null;
+  motto?: string | null;
+}) {
+  const label = personalPmTypeLabel(values.type);
+  const number = values.number ? String(values.number).trim() : '';
+  const province = values.province?.trim();
+  const motto = values.motto?.trim();
+  if (!label || !number || !province) {
+    return '';
+  }
+  return `${label} N° ${number} (${province})${motto ? ` - ${motto}` : ''}`;
 }
 
 function credentialDisplayName(session: Session | PublicProfilePreview | null) {
@@ -1528,7 +1558,7 @@ export default function App() {
       const nextResults: GlobalSearchResult[] = [];
 
       adminUsersRemote.forEach((user) => {
-        if (matches([user.full_name, user.nickname, user.email, user.province, user.community_name, user.role, user.display_role_label, user.pm_motto])) {
+        if (matches([user.full_name, user.nickname, user.email, user.province, user.community_name, user.role, user.display_role_label, user.personal_pm_motto, user.pm_motto])) {
           const role = (user.role || 'palestrista') as Role;
           nextResults.push({
             id: `user-${user.id}`,
@@ -1549,6 +1579,10 @@ export default function App() {
               nickname: user.nickname ?? null,
               credentialNameMode: user.credential_name_mode ?? 'name',
               perseveranceStartYear: user.perseverance_start_year ?? null,
+              personalPmType: user.personal_pm_type ?? null,
+              personalPmNumber: user.personal_pm_number ?? null,
+              personalPmProvince: user.personal_pm_province ?? null,
+              personalPmMotto: user.personal_pm_motto ?? user.pm_motto ?? null,
               pmMotto: user.pm_motto ?? null
             }
           });
@@ -1766,12 +1800,13 @@ export default function App() {
   }, []);
 
   async function handleDeepLinkUrl(url: string) {
-    if (!url.startsWith('palestra://auth/callback')) {
+    if (!url.startsWith(authDeepLinkBaseUrl)) {
       return;
     }
     try {
       const parsed = new URL(url);
-      const flow = parsed.searchParams.get('flow') ?? parsed.searchParams.get('type');
+      const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+      const flow = parsed.searchParams.get('flow') ?? parsed.searchParams.get('type') ?? hashParams.get('type');
       if (flow === 'password-reset' || flow === 'recovery') {
         setAuthConfirmationOpen(false);
         setActiveTab('perfil');
@@ -1779,12 +1814,20 @@ export default function App() {
         setAppMessage('Link de recuperacion recibido. Inicia sesion o actualiza tu contrasena desde Mi Perfil.');
         return;
       }
-      setAuthConfirmationOpen(true);
       const code = parsed.searchParams.get('code');
       if (code) {
         await supabase.auth.exchangeCodeForSession(code);
-        await hydrateRealSession();
       }
+      const accessToken = parsed.searchParams.get('access_token') ?? hashParams.get('access_token');
+      const refreshToken = parsed.searchParams.get('refresh_token') ?? hashParams.get('refresh_token');
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      }
+      await hydrateRealSession();
+      setAuthConfirmationOpen(true);
+      setActiveTab('perfil');
+      setAuthScreenOpen(false);
+      setAppMessage('Mail confirmado correctamente.');
     } catch (error) {
       setAuthConfirmationOpen(true);
       console.error('auth callback link', error);
@@ -5535,7 +5578,11 @@ function ProfileScreen({
   const [editCredentialNameMode, setEditCredentialNameMode] = useState<'name' | 'nickname' | 'both'>(session?.credentialNameMode ?? 'name');
   const [editPerseveranceStartYear, setEditPerseveranceStartYear] = useState(session?.perseveranceStartYear ? String(session.perseveranceStartYear) : '');
   const [editPerseveranceYearDropdownOpen, setEditPerseveranceYearDropdownOpen] = useState(false);
-  const [editPmMotto, setEditPmMotto] = useState(session?.pmMotto ?? '');
+  const [editPmType, setEditPmType] = useState<PersonalPmType | ''>(session?.personalPmType ?? '');
+  const [editPmNumber, setEditPmNumber] = useState(session?.personalPmNumber ? String(session.personalPmNumber) : '');
+  const [editPmProvince, setEditPmProvince] = useState(session?.personalPmProvince ?? session?.province ?? '');
+  const [editPmProvinceDropdownOpen, setEditPmProvinceDropdownOpen] = useState(false);
+  const [editPmMotto, setEditPmMotto] = useState(session?.personalPmMotto ?? session?.pmMotto ?? '');
   const [editProvinceDropdownOpen, setEditProvinceDropdownOpen] = useState(false);
   const [editCommunityDropdownOpen, setEditCommunityDropdownOpen] = useState(false);
   const [realPendingProfiles, setRealPendingProfiles] = useState<PendingProfile[]>([]);
@@ -5561,6 +5608,10 @@ function ProfileScreen({
   const [adminUserCredentialNameMode, setAdminUserCredentialNameMode] = useState<'name' | 'nickname' | 'both'>('name');
   const [adminUserPerseveranceStartYear, setAdminUserPerseveranceStartYear] = useState('');
   const [adminUserPerseveranceYearDropdownOpen, setAdminUserPerseveranceYearDropdownOpen] = useState(false);
+  const [adminUserPmType, setAdminUserPmType] = useState<PersonalPmType | ''>('');
+  const [adminUserPmNumber, setAdminUserPmNumber] = useState('');
+  const [adminUserPmProvince, setAdminUserPmProvince] = useState('');
+  const [adminUserPmProvinceDropdownOpen, setAdminUserPmProvinceDropdownOpen] = useState(false);
   const [adminUserPmMotto, setAdminUserPmMotto] = useState('');
   const [adminCreateEmail, setAdminCreateEmail] = useState('');
   const [adminCreatePassword, setAdminCreatePassword] = useState('');
@@ -5959,7 +6010,10 @@ function ProfileScreen({
     setEditUseNicknameInGreetings(Boolean(session?.useNicknameInGreetings));
     setEditCredentialNameMode(session?.credentialNameMode ?? 'name');
     setEditPerseveranceStartYear(session?.perseveranceStartYear ? String(session.perseveranceStartYear) : '');
-    setEditPmMotto(session?.pmMotto ?? '');
+    setEditPmType(session?.personalPmType ?? '');
+    setEditPmNumber(session?.personalPmNumber ? String(session.personalPmNumber) : '');
+    setEditPmProvince(session?.personalPmProvince ?? session?.province ?? '');
+    setEditPmMotto(session?.personalPmMotto ?? session?.pmMotto ?? '');
   }, [session]);
 
   useEffect(() => {
@@ -6435,6 +6489,9 @@ function ProfileScreen({
       setAdminUserUseNicknameInGreetings(false);
       setAdminUserCredentialNameMode('name');
       setAdminUserPerseveranceStartYear('');
+      setAdminUserPmType('');
+      setAdminUserPmNumber('');
+      setAdminUserPmProvince('');
       setAdminUserPmMotto('');
       return;
     }
@@ -6452,7 +6509,10 @@ function ProfileScreen({
     setAdminUserUseNicknameInGreetings(Boolean(selectedAdminUser.use_nickname_in_greetings));
     setAdminUserCredentialNameMode(selectedAdminUser.credential_name_mode ?? 'name');
     setAdminUserPerseveranceStartYear(selectedAdminUser.perseverance_start_year ? String(selectedAdminUser.perseverance_start_year) : '');
-    setAdminUserPmMotto(selectedAdminUser.pm_motto ?? '');
+    setAdminUserPmType(selectedAdminUser.personal_pm_type ?? '');
+    setAdminUserPmNumber(selectedAdminUser.personal_pm_number ? String(selectedAdminUser.personal_pm_number) : '');
+    setAdminUserPmProvince(selectedAdminUser.personal_pm_province ?? selectedAdminUser.province ?? '');
+    setAdminUserPmMotto(selectedAdminUser.personal_pm_motto ?? selectedAdminUser.pm_motto ?? '');
   }, [selectedAdminUser]);
 
   function normalizeRequest(item: UserRequestRecord): AdminRequest {
@@ -6822,6 +6882,18 @@ function ProfileScreen({
       setAuthMessage('Elegir provincia y comunidad es obligatorio.');
       return;
     }
+    const canUsePersonalPm = roleRank(session.role) >= roleRank('sedimentador');
+    if (canUsePersonalPm && (editPmType || editPmNumber || editPmProvince || editPmMotto.trim())) {
+      if (!editPmType || !editPmNumber.trim() || !editPmProvince) {
+        setAuthMessage('Para cargar tu PM personal completá tipo, número y provincia.');
+        return;
+      }
+      const pmNumberValue = Number(editPmNumber);
+      if (!Number.isInteger(pmNumberValue) || pmNumberValue <= 0) {
+        setAuthMessage('El número de PM debe ser un número válido.');
+        return;
+      }
+    }
 
     const confirmed = await confirmProfileChangeIfNeeded();
     if (!confirmed) {
@@ -6850,7 +6922,11 @@ function ProfileScreen({
         useNicknameInGreetings: editUseNicknameInGreetings,
         credentialNameMode: editCredentialNameMode,
         perseveranceStartYear: editPerseveranceStartYear ? Number(editPerseveranceStartYear) : null,
-        pmMotto: roleRank(session.role) >= roleRank('sedimentador') ? (editPmMotto.trim() || null) : null
+        personalPmType: canUsePersonalPm ? (editPmType || null) : null,
+        personalPmNumber: canUsePersonalPm && editPmNumber ? Number(editPmNumber) : null,
+        personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
+        personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
+        pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null
       });
       return;
     }
@@ -6860,7 +6936,11 @@ function ProfileScreen({
       useNicknameInGreetings: editUseNicknameInGreetings,
       credentialNameMode: editCredentialNameMode,
       perseveranceStartYear: editPerseveranceStartYear ? Number(editPerseveranceStartYear) : null,
-      pmMotto: roleRank(session.role) >= roleRank('sedimentador') ? (editPmMotto.trim() || null) : null
+      personalPmType: canUsePersonalPm ? (editPmType || null) : null,
+      personalPmNumber: canUsePersonalPm && editPmNumber ? Number(editPmNumber) : null,
+      personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
+      personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
+      pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null
     };
     const { error } = coreProfileChanged ? await updateMyProfile({
       fullName: editFullName || session.fullName,
@@ -6887,7 +6967,11 @@ function ProfileScreen({
       useNicknameInGreetings: editUseNicknameInGreetings,
       credentialNameMode: editCredentialNameMode,
       perseveranceStartYear: editPerseveranceStartYear ? Number(editPerseveranceStartYear) : null,
-      pmMotto: roleRank(session.role) >= roleRank('sedimentador') ? (editPmMotto.trim() || null) : null
+      personalPmType: canUsePersonalPm ? (editPmType || null) : null,
+      personalPmNumber: canUsePersonalPm && editPmNumber ? Number(editPmNumber) : null,
+      personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
+      personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
+      pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null
     });
     await loadRealProfile(authData.user.id, authData.user.email ?? session.email ?? session.fullName);
     setAuthMessage(mayDowngrade
@@ -7030,6 +7114,18 @@ function ProfileScreen({
       setAuthMessage(`Tu rango no puede asignar el rol ${roleLabel(adminUserRole)}.`);
       return;
     }
+    const canAdminUsePersonalPm = roleRank(adminUserRole) >= roleRank('sedimentador');
+    if (canAdminUsePersonalPm && (adminUserPmType || adminUserPmNumber || adminUserPmProvince || adminUserPmMotto.trim())) {
+      if (!adminUserPmType || !adminUserPmNumber.trim() || !adminUserPmProvince) {
+        setAuthMessage('Para cargar el PM personal completá tipo, número y provincia.');
+        return;
+      }
+      const parsedPmNumber = Number(adminUserPmNumber);
+      if (!Number.isInteger(parsedPmNumber) || parsedPmNumber <= 0) {
+        setAuthMessage('El número de PM debe ser válido.');
+        return;
+      }
+    }
 
     setAuthMessage('Guardando usuario...');
     const { error } = await updateAdminUser({
@@ -7047,7 +7143,11 @@ function ProfileScreen({
       useNicknameInGreetings: adminUserUseNicknameInGreetings,
       credentialNameMode: adminUserCredentialNameMode,
       perseveranceStartYear: adminUserPerseveranceStartYear ? Number(adminUserPerseveranceStartYear) : null,
-      pmMotto: roleRank(adminUserRole) >= roleRank('sedimentador') ? (adminUserPmMotto.trim() || null) : null
+      personalPmType: canAdminUsePersonalPm ? (adminUserPmType || null) : null,
+      personalPmNumber: canAdminUsePersonalPm && adminUserPmNumber ? Number(adminUserPmNumber) : null,
+      personalPmProvince: canAdminUsePersonalPm ? (adminUserPmProvince || null) : null,
+      personalPmMotto: canAdminUsePersonalPm ? (adminUserPmMotto.trim() || null) : null,
+      pmMotto: canAdminUsePersonalPm ? (adminUserPmMotto.trim() || null) : null
     });
     if (error) {
       setAuthMessage(error.message || 'No se pudo guardar el usuario. Revisa permisos y datos.');
@@ -7065,6 +7165,10 @@ function ProfileScreen({
     }
     if (!selectedAdminUser) {
       setAuthMessage('Elegir un usuario para aprobar email.');
+      return;
+    }
+    if (selectedAdminUser.email_confirmed_at) {
+      setAuthMessage('Este usuario ya confirmo el mail. Si corresponde, aprobalo como usuario desde Estado/Rol.');
       return;
     }
 
@@ -8424,6 +8528,10 @@ function ProfileScreen({
         nickname: remoteProfile.nickname ?? current.nickname,
         credentialNameMode: remoteProfile.credential_name_mode ?? current.credentialNameMode,
         perseveranceStartYear: remoteProfile.perseverance_start_year ?? current.perseveranceStartYear,
+        personalPmType: remoteProfile.personal_pm_type ?? current.personalPmType,
+        personalPmNumber: remoteProfile.personal_pm_number ?? current.personalPmNumber,
+        personalPmProvince: remoteProfile.personal_pm_province ?? current.personalPmProvince,
+        personalPmMotto: remoteProfile.personal_pm_motto ?? remoteProfile.pm_motto ?? current.personalPmMotto,
         pmMotto: remoteProfile.pm_motto ?? current.pmMotto
       };
     });
@@ -8534,7 +8642,17 @@ function ProfileScreen({
                 {selectedPublicProfile.province ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Provincia: {selectedPublicProfile.province}</Text> : null}
                 {selectedPublicProfile.contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {selectedPublicProfile.contact}</Text> : null}
                 {perseveranceLabel(selectedPublicProfile.perseveranceStartYear) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{perseveranceLabel(selectedPublicProfile.perseveranceStartYear)}</Text> : null}
-                {selectedPublicProfile.pmMotto && roleRank(selectedPublicProfile.role) >= roleRank('sedimentador') ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Lema PM: {selectedPublicProfile.pmMotto}</Text> : null}
+                {roleRank(selectedPublicProfile.role) >= roleRank('sedimentador') && personalPmSummary({
+                  type: selectedPublicProfile.personalPmType,
+                  number: selectedPublicProfile.personalPmNumber,
+                  province: selectedPublicProfile.personalPmProvince,
+                  motto: selectedPublicProfile.personalPmMotto ?? selectedPublicProfile.pmMotto
+                }) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>PM: {personalPmSummary({
+                    type: selectedPublicProfile.personalPmType,
+                    number: selectedPublicProfile.personalPmNumber,
+                    province: selectedPublicProfile.personalPmProvince,
+                    motto: selectedPublicProfile.personalPmMotto ?? selectedPublicProfile.pmMotto
+                  })}</Text> : null}
               </View>
             ) : null}
           </View>
@@ -8563,6 +8681,7 @@ function ProfileScreen({
                 { icon: 'person-outline', label: 'Mi perfil', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); } },
                 { icon: 'create-outline', label: 'Editar perfil', action: () => { setProfilePanel('editar'); setShowCommunity(false); setShowCommunityManagement(false); } },
                 { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); setShowCommunity(false); setShowCommunityManagement(false); refreshCommunityForum(); } },
+                ...(session.role !== 'administrador' ? [{ icon: 'mail-unread-outline', label: 'Solicitudes', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); } }] : []),
                 { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowCommunity(false); setShowCommunityManagement(false); refreshMailbox(); } },
                 { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowCommunity(false); setShowCommunityManagement(false); } },
               ].map((item) => (
@@ -8597,7 +8716,17 @@ function ProfileScreen({
               {session.email ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.email}</Text> : null}
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
               {perseveranceLabel(session.perseveranceStartYear) ? <Text style={[styles.profileHonorText, isDark && styles.textDarkAccent]}>{perseveranceLabel(session.perseveranceStartYear)}</Text> : null}
-              {session.pmMotto && roleRank(session.role) >= roleRank('sedimentador') ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.pmMotto}</Text> : null}
+              {roleRank(session.role) >= roleRank('sedimentador') && personalPmSummary({
+                type: session.personalPmType,
+                number: session.personalPmNumber,
+                province: session.personalPmProvince,
+                motto: session.personalPmMotto ?? session.pmMotto
+              }) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{personalPmSummary({
+                  type: session.personalPmType,
+                  number: session.personalPmNumber,
+                  province: session.personalPmProvince,
+                  motto: session.personalPmMotto ?? session.pmMotto
+                })}</Text> : null}
               <TouchableOpacity style={[styles.photoChangeButton, isDark && styles.darkSoftButton]} onPress={uploadProfilePhoto}>
                 <Ionicons name="camera-outline" size={16} color={palette.red} />
                 <Text style={styles.photoChangeText}>{session.avatarUrl ? 'Cambiar foto de perfil' : 'Subir foto de perfil'}</Text>
@@ -8670,8 +8799,30 @@ function ProfileScreen({
             {perseveranceLabel(Number(editPerseveranceStartYear)) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{perseveranceLabel(Number(editPerseveranceStartYear))}</Text> : null}
             {roleRank(session.role) >= roleRank('sedimentador') ? (
               <>
-                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Lema o idea fuerza del PM</Text>
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>PM personal</Text>
+                <View style={styles.filterRow}>
+                  {(['pmm', 'pmf'] as const).map((type) => (
+                    <TouchableOpacity key={type} style={[styles.filterChip, editPmType === type && styles.filterChipActive]} onPress={() => setEditPmType(type)}>
+                      <Text style={[styles.filterChipText, editPmType === type && styles.filterChipTextActive]}>{personalPmTypeLabel(type)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Numero de PM" value={editPmNumber} onChangeText={(value) => setEditPmNumber(value.replace(/[^0-9]/g, '').slice(0, 4))} keyboardType="number-pad" placeholderTextColor={inputPlaceholderColor} />
+                <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditPmProvinceDropdownOpen(!editPmProvinceDropdownOpen)}>
+                  <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editPmProvince || 'Provincia donde hiciste el PM'}</Text>
+                  <Ionicons name={editPmProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                </TouchableOpacity>
+                {editPmProvinceDropdownOpen ? (
+                  <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                    {registrationCommunities.map((item) => (
+                      <TouchableOpacity key={`pm-${item.province}`} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditPmProvince(item.province); setEditPmProvinceDropdownOpen(false); }}>
+                        <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{item.province}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                ) : null}
                 <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Lema o idea fuerza del PM" value={editPmMotto} onChangeText={setEditPmMotto}  placeholderTextColor={inputPlaceholderColor} />
+                {personalPmSummary({ type: editPmType, number: editPmNumber, province: editPmProvince, motto: editPmMotto }) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{personalPmSummary({ type: editPmType, number: editPmNumber, province: editPmProvince, motto: editPmMotto })}</Text> : null}
               </>
             ) : null}
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Provincia</Text>
@@ -9164,18 +9315,25 @@ function ProfileScreen({
                 <Text style={[styles.credentialName, isDark && styles.textDarkStrong]}>{credentialDisplayName(session)}</Text>
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
                 {perseveranceLabel(session.perseveranceStartYear) ? <Text style={[styles.cardText, isDark && styles.textDarkAccent]}>{perseveranceLabel(session.perseveranceStartYear)}</Text> : null}
-                {session.pmMotto && roleRank(session.role) >= roleRank('sedimentador') ? <Text style={[styles.cardText, isDark && styles.textDarkBody]} numberOfLines={1}>{session.pmMotto}</Text> : null}
+                {roleRank(session.role) >= roleRank('sedimentador') && personalPmSummary({
+                  type: session.personalPmType,
+                  number: session.personalPmNumber,
+                  province: session.personalPmProvince,
+                  motto: session.personalPmMotto ?? session.pmMotto
+                }) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]} numberOfLines={1}>{personalPmSummary({
+                    type: session.personalPmType,
+                    number: session.personalPmNumber,
+                    province: session.personalPmProvince,
+                    motto: session.personalPmMotto ?? session.pmMotto
+                  })}</Text> : null}
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.communityOfOrigin}, {session.province}</Text>
               </View>
             </View>
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
           </View> : null}
-          {profilePanel === 'vista' && session.role !== 'administrador' ? (
+          {profilePanel === 'vista' && session.role !== 'administrador' && selectedRequest ? (
             <View style={styles.profileCommunityPanel}>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => setSelectedRequest(selectedRequest === 'menu' ? null : 'menu')}>
-                <Ionicons name="mail-unread-outline" size={17} color={palette.white} />
-                <Text style={styles.primaryButtonText}>Solicitudes</Text>
-              </TouchableOpacity>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Solicitudes</Text>
               {selectedRequest === 'menu' || (selectedRequest && ['Solicitud de perseverancia', 'Solicitud Especial'].includes(selectedRequest)) ? (
                 <View style={styles.inlineEditorPanel}>
                   {roleRank(session.role) < roleRank('sedimentador') ? (
@@ -9212,7 +9370,7 @@ function ProfileScreen({
               ) : null}
             </View>
           ) : null}
-          {profilePanel === 'vista' && session.role !== 'administrador' ? (
+          {profilePanel === 'vista' && session.role !== 'administrador' && showSentRequests ? (
             <View style={styles.profileCommunityPanel}>
               <TouchableOpacity
                 style={styles.secondaryButton}
@@ -10546,6 +10704,10 @@ function ProfileScreen({
                                   nickname: user.nickname ?? null,
                                   credentialNameMode: user.credential_name_mode ?? 'name',
                                   perseveranceStartYear: user.perseverance_start_year ?? null,
+                                  personalPmType: user.personal_pm_type ?? null,
+                                  personalPmNumber: user.personal_pm_number ?? null,
+                                  personalPmProvince: user.personal_pm_province ?? null,
+                                  personalPmMotto: user.personal_pm_motto ?? user.pm_motto ?? null,
                                   pmMotto: user.pm_motto ?? null
                                 })}
                               >
@@ -10604,8 +10766,30 @@ function ProfileScreen({
                                 {perseveranceLabel(Number(adminUserPerseveranceStartYear)) ? <Text style={styles.cardText}>{perseveranceLabel(Number(adminUserPerseveranceStartYear))}</Text> : null}
                                 {roleRank(adminUserRole) >= roleRank('sedimentador') ? (
                                   <>
-                                    <Text style={styles.cardEyebrow}>Lema o idea fuerza del PM</Text>
+                                    <Text style={styles.cardEyebrow}>PM personal</Text>
+                                    <View style={styles.filterRow}>
+                                      {(['pmm', 'pmf'] as const).map((type) => (
+                                        <TouchableOpacity key={`admin-${type}`} style={[styles.filterChip, adminUserPmType === type && styles.filterChipActive]} onPress={() => setAdminUserPmType(type)}>
+                                          <Text style={[styles.filterChipText, adminUserPmType === type && styles.filterChipTextActive]}>{personalPmTypeLabel(type)}</Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                    </View>
+                                    <TextInput style={styles.input} placeholder="Numero de PM" value={adminUserPmNumber} onChangeText={(value) => setAdminUserPmNumber(value.replace(/[^0-9]/g, '').slice(0, 4))} keyboardType="number-pad" placeholderTextColor={inputPlaceholderColor} />
+                                    <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserPmProvinceDropdownOpen(!adminUserPmProvinceDropdownOpen)}>
+                                      <Text style={styles.dropdownButtonText}>{adminUserPmProvince || 'Provincia donde hizo el PM'}</Text>
+                                      <Ionicons name={adminUserPmProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                    </TouchableOpacity>
+                                    {adminUserPmProvinceDropdownOpen ? (
+                                      <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                                        {visibleRegistrationCommunities.map((item) => (
+                                          <TouchableOpacity key={`admin-pm-${item.province}`} style={styles.dropdownItem} onPress={() => { setAdminUserPmProvince(item.province); setAdminUserPmProvinceDropdownOpen(false); }}>
+                                            <Text style={styles.dropdownItemText}>{item.province}</Text>
+                                          </TouchableOpacity>
+                                        ))}
+                                      </ScrollView>
+                                    ) : null}
                                     <TextInput style={styles.input} placeholder="Lema o idea fuerza del PM" value={adminUserPmMotto} onChangeText={setAdminUserPmMotto}  placeholderTextColor={inputPlaceholderColor} />
+                                    {personalPmSummary({ type: adminUserPmType, number: adminUserPmNumber, province: adminUserPmProvince, motto: adminUserPmMotto }) ? <Text style={styles.cardText}>{personalPmSummary({ type: adminUserPmType, number: adminUserPmNumber, province: adminUserPmProvince, motto: adminUserPmMotto })}</Text> : null}
                                   </>
                                 ) : null}
                                 <Text style={styles.cardEyebrow}>Provincia</Text>
@@ -10716,6 +10900,8 @@ function ProfileScreen({
                     {realPendingProfiles.map((user) => (
                       <View key={user.id} style={styles.innerNewsCard}>
                         <Text style={styles.cardTitle}>{user.full_name}</Text>
+                        <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text>
+                        <Text style={styles.cardText}>{user.email_confirmed_at ? 'Mail confirmado - pendiente de aprobacion dirigencial' : 'Mail pendiente de confirmacion'}</Text>
                         <Text style={styles.cardText}>Rol actual: {user.role}</Text>
                         <Text style={styles.cardText}>Comunidad: {user.community_name ?? 'Sin comunidad'}</Text>
                         <TouchableOpacity style={styles.secondaryButton} onPress={() => approvePendingProfile(user.id, 'palestrista')}>

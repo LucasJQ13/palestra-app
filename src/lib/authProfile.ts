@@ -1,4 +1,4 @@
-import { Role, Session, UserStatus } from '../types/auth';
+import { PersonalPmType, Role, Session, UserStatus } from '../types/auth';
 import { getDynamicPermissionsForRole } from './permissions';
 import { supabase } from './supabase';
 
@@ -19,6 +19,10 @@ type MyProfileRow = {
   use_nickname_in_greetings?: boolean | null;
   credential_name_mode?: 'name' | 'nickname' | 'both' | null;
   perseverance_start_year?: number | null;
+  personal_pm_type?: PersonalPmType | null;
+  personal_pm_number?: number | null;
+  personal_pm_province?: string | null;
+  personal_pm_motto?: string | null;
   pm_motto?: string | null;
 };
 
@@ -56,6 +60,10 @@ export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ 
       useNicknameInGreetings: row.use_nickname_in_greetings ?? false,
       credentialNameMode: row.credential_name_mode ?? 'name',
       perseveranceStartYear: row.perseverance_start_year ?? null,
+      personalPmType: row.personal_pm_type ?? null,
+      personalPmNumber: row.personal_pm_number ?? null,
+      personalPmProvince: row.personal_pm_province ?? null,
+      personalPmMotto: row.personal_pm_motto ?? row.pm_motto ?? null,
       pmMotto: row.pm_motto ?? null,
       status: row.status ?? 'pendiente',
       permissions

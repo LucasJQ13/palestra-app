@@ -44,7 +44,7 @@ export const defaultCatholicNewsConfig: CatholicNewsConfig = {
 
 export const defaultRuntimeConfig: AppRuntimeConfig = {
   minSupportedVersion: '0.1.0',
-  recommendedVersion: '0.1.36',
+  recommendedVersion: '0.1.37',
   maintenanceMode: false,
   globalMessage: null,
   featureFlags: {

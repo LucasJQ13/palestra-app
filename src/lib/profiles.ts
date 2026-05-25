@@ -11,6 +11,8 @@ function networkError(error: unknown) {
 
 export type PendingProfile = {
   id: string;
+  email: string | null;
+  email_confirmed_at: string | null;
   full_name: string;
   status: string;
   role: string;
@@ -33,6 +35,10 @@ export type AdminUser = {
   use_nickname_in_greetings?: boolean | null;
   credential_name_mode?: 'name' | 'nickname' | 'both' | null;
   perseverance_start_year?: number | null;
+  personal_pm_type?: 'pmm' | 'pmf' | null;
+  personal_pm_number?: number | null;
+  personal_pm_province?: string | null;
+  personal_pm_motto?: string | null;
   pm_motto?: string | null;
   email_confirmed_at: string | null;
 };
@@ -101,6 +107,10 @@ export type PublicProfileRecord = {
   nickname?: string | null;
   credential_name_mode?: 'name' | 'nickname' | 'both' | null;
   perseverance_start_year?: number | null;
+  personal_pm_type?: 'pmm' | 'pmf' | null;
+  personal_pm_number?: number | null;
+  personal_pm_province?: string | null;
+  personal_pm_motto?: string | null;
   pm_motto?: string | null;
 };
 
@@ -207,6 +217,10 @@ export async function updateAdminUser(values: {
   useNicknameInGreetings?: boolean | null;
   credentialNameMode?: 'name' | 'nickname' | 'both' | null;
   perseveranceStartYear?: number | null;
+  personalPmType?: 'pmm' | 'pmf' | null;
+  personalPmNumber?: number | null;
+  personalPmProvince?: string | null;
+  personalPmMotto?: string | null;
   pmMotto?: string | null;
 }) {
   try {
@@ -225,13 +239,16 @@ export async function updateAdminUser(values: {
     if (baseResult.error) {
       return baseResult;
     }
-    return await supabase.rpc('admin_update_profile_details', {
+    return await supabase.rpc('admin_update_profile_details_v2', {
       p_profile_id: values.id,
       p_nickname: values.nickname ?? null,
       p_use_nickname_in_greetings: values.useNicknameInGreetings ?? false,
       p_credential_name_mode: values.credentialNameMode ?? 'name',
       p_perseverance_start_year: values.perseveranceStartYear ?? null,
-      p_pm_motto: values.pmMotto ?? null
+      p_personal_pm_type: values.personalPmType ?? null,
+      p_personal_pm_number: values.personalPmNumber ?? null,
+      p_personal_pm_province: values.personalPmProvince ?? null,
+      p_personal_pm_motto: values.personalPmMotto ?? values.pmMotto ?? null
     });
   } catch (error) {
     return networkError(error);
@@ -490,6 +507,10 @@ export async function updateMyProfile(values: {
   useNicknameInGreetings?: boolean | null;
   credentialNameMode?: 'name' | 'nickname' | 'both' | null;
   perseveranceStartYear?: number | null;
+  personalPmType?: 'pmm' | 'pmf' | null;
+  personalPmNumber?: number | null;
+  personalPmProvince?: string | null;
+  personalPmMotto?: string | null;
   pmMotto?: string | null;
 }) {
   const baseResult = await supabase.rpc('update_my_profile', {
@@ -502,12 +523,15 @@ export async function updateMyProfile(values: {
   if (baseResult.error) {
     return baseResult;
   }
-  return supabase.rpc('update_my_profile_details', {
+  return supabase.rpc('update_my_profile_details_v2', {
     p_nickname: values.nickname ?? null,
     p_use_nickname_in_greetings: values.useNicknameInGreetings ?? false,
     p_credential_name_mode: values.credentialNameMode ?? 'name',
     p_perseverance_start_year: values.perseveranceStartYear ?? null,
-    p_pm_motto: values.pmMotto ?? null
+    p_personal_pm_type: values.personalPmType ?? null,
+    p_personal_pm_number: values.personalPmNumber ?? null,
+    p_personal_pm_province: values.personalPmProvince ?? null,
+    p_personal_pm_motto: values.personalPmMotto ?? values.pmMotto ?? null
   });
 }
 
@@ -516,14 +540,21 @@ export async function updateMyProfileDetails(values: {
   useNicknameInGreetings?: boolean | null;
   credentialNameMode?: 'name' | 'nickname' | 'both' | null;
   perseveranceStartYear?: number | null;
+  personalPmType?: 'pmm' | 'pmf' | null;
+  personalPmNumber?: number | null;
+  personalPmProvince?: string | null;
+  personalPmMotto?: string | null;
   pmMotto?: string | null;
 }) {
-  return supabase.rpc('update_my_profile_details', {
+  return supabase.rpc('update_my_profile_details_v2', {
     p_nickname: values.nickname ?? null,
     p_use_nickname_in_greetings: values.useNicknameInGreetings ?? false,
     p_credential_name_mode: values.credentialNameMode ?? 'name',
     p_perseverance_start_year: values.perseveranceStartYear ?? null,
-    p_pm_motto: values.pmMotto ?? null
+    p_personal_pm_type: values.personalPmType ?? null,
+    p_personal_pm_number: values.personalPmNumber ?? null,
+    p_personal_pm_province: values.personalPmProvince ?? null,
+    p_personal_pm_motto: values.personalPmMotto ?? values.pmMotto ?? null
   });
 }
 
