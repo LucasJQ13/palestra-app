@@ -888,6 +888,18 @@ export type AppMaterialRecord = {
   province_id: string | null;
 };
 
+export type ChurchDocumentButtonRecord = {
+  id: string;
+  title: string;
+  logo_url: string | null;
+  target_url: string;
+  enabled: boolean;
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 export type NewsDraftRecord = {
   id: string;
   title: string;
@@ -1007,6 +1019,70 @@ export async function archiveAppMaterial(id: string) {
     return await supabase.rpc('admin_archive_material', {
       p_id: id
     });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchChurchDocumentButtons(includeDisabled = false): Promise<ChurchDocumentButtonRecord[]> {
+  try {
+    let query = supabase
+      .from('church_document_buttons')
+      .select('id, title, logo_url, target_url, enabled, sort_order, archived_at, created_at, updated_at')
+      .is('archived_at', null)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .limit(6);
+    if (!includeDisabled) {
+      query = query.eq('enabled', true);
+    }
+    const { data, error } = await query;
+    if (error || !data) {
+      return [];
+    }
+    return data as ChurchDocumentButtonRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveChurchDocumentButton(values: {
+  id?: string | null;
+  title: string;
+  logoUrl?: string | null;
+  targetUrl: string;
+  enabled: boolean;
+  sortOrder: number;
+}) {
+  try {
+    const payload = {
+      title: values.title,
+      logo_url: values.logoUrl ?? null,
+      target_url: values.targetUrl,
+      enabled: values.enabled,
+      sort_order: values.sortOrder,
+      updated_at: new Date().toISOString()
+    };
+    if (values.id) {
+      return await supabase
+        .from('church_document_buttons')
+        .update(payload)
+        .eq('id', values.id);
+    }
+    return await supabase
+      .from('church_document_buttons')
+      .insert(payload);
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function archiveChurchDocumentButton(id: string) {
+  try {
+    return await supabase
+      .from('church_document_buttons')
+      .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', id);
   } catch (error) {
     return networkError(error);
   }

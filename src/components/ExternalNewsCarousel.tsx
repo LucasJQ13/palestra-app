@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../theme/palette';
 import { ExternalCatholicNewsItem } from '../lib/externalNews';
@@ -15,7 +15,8 @@ export function ExternalNewsCarousel({ items, loading, error, dark = false }: Pr
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const activeItem = items[index] ?? null;
-  const slideWidth = 294;
+  const { width } = useWindowDimensions();
+  const slideWidth = Math.min(Math.max(width - 48, 280), 620);
 
   function goTo(nextIndex: number) {
     setIndex(nextIndex);
@@ -41,21 +42,11 @@ export function ExternalNewsCarousel({ items, loading, error, dark = false }: Pr
   }
 
   return (
-    <View style={[styles.card, dark && styles.cardDark]}>
+    <View style={[styles.shell, dark && styles.shellDark]}>
       <View style={styles.header}>
         <View>
           <Text style={[styles.eyebrow, dark && styles.accentDark]}>Noticias de la Iglesia</Text>
-          <Text style={[styles.meta, dark && styles.bodyDark]}>Fuentes externas verificadas</Text>
-        </View>
-        <View style={styles.dots}>
-          {items.map((item, itemIndex) => (
-            <TouchableOpacity
-              key={item.id}
-              accessibilityLabel={`Ver noticia externa ${itemIndex + 1}`}
-              style={[styles.dot, itemIndex === index && styles.dotActive]}
-              onPress={() => goTo(itemIndex)}
-            />
-          ))}
+          <Text style={[styles.meta, dark && styles.bodyDark]}>Vatican News · Episcopado · ACI Prensa</Text>
         </View>
       </View>
       <ScrollView
@@ -70,32 +61,64 @@ export function ExternalNewsCarousel({ items, loading, error, dark = false }: Pr
         }}
       >
         {items.map((item) => (
-          <View key={item.id} style={styles.slide}>
-            <Text style={[styles.meta, dark && styles.bodyDark]}>{item.source}</Text>
-            {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.image} /> : null}
-            <Text style={[styles.title, dark && styles.textDark]} numberOfLines={3}>{item.title}</Text>
-            {item.publishedAt ? <Text style={[styles.meta, dark && styles.bodyDark]}>{item.publishedAt}</Text> : null}
-            <TouchableOpacity style={styles.linkButton} onPress={() => Linking.openURL(item.link)} activeOpacity={0.85}>
-              <Ionicons name="open-outline" size={17} color={palette.red} />
-              <Text style={styles.linkText}>Leer en la fuente</Text>
+          <View key={item.id} style={[styles.slide, { width: slideWidth }]}>
+            <TouchableOpacity style={styles.heroCard} onPress={() => Linking.openURL(item.link)} activeOpacity={0.9}>
+              {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.heroImage} /> : <View style={styles.heroImageFallback} />}
+              <View style={styles.heroShade} />
+              <View style={styles.heroContent}>
+                <View style={styles.sourcePill}>
+                  <Text style={styles.sourcePillText}>{item.source}</Text>
+                </View>
+                <Text style={styles.heroTitle} numberOfLines={3}>{item.title}</Text>
+                <View style={styles.heroMetaRow}>
+                  <Text style={styles.heroMeta}>{formatExternalDate(item.publishedAt)}</Text>
+                  <Ionicons name="open-outline" size={16} color={palette.white} />
+                </View>
+              </View>
             </TouchableOpacity>
           </View>
         ))}
       </ScrollView>
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.navButton} onPress={() => goTo(index === 0 ? items.length - 1 : index - 1)}>
-          <Ionicons name="chevron-back" size={18} color={palette.red} />
-        </TouchableOpacity>
-        <Text style={[styles.meta, dark && styles.bodyDark]}>{activeItem.source}</Text>
-        <TouchableOpacity style={styles.navButton} onPress={() => goTo(index === items.length - 1 ? 0 : index + 1)}>
-          <Ionicons name="chevron-forward" size={18} color={palette.red} />
-        </TouchableOpacity>
+      <View style={styles.footerControls}>
+        <View style={styles.dots}>
+          {items.map((item, itemIndex) => (
+            <TouchableOpacity
+              key={item.id}
+              accessibilityLabel={`Ver noticia externa ${itemIndex + 1}`}
+              style={[styles.dot, itemIndex === index && styles.dotActive]}
+              onPress={() => goTo(itemIndex)}
+            />
+          ))}
+        </View>
+        <View style={styles.actions}>
+          <TouchableOpacity style={styles.navButton} onPress={() => goTo(index === 0 ? items.length - 1 : index - 1)}>
+            <Ionicons name="chevron-back" size={18} color={palette.red} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navButton} onPress={() => goTo(index === items.length - 1 ? 0 : index + 1)}>
+            <Ionicons name="chevron-forward" size={18} color={palette.red} />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
 
+function formatExternalDate(value?: string) {
+  if (!value) {
+    return 'Noticia reciente';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value.replace(/\s+\d{2}:\d{2}:\d{2}.*$/, '').trim();
+  }
+  return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+}
+
 const styles = StyleSheet.create({
+  shell: {
+    gap: 12
+  },
+  shellDark: {},
   card: {
     borderRadius: 22,
     borderWidth: 1,
@@ -164,16 +187,66 @@ const styles = StyleSheet.create({
     width: 20,
     backgroundColor: palette.red
   },
-  image: {
+  heroImage: {
     width: '100%',
-    height: 132,
-    borderRadius: 16,
+    height: '100%',
     backgroundColor: palette.whiteSoft
   },
+  heroImageFallback: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: palette.blueDeep
+  },
+  heroCard: {
+    height: 260,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: palette.blueDeep,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 5
+  },
+  heroShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(3, 22, 34, 0.45)'
+  },
+  heroContent: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    padding: 18,
+    gap: 10
+  },
+  heroTitle: {
+    color: palette.white,
+    fontSize: 23,
+    lineHeight: 29,
+    fontWeight: '900'
+  },
+  heroMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  heroMeta: {
+    color: 'rgba(255,255,255,0.86)',
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  sourcePill: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.18)'
+  },
+  sourcePillText: {
+    color: palette.white,
+    fontSize: 12,
+    fontWeight: '900'
+  },
   slide: {
-    width: 294,
-    gap: 10,
-    paddingRight: 12
+    paddingRight: 0
   },
   actions: {
     flexDirection: 'row',
@@ -188,6 +261,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: palette.whiteSoft
+  },
+  footerControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
   },
   linkButton: {
     flex: 1,

@@ -21,7 +21,7 @@ export type CatholicNewsConfig = {
 
 export const defaultCatholicNewsConfig: CatholicNewsConfig = {
   enabled: true,
-  maxItems: 3,
+  maxItems: 6,
   sourceOrder: ['vatican', 'episcopado', 'aci'],
   sources: {
     vatican: true,
@@ -32,7 +32,7 @@ export const defaultCatholicNewsConfig: CatholicNewsConfig = {
 
 export const defaultRuntimeConfig: AppRuntimeConfig = {
   minSupportedVersion: '0.1.0',
-  recommendedVersion: '0.1.32',
+  recommendedVersion: '0.1.33',
   maintenanceMode: false,
   globalMessage: null,
   featureFlags: {
@@ -53,7 +53,7 @@ function normalizeCatholicNewsConfig(value: unknown): CatholicNewsConfig {
 
   return {
     enabled: raw.enabled ?? defaultCatholicNewsConfig.enabled,
-    maxItems: Math.max(1, Math.min(Number(raw.maxItems ?? defaultCatholicNewsConfig.maxItems) || 3, 9)),
+    maxItems: Math.max(1, Math.min(Number(raw.maxItems ?? defaultCatholicNewsConfig.maxItems) || 6, 6)),
     sourceOrder: order.length ? order : defaultCatholicNewsConfig.sourceOrder,
     sources: {
       ...defaultCatholicNewsConfig.sources,

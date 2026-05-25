@@ -3,7 +3,7 @@
 create table if not exists public.app_runtime_config (
   id text primary key default 'default',
   min_supported_version text not null default '0.1.0',
-  recommended_version text not null default '0.1.32',
+  recommended_version text not null default '0.1.33',
   maintenance_mode boolean not null default false,
   global_message text,
   feature_flags jsonb not null default '{}'::jsonb,
@@ -40,7 +40,7 @@ insert into public.app_runtime_config (
 values (
   'default',
   '0.1.0',
-  '0.1.32',
+  '0.1.33',
   false,
   null,
   jsonb_build_object(
@@ -50,7 +50,7 @@ values (
   ),
   jsonb_build_object(
     'enabled', true,
-    'maxItems', 3,
+    'maxItems', 6,
     'sourceOrder', jsonb_build_array('vatican', 'episcopado', 'aci'),
     'sources', jsonb_build_object(
       'vatican', true,

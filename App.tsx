@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, AppTabSetting, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, AppTabSetting, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -50,7 +50,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.32';
+const appBetaVersion = '0.1.33';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const authDeepLinkBaseUrl = 'palestra://auth/callback';
@@ -3772,6 +3772,7 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
 function MaterialsScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
   const isDark = useIsDarkTheme();
   const [remoteMaterials, setRemoteMaterials] = useState<AppMaterialRecord[]>([]);
+  const [churchDocuments, setChurchDocuments] = useState<ChurchDocumentButtonRecord[]>([]);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
@@ -3788,9 +3789,10 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
 
   useEffect(() => {
     let alive = true;
-    fetchAppMaterials().then((items) => {
+    Promise.all([fetchAppMaterials(), fetchChurchDocumentButtons()]).then(([items, documents]) => {
       if (alive) {
         setRemoteMaterials(items);
+        setChurchDocuments(documents);
       }
     });
     return () => {
@@ -3911,6 +3913,19 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
     }
   }
 
+  async function openChurchDocument(document: ChurchDocumentButtonRecord) {
+    try {
+      const canOpen = await Linking.canOpenURL(document.target_url);
+      if (!canOpen) {
+        setUploadMessage('No se pudo abrir el documento externo.');
+        return;
+      }
+      await Linking.openURL(document.target_url);
+    } catch {
+      setUploadMessage('No se pudo abrir el documento externo.');
+    }
+  }
+
   async function uploadPdfMaterial() {
     if (!session || !canManagePublishedContent(session)) {
       setUploadMessage('Solo Vocal Diocesano en adelante puede subir contenido.');
@@ -4017,6 +4032,21 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
           {uploadMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{uploadMessage}</Text> : null}
         </View>
       ) : null}
+      <View style={[styles.card, isDark && styles.surfaceCardDark]}>
+        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Documentos de la Iglesia</Text>
+        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Textos oficiales y recursos externos seleccionados.</Text>
+        <View style={styles.churchDocumentGrid}>
+          {churchDocuments.slice(0, 6).map((document) => (
+            <TouchableOpacity key={document.id} style={[styles.churchDocumentButton, isDark && styles.surfaceRowDark]} onPress={() => openChurchDocument(document)} activeOpacity={0.86}>
+              {document.logo_url ? <Image source={{ uri: document.logo_url }} style={styles.churchDocumentLogo} /> : <View style={styles.churchDocumentLogoFallback}><Ionicons name="key-outline" size={22} color={palette.red} /></View>}
+              <Text style={[styles.churchDocumentTitle, isDark && styles.textDarkStrong]} numberOfLines={2}>{document.title}</Text>
+            </TouchableOpacity>
+          ))}
+          {churchDocuments.length === 0 ? (
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Todavia no hay documentos de la Iglesia cargados.</Text>
+          ) : null}
+        </View>
+      </View>
       {visibleMaterials.length === 0 ? (
         <View style={[styles.card, isDark && styles.surfaceCardDark]}>
           <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>No existen archivos actualmente</Text>
@@ -5296,6 +5326,13 @@ function ProfileScreen({
   const [adminNewsProvinceDropdownOpen, setAdminNewsProvinceDropdownOpen] = useState(false);
   const [newsDrafts, setNewsDrafts] = useState<NewsDraftRecord[]>([]);
   const [adminMaterials, setAdminMaterials] = useState<AppMaterialRecord[]>([]);
+  const [adminChurchDocuments, setAdminChurchDocuments] = useState<ChurchDocumentButtonRecord[]>([]);
+  const [churchDocumentEditingId, setChurchDocumentEditingId] = useState<string | null>(null);
+  const [churchDocumentTitle, setChurchDocumentTitle] = useState('');
+  const [churchDocumentLogoUrl, setChurchDocumentLogoUrl] = useState('');
+  const [churchDocumentTargetUrl, setChurchDocumentTargetUrl] = useState('');
+  const [churchDocumentEnabled, setChurchDocumentEnabled] = useState(true);
+  const [churchDocumentSortOrder, setChurchDocumentSortOrder] = useState('1');
   const [materialTitle, setMaterialTitle] = useState('');
   const [materialDescription, setMaterialDescription] = useState('');
   const [materialCategory, setMaterialCategory] = useState('General');
@@ -7036,9 +7073,10 @@ function ProfileScreen({
   }
 
   async function loadAdminMaterials() {
-    const items = await fetchAppMaterials();
+    const [items, documents] = await Promise.all([fetchAppMaterials(), fetchChurchDocumentButtons(true)]);
     setAdminMaterials(items);
-    setAuthMessage(items.length > 0 ? 'Materiales cargados.' : 'No hay materiales guardados.');
+    setAdminChurchDocuments(documents);
+    setAuthMessage(items.length > 0 || documents.length > 0 ? 'Descargas cargadas.' : 'No hay descargas guardadas.');
   }
 
   async function adminSaveMaterial() {
@@ -7078,6 +7116,153 @@ function ProfileScreen({
     }
     await loadAdminMaterials();
     setAuthMessage(changeDone('Material archivado.'));
+  }
+
+  function resetChurchDocumentForm() {
+    setChurchDocumentEditingId(null);
+    setChurchDocumentTitle('');
+    setChurchDocumentLogoUrl('');
+    setChurchDocumentTargetUrl('');
+    setChurchDocumentEnabled(true);
+    setChurchDocumentSortOrder(String(Math.min(adminChurchDocuments.length + 1, 6)));
+  }
+
+  function editChurchDocument(document: ChurchDocumentButtonRecord) {
+    setChurchDocumentEditingId(document.id);
+    setChurchDocumentTitle(document.title);
+    setChurchDocumentLogoUrl(document.logo_url ?? '');
+    setChurchDocumentTargetUrl(document.target_url);
+    setChurchDocumentEnabled(document.enabled);
+    setChurchDocumentSortOrder(String(document.sort_order ?? 1));
+  }
+
+  async function uploadChurchDocumentLogo() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede subir logos de documentos.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage('Necesito permiso para seleccionar imagen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.82,
+      allowsEditing: true,
+      aspect: [1, 1]
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    try {
+      setAuthMessage('Subiendo logo...');
+      const asset = result.assets[0];
+      const response = await fetch(asset.uri);
+      const bytes = await response.arrayBuffer();
+      const extension = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+      const path = `church-documents/${Date.now()}.${extension.replace(/[^a-zA-Z0-9]/g, '') || 'jpg'}`;
+      const { error } = await supabase.storage
+        .from('materials')
+        .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: true });
+      if (error) {
+        setAuthMessage(error.message);
+        return;
+      }
+      const { data } = supabase.storage.from('materials').getPublicUrl(path);
+      setChurchDocumentLogoUrl(data.publicUrl);
+      setAuthMessage('Logo cargado.');
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No se pudo subir el logo.');
+    }
+  }
+
+  async function saveChurchDocumentDraft() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede gestionar documentos de la Iglesia.');
+      return;
+    }
+    if (!churchDocumentTitle.trim() || !churchDocumentTargetUrl.trim()) {
+      setAuthMessage('Completa titulo y link destino.');
+      return;
+    }
+    if (!/^https?:\/\//i.test(churchDocumentTargetUrl.trim())) {
+      setAuthMessage('El link debe empezar con https://');
+      return;
+    }
+    const maxReached = !churchDocumentEditingId && adminChurchDocuments.filter((item) => !item.archived_at).length >= 6;
+    if (maxReached) {
+      setAuthMessage('Solo se permiten hasta 6 botones.');
+      return;
+    }
+    const { error } = await saveChurchDocumentButton({
+      id: churchDocumentEditingId,
+      title: churchDocumentTitle.trim(),
+      logoUrl: churchDocumentLogoUrl.trim() || null,
+      targetUrl: churchDocumentTargetUrl.trim(),
+      enabled: churchDocumentEnabled,
+      sortOrder: Number(churchDocumentSortOrder) || 1
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    resetChurchDocumentForm();
+    await loadAdminMaterials();
+    setAuthMessage(changeDone('Documento de la Iglesia guardado.'));
+  }
+
+  async function duplicateChurchDocument(document: ChurchDocumentButtonRecord) {
+    setChurchDocumentEditingId(null);
+    setChurchDocumentTitle(`${document.title} copia`);
+    setChurchDocumentLogoUrl(document.logo_url ?? '');
+    setChurchDocumentTargetUrl(document.target_url);
+    setChurchDocumentEnabled(document.enabled);
+    setChurchDocumentSortOrder(String(Math.min(adminChurchDocuments.length + 1, 6)));
+  }
+
+  async function toggleChurchDocument(document: ChurchDocumentButtonRecord) {
+    const { error } = await saveChurchDocumentButton({
+      id: document.id,
+      title: document.title,
+      logoUrl: document.logo_url,
+      targetUrl: document.target_url,
+      enabled: !document.enabled,
+      sortOrder: document.sort_order
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadAdminMaterials();
+    setAuthMessage(changeDone('Estado actualizado.'));
+  }
+
+  async function moveChurchDocument(document: ChurchDocumentButtonRecord, direction: -1 | 1) {
+    const nextOrder = Math.max(1, Math.min(6, (document.sort_order ?? 1) + direction));
+    const { error } = await saveChurchDocumentButton({
+      id: document.id,
+      title: document.title,
+      logoUrl: document.logo_url,
+      targetUrl: document.target_url,
+      enabled: document.enabled,
+      sortOrder: nextOrder
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadAdminMaterials();
+  }
+
+  async function deleteChurchDocument(id: string) {
+    const { error } = await archiveChurchDocumentButton(id);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadAdminMaterials();
+    setAuthMessage(changeDone('Documento eliminado.'));
   }
 
   async function adminCreateEvent() {
@@ -9176,6 +9361,54 @@ function ProfileScreen({
                   <TouchableOpacity style={styles.secondaryButton} onPress={loadAdminMaterials}>
                     <Text style={styles.secondaryButtonText}>Cargar materiales</Text>
                   </TouchableOpacity>
+                  {session?.role === 'administrador' ? (
+                    <View style={styles.inlineEditorPanel}>
+                      <Text style={styles.cardEyebrow}>Documentos de la Iglesia</Text>
+                      <Text style={styles.cardText}>Botones externos visibles primero en Descargas. Maximo 6.</Text>
+                      <View style={styles.adminQuickGrid}>
+                        {adminChurchDocuments.map((document) => (
+                          <View key={document.id} style={[styles.adminListRow, !document.enabled && styles.lockedCard]}>
+                            {document.logo_url ? <Image source={{ uri: document.logo_url }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="key-outline" size={18} color={palette.red} /></View>}
+                            <View style={styles.adminUserHeaderText}>
+                              <Text style={styles.adminQuickText}>{document.title}</Text>
+                              <Text style={styles.cardText}>Orden {document.sort_order} - {document.enabled ? 'activo' : 'inactivo'}</Text>
+                            </View>
+                            <View style={styles.inlineActions}>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => editChurchDocument(document)}><Text style={styles.actionPillText}>Editar</Text></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => moveChurchDocument(document, -1)}><Ionicons name="arrow-up-outline" size={14} color={palette.red} /></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => moveChurchDocument(document, 1)}><Ionicons name="arrow-down-outline" size={14} color={palette.red} /></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => duplicateChurchDocument(document)}><Text style={styles.actionPillText}>Duplicar</Text></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => toggleChurchDocument(document)}><Text style={styles.actionPillText}>{document.enabled ? 'Ocultar' : 'Activar'}</Text></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => deleteChurchDocument(document.id)}><Text style={styles.actionPillText}>Borrar</Text></TouchableOpacity>
+                            </View>
+                          </View>
+                        ))}
+                        {adminChurchDocuments.length === 0 ? <Text style={styles.cardText}>Carga el listado para ver botones existentes.</Text> : null}
+                      </View>
+                      <Text style={styles.cardEyebrow}>{churchDocumentEditingId ? 'Editar boton' : 'Agregar boton'}</Text>
+                      <TextInput style={styles.input} placeholder="Titulo visible" value={churchDocumentTitle} onChangeText={setChurchDocumentTitle} placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Link destino https://..." value={churchDocumentTargetUrl} onChangeText={setChurchDocumentTargetUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Logo URL o subir imagen" value={churchDocumentLogoUrl} onChangeText={setChurchDocumentLogoUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+                      <TouchableOpacity style={styles.secondaryButton} onPress={uploadChurchDocumentLogo}>
+                        <Ionicons name="image-outline" size={17} color={palette.red} />
+                        <Text style={styles.secondaryButtonText}>Subir logo/imagen</Text>
+                      </TouchableOpacity>
+                      <View style={styles.inlineActions}>
+                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Orden" value={churchDocumentSortOrder} onChangeText={setChurchDocumentSortOrder} keyboardType="numeric" placeholderTextColor={inputPlaceholderColor} />
+                        <TouchableOpacity style={[styles.actionPill, churchDocumentEnabled && styles.actionPillActive]} onPress={() => setChurchDocumentEnabled((current) => !current)}>
+                          <Text style={[styles.actionPillText, churchDocumentEnabled && styles.actionPillTextActive]}>{churchDocumentEnabled ? 'Habilitado' : 'Deshabilitado'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.inlineActions}>
+                        <TouchableOpacity style={styles.primaryButton} onPress={saveChurchDocumentDraft}>
+                          <Text style={styles.primaryButtonText}>{churchDocumentEditingId ? 'Guardar boton' : 'Agregar boton'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={resetChurchDocumentForm}>
+                          <Text style={styles.secondaryButtonText}>Limpiar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : null}
                   <Text style={styles.cardEyebrow}>Materiales actuales</Text>
                   {(adminMaterials.length > 0 ? adminMaterials : materials.map((material, index) => ({
                     id: `fallback-${index}`,
@@ -9748,7 +9981,7 @@ function ProfileScreen({
                       </TouchableOpacity>
                       <Text style={styles.inputLabel}>Cantidad maxima de noticias</Text>
                       <View style={styles.filterRow}>
-                        {[3, 5, 7, 9].map((amount) => (
+                        {[3, 4, 5, 6].map((amount) => (
                           <TouchableOpacity key={amount} style={[styles.filterChip, runtimeConfigDraft.catholicNews.maxItems === amount && styles.filterChipActive]} onPress={() => updateRuntimeCatholicNews({ maxItems: amount })}>
                             <Text style={[styles.filterChipText, runtimeConfigDraft.catholicNews.maxItems === amount && styles.filterChipTextActive]}>{amount}</Text>
                           </TouchableOpacity>
@@ -12192,6 +12425,46 @@ const styles = StyleSheet.create({
   libraryBody: {
     flex: 1
   },
+  churchDocumentGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 10
+  },
+  churchDocumentButton: {
+    width: '48%',
+    minHeight: 112,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    backgroundColor: palette.whiteSoft,
+    padding: 12,
+    gap: 9,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  churchDocumentLogo: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    resizeMode: 'contain',
+    backgroundColor: palette.white
+  },
+  churchDocumentLogoFallback: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45, 141, 200, 0.1)'
+  },
+  churchDocumentTitle: {
+    color: palette.ink,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
   provinceCard: {
     flexDirection: 'row',
     gap: 14,
@@ -14203,6 +14476,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 10,
     borderBottomWidth: 0
+  },
+  adminDocumentThumb: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    resizeMode: 'contain',
+    backgroundColor: palette.whiteSoft
   },
   adminStateDraft: {
     color: palette.red,
