@@ -92,6 +92,7 @@ export type CommunityMember = {
   province: string | null;
   avatar_url?: string | null;
   gender_preference?: 'male' | 'female' | null;
+  nickname?: string | null;
 };
 
 export type PublicProfileRecord = {

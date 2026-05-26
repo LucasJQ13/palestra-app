@@ -630,7 +630,7 @@ function homeGreeting(session: Session | null, homeConfig: AppAdminConfig['home'
   if (!session || session.role === 'invitado') {
     return '';
   }
-  const name = session.useNicknameInGreetings && session.nickname?.trim() ? session.nickname.trim() : firstNameOf(session.fullName);
+  const name = homeGreetingName(session);
   const role = roleLabel(session.role, session.genderPreference);
   if (session.genderPreference === 'male') {
     const fallback = `Bienvenido hno. en Cristo ${name}, Oh Bella Ciao!`;
@@ -657,6 +657,13 @@ function homeGreeting(session: Session | null, homeConfig: AppAdminConfig['home'
     genero_bienvenida: 'Bienvenido/a',
     rango: role
   }, fallback);
+}
+
+function homeGreetingName(session: Session | null) {
+  if (!session || session.role === 'invitado') {
+    return '';
+  }
+  return session.useNicknameInGreetings && session.nickname?.trim() ? session.nickname.trim() : firstNameOf(session.fullName);
 }
 
 function roleLabelForProvince(role: Role, province?: string | null, labels: ProvinceRoleLabelRecord[] = [], aliases: RoleAliasConfig[] = [], gender?: GenderPreference) {
@@ -1682,7 +1689,7 @@ export default function App() {
             id: `user-${user.id}`,
             type: 'usuario',
             title: user.full_name ?? 'Usuario',
-            subtitle: `${displayRoleLabel(role, user.province, [], adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - ${user.community_name ?? user.province ?? 'Sin comunidad'}`,
+            subtitle: `${displayRoleLabel(role, user.province, [], adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - ${user.community_name ?? 'Sin comunidad'} - ${user.province ?? 'Sin provincia'}`,
             tab: 'perfil',
             publicProfile: {
               id: user.id,
@@ -1788,7 +1795,7 @@ export default function App() {
             id: `content-${item.tab_key}`,
             type: 'contenido',
             title: item.title || item.tab_key,
-            subtitle: `Contenido editable - ${tabLabel(item.tab_key as TabKey)}`,
+            subtitle: tabLabel(item.tab_key as TabKey),
             tab: item.tab_key as TabKey
           });
         }
@@ -3126,31 +3133,53 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
 
     if (content.blocks && content.blocks.length > 0) {
       return (
-        <View style={[styles.contentIntro, isDark && styles.surfacePanelDark]}>
+        <View style={styles.contentBlockStack}>
           {content.blocks.map((block, index) => {
             const blockKey = `${block.id}-${index}`;
             if (block.type === 'titulo') {
-              return <Text key={blockKey} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{block.value}</Text>;
+              return (
+                <View key={blockKey} style={[styles.contentIntro, styles.contentBlockCard, isDark && styles.surfacePanelDark]}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{block.value}</Text>
+                </View>
+              );
             }
             if (block.type === 'imagen') {
-              return <Image key={blockKey} source={{ uri: block.value }} style={styles.cardImage} />;
+              return (
+                <View key={blockKey} style={[styles.contentIntro, styles.contentBlockCard, isDark && styles.surfacePanelDark]}>
+                  <Image source={{ uri: block.value }} style={styles.cardImage} />
+                </View>
+              );
             }
             if (block.type === 'enlace') {
               const [label, url] = splitConfigValue(block.value);
               return (
-                <TouchableOpacity key={blockKey} style={styles.secondaryButton} onPress={() => Linking.openURL(normalizeExternalUrl(url || label))}>
-                  <Ionicons name="link-outline" size={18} color={palette.red} />
-                  <Text style={styles.secondaryButtonText}>{label || url}</Text>
-                </TouchableOpacity>
+                <View key={blockKey} style={[styles.contentIntro, styles.contentBlockCard, isDark && styles.surfacePanelDark]}>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(normalizeExternalUrl(url || label))}>
+                    <Ionicons name="link-outline" size={18} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>{label || url}</Text>
+                  </TouchableOpacity>
+                </View>
               );
             }
             if (block.type === 'campo') {
-              return <Text key={blockKey} style={[styles.cardText, isDark && styles.textDarkBody]}>Campo: {block.value}</Text>;
+              return (
+                <View key={blockKey} style={[styles.contentIntro, styles.contentBlockCard, isDark && styles.surfacePanelDark]}>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{block.value}</Text>
+                </View>
+              );
             }
             if (block.type === 'modulo') {
-              return <Text key={blockKey} style={[styles.cardText, isDark && styles.textDarkBody]}>Modulo interno: {tabLabelFromKey(block.value)}</Text>;
+              return (
+                <View key={blockKey} style={[styles.contentIntro, styles.contentBlockCard, isDark && styles.surfacePanelDark]}>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{tabLabelFromKey(block.value)}</Text>
+                </View>
+              );
             }
-            return <Text key={blockKey} style={[styles.cardText, isDark && styles.textDarkBody]}>{block.value}</Text>;
+            return (
+              <View key={blockKey} style={[styles.contentIntro, styles.contentBlockCard, isDark && styles.surfacePanelDark]}>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{block.value}</Text>
+              </View>
+            );
           })}
         </View>
       );
@@ -3173,8 +3202,8 @@ function EditableIntro({ content, editor }: { content?: AppContentBlock; editor?
         </TouchableOpacity>
         {isEditing ? (
           <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
-            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Edita el contenido con bloques. El primer bloque de texto se usa como resumen interno de la pagina.</Text>
-            <View style={styles.inlineActions}>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Edita el bloque actual o agrega bloques nuevos; cada bloque se verá como una card independiente.</Text>
+            <View style={styles.inlineEditorToolbar}>
               <TouchableOpacity style={styles.smallActionButton} onPress={() => addInlineBlock('titulo')}>
                 <Ionicons name="text-outline" size={16} color={palette.red} />
                 <Text style={styles.smallActionText}>Titulo</Text>
@@ -3271,6 +3300,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
   const instagramUrl = adminConfig.contact.instagram?.startsWith('http') ? adminConfig.contact.instagram : `https://www.instagram.com/${adminConfig.contact.instagram.replace('@', '')}`;
   const instagramLabel = instagramUrl.includes('infopalestra.argentina') ? '@infopalestra.argentina' : adminConfig.contact.instagram;
   const greeting = homeGreeting(session, adminConfig.home);
+  const greetingName = homeGreetingName(session);
   const enabledHomeModules = new Set(adminConfig.home.visibleModules?.length ? adminConfig.home.visibleModules : defaultAdminConfig.home.visibleModules);
   const homeModuleEnabled = (moduleKey: string) => enabledHomeModules.has(moduleKey);
   const quickLabel = (moduleKey: string, fallback: string) => adminConfig.home.quickAccessLabels?.[moduleKey]?.trim() || fallback;
@@ -3397,7 +3427,15 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
       <View style={styles.hero}>
         <View style={styles.heroGlow} />
         <Text style={styles.kicker}>Argentina</Text>
-        <Text style={styles.heroTitle}>{greeting || adminConfig.home.heroTitle}</Text>
+        <Text style={styles.heroTitle}>
+          {greeting && greetingName && greeting.includes(greetingName) ? (
+            <>
+              {greeting.split(greetingName)[0]}
+              <Text style={styles.heroGreetingName}>{greetingName}</Text>
+              {greeting.split(greetingName).slice(1).join(greetingName)}
+            </>
+          ) : greeting || adminConfig.home.heroTitle}
+        </Text>
         <Text style={styles.heroText}>{adminConfig.home.heroText}</Text>
       </View>
 
@@ -5198,10 +5236,14 @@ function LibrarySectionScreen({
     );
   }
 
+  if (section === 'himno' && items.length === 0 && !canCreateItems) {
+    return null;
+  }
+
   return (
     <View style={styles.stack}>
       <SectionTitle title={title} />
-      <EditableIntro content={content} editor={editor} />
+      {section !== 'himno' ? <EditableIntro content={content} editor={editor} /> : null}
       <View style={variant === 'prayer' ? styles.libraryPlainPanel : styles.libraryVisualPanel}>
         <View style={styles.libraryHeaderRow}>
           <View style={styles.flexOne}>
@@ -5774,6 +5816,7 @@ function ProfileScreen({
   const [showCommunity, setShowCommunity] = useState(false);
   const [showCommunityManagement, setShowCommunityManagement] = useState(false);
   const [showCommunityMembersList, setShowCommunityMembersList] = useState(false);
+  const [showLeadershipUsersSummary, setShowLeadershipUsersSummary] = useState(false);
   const [showProfilePhoto, setShowProfilePhoto] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [userRequestText, setUserRequestText] = useState('');
@@ -6102,6 +6145,9 @@ function ProfileScreen({
   const usersSummaryCount = session?.role === 'administrador'
     ? adminUsers.length || realPendingProfiles.length
     : editableProvinceUsers.length;
+  const leadershipSummaryUsers = (session?.role === 'administrador' || canSeeAllProvinces(session))
+    ? adminUsers
+    : editableProvinceUsers;
   const activeNationalCoordinator = adminUsers.find((user) => user.role === 'coordinador_nacional' && user.status === 'aprobado');
   const activeDiocesanCoordinator = selectedUsersProvince
     ? adminUsersByProvince[selectedUsersProvince]?.find((user) => user.role === 'coordinador_diocesano' && user.status === 'aprobado')
@@ -9256,8 +9302,7 @@ function ProfileScreen({
           ) : null}
           {profilePanel === 'comunidad' ? (
             <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{session.communityOfOrigin}</Text>
-              <SectionTitle title="Mi comunidad" />
+              <Text style={[styles.communityProfileHeading, isDark && styles.textDarkStrong]}>Comunidad: {session.communityOfOrigin}</Text>
               {isCommunityLeader ? (
                 <View style={[styles.inlineEditorPanel, isDark && styles.surfaceRowDark]}>
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo aviso comunitario</Text>
@@ -9275,11 +9320,11 @@ function ProfileScreen({
                   </TouchableOpacity>
                 </View>
               ) : null}
-              <SectionTitle title="Avisos Comunitarios" />
+              <Text style={[styles.communityProfileSubheading, isDark && styles.textDarkStrong]}>Avisos</Text>
               <View style={styles.communityActionRow}>
                 <TouchableOpacity style={styles.communityMiniButton} onPress={refreshCommunityForum} activeOpacity={0.85}>
                   <Ionicons name="refresh-outline" size={15} color={palette.red} />
-                  <Text style={styles.communityMiniButtonText}>Actualizar</Text>
+                  <Text style={styles.communityMiniButtonText}>Mostrar avisos</Text>
                 </TouchableOpacity>
               </View>
               {myCommunityPublications.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay avisos para tu comunidad actualmente</Text> : null}
@@ -9322,7 +9367,23 @@ function ProfileScreen({
                   ) : null}
                 </View>
               ))}
-              <SectionTitle title="Encargados" />
+              <View style={styles.communityLeadersHeader}>
+                <Text style={[styles.communityProfileSubheading, isDark && styles.textDarkStrong]}>Encargados</Text>
+                <TouchableOpacity
+                  style={[styles.communityMiniButton, styles.communityMembersToggle]}
+                  onPress={async () => {
+                    if (communityMembers.length === 0) {
+                      setCommunityMembers(await fetchMyCommunityMembers());
+                    }
+                    setShowCommunityMembersList((current) => !current);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="people-outline" size={15} color={palette.red} />
+                  <Text style={styles.communityMiniButtonText}>Lista de miembros</Text>
+                  <Ionicons name={showCommunityMembersList ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={palette.red} />
+                </TouchableOpacity>
+              </View>
               {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).length === 0 ? (
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Sin encargados cargados por el momento.</Text>
               ) : null}
@@ -9347,45 +9408,33 @@ function ProfileScreen({
                   </TouchableOpacity>
                 </View>
               ))}
-              <SectionTitle title="Miembros" />
-              <TouchableOpacity
-                style={[styles.membersDropdownButton, isDark && styles.surfaceRowDark]}
-                onPress={async () => {
-                  if (communityMembers.length === 0) {
-                    setCommunityMembers(await fetchMyCommunityMembers());
-                  }
-                  setShowCommunityMembersList((current) => !current);
-                }}
-                activeOpacity={0.85}
-              >
-                <View>
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Lista de miembros</Text>
-                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{communityMembers.length} miembros cargados</Text>
-                </View>
-                <Ionicons name={showCommunityMembersList ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.red} />
-              </TouchableOpacity>
-              {showCommunityMembersList ? communityMembers.map((member) => (
-                <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? 'Palestrista'}</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
-                  <TouchableOpacity
-                    style={styles.actionPill}
-                    onPress={() => openPublicProfile({
-                      id: member.id,
-                      fullName: member.full_name ?? 'Palestrista',
-                      role: (member.role || 'palestrista') as Role,
-                      province: member.province,
-                      communityName: member.community_name,
-                      contact: '',
-                      avatarUrl: member.avatar_url,
-                      genderPreference: member.gender_preference ?? null
-                    })}
-                  >
-                    <Ionicons name="person-circle-outline" size={16} color={palette.red} />
-                    <Text style={styles.actionPillText}>Ver perfil</Text>
-                  </TouchableOpacity>
-                </View>
-              )) : null}
+              {showCommunityMembersList ? (
+                <ScrollView style={styles.membersDropdownList} nestedScrollEnabled showsVerticalScrollIndicator>
+                  {communityMembers.map((member) => (
+                    <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? 'Palestrista'}</Text>
+                      {member.nickname ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Apodo: {member.nickname}</Text> : null}
+                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
+                      <TouchableOpacity
+                        style={styles.actionPill}
+                        onPress={() => openPublicProfile({
+                          id: member.id,
+                          fullName: member.full_name ?? 'Palestrista',
+                          role: (member.role || 'palestrista') as Role,
+                          province: member.province,
+                          communityName: member.community_name,
+                          contact: '',
+                          avatarUrl: member.avatar_url,
+                          genderPreference: member.gender_preference ?? null
+                        })}
+                      >
+                        <Ionicons name="person-circle-outline" size={16} color={palette.red} />
+                        <Text style={styles.actionPillText}>Ver credencial</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : null}
             </View>
           ) : null}
           {profilePanel === 'buzon' ? (
@@ -10016,13 +10065,61 @@ function ProfileScreen({
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <View style={styles.adminStatRow}>
                     {adminDraftSummary.map((item) => (
-                      <TouchableOpacity key={item.label} style={[styles.adminStat, isDark && styles.surfaceCardDark]} activeOpacity={0.84}>
+                      <TouchableOpacity
+                        key={item.label}
+                        style={[styles.adminStat, isDark && styles.surfaceCardDark]}
+                        activeOpacity={0.84}
+                        onPress={() => item.label === 'Usuarios' ? setShowLeadershipUsersSummary((current) => !current) : undefined}
+                      >
                         <Ionicons name={item.icon} size={18} color={palette.red} />
                         <Text style={styles.adminStatNumber}>{item.value}</Text>
                         <Text style={[styles.adminStatLabel, isDark && styles.textDarkMuted]}>{item.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
+                  {showLeadershipUsersSummary && canManageUsers ? (
+                    <ScrollView style={styles.leadershipUsersList} nestedScrollEnabled showsVerticalScrollIndicator>
+                      {leadershipSummaryUsers.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay usuarios cargados para visualizar.</Text> : null}
+                      {leadershipSummaryUsers.map((user) => {
+                        const role = (user.role || 'palestrista') as Role;
+                        return (
+                          <TouchableOpacity
+                            key={`summary-${user.id}`}
+                            style={[styles.leadershipUserRow, isDark && styles.surfaceRowDark]}
+                            activeOpacity={0.85}
+                            onPress={() => openPublicProfile({
+                              id: user.id,
+                              fullName: user.full_name ?? 'Usuario sin nombre',
+                              role,
+                              province: user.province,
+                              communityName: user.community_name,
+                              avatarUrl: user.avatar_url,
+                              contact: user.phone ?? '',
+                              displayRoleLabel: user.display_role_label ?? null,
+                              genderPreference: user.gender_preference ?? null,
+                              nickname: user.nickname ?? null,
+                              credentialNameMode: user.credential_name_mode ?? 'name',
+                              perseveranceStartYear: user.perseverance_start_year ?? null,
+                              personalPmType: user.personal_pm_type ?? null,
+                              personalPmNumber: user.personal_pm_number ?? null,
+                              personalPmProvince: user.personal_pm_province ?? null,
+                              personalPmMotto: user.personal_pm_motto ?? user.pm_motto ?? null,
+                              pmMotto: user.pm_motto ?? null
+                            })}
+                          >
+                            <View style={styles.adminUserHeaderText}>
+                              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{user.full_name ?? 'Usuario sin nombre'}</Text>
+                              {user.nickname ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Apodo: {user.nickname}</Text> : null}
+                              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>
+                                {displayRoleLabel(role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - {user.province ?? 'Sin provincia'}
+                              </Text>
+                            </View>
+                            <Ionicons name="id-card-outline" size={18} color={palette.red} />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  ) : null}
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Accesos rápidos</Text>
                   <View style={styles.adminQuickGrid}>
                     {[
@@ -13096,6 +13193,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 8
   },
+  heroGreetingName: {
+    color: '#56D486',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4
+  },
   heroText: {
     color: 'rgba(255, 255, 255, 0.86)',
     fontSize: 15,
@@ -14777,11 +14880,35 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 1
   },
+  contentBlockStack: {
+    gap: 10
+  },
+  contentBlockCard: {
+    marginTop: 0
+  },
   communityActionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     alignItems: 'center'
+  },
+  communityProfileHeading: {
+    color: palette.ink,
+    fontSize: 24,
+    fontWeight: '900',
+    lineHeight: 30
+  },
+  communityProfileSubheading: {
+    color: palette.ink,
+    fontSize: 18,
+    fontWeight: '900'
+  },
+  communityLeadersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    flexWrap: 'wrap'
   },
   communityMiniButton: {
     flexDirection: 'row',
@@ -14799,6 +14926,12 @@ const styles = StyleSheet.create({
     color: palette.red,
     fontSize: 12,
     fontWeight: '900'
+  },
+  communityMembersToggle: {
+    alignSelf: 'auto'
+  },
+  membersDropdownList: {
+    maxHeight: 320
   },
   membersDropdownButton: {
     flexDirection: 'row',
@@ -14923,12 +15056,16 @@ const styles = StyleSheet.create({
     minHeight: 38,
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.18)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
+    borderRadius: 18,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: palette.white
+    backgroundColor: palette.white,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 1
   },
   inlineEditButtonText: {
     color: palette.red,
@@ -14947,16 +15084,24 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 1
   },
+  inlineEditorToolbar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(230, 243, 245, 0.55)'
+  },
   smallActionButton: {
-    minHeight: 38,
+    minHeight: 36,
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.16)',
     borderRadius: 16,
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: palette.whiteSoft
+    backgroundColor: palette.white
   },
   smallActionText: {
     color: palette.ink,
@@ -15373,6 +15518,22 @@ const styles = StyleSheet.create({
     color: palette.inkMuted,
     fontSize: 11,
     fontWeight: '800'
+  },
+  leadershipUsersList: {
+    maxHeight: 340
+  },
+  leadershipUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.12)',
+    backgroundColor: palette.whiteSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8
   },
   adminEditForm: {
     gap: 4
