@@ -243,7 +243,7 @@ const defaultAdminConfig: AppAdminConfig = {
   periodoMotivador: {
     active: false,
     title: 'PM',
-    body: 'Espacio de preparacion, materiales y textos asociados al PM.',
+    body: '',
     imageUrl: ''
   }
 };
@@ -475,6 +475,22 @@ function canEditAdminUser(session: Session | null, user?: AdminUser | null) {
 
 function canManageUsersPanel(session: Session | null) {
   return Boolean(session && ['asesor', 'vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role));
+}
+
+function leadershipPanelTitle(session: Session | null) {
+  if (!session) {
+    return 'Panel Dirigencial';
+  }
+  if (['animador_comunidad', 'coordinador_comunidad'].includes(session.role)) {
+    return `Comunidad ${session.communityOfOrigin || 'asignada'}`;
+  }
+  if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
+    return `Secretariado de ${session.province || 'tu provincia'}`;
+  }
+  if (['vocal_nacional', 'coordinador_nacional'].includes(session.role)) {
+    return 'Secretariado Nacional';
+  }
+  return 'Panel Dirigencial';
 }
 
 function canEditStaticInstitutionalPage(session: Session | null) {
@@ -1660,22 +1676,22 @@ export default function App() {
       const nextResults: GlobalSearchResult[] = [];
 
       adminUsersRemote.forEach((user) => {
-        if (matches([user.full_name, user.nickname, user.email, user.province, user.community_name, user.role, user.display_role_label, user.personal_pm_motto, user.pm_motto])) {
+        if (matches([user.full_name, user.nickname])) {
           const role = (user.role || 'palestrista') as Role;
           nextResults.push({
             id: `user-${user.id}`,
             type: 'usuario',
-            title: user.full_name ?? user.email ?? 'Usuario',
+            title: user.full_name ?? 'Usuario',
             subtitle: `${displayRoleLabel(role, user.province, [], adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - ${user.community_name ?? user.province ?? 'Sin comunidad'}`,
             tab: 'perfil',
             publicProfile: {
               id: user.id,
-              fullName: user.full_name ?? user.email ?? 'Usuario',
+              fullName: user.full_name ?? 'Usuario',
               role,
               province: user.province,
               communityName: user.community_name,
               avatarUrl: user.avatar_url,
-              contact: user.phone ?? user.email ?? '',
+              contact: user.phone ?? '',
               displayRoleLabel: user.display_role_label ?? null,
               genderPreference: user.gender_preference ?? null,
               nickname: user.nickname ?? null,
@@ -2168,7 +2184,6 @@ export default function App() {
                   <Ionicons name="close" size={22} color={palette.red} />
                 </TouchableOpacity>
                 <Text style={[styles.cardEyebrow, isDarkTheme && styles.textDarkAccent]}>Búsqueda global</Text>
-                <Text style={[styles.cardText, isDarkTheme && styles.textDarkBody]}>Busca contenido remoto disponible en Supabase.</Text>
                 <View style={styles.globalSearchRow}>
                   <TextInput
                     style={[styles.input, styles.globalSearchInput, isDarkTheme && styles.inputDark]}
@@ -4014,11 +4029,11 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      <View style={[styles.featurePanel, isDark && styles.surfacePanelDark]}>
-        <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{adminConfig.periodoMotivador.title}</Text>
-        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{adminConfig.periodoMotivador.body}</Text>
-        {adminConfig.periodoMotivador.imageUrl ? <Image source={{ uri: adminConfig.periodoMotivador.imageUrl }} style={styles.cardImage} /> : null}
-      </View>
+      {adminConfig.periodoMotivador.imageUrl ? (
+        <View style={[styles.featurePanel, isDark && styles.surfacePanelDark]}>
+          <Image source={{ uri: adminConfig.periodoMotivador.imageUrl }} style={styles.cardImage} />
+        </View>
+      ) : null}
       <SectionTitle title="Agenda de PM" />
       {items.length === 0 ? (
         <View style={[styles.card, isDark && styles.surfaceCardDark]}>
@@ -4048,10 +4063,12 @@ function MotivadorScreen({ session, title, content, refreshKey, editor, adminCon
           ) : null}
         </View>
       ))}
-      <View style={styles.notice}>
-        <Ionicons name="archive-outline" size={20} color={palette.red} />
-        <Text style={styles.noticeText}>El registro histórico de PM queda disponible acá; las fechas cargadas en Supabase también se reflejan en el calendario de Noticias.</Text>
-      </View>
+      {session?.role === 'administrador' ? (
+        <View style={styles.notice}>
+          <Ionicons name="archive-outline" size={20} color={palette.red} />
+          <Text style={styles.noticeText}>El registro histórico de PM queda disponible acá; las fechas cargadas en Supabase también se reflejan en el calendario de Noticias.</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -5040,8 +5057,12 @@ function LibrarySectionScreen({
   const [draftBody, setDraftBody] = useState('');
   const [draftImageUrl, setDraftImageUrl] = useState('');
   const [message, setMessage] = useState('');
-  const canCreateItems = Boolean(session && roleRank(session.role) >= roleRank('sedimentador'));
-  const emptyTitle = section === 'oraciones' ? 'No hay oraciones publicadas' : section === 'himno' ? 'No hay himnos publicados' : 'No hay canciones publicadas';
+  const canCreateItems = section === 'himno'
+    ? session?.role === 'administrador'
+    : Boolean(session && roleRank(session.role) >= roleRank('sedimentador'));
+  const emptyTitle = section === 'oraciones' ? 'No hay oraciones publicadas' : section === 'himno' ? 'Himno no publicado' : 'No hay canciones publicadas';
+  const libraryTitle = section === 'oraciones' ? 'Oraciones Recomendadas' : section === 'himno' ? 'Himno de Palestra' : 'Cancionero palestrista';
+  const librarySubtitle = section === 'cancionero' ? 'Letras ordenadas para encuentros, retiros y comunidades.' : '';
 
   async function loadItems() {
     setItems(await fetchLibraryItems(section));
@@ -5184,8 +5205,8 @@ function LibrarySectionScreen({
       <View style={variant === 'prayer' ? styles.libraryPlainPanel : styles.libraryVisualPanel}>
         <View style={styles.libraryHeaderRow}>
           <View style={styles.flexOne}>
-            <Text style={variant === 'prayer' ? styles.libraryPlainTitle : styles.libraryVisualTitle}>{section === 'oraciones' ? 'Biblioteca de oraciones' : section === 'himno' ? 'Himnos y canciones' : 'Cancionero palestrista'}</Text>
-            <Text style={styles.cardText}>{section === 'oraciones' ? 'Lectura simple, clara y rapida.' : 'Letras ordenadas para encuentros, retiros y comunidades.'}</Text>
+            <Text style={variant === 'prayer' ? styles.libraryPlainTitle : styles.libraryVisualTitle}>{libraryTitle}</Text>
+            {librarySubtitle ? <Text style={styles.cardText}>{librarySubtitle}</Text> : null}
           </View>
           {canCreateItems ? (
             <TouchableOpacity style={styles.iconActionButton} onPress={() => resetDraft(null)} activeOpacity={0.82}>
@@ -5216,10 +5237,10 @@ function LibrarySectionScreen({
             </TouchableOpacity>
           </View>
         ) : null}
-        {items.length === 0 ? (
+        {items.length === 0 && (section !== 'himno' || session?.role === 'administrador') ? (
           <View style={styles.emptyLibraryState}>
             <Text style={styles.cardTitle}>{emptyTitle}</Text>
-            <Text style={styles.cardText}>Cuando se cargue contenido en Supabase, aparecera aca sin actualizar la APK.</Text>
+            {section !== 'himno' ? <Text style={styles.cardText}>Cuando se cargue contenido en Supabase, aparecera aca sin actualizar la APK.</Text> : null}
           </View>
         ) : null}
         {items.map((item) => (
@@ -5752,6 +5773,7 @@ function ProfileScreen({
   const isDark = appTheme.mode === 'dark';
   const [showCommunity, setShowCommunity] = useState(false);
   const [showCommunityManagement, setShowCommunityManagement] = useState(false);
+  const [showCommunityMembersList, setShowCommunityMembersList] = useState(false);
   const [showProfilePhoto, setShowProfilePhoto] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [userRequestText, setUserRequestText] = useState('');
@@ -6043,7 +6065,6 @@ function ProfileScreen({
     : null;
   const tabLabel = (key: TabKey) => editableTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
   const profileNews = session ? communityNews.filter((item) => item.community === session.communityOfOrigin) : [];
-  const roleInfo = session ? roleDefinitions.find((item) => item.role === session.role) : null;
   const isCommunityLeader = isCommunityLeaderRole(session);
   const canManageUsers = canManageUsersPanel(session);
   const canAdministrateCommunities = canCreateOrAdministrateCommunities(session);
@@ -6056,14 +6077,11 @@ function ProfileScreen({
   const pendingAdminRequests = adminRequests.filter((item) => item.status === 'pendiente').sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
   const resolvedAdminRequests = adminRequests.filter((item) => item.status !== 'pendiente').sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   const filteredAdminUsers = adminUsers.filter((user) => {
-    if (!canAccessProvince(session, user.province)) {
-      return false;
-    }
     const query = adminUserSearch.trim().toLowerCase();
     if (!query) {
       return true;
     }
-    return [user.full_name]
+    return [user.full_name, user.nickname]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(query));
   });
@@ -6079,7 +6097,11 @@ function ProfileScreen({
     return groups;
   }, {});
   const userProvinceOptions = Object.keys(adminUsersByProvince).sort((a, b) => a.localeCompare(b));
-  const visibleAdminUsers = selectedUsersProvince ? (adminUsersByProvince[selectedUsersProvince] ?? []).filter((user) => canEditAdminUser(session, user)) : [];
+  const visibleAdminUsers = selectedUsersProvince ? (adminUsersByProvince[selectedUsersProvince] ?? []) : [];
+  const editableProvinceUsers = adminUsers.filter((user) => canAccessProvince(session, user.province));
+  const usersSummaryCount = session?.role === 'administrador'
+    ? adminUsers.length || realPendingProfiles.length
+    : editableProvinceUsers.length;
   const activeNationalCoordinator = adminUsers.find((user) => user.role === 'coordinador_nacional' && user.status === 'aprobado');
   const activeDiocesanCoordinator = selectedUsersProvince
     ? adminUsersByProvince[selectedUsersProvince]?.find((user) => user.role === 'coordinador_diocesano' && user.status === 'aprobado')
@@ -6197,7 +6219,7 @@ function ProfileScreen({
       return canOpenCommunityAdmin;
     }
     if (item.key === 'descargas') {
-      return canManagePublishedContent(session);
+      return session?.role === 'administrador';
     }
     if (hasPermission(session, 'gestionar_sistema')) {
       return true;
@@ -6214,10 +6236,9 @@ function ProfileScreen({
     return !item.systemOnly;
   });
   const adminDraftSummary = [
-    { label: 'Usuarios', value: String(adminUsers.length || realPendingProfiles.length), icon: 'people-outline' as keyof typeof Ionicons.glyphMap },
+    { label: 'Usuarios', value: String(usersSummaryCount), icon: 'people-outline' as keyof typeof Ionicons.glyphMap },
     { label: 'Solicitudes', value: String(pendingAdminRequests.length), icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap },
-    { label: 'Comunidades', value: String(manageableCommunities.reduce((total, item) => total + item.locations.length, 0)), icon: 'location-outline' as keyof typeof Ionicons.glyphMap },
-    { label: 'Herramientas', value: String(enabledAdminModules.length), icon: 'apps-outline' as keyof typeof Ionicons.glyphMap }
+    { label: 'Comunidades', value: String(manageableCommunities.reduce((total, item) => total + item.locations.length, 0)), icon: 'location-outline' as keyof typeof Ionicons.glyphMap }
   ];
 
   useEffect(() => {
@@ -6945,6 +6966,9 @@ function ProfileScreen({
   useEffect(() => {
     if (profilePanel === 'comunidad') {
       refreshCommunityForum();
+      if (session && communityMembers.length === 0) {
+        fetchMyCommunityMembers().then(setCommunityMembers);
+      }
     }
     if (profilePanel === 'buzon') {
       setMailboxTargetMode(defaultMailboxTargetMode());
@@ -6953,7 +6977,18 @@ function ProfileScreen({
         loadAdminUsers();
       }
     }
-  }, [profilePanel, session?.email, session?.communityOfOrigin, adminUsers.length]);
+  }, [profilePanel, session?.email, session?.communityOfOrigin, adminUsers.length, communityMembers.length]);
+
+  useEffect(() => {
+    if (canManageUsersPanel(session) && adminUsers.length === 0) {
+      fetchAdminUsers().then((items) => {
+        setAdminUsers(items);
+        if (!selectedUsersProvince && items.length > 0) {
+          setSelectedUsersProvince(items.find((item) => item.province)?.province ?? 'Sin provincia');
+        }
+      });
+    }
+  }, [session?.email, session?.role, adminUsers.length, selectedUsersProvince]);
 
   async function loadRealProfile(userId: string, fallbackEmail: string) {
     const result = await getMyProfileSession(fallbackEmail);
@@ -7278,7 +7313,7 @@ function ProfileScreen({
       const firstProvince = items.find((item) => item.province)?.province ?? 'Sin provincia';
       setSelectedUsersProvince(firstProvince);
     }
-    setAuthMessage(items.length > 0 ? 'Usuarios cargados.' : 'No se encontraron usuarios o falta ejecutar el SQL de administración.');
+    setAuthMessage(items.length > 0 ? 'Usuarios cargados.' : 'No se encontraron usuarios visibles para tu rango.');
   }
 
   async function createBasicAdminUser() {
@@ -9223,12 +9258,6 @@ function ProfileScreen({
             <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
               <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{session.communityOfOrigin}</Text>
               <SectionTitle title="Mi comunidad" />
-              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>
-                Relación activa: {displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)} vinculado a {session.communityOfOrigin} en {session.province}.
-                {['animador_comunidad', 'coordinador_comunidad'].includes(session.role) ? ' Este rango puede editar su comunidad asignada.' : ''}
-                {['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? ' Este rango supervisa animadores y coordinadores de comunidad de su provincia.' : ''}
-                {['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ' Este rango supervisa estructura nacional y provincias.' : ''}
-              </Text>
               {isCommunityLeader ? (
                 <View style={[styles.inlineEditorPanel, isDark && styles.surfaceRowDark]}>
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo aviso comunitario</Text>
@@ -9247,10 +9276,12 @@ function ProfileScreen({
                 </View>
               ) : null}
               <SectionTitle title="Avisos Comunitarios" />
-              <TouchableOpacity style={styles.actionPill} onPress={refreshCommunityForum} activeOpacity={0.85}>
-                <Ionicons name="refresh-outline" size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>Actualizar avisos</Text>
-              </TouchableOpacity>
+              <View style={styles.communityActionRow}>
+                <TouchableOpacity style={styles.communityMiniButton} onPress={refreshCommunityForum} activeOpacity={0.85}>
+                  <Ionicons name="refresh-outline" size={15} color={palette.red} />
+                  <Text style={styles.communityMiniButtonText}>Actualizar</Text>
+                </TouchableOpacity>
+              </View>
               {myCommunityPublications.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay avisos para tu comunidad actualmente</Text> : null}
               {myCommunityPublications.map((item, index) => (
                 <View key={`${item.id || item.title}-${index}`} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
@@ -9291,34 +9322,10 @@ function ProfileScreen({
                   ) : null}
                 </View>
               ))}
-              <SectionTitle title="Miembros" />
-              {communityMembers.length === 0 ? (
-                <TouchableOpacity style={styles.secondaryButton} onPress={async () => setCommunityMembers(await fetchMyCommunityMembers())}>
-                  <Text style={styles.secondaryButtonText}>Cargar miembros</Text>
-                </TouchableOpacity>
-              ) : communityMembers.map((member) => (
-                <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? member.email}</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
-                  <TouchableOpacity
-                    style={styles.actionPill}
-                    onPress={() => openPublicProfile({
-                      id: member.id,
-                      fullName: member.full_name ?? member.email ?? 'Palestrista',
-                      role: (member.role || 'palestrista') as Role,
-                      province: member.province,
-                      communityName: member.community_name,
-                      contact: member.email,
-                      avatarUrl: member.avatar_url,
-                      genderPreference: member.gender_preference ?? null
-                    })}
-                  >
-                    <Ionicons name="person-circle-outline" size={16} color={palette.red} />
-                    <Text style={styles.actionPillText}>Ver perfil</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
               <SectionTitle title="Encargados" />
+              {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).length === 0 ? (
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Sin encargados cargados por el momento.</Text>
+              ) : null}
               {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).map((member) => (
                 <View key={`leader-${member.id}`} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{member.full_name ?? 'Palestrista'} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
@@ -9340,6 +9347,45 @@ function ProfileScreen({
                   </TouchableOpacity>
                 </View>
               ))}
+              <SectionTitle title="Miembros" />
+              <TouchableOpacity
+                style={[styles.membersDropdownButton, isDark && styles.surfaceRowDark]}
+                onPress={async () => {
+                  if (communityMembers.length === 0) {
+                    setCommunityMembers(await fetchMyCommunityMembers());
+                  }
+                  setShowCommunityMembersList((current) => !current);
+                }}
+                activeOpacity={0.85}
+              >
+                <View>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Lista de miembros</Text>
+                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{communityMembers.length} miembros cargados</Text>
+                </View>
+                <Ionicons name={showCommunityMembersList ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.red} />
+              </TouchableOpacity>
+              {showCommunityMembersList ? communityMembers.map((member) => (
+                <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? 'Palestrista'}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
+                  <TouchableOpacity
+                    style={styles.actionPill}
+                    onPress={() => openPublicProfile({
+                      id: member.id,
+                      fullName: member.full_name ?? 'Palestrista',
+                      role: (member.role || 'palestrista') as Role,
+                      province: member.province,
+                      communityName: member.community_name,
+                      contact: '',
+                      avatarUrl: member.avatar_url,
+                      genderPreference: member.gender_preference ?? null
+                    })}
+                  >
+                    <Ionicons name="person-circle-outline" size={16} color={palette.red} />
+                    <Text style={styles.actionPillText}>Ver perfil</Text>
+                  </TouchableOpacity>
+                </View>
+              )) : null}
             </View>
           ) : null}
           {profilePanel === 'buzon' ? (
@@ -9579,7 +9625,9 @@ function ProfileScreen({
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.communityOfOrigin}, {session.province}</Text>
               </View>
             </View>
-            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
+            {session.role === 'administrador' ? (
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
+            ) : null}
           </View> : null}
           {profilePanel === 'vista' && session.role !== 'administrador' && selectedRequest ? (
             <View style={styles.profileCommunityPanel}>
@@ -9943,8 +9991,7 @@ function ProfileScreen({
               ) : (
             <View style={[styles.adminPanel, isDark && styles.surfacePanelDark]}>
               <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
-              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Panel Dirigencial</Text>
-              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.role === 'administrador' ? 'Gestionar roles, permisos, pestañas, secciones, comunidades, provincias, usuarios, contenido y configuración general.' : 'Revisar solicitudes y gestionar cambios de dirigencia dentro de la provincia.'}</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{leadershipPanelTitle(session)}</Text>
               {authMessage ? <Text style={styles.adminMessage}>{authMessage}</Text> : null}
               {adminConfigDraft.settings.maintenanceMode ? (
                 <View style={styles.adminStatusPill}>
@@ -9967,8 +10014,6 @@ function ProfileScreen({
 
               {adminModule === 'resumen' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Panel Dirigencial</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Consola base para controlar contenido, usuarios, comunidades, identidad y configuración general de la app.</Text>
                   <View style={styles.adminStatRow}>
                     {adminDraftSummary.map((item) => (
                       <TouchableOpacity key={item.label} style={[styles.adminStat, isDark && styles.surfaceCardDark]} activeOpacity={0.84}>
@@ -10013,8 +10058,6 @@ function ProfileScreen({
                       </View>
                     </View>
                   ) : null}
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Arquitectura editable</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Panel reducido para Beta: identidad, home, noticias, contacto, período motivador, usuarios, comunidades y configuración real.</Text>
                 </View>
               ) : null}
 
@@ -10856,10 +10899,13 @@ function ProfileScreen({
                       </TouchableOpacity>
                     </View>
                   )}
-                  <TextInput style={styles.input} placeholder="Buscar usuario por nombre" value={adminUserSearch} onChangeText={setAdminUserSearch}  placeholderTextColor={inputPlaceholderColor} />
-                  <TouchableOpacity style={styles.primaryButton} onPress={loadAdminUsers}>
-                    <Text style={styles.primaryButtonText}>Cargar usuarios disponibles</Text>
-                  </TouchableOpacity>
+                  <TextInput style={styles.input} placeholder="Buscar por nombre, apellido o apodo" value={adminUserSearch} onChangeText={setAdminUserSearch}  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={styles.communityActionRow}>
+                    <TouchableOpacity style={styles.communityMiniButton} onPress={loadAdminUsers} activeOpacity={0.85}>
+                      <Ionicons name="refresh-outline" size={15} color={palette.red} />
+                      <Text style={styles.communityMiniButtonText}>Actualizar usuarios</Text>
+                    </TouchableOpacity>
+                  </View>
                   {session.role === 'administrador' ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Diagnostico y liberacion de login</Text>
@@ -14731,6 +14777,40 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 1
   },
+  communityActionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center'
+  },
+  communityMiniButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
+    backgroundColor: 'rgba(230, 243, 245, 0.72)',
+    paddingHorizontal: 11,
+    paddingVertical: 7
+  },
+  communityMiniButtonText: {
+    color: palette.red,
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  membersDropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    backgroundColor: 'rgba(230, 243, 245, 0.56)',
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
   profileShell: {
     position: 'relative',
     backgroundColor: palette.white,
@@ -15198,8 +15278,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     backgroundColor: 'rgba(230, 243, 245, 0.58)',
-    borderRadius: 24,
-    padding: 8
+    borderRadius: 22,
+    padding: 7
   },
   adminModuleGridDark: {
     backgroundColor: 'rgba(168, 221, 243, 0.08)',
@@ -15207,16 +15287,17 @@ const styles = StyleSheet.create({
     borderColor: themePresets.dark.colors.border
   },
   adminModuleButton: {
-    width: '31%',
-    minHeight: 66,
+    width: '23%',
+    minHeight: 54,
     borderWidth: 0,
     borderColor: palette.line,
     backgroundColor: 'rgba(45, 141, 200, 0.09)',
-    borderRadius: 18,
-    padding: 8,
+    borderRadius: 16,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5
+    gap: 4
   },
   adminModuleButtonDark: {
     backgroundColor: 'rgba(168, 221, 243, 0.08)',
@@ -15228,7 +15309,7 @@ const styles = StyleSheet.create({
   },
   adminModuleText: {
     color: palette.ink,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
     textAlign: 'center'
   },
