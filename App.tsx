@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session, UserStatus } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, AppTabSetting, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, AppTabSetting, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, checkRegistrationEmailAvailable, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -49,7 +49,7 @@ const provinceDisplayNames: Record<string, string> = {
   Jujuy: 'Jujuy',
   'San Luis': 'San Luis'
 };
-const appBetaVersion = '0.1.37';
+const appBetaVersion = '0.1.38';
 const appStageLabel = 'BETA';
 const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 const authDeepLinkBaseUrl = 'palestra://auth/callback';
@@ -280,6 +280,7 @@ const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: keyof t
   { key: 'identidad', label: 'Identidad', icon: 'sparkles-outline', systemOnly: true },
   { key: 'home', label: 'Home', icon: 'home-outline', systemOnly: true },
   { key: 'noticias', label: 'Noticias', icon: 'newspaper-outline', systemOnly: true },
+  { key: 'descargas', label: 'Descargas', icon: 'document-attach-outline' },
   { key: 'contenido_publicado', label: 'Contenido', icon: 'albums-outline', systemOnly: true },
   { key: 'comunidades', label: 'Comunidades', icon: 'location-outline' },
   { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
@@ -428,7 +429,7 @@ function hasPermission(session: Session | null, permission: Permission) {
 }
 
 function canManagePublishedContent(session: Session | null) {
-  return Boolean(session && roleRank(session.role) >= roleRank('vocal'));
+  return Boolean(session && ['vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role));
 }
 
 function canManageNewsContent(session: Session | null) {
@@ -1038,6 +1039,53 @@ function communityDowngradesRole(role: Role) {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function emailDomainOf(value: string) {
+  return value.trim().toLowerCase().split('@')[1] ?? '';
+}
+
+function hasPlausibleEmailDomain(value: string) {
+  const domain = emailDomainOf(value);
+  if (!domain || domain.length > 253 || domain.includes('..')) {
+    return false;
+  }
+  const labels = domain.split('.');
+  if (labels.length < 2) {
+    return false;
+  }
+  return labels.every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))
+    && /^[a-z]{2,24}$/.test(labels[labels.length - 1]);
+}
+
+async function verifyEmailDomainExists(value: string) {
+  const domain = emailDomainOf(value);
+  if (!hasPlausibleEmailDomain(value)) {
+    return false;
+  }
+  try {
+    const mxResponse = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=MX`);
+    const mxData = await mxResponse.json();
+    if (mxData?.Status === 0 && Array.isArray(mxData.Answer) && mxData.Answer.length > 0) {
+      return true;
+    }
+    const aResponse = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=A`);
+    const aData = await aResponse.json();
+    return Boolean(aData?.Status === 0 && Array.isArray(aData.Answer) && aData.Answer.length > 0);
+  } catch {
+    return null;
+  }
+}
+
+function friendlyUploadError(message?: string | null) {
+  const text = String(message ?? '');
+  if (/row-level security|violates row-level|policy/i.test(text)) {
+    return 'No tenes permisos para subir este archivo. Revisá tu rango, provincia o ejecutá el patch de permisos de materiales.';
+  }
+  if (/storage|bucket|object/i.test(text)) {
+    return 'No se pudo guardar el archivo en Storage. Revisá permisos de Supabase o intentá nuevamente.';
+  }
+  return text || 'No se pudo completar la operación.';
 }
 
 function safeAuthError(message?: string) {
@@ -2516,6 +2564,10 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
         onMessage('Ingresá un mail válido.');
         return false;
       }
+      if (!hasPlausibleEmailDomain(draft.email)) {
+        onMessage('El dominio del mail no parece valido.');
+        return false;
+      }
       if (draft.password.length < 6) {
         onMessage('La contraseña debe tener al menos 6 caracteres.');
         return false;
@@ -2531,6 +2583,27 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
   async function nextStep() {
     if (!validateStep()) {
       return;
+    }
+    if (step === 2) {
+      setLoading(true);
+      onMessage('Validando mail...');
+      const [domainExists, availability] = await Promise.all([
+        verifyEmailDomainExists(draft.email),
+        checkRegistrationEmailAvailable(draft.email.trim())
+      ]);
+      setLoading(false);
+      if (domainExists === false) {
+        onMessage('El dominio del mail no existe o no recibe correo.');
+        return;
+      }
+      if (domainExists === null) {
+        onMessage('No pudimos validar el dominio del mail. Revisa tu conexion e intenta nuevamente.');
+        return;
+      }
+      if (!availability.available) {
+        onMessage(availability.reason || 'Este mail ya se encuentra registrado.');
+        return;
+      }
     }
     if (step < 3) {
       setStep((current) => current + 1);
@@ -3993,7 +4066,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       sortOrder: material.sortOrder ?? 100
     });
     if (error) {
-      setUploadMessage(error.message);
+      setUploadMessage(friendlyUploadError(error.message));
       return;
     }
     setEditingMaterialId(null);
@@ -4007,7 +4080,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
     }
     const { error } = await archiveAppMaterial(material.id);
     if (error) {
-      setUploadMessage(error.message);
+      setUploadMessage(friendlyUploadError(error.message));
       return;
     }
     setUploadMessage(changeDone('Material eliminado.'));
@@ -4098,14 +4171,14 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
         .from('materials')
         .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: true });
       if (error) {
-        setUploadMessage(error.message);
+        setUploadMessage(friendlyUploadError(error.message));
         return;
       }
       const { data } = supabase.storage.from('materials').getPublicUrl(path);
       setChurchDocumentLogoUrl(data.publicUrl);
       setUploadMessage('Logo cargado.');
     } catch (error) {
-      setUploadMessage(error instanceof Error ? error.message : 'No se pudo subir el logo.');
+      setUploadMessage(friendlyUploadError(error instanceof Error ? error.message : 'No se pudo subir el logo.'));
     }
   }
 
@@ -4135,7 +4208,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       sortOrder: Number(churchDocumentSortOrder) || 1
     });
     if (error) {
-      setUploadMessage(error.message);
+      setUploadMessage(friendlyUploadError(error.message));
       return;
     }
     resetChurchDocumentForm();
@@ -4146,7 +4219,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
   async function deleteChurchDocumentFromDownloads(id: string) {
     const { error } = await archiveChurchDocumentButton(id);
     if (error) {
-      setUploadMessage(error.message);
+      setUploadMessage(friendlyUploadError(error.message));
       return;
     }
     await reloadChurchDocuments(true);
@@ -4163,7 +4236,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       sortOrder: document.sort_order
     });
     if (error) {
-      setUploadMessage(error.message);
+      setUploadMessage(friendlyUploadError(error.message));
       return;
     }
     await reloadChurchDocuments(true);
@@ -4214,7 +4287,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
         .from('materials')
         .upload(path, bytes, { contentType: 'application/pdf', upsert: true });
       if (uploadError) {
-        setUploadMessage(uploadError.message);
+        setUploadMessage(friendlyUploadError(uploadError.message));
         return;
       }
       const { data: publicUrl } = supabase.storage.from('materials').getPublicUrl(path);
@@ -4229,7 +4302,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
         sortOrder: 100
       });
       if (error) {
-        setUploadMessage(error.message);
+        setUploadMessage(friendlyUploadError(error.message));
         return;
       }
       setUploadTitle('');
@@ -4238,7 +4311,7 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
       setUploadMessage(changeDone('PDF subido correctamente.'));
       setRemoteMaterials(await fetchAppMaterials(session?.role === 'administrador'));
     } catch (error) {
-      setUploadMessage(error instanceof Error ? error.message : 'No pude subir el PDF.');
+      setUploadMessage(friendlyUploadError(error instanceof Error ? error.message : 'No pude subir el PDF.'));
     }
   }
 
@@ -5979,6 +6052,9 @@ function ProfileScreen({
     if (item.key === 'comunidades') {
       return canOpenCommunityAdmin;
     }
+    if (item.key === 'descargas') {
+      return canManagePublishedContent(session);
+    }
     if (hasPermission(session, 'gestionar_sistema')) {
       return true;
     }
@@ -7115,11 +7191,8 @@ function ProfileScreen({
       return;
     }
     const canAdminUsePersonalPm = roleRank(adminUserRole) >= roleRank('sedimentador');
-    if (canAdminUsePersonalPm && (adminUserPmType || adminUserPmNumber || adminUserPmProvince || adminUserPmMotto.trim())) {
-      if (!adminUserPmType || !adminUserPmNumber.trim() || !adminUserPmProvince) {
-        setAuthMessage('Para cargar el PM personal completá tipo, número y provincia.');
-        return;
-      }
+    const hasCompleteAdminPersonalPm = Boolean(canAdminUsePersonalPm && adminUserPmType && adminUserPmNumber.trim() && adminUserPmProvince);
+    if (hasCompleteAdminPersonalPm) {
       const parsedPmNumber = Number(adminUserPmNumber);
       if (!Number.isInteger(parsedPmNumber) || parsedPmNumber <= 0) {
         setAuthMessage('El número de PM debe ser válido.');
@@ -7143,11 +7216,11 @@ function ProfileScreen({
       useNicknameInGreetings: adminUserUseNicknameInGreetings,
       credentialNameMode: adminUserCredentialNameMode,
       perseveranceStartYear: adminUserPerseveranceStartYear ? Number(adminUserPerseveranceStartYear) : null,
-      personalPmType: canAdminUsePersonalPm ? (adminUserPmType || null) : null,
-      personalPmNumber: canAdminUsePersonalPm && adminUserPmNumber ? Number(adminUserPmNumber) : null,
-      personalPmProvince: canAdminUsePersonalPm ? (adminUserPmProvince || null) : null,
-      personalPmMotto: canAdminUsePersonalPm ? (adminUserPmMotto.trim() || null) : null,
-      pmMotto: canAdminUsePersonalPm ? (adminUserPmMotto.trim() || null) : null
+      personalPmType: hasCompleteAdminPersonalPm ? (adminUserPmType || null) : null,
+      personalPmNumber: hasCompleteAdminPersonalPm ? Number(adminUserPmNumber) : null,
+      personalPmProvince: hasCompleteAdminPersonalPm ? (adminUserPmProvince || null) : null,
+      personalPmMotto: hasCompleteAdminPersonalPm ? (adminUserPmMotto.trim() || null) : null,
+      pmMotto: hasCompleteAdminPersonalPm ? (adminUserPmMotto.trim() || null) : null
     });
     if (error) {
       setAuthMessage(error.message || 'No se pudo guardar el usuario. Revisa permisos y datos.');
@@ -7500,6 +7573,10 @@ function ProfileScreen({
   }
 
   async function adminSaveMaterial() {
+    if (!canManagePublishedContent(session)) {
+      setAuthMessage('Solo Vocal Diocesano en adelante puede guardar materiales.');
+      return;
+    }
     if (!materialTitle.trim() || !materialDescription.trim()) {
       setAuthMessage('Completa nombre y descripcion del material.');
       return;
@@ -7517,7 +7594,7 @@ function ProfileScreen({
       sortOrder: 100
     });
     if (error) {
-      setAuthMessage(error.message);
+      setAuthMessage(friendlyUploadError(error.message));
       return;
     }
     setMaterialTitle('');
@@ -7531,7 +7608,7 @@ function ProfileScreen({
   async function adminArchiveMaterial(id: string) {
     const { error } = await archiveAppMaterial(id);
     if (error) {
-      setAuthMessage(error.message);
+      setAuthMessage(friendlyUploadError(error.message));
       return;
     }
     await loadAdminMaterials();
@@ -7624,7 +7701,7 @@ function ProfileScreen({
       sortOrder: Number(churchDocumentSortOrder) || 1
     });
     if (error) {
-      setAuthMessage(error.message);
+      setAuthMessage(friendlyUploadError(error.message));
       return;
     }
     resetChurchDocumentForm();
@@ -7651,7 +7728,7 @@ function ProfileScreen({
       sortOrder: document.sort_order
     });
     if (error) {
-      setAuthMessage(error.message);
+      setAuthMessage(friendlyUploadError(error.message));
       return;
     }
     await loadAdminMaterials();
@@ -7669,7 +7746,7 @@ function ProfileScreen({
       sortOrder: nextOrder
     });
     if (error) {
-      setAuthMessage(error.message);
+      setAuthMessage(friendlyUploadError(error.message));
       return;
     }
     await loadAdminMaterials();
@@ -7678,7 +7755,7 @@ function ProfileScreen({
   async function deleteChurchDocument(id: string) {
     const { error } = await archiveChurchDocumentButton(id);
     if (error) {
-      setAuthMessage(error.message);
+      setAuthMessage(friendlyUploadError(error.message));
       return;
     }
     await loadAdminMaterials();

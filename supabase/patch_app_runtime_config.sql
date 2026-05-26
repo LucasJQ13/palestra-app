@@ -3,7 +3,7 @@
 create table if not exists public.app_runtime_config (
   id text primary key default 'default',
   min_supported_version text not null default '0.1.0',
-  recommended_version text not null default '0.1.37',
+  recommended_version text not null default '0.1.38',
   maintenance_mode boolean not null default false,
   global_message text,
   feature_flags jsonb not null default '{}'::jsonb,
@@ -40,7 +40,7 @@ insert into public.app_runtime_config (
 values (
   'default',
   '0.1.0',
-  '0.1.37',
+  '0.1.38',
   false,
   null,
   jsonb_build_object(

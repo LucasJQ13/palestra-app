@@ -319,6 +319,27 @@ export async function createUserRequest(requestType: string, details: string) {
   }
 }
 
+export async function checkRegistrationEmailAvailable(email: string): Promise<{ available: boolean; reason: string | null }> {
+  try {
+    const { data, error } = await supabase.rpc('check_registration_email_available', {
+      p_email: email
+    });
+    if (error) {
+      return { available: false, reason: error.message };
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    return {
+      available: Boolean(row?.available),
+      reason: row?.reason ?? null
+    };
+  } catch (error) {
+    return {
+      available: false,
+      reason: error instanceof Error ? error.message : 'No se pudo validar el mail.'
+    };
+  }
+}
+
 export async function createEmailConfirmationRequest(values: {
   userId: string;
   email: string;
