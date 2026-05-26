@@ -2,6 +2,8 @@
 
 Ejecutar en Supabase SQL Editor. Los scripts son idempotentes cuando usan `create table if not exists`, `create or replace function`, `drop policy if exists` u `on conflict`.
 
+> Estado actual: este documento es la fuente de orden para una base nueva. Para bases que ya estan en produccion/beta, no reejecutar patches antiguos sin revisar `docs/sql-stability-audit.md`, porque varios scripts redefinen las mismas RPC/RLS y pueden pisar correcciones nuevas.
+
 ## Base inicial
 
 1. `supabase/schema.sql`
@@ -38,3 +40,10 @@ Ejecutar en Supabase SQL Editor. Los scripts son idempotentes cuando usan `creat
 - Contenido publicado: `supabase/patch_published_content_management.sql`
 
 Si una funcion falla por firma antigua, ejecutar primero el patch mas nuevo del modulo correspondiente.
+
+## Regla de seguridad para siguientes tandas
+
+1. No crear un mega-patch que toque usuarios, materiales, comunidades, navegacion y auth juntos.
+2. Si se modifica una RPC ya existente, documentar que patch queda como version vigente en `docs/sql-stability-audit.md`.
+3. Antes de reejecutar un patch viejo, revisar si redefine funciones como `admin_update_user`, `get_my_profile`, `admin_upsert_material`, `admin_update_community`, `admin_update_tab` o `admin_get_users`.
+4. Preferir patches pequenos por modulo, con una unica responsabilidad.
