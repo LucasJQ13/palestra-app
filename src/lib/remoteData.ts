@@ -128,14 +128,26 @@ export async function fetchNews(session?: Session | null) {
   try {
     result = await supabase
       .from('news')
-      .select('id, title, body, is_public, created_at, archived_at, provinces(name)')
+      .select('id, title, body, image_url, is_public, created_at, archived_at, provinces(name)')
       .is('archived_at', null)
       .order('created_at', { ascending: false })
       .limit(20);
   } catch {
     return [];
   }
-  const { data, error } = result;
+  let data: any[] | null = result.data as any[] | null;
+  let error = result.error;
+
+  if (error && /image_url|column .* does not exist/i.test(error.message)) {
+    const fallback = await supabase
+      .from('news')
+      .select('id, title, body, is_public, created_at, archived_at, provinces(name)')
+      .is('archived_at', null)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error || !data || data.length === 0) {
     return [];
@@ -150,12 +162,25 @@ export async function fetchNews(session?: Session | null) {
     title: item.title,
     body: item.body,
     province: item.provinces?.name ?? 'Nacional',
-    imageUrl: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
+    imageUrl: item.image_url ?? undefined
   }));
 }
 
-export async function updateNewsEntry(values: { id: string; title: string; body: string; isPublic?: boolean }) {
+export async function updateNewsEntry(values: { id: string; title: string; body: string; imageUrl?: string | null; isPublic?: boolean }) {
   try {
+    const updated = await supabase.rpc('admin_update_news', {
+      p_news_id: values.id,
+      p_title: values.title,
+      p_body: values.body,
+      p_image_url: values.imageUrl ?? null,
+      p_is_public: values.isPublic ?? true
+    });
+    if (!updated.error) {
+      return updated;
+    }
+    if (!/function .*admin_update_news|Could not find|schema cache|p_image_url/i.test(updated.error.message)) {
+      return updated;
+    }
     return await supabase.rpc('admin_update_news', {
       p_news_id: values.id,
       p_title: values.title,

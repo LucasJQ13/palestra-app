@@ -657,6 +657,60 @@ function displayRoleLabel(role: Role, province?: string | null, labels: Province
   return assignedLabel?.trim() || roleLabelForProvince(role, province, labels, aliases, gender);
 }
 
+const urlPattern = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+
+function splitLinkedText(value: string) {
+  const parts: Array<{ text: string; url?: string }> = [];
+  let lastIndex = 0;
+  value.replace(urlPattern, (match, _capture, offset) => {
+    if (offset > lastIndex) {
+      parts.push({ text: value.slice(lastIndex, offset) });
+    }
+    const trailing = match.match(/[),.;:!?]+$/)?.[0] ?? '';
+    const cleanUrl = trailing ? match.slice(0, -trailing.length) : match;
+    parts.push({ text: cleanUrl, url: normalizeExternalUrl(cleanUrl) });
+    if (trailing) {
+      parts.push({ text: trailing });
+    }
+    lastIndex = offset + match.length;
+    return match;
+  });
+  if (lastIndex < value.length) {
+    parts.push({ text: value.slice(lastIndex) });
+  }
+  return parts.length ? parts : [{ text: value }];
+}
+
+function LinkedSelectableText({ text, style, linkStyle, numberOfLines }: { text: string; style: any; linkStyle?: any; numberOfLines?: number }) {
+  return (
+    <Text selectable style={style} numberOfLines={numberOfLines}>
+      {splitLinkedText(text).map((part, index) => part.url ? (
+        <Text key={`${part.url}-${index}`} style={linkStyle} onPress={() => Linking.openURL(part.url as string)}>
+          {part.text}
+        </Text>
+      ) : (
+        <Text key={`${part.text}-${index}`}>{part.text}</Text>
+      ))}
+    </Text>
+  );
+}
+
+async function uploadPickedImageToPublicUrl(asset: ImagePicker.ImagePickerAsset, folder: string) {
+  const response = await fetch(asset.uri);
+  const bytes = await response.arrayBuffer();
+  const extension = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+  const safeExtension = extension.replace(/[^a-zA-Z0-9]/g, '').slice(0, 5) || 'jpg';
+  const path = `${folder}/${Date.now()}.${safeExtension}`;
+  const { error } = await supabase.storage
+    .from('content-images')
+    .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: true });
+  if (error) {
+    throw new Error(error.message);
+  }
+  const { data } = supabase.storage.from('content-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 function roleShortLabel(role: Role, gender?: GenderPreference) {
   const labels: Record<Role, string> = {
     invitado: 'Invitado',
@@ -3195,6 +3249,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
   const [homeEditId, setHomeEditId] = useState<string | null>(null);
   const [homeEditTitle, setHomeEditTitle] = useState('');
   const [homeEditBody, setHomeEditBody] = useState('');
+  const [homeEditImage, setHomeEditImage] = useState('');
   const [homeActionMessage, setHomeActionMessage] = useState('');
   const canManageHomeEntries = canManageNationalPublishedContent(session);
   const hiddenFallbackContent = adminConfig.settings.hiddenFallbackContent ?? [];
@@ -3240,7 +3295,36 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
     setHomeEditId(item.id);
     setHomeEditTitle(item.title);
     setHomeEditBody(item.body);
+    setHomeEditImage(item.imageUrl ?? '');
     setHomeActionMessage('');
+  }
+
+  async function uploadHomeNewsImage() {
+    if (!homeEditId) {
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setHomeActionMessage('Necesito permiso para seleccionar una imagen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.82
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    try {
+      setHomeActionMessage('Subiendo imagen...');
+      const publicUrl = await uploadPickedImageToPublicUrl(result.assets[0], 'news');
+      setHomeEditImage(publicUrl);
+      setHomeActionMessage('Imagen cargada. Tocá Guardar para aplicarla.');
+    } catch (error) {
+      setHomeActionMessage(error instanceof Error ? error.message : 'No se pudo subir la imagen.');
+    }
   }
 
   async function saveHomeNewsEdit() {
@@ -3254,7 +3338,8 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
     const { error } = await updateNewsEntry({
       id: homeEditId,
       title: homeEditTitle.trim(),
-      body: homeEditBody.trim()
+      body: homeEditBody.trim(),
+      imageUrl: homeEditImage.trim() || null
     });
     if (error) {
       setHomeActionMessage(error.message);
@@ -3263,6 +3348,7 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
     setHomeEditId(null);
     setHomeEditTitle('');
     setHomeEditBody('');
+    setHomeEditImage('');
     setHomeActionMessage(changeDone('Cambios realizados'));
     setHomeRefreshKey((current) => current + 1);
   }
@@ -3379,11 +3465,23 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
             <View style={styles.stackSmall}>
               <TextInput style={styles.input} placeholder="Titulo de la publicacion" value={homeEditTitle} onChangeText={setHomeEditTitle} placeholderTextColor={inputPlaceholderColor} />
               <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo" value={homeEditBody} onChangeText={setHomeEditBody} multiline placeholderTextColor={inputPlaceholderColor} />
+              <TextInput style={styles.input} placeholder="URL de imagen opcional" value={homeEditImage} onChangeText={setHomeEditImage} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+              {homeEditImage ? <Image source={{ uri: homeEditImage }} style={styles.cardImage} /> : null}
+              <View style={styles.inlineActions}>
+                <TouchableOpacity style={styles.secondaryButton} onPress={uploadHomeNewsImage}>
+                  <Ionicons name="image-outline" size={16} color={palette.red} />
+                  <Text style={styles.secondaryButtonText}>Subir imagen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => setHomeEditImage('')}>
+                  <Ionicons name="close-circle-outline" size={16} color={palette.red} />
+                  <Text style={styles.secondaryButtonText}>Quitar imagen</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.inlineActions}>
                 <TouchableOpacity style={styles.primaryButton} onPress={saveHomeNewsEdit}>
                   <Text style={styles.primaryButtonText}>Guardar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryButton} onPress={() => setHomeEditId(null)}>
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => { setHomeEditId(null); setHomeEditImage(''); }}>
                   <Text style={styles.secondaryButtonText}>Cancelar</Text>
                 </TouchableOpacity>
               </View>
@@ -3391,10 +3489,15 @@ function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, a
           ) : (
             <>
               <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
-              <Text style={[styles.cardText, isDark && styles.textDarkBody]} numberOfLines={expandedNews === item.title ? undefined : 2}>{item.body}</Text>
+              <LinkedSelectableText
+                text={item.body}
+                style={[styles.cardText, isDark && styles.textDarkBody]}
+                linkStyle={[styles.inlineLinkText, isDark && styles.textDarkAccent]}
+                numberOfLines={expandedNews === item.title ? undefined : 2}
+              />
             </>
           )}
-          {expandedNews === item.title ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
+          {expandedNews === item.title && item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
           {canManageHomeEntries && isRemoteNewsItem(item) ? (
             <View style={styles.inlineActions}>
               <TouchableOpacity style={styles.actionPill} onPress={() => startHomeNewsEdit(item)}>
@@ -3836,7 +3939,12 @@ function NotilestraScreen({ session, title, content, refreshKey, editor, adminCo
             ) : (
               <>
                 <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
-                <Text style={[styles.cardText, isDark && styles.textDarkBody]} numberOfLines={expandedItem === item.title ? undefined : 2}>{item.body}</Text>
+                <LinkedSelectableText
+                  text={item.body}
+                  style={[styles.cardText, isDark && styles.textDarkBody]}
+                  linkStyle={[styles.inlineLinkText, isDark && styles.textDarkAccent]}
+                  numberOfLines={expandedItem === item.title ? undefined : 2}
+                />
               </>
             )}
           </TouchableOpacity>
@@ -3966,6 +4074,9 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
   const [uploadRole, setUploadRole] = useState<Role>('sedimentador');
   const [uploadRoleDropdownOpen, setUploadRoleDropdownOpen] = useState(false);
   const [uploadMessage, setUploadMessage] = useState('');
+  const [uploadFileUrl, setUploadFileUrl] = useState('');
+  const [uploadFilePath, setUploadFilePath] = useState('');
+  const [uploadFileName, setUploadFileName] = useState('');
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
   const [materialEditTitle, setMaterialEditTitle] = useState('');
   const [materialEditDescription, setMaterialEditDescription] = useState('');
@@ -4291,28 +4402,51 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
         return;
       }
       const { data: publicUrl } = supabase.storage.from('materials').getPublicUrl(path);
-      const { error } = await saveAppMaterial({
-        title: uploadTitle.trim(),
-        description: uploadDescription.trim(),
-        category: session.province,
-        visibility: uploadVisibility,
-        requiredPermission: uploadVisibility === 'publico' ? null : `rango_${uploadRole}`,
-        fileUrl: publicUrl.publicUrl,
-        filePath: path,
-        sortOrder: 100
-      });
-      if (error) {
-        setUploadMessage(friendlyUploadError(error.message));
-        return;
-      }
-      setUploadTitle('');
-      setUploadDescription('');
-      setShowUpload(false);
-      setUploadMessage(changeDone('PDF subido correctamente.'));
-      setRemoteMaterials(await fetchAppMaterials(session?.role === 'administrador'));
+      setUploadFileUrl(publicUrl.publicUrl);
+      setUploadFilePath(path);
+      setUploadFileName(asset.name);
+      setUploadMessage('PDF cargado. Revisá los datos y tocá Finalizar subida para publicarlo.');
     } catch (error) {
       setUploadMessage(friendlyUploadError(error instanceof Error ? error.message : 'No pude subir el PDF.'));
     }
+  }
+
+  async function finalizePdfMaterialUpload() {
+    if (!session || !canManagePublishedContent(session)) {
+      setUploadMessage('Solo Vocal Diocesano en adelante puede publicar contenido.');
+      return;
+    }
+    if (!uploadTitle.trim() || !uploadDescription.trim()) {
+      setUploadMessage('Completa titulo y descripcion.');
+      return;
+    }
+    if (!uploadFileUrl || !uploadFilePath) {
+      setUploadMessage('Primero elegí y cargá un PDF.');
+      return;
+    }
+    setUploadMessage('Publicando material...');
+    const { error } = await saveAppMaterial({
+      title: uploadTitle.trim(),
+      description: uploadDescription.trim(),
+      category: session.province,
+      visibility: uploadVisibility,
+      requiredPermission: uploadVisibility === 'publico' ? null : `rango_${uploadRole}`,
+      fileUrl: uploadFileUrl,
+      filePath: uploadFilePath,
+      sortOrder: 100
+    });
+    if (error) {
+      setUploadMessage(friendlyUploadError(error.message));
+      return;
+    }
+    setUploadTitle('');
+    setUploadDescription('');
+    setUploadFileUrl('');
+    setUploadFilePath('');
+    setUploadFileName('');
+    setShowUpload(false);
+    setUploadMessage(changeDone('Material publicado correctamente.'));
+    setRemoteMaterials(await fetchAppMaterials(session?.role === 'administrador'));
   }
 
   return (
@@ -4353,7 +4487,17 @@ function MaterialsScreen({ session, title, content, refreshKey, editor }: { sess
           ) : null}
           <TouchableOpacity style={styles.secondaryButton} onPress={uploadPdfMaterial}>
             <Ionicons name="document-attach-outline" size={17} color={palette.red} />
-            <Text style={styles.secondaryButtonText}>Elegir PDF max. 15Mb</Text>
+            <Text style={styles.secondaryButtonText}>{uploadFileUrl ? 'Cambiar PDF cargado' : 'Elegir PDF max. 15Mb'}</Text>
+          </TouchableOpacity>
+          {uploadFileName ? (
+            <View style={[styles.notice, isDark && styles.surfaceRowDark]}>
+              <Ionicons name="checkmark-circle-outline" size={19} color={palette.red} />
+              <Text style={[styles.noticeText, isDark && styles.textDarkBody]}>Archivo listo: {uploadFileName}</Text>
+            </View>
+          ) : null}
+          <TouchableOpacity style={[styles.primaryButton, !uploadFileUrl && styles.disabledButton]} onPress={finalizePdfMaterialUpload} disabled={!uploadFileUrl}>
+            <Ionicons name="cloud-done-outline" size={17} color={palette.white} />
+            <Text style={styles.primaryButtonText}>Finalizar subida</Text>
           </TouchableOpacity>
           {uploadMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{uploadMessage}</Text> : null}
         </View>
@@ -7503,7 +7647,7 @@ function ProfileScreen({
     }
 
     setAuthMessage('Publicando noticia...');
-    const { data: newsId, error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true, finalProvince);
+    const { data: newsId, error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true, finalProvince, adminNewsImage.trim() || null);
     const newsTargetKind = finalScope === 'provincial' ? 'provincia' : 'nacional';
     const notificationWarning = !error ? await queueNotificationIfRequested(adminNewsNotify, {
       notificationType: 'aviso_dirigencial',
@@ -7535,6 +7679,35 @@ function ProfileScreen({
     const items = await fetchNewsDrafts();
     setNewsDrafts(items);
     setAuthMessage(items.length > 0 ? 'Borradores cargados.' : 'No hay borradores guardados.');
+  }
+
+  async function uploadAdminNewsImage() {
+    if (!canManageNewsContent(session)) {
+      setAuthMessage('Tu rango no puede cargar imagenes de noticias.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage('Necesito permiso para seleccionar una imagen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.82
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    try {
+      setAuthMessage('Subiendo imagen...');
+      const publicUrl = await uploadPickedImageToPublicUrl(result.assets[0], 'news');
+      setAdminNewsImage(publicUrl);
+      setAuthMessage('Imagen cargada. La noticia se publica recien al tocar Publicar noticia.');
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No se pudo subir la imagen.');
+    }
   }
 
   async function adminSaveNewsDraft(status = 'borrador') {
@@ -11104,7 +11277,17 @@ function ProfileScreen({
                     </View>
                   ) : null}
                   <TextInput style={styles.input} placeholder="Titulo de la noticia" value={adminNewsTitle} onChangeText={setAdminNewsTitle}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={styles.input} placeholder="Bajada o resumen breve" value={adminNewsImage} onChangeText={setAdminNewsImage}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="URL de imagen opcional" value={adminNewsImage} onChangeText={setAdminNewsImage} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={uploadAdminNewsImage}>
+                      <Ionicons name="image-outline" size={16} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Subir imagen</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminNewsImage('')}>
+                      <Ionicons name="close-circle-outline" size={16} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Sin imagen</Text>
+                    </TouchableOpacity>
+                  </View>
                   <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo de la noticia" value={adminNewsBody} onChangeText={setAdminNewsBody} multiline  placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.filterRow}>
                     <TouchableOpacity style={[styles.filterChip, adminNewsDraft && styles.filterChipActive]} onPress={() => setAdminNewsDraft(!adminNewsDraft)}>
@@ -11125,6 +11308,7 @@ function ProfileScreen({
                     <Text style={styles.cardEyebrow}>{adminNewsCategory}{adminNewsFeatured ? ' - destacada' : ''}</Text>
                     <Text style={styles.cardTitle}>{adminNewsTitle || 'Titulo de noticia'}</Text>
                     <Text style={styles.cardText}>{adminNewsBody || 'Previsualizacion del contenido antes de publicar.'}</Text>
+                    {adminNewsImage ? <Image source={{ uri: adminNewsImage }} style={styles.cardImage} /> : null}
                   </View>
                   <TouchableOpacity style={styles.primaryButton} onPress={adminNewsDraft ? () => adminSaveNewsDraft('borrador') : adminCreateNews}>
                     <Text style={styles.primaryButtonText}>{adminNewsDraft ? 'Guardar borrador' : 'Publicar noticia'}</Text>
@@ -14500,6 +14684,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900'
   },
+  inlineLinkText: {
+    color: palette.red,
+    fontWeight: '900',
+    textDecorationLine: 'underline'
+  },
   tabIconFrameActive: {
     backgroundColor: palette.red,
     borderColor: palette.red,
@@ -14742,6 +14931,9 @@ const styles = StyleSheet.create({
   },
   disabledChip: {
     opacity: 0.42
+  },
+  disabledButton: {
+    opacity: 0.48
   },
   filterChipText: {
     color: palette.ink,

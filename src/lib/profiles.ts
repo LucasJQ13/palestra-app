@@ -863,7 +863,20 @@ export async function saveProvinceRoleLabel(values: {
   }
 }
 
-export async function createNews(title: string, body: string, isPublic: boolean, province?: string | null) {
+export async function createNews(title: string, body: string, isPublic: boolean, province?: string | null, imageUrl?: string | null) {
+  const created = await supabase.rpc('admin_create_news', {
+    p_title: title,
+    p_body: body,
+    p_is_public: isPublic,
+    p_province: province ?? null,
+    p_image_url: imageUrl ?? null
+  });
+  if (!created.error) {
+    return created;
+  }
+  if (!/function .*admin_create_news|Could not find|schema cache|p_image_url/i.test(created.error.message)) {
+    return created;
+  }
   return supabase.rpc('admin_create_news', {
     p_title: title,
     p_body: body,
