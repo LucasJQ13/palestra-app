@@ -30,11 +30,11 @@ export function isCommunityLeaderRole(session: Session | null) {
 }
 
 export function canCreateOrAdministrateCommunities(session: Session | null) {
-  return hasPermission(session, 'gestionar_comunidad') || hasPermission(session, 'gestionar_comunidades_global');
+  return Boolean(session && (hasPermission(session, 'gestionar_comunidad') || hasPermission(session, 'gestionar_comunidades_global') || ['vocal', 'coordinador_diocesano'].includes(session.role)));
 }
 
 export function canUseCommunityAdmin(session: Session | null) {
-  return hasPermission(session, 'gestionar_comunidad') || hasPermission(session, 'gestionar_comunidades_global');
+  return Boolean(session && (hasPermission(session, 'gestionar_comunidad') || hasPermission(session, 'gestionar_comunidades_global') || ['animador_comunidad', 'coordinador_comunidad', 'vocal', 'coordinador_diocesano'].includes(session.role)));
 }
 
 export function canManageMotivadorPanel(session: Session | null) {

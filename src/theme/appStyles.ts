@@ -2880,6 +2880,44 @@ export const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8
   },
+  compactToolRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center'
+  },
+  compactTabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8
+  },
+  compactSquareButton: {
+    minWidth: 82,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3
+  },
+  compactSquareButtonActive: {
+    backgroundColor: palette.red,
+    borderColor: palette.red
+  },
+  compactSquareButtonText: {
+    color: palette.red,
+    fontSize: 11,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
+  compactSquareButtonTextActive: {
+    color: palette.white
+  },
   actionPill: {
     minHeight: 36,
     flexDirection: 'row',
@@ -3270,6 +3308,9 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.09,
     shadowRadius: 16,
     elevation: 2
+  },
+  collapsedPanel: {
+    display: 'none'
   },
   adminModuleGrid: {
     flexDirection: 'row',

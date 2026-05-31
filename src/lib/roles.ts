@@ -153,7 +153,7 @@ export function canEditCommunity(session: Session | null, province?: string | nu
   if (session.role === 'administrador') {
     return true;
   }
-  if (session.role === 'coordinador_comunidad') {
+  if (['animador_comunidad', 'coordinador_comunidad'].includes(session.role)) {
     return province === session.province && Boolean(communityName) && communityName === session.communityOfOrigin;
   }
   return province === session.province && ['vocal', 'coordinador_diocesano'].includes(session.role);

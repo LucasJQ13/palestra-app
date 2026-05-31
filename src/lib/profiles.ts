@@ -198,6 +198,42 @@ export type CredentialValidationRecord = {
   expires_at: string | null;
 };
 
+export type QrActivityListRecord = {
+  id: string;
+  title: string;
+  province: string;
+  community_name: string | null;
+  created_by: string | null;
+  created_by_name?: string | null;
+  created_by_role?: string | null;
+  status: 'activa' | 'cerrada' | 'archivada';
+  created_at: string;
+};
+
+export type QrActivityMemberRecord = {
+  id: string;
+  list_id: string;
+  user_id: string;
+  full_name: string | null;
+  role: string | null;
+  province: string | null;
+  community_name: string | null;
+  added_by: string | null;
+  added_at: string;
+};
+
+export type QrActivityAttendanceRecord = {
+  id: string;
+  list_id: string;
+  user_id: string;
+  full_name: string | null;
+  role: string | null;
+  province: string | null;
+  community_name: string | null;
+  validated_by: string | null;
+  validated_at: string;
+};
+
 export async function fetchPendingProfiles(): Promise<PendingProfile[]> {
   const { data, error } = await supabase.rpc('admin_get_pending_profiles');
 
@@ -225,6 +261,76 @@ export async function validateCredentialQrToken(token: string): Promise<{ data: 
     });
     const row = Array.isArray(data) ? data[0] : data;
     return { data: error ? null : (row as CredentialValidationRecord | null), error };
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchQrActivityLists(): Promise<QrActivityListRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_qr_activity_lists');
+    if (error || !data) {
+      return [];
+    }
+    return data as QrActivityListRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function createQrActivityList(values: { title: string; province: string; communityName?: string | null }) {
+  try {
+    return await supabase.rpc('create_qr_activity_list', {
+      p_title: values.title,
+      p_province: values.province,
+      p_community_name: values.communityName ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchQrActivityMembers(listId: string): Promise<QrActivityMemberRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_qr_activity_members', { p_list_id: listId });
+    if (error || !data) {
+      return [];
+    }
+    return data as QrActivityMemberRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchQrActivityAttendance(listId: string): Promise<QrActivityAttendanceRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_qr_activity_attendance', { p_list_id: listId });
+    if (error || !data) {
+      return [];
+    }
+    return data as QrActivityAttendanceRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function addQrActivityMember(listId: string, userId: string) {
+  try {
+    return await supabase.rpc('add_qr_activity_member', {
+      p_list_id: listId,
+      p_user_id: userId
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function validateQrActivityAttendance(listId: string, token: string) {
+  try {
+    return await supabase.rpc('validate_qr_activity_attendance', {
+      p_list_id: listId,
+      p_token: token
+    });
   } catch (error) {
     return networkError(error);
   }

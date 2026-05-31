@@ -85,6 +85,11 @@ function fallbackContentKey(section: string, title: string, date?: string) {
   return `${section}:${date ? `${date}:` : ''}${title}`;
 }
 
+function validHexColor(value?: string | null, fallback = palette.red) {
+  const color = (value ?? '').trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
+}
+
 export default function App() {
   const [isBooting, setIsBooting] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('inicio');
@@ -121,7 +126,17 @@ export default function App() {
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const touchPointerOpacity = useRef(new Animated.Value(0)).current;
   const themeTransitionProgress = useRef(new Animated.Value(0)).current;
-  const appTheme = themePresets[themeName] ?? themePresets.default;
+  const baseAppTheme = themePresets[themeName] ?? themePresets.default;
+  const identityPrimaryColor = validHexColor(adminConfig.identity.primaryColor, palette.red);
+  const identitySecondaryColor = validHexColor(adminConfig.identity.secondaryColor, palette.blueDeep);
+  const appTheme = useMemo<AppTheme>(() => ({
+    ...baseAppTheme,
+    colors: {
+      ...baseAppTheme.colors,
+      primary: identityPrimaryColor,
+      secondary: identitySecondaryColor
+    }
+  }), [baseAppTheme, identityPrimaryColor, identitySecondaryColor]);
   const isDarkTheme = appTheme.mode === 'dark';
   const { width: viewportWidth } = useWindowDimensions();
   const compactViewport = viewportWidth < 390;
@@ -959,7 +974,7 @@ export default function App() {
         ) : null}
         <View style={[styles.header, isDarkTheme && styles.headerDark]}>
           <TouchableOpacity style={styles.brandBlock} onPress={() => navigateToTab('inicio')} activeOpacity={0.85}>
-            <View style={styles.brandLogo}>
+            <View style={[styles.brandLogo, { backgroundColor: identityPrimaryColor }]}>
               <Image source={palestraLogo} style={styles.brandLogoImage} />
             </View>
             <View style={styles.brandTextBlock}>
@@ -971,14 +986,14 @@ export default function App() {
           <View style={styles.headerActions}>
             <View style={styles.headerActionTop}>
               <TouchableOpacity style={[styles.headerMenuButton, isDarkTheme && styles.headerPillDark]} onPress={() => setGlobalSearchOpen(true)} activeOpacity={0.85}>
-                <Ionicons name="search-outline" size={21} color={palette.red} />
+                <Ionicons name="search-outline" size={21} color={identityPrimaryColor} />
               </TouchableOpacity>
               <TouchableOpacity style={[styles.headerProfileButton, isDarkTheme && styles.headerPillDark]} onPress={() => navigateToTab('perfil')} activeOpacity={0.85}>
-                <Ionicons name="person-circle-outline" size={17} color={palette.red} />
-                {!veryCompactViewport ? <Text style={styles.headerProfileButtonText}>{session ? 'Mi Perfil' : 'Ingresar'}</Text> : null}
+                <Ionicons name="person-circle-outline" size={17} color={identityPrimaryColor} />
+                {!veryCompactViewport ? <Text style={[styles.headerProfileButtonText, { color: identityPrimaryColor }]}>{session ? 'Mi Perfil' : 'Ingresar'}</Text> : null}
               </TouchableOpacity>
               <TouchableOpacity style={[styles.headerMenuButton, isDarkTheme && styles.headerPillDark]} onPress={() => setDrawerOpen(true)} activeOpacity={0.85}>
-                <Ionicons name="menu-outline" size={22} color={palette.red} />
+                <Ionicons name="menu-outline" size={22} color={identityPrimaryColor} />
               </TouchableOpacity>
             </View>
           </View>
@@ -988,7 +1003,7 @@ export default function App() {
             <Pressable style={styles.drawerBackdrop} onPress={() => setDrawerOpen(false)} />
             <SafeAreaView edges={['top', 'bottom']} style={[styles.drawerPanel, isDarkTheme && styles.drawerPanelDark, { width: drawerWidth }]}>
               <View style={styles.drawerHeader}>
-                <View style={styles.drawerLogo}>
+                <View style={[styles.drawerLogo, { backgroundColor: identityPrimaryColor }]}>
                   <Image source={palestraLogo} style={styles.brandLogoImage} />
                 </View>
                 <View style={styles.drawerHeaderText}>
@@ -1002,14 +1017,14 @@ export default function App() {
               <ScrollView style={styles.drawerScroll} contentContainerStyle={styles.drawerScrollContent} showsVerticalScrollIndicator={false}>
                 {drawerItems.map((item) => (
                   <TouchableOpacity key={item.key} style={[styles.drawerItem, isDarkTheme && styles.drawerItemDark, item.active && styles.drawerItemActive, item.active && isDarkTheme && styles.drawerItemActiveDark]} onPress={item.action} activeOpacity={0.84}>
-                    <View style={[styles.drawerIconFrame, isDarkTheme && styles.drawerIconFrameDark, item.active && styles.drawerIconFrameActive]}>
-                      <Ionicons name={item.icon} size={20} color={item.active ? palette.white : palette.red} />
+                    <View style={[styles.drawerIconFrame, isDarkTheme && styles.drawerIconFrameDark, item.active && styles.drawerIconFrameActive, item.active && { backgroundColor: identityPrimaryColor, borderColor: identityPrimaryColor }]}>
+                      <Ionicons name={item.icon} size={20} color={item.active ? palette.white : identityPrimaryColor} />
                     </View>
                     <View style={styles.drawerItemTextBlock}>
                       <Text numberOfLines={1} style={[styles.drawerItemText, isDarkTheme && styles.drawerItemTextDark, item.active && styles.drawerItemTextActive]}>{item.label}</Text>
                       {item.meta ? <Text numberOfLines={1} style={[styles.drawerItemMeta, isDarkTheme && styles.drawerItemMetaDark]}>{item.meta}</Text> : null}
                     </View>
-                    {item.active ? <Ionicons name="ellipse" size={8} color={palette.red} /> : null}
+                    {item.active ? <Ionicons name="ellipse" size={8} color={identityPrimaryColor} /> : null}
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -1035,7 +1050,7 @@ export default function App() {
                     autoCapitalize="none"
                     placeholderTextColor={inputPlaceholderColor}
                   />
-                  <TouchableOpacity style={styles.globalSearchButton} onPress={runGlobalSearch} disabled={globalSearchLoading} activeOpacity={0.84}>
+                  <TouchableOpacity style={[styles.globalSearchButton, { backgroundColor: identityPrimaryColor }]} onPress={runGlobalSearch} disabled={globalSearchLoading} activeOpacity={0.84}>
                     <Ionicons name={globalSearchLoading ? 'hourglass-outline' : 'search-outline'} size={20} color={palette.white} />
                   </TouchableOpacity>
                 </View>
@@ -1155,8 +1170,8 @@ export default function App() {
               <RefreshControl
                 refreshing={isRefreshing}
                 onRefresh={() => refreshAppContent('manual')}
-                colors={[palette.red]}
-                tintColor={palette.red}
+                colors={[identityPrimaryColor]}
+                tintColor={identityPrimaryColor}
                 progressBackgroundColor={isDarkTheme ? themePresets.dark.colors.surface : palette.white}
               />
             )}
