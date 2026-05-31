@@ -872,7 +872,7 @@ export default function App() {
       return <LibrarySectionScreen session={session} title={tabLabel('himno')} section="himno" variant="song" content={appContent.find((item) => item.tab_key === 'himno')} editor={pageEditorProps('himno')} />;
     }
     if (activeTab === 'comunidades') {
-      return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} editor={pageEditorProps('comunidades')} />;
+      return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} nearbySearchEnabled={adminConfig.settings.nearbyCommunitySearchEnabled} editor={pageEditorProps('comunidades')} />;
     }
     if (activeTab === 'historia') {
       return <HistoryScreen title={tabLabel('historia')} content={appContent.find((item) => item.tab_key === 'historia')} editor={pageEditorProps('historia')} />;

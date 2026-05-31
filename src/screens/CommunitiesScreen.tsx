@@ -15,7 +15,7 @@ import { useIsDarkTheme } from '../theme/ThemeContext';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
 
-export function CommunitiesScreen({ session, title, content, refreshKey, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps }) {
+export function CommunitiesScreen({ session, title, content, refreshKey, nearbySearchEnabled, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; nearbySearchEnabled?: boolean; editor?: PageEditorProps }) {
   const isDark = useIsDarkTheme();
   const [communityData, setCommunityData] = useState<AppCommunity[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
@@ -302,13 +302,15 @@ export function CommunitiesScreen({ session, title, content, refreshKey, editor 
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
-      <View style={[styles.card, isDark && styles.surfaceCardDark]}>
-        <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Buscar Comunidad mas cercana</Text>
-        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Usa tu ubicacion actual y muestra comunidades con coordenadas validas dentro de 5 km.</Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={searchNearestCommunity} disabled={nearestLoading} activeOpacity={0.86}>
-          <Text style={styles.primaryButtonText}>{nearestLoading ? 'Buscando...' : 'Buscar comunidad cercana'}</Text>
-        </TouchableOpacity>
-      </View>
+      {nearbySearchEnabled ? (
+        <View style={[styles.card, isDark && styles.surfaceCardDark]}>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Buscar Comunidad mas cercana</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Usa tu ubicacion actual y muestra comunidades con coordenadas validas dentro de 5 km.</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={searchNearestCommunity} disabled={nearestLoading} activeOpacity={0.86}>
+            <Text style={styles.primaryButtonText}>{nearestLoading ? 'Buscando...' : 'Buscar comunidad cercana'}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
       {visibleCommunityData.map((community) => (
         <TouchableOpacity key={community.province} style={[styles.card, styles.provinceCard, isDark && styles.surfaceCardDark]} onPress={() => setSelectedProvince(community.province)} activeOpacity={0.85}>
           <TouchableOpacity style={styles.provinceIcon} onPress={() => setSelectedProvinceLogo(community)} activeOpacity={0.85}>

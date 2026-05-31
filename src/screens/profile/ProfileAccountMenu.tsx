@@ -48,7 +48,7 @@ export function ProfileAccountMenu({
       ))}
       <TouchableOpacity style={styles.accountMenuItem} onPress={onSignOut}>
         <Ionicons name="log-out-outline" size={18} color={palette.red} />
-        <Text style={[styles.accountMenuItemText, styles.accountMenuDanger]}>Cerrar sesi??n</Text>
+        <Text style={[styles.accountMenuItemText, styles.accountMenuDanger]}>Cerrar sesion</Text>
       </TouchableOpacity>
     </View>
   );

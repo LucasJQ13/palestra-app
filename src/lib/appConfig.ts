@@ -43,6 +43,7 @@ export type AppAdminConfig = {
     maintenanceMode: boolean;
     globalMessage: string;
     futureForumEnabled: boolean;
+    nearbyCommunitySearchEnabled: boolean;
     hiddenFallbackContent: string[];
     roleAliases: RoleAliasConfig[];
   };
@@ -92,6 +93,7 @@ export const defaultAdminConfig: AppAdminConfig = {
     maintenanceMode: false,
     globalMessage: '',
     futureForumEnabled: false,
+    nearbyCommunitySearchEnabled: false,
     hiddenFallbackContent: [],
     roleAliases: []
   },

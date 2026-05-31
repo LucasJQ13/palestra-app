@@ -5189,7 +5189,8 @@ export function ProfileScreen({
                   <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje visible durante mantenimiento" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
                   {[
                     { key: 'maintenanceMode', label: 'Modo mantenimiento' },
-                    { key: 'futureForumEnabled', label: 'Preparar foro' }
+                    { key: 'futureForumEnabled', label: 'Preparar foro' },
+                    { key: 'nearbyCommunitySearchEnabled', label: 'Buscar comunidad cercana' }
                   ].map((item) => {
                     const key = item.key as keyof AppAdminConfig['settings'];
                     const active = Boolean(adminConfigDraft.settings[key]);

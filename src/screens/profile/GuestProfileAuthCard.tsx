@@ -88,7 +88,7 @@ export function GuestProfileAuthCard({
       <Text style={styles.cardText}>Estas navegando como invitado. Podes ver inicio, noticias publicas, comunidades, historia y contacto.</Text>
       <View style={styles.filterRow}>
         <TouchableOpacity style={[styles.filterChip, authMode === 'login' && styles.filterChipActive]} onPress={() => setAuthMode('login')}>
-          <Text style={[styles.filterChipText, authMode === 'login' && styles.filterChipTextActive]}>Iniciar sesi??n</Text>
+          <Text style={[styles.filterChipText, authMode === 'login' && styles.filterChipTextActive]}>Iniciar sesion</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.filterChip, authMode === 'register' && styles.filterChipActive]} onPress={() => setAuthMode('register')}>
           <Text style={[styles.filterChipText, authMode === 'register' && styles.filterChipTextActive]}>Registrarme</Text>
@@ -172,7 +172,7 @@ export function GuestProfileAuthCard({
           {authErrors.confirm ? <Text style={styles.formErrorText}>{authErrors.confirm}</Text> : null}
         </>
       ) : null}
-      {authMode === 'register' ? <ActionButton label="Registrarme" onPress={onRegister} /> : <ActionButton label="Iniciar sesi??n" onPress={onSignIn} />}
+      {authMode === 'register' ? <ActionButton label="Registrarme" onPress={onRegister} /> : <ActionButton label="Iniciar sesion" onPress={onSignIn} />}
       {authMessage ? <Text style={styles.cardText}>{authMessage}</Text> : null}
     </View>
   );
