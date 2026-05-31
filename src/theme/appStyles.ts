@@ -1561,7 +1561,8 @@ export const styles = StyleSheet.create({
     height: 160,
     borderRadius: 16,
     marginTop: 12,
-    backgroundColor: palette.whiteSoft
+    backgroundColor: palette.whiteSoft,
+    resizeMode: 'cover'
   },
   expandHint: {
     color: palette.red,
@@ -1784,7 +1785,8 @@ export const styles = StyleSheet.create({
     height: 176,
     borderRadius: 24,
     marginBottom: 12,
-    backgroundColor: palette.whiteSoft
+    backgroundColor: palette.whiteSoft,
+    resizeMode: 'cover'
   },
   communityModalMeta: {
     flexDirection: 'row',
@@ -3093,6 +3095,14 @@ export const styles = StyleSheet.create({
     backgroundColor: palette.red,
     borderColor: palette.red
   },
+  qrActivityUserSelected: {
+    backgroundColor: palette.red,
+    borderRadius: 12,
+    paddingHorizontal: 10
+  },
+  qrActivityUserSelectedText: {
+    color: palette.white
+  },
   statusBanner: {
     borderWidth: 1,
     borderRadius: 18,
@@ -3527,6 +3537,24 @@ export const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 10,
     borderBottomWidth: 0
+  },
+  qrActivityListRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.16)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 10,
+    backgroundColor: palette.white
+  },
+  qrActivityListRowActive: {
+    backgroundColor: 'rgba(45, 141, 200, 0.08)',
+    borderColor: 'rgba(45, 141, 200, 0.34)'
   },
   adminDocumentThumb: {
     width: 42,

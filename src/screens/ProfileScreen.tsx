@@ -173,6 +173,7 @@ export function ProfileScreen({
   const [qrActivityProvince, setQrActivityProvince] = useState(session?.province ?? '');
   const [qrActivityCommunity, setQrActivityCommunity] = useState('');
   const [qrActivityUserSearch, setQrActivityUserSearch] = useState('');
+  const [qrActivityCreateSelectedUserIds, setQrActivityCreateSelectedUserIds] = useState<string[]>([]);
   const [qrActivityProvinceDropdownOpen, setQrActivityProvinceDropdownOpen] = useState(false);
   const [qrActivityCommunityDropdownOpen, setQrActivityCommunityDropdownOpen] = useState(false);
   const [qrActivityUserMode, setQrActivityUserMode] = useState<'usuarios' | 'todos'>('usuarios');
@@ -440,6 +441,24 @@ export function ProfileScreen({
   const qrActivityCommunityOptions = registrationCommunities.find((item) => item.province === (qrActivityProvince || session?.province))?.locations ?? [];
   const qrActivityCommunityDisabled = !qrActivityProvince;
   const qrActivityUserSelectionDisabled = !selectedQrActivityList?.province || !selectedQrActivityList?.community_name;
+  const qrActivityCreateUserOptions = adminUsers.filter((user) => {
+    if (['vocal', 'coordinador_diocesano'].includes(session?.role ?? '') && user.province !== session?.province) {
+      return false;
+    }
+    if (qrActivityProvince && user.province !== qrActivityProvince) {
+      return false;
+    }
+    if (qrActivityCommunity && user.community_name !== qrActivityCommunity) {
+      return false;
+    }
+    const query = qrActivityUserSearch.trim().toLowerCase();
+    if (!query) {
+      return true;
+    }
+    return [user.full_name, user.nickname, user.email, user.community_name, user.province]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
   const qrActivityMemberOptions = adminUsers.filter((user) => {
     if (!selectedQrActivityList) {
       return false;
@@ -1288,13 +1307,29 @@ export function ProfileScreen({
       setAuthMessage('Completa el nombre de la lista.');
       return;
     }
+    if (qrActivityCreateSelectedUserIds.length === 0) {
+      setAuthMessage('Selecciona al menos un usuario para crear la lista.');
+      return;
+    }
     const { data, error } = await createQrActivityList({ title, province, communityName: qrActivityCommunity || null });
     if (error) {
       setAuthMessage(error.message);
       return;
     }
+    const listId = data ? String(data) : '';
+    if (listId) {
+      for (const userId of qrActivityCreateSelectedUserIds) {
+        const { error: memberError } = await addQrActivityMember(listId, userId);
+        if (memberError) {
+          setAuthMessage(memberError.message);
+          await loadQrActivityLists();
+          return;
+        }
+      }
+    }
     setQrActivityTitle('');
     setQrActivityCommunity('');
+    setQrActivityCreateSelectedUserIds([]);
     if (data) {
       setSelectedQrActivityListId(String(data));
     }
@@ -1302,6 +1337,15 @@ export function ProfileScreen({
     setShowQrActivityListsMenu(true);
     setAuthMessage(changeDone('Lista QR creada.'));
     await loadQrActivityLists();
+    if (listId) {
+      await loadQrActivityDetails(listId);
+    }
+  }
+
+  function toggleQrActivityCreateUser(userId: string) {
+    setQrActivityCreateSelectedUserIds((current) =>
+      current.includes(userId) ? current.filter((item) => item !== userId) : [...current, userId]
+    );
   }
 
   async function saveQrActivityListEdit() {
@@ -6379,7 +6423,7 @@ export function ProfileScreen({
                       {qrActivityProvinceDropdownOpen ? (
                         <ScrollView style={styles.dropdownList} nestedScrollEnabled>
                           {qrActivityProvinceOptions.map((province) => (
-                            <TouchableOpacity key={province || 'todas'} style={styles.dropdownItem} onPress={() => { setQrActivityProvince(province); setQrActivityCommunity(''); setQrActivityProvinceDropdownOpen(false); }}>
+                            <TouchableOpacity key={province || 'todas'} style={styles.dropdownItem} onPress={() => { setQrActivityProvince(province); setQrActivityCommunity(''); setQrActivityCreateSelectedUserIds([]); setQrActivityProvinceDropdownOpen(false); }}>
                               <Text style={styles.dropdownItemText}>{province || 'Todas'}</Text>
                             </TouchableOpacity>
                           ))}
@@ -6392,16 +6436,33 @@ export function ProfileScreen({
                       </TouchableOpacity>
                       {qrActivityCommunityDropdownOpen && !qrActivityCommunityDisabled ? (
                         <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                          <TouchableOpacity style={styles.dropdownItem} onPress={() => { setQrActivityCommunity(''); setQrActivityCommunityDropdownOpen(false); }}>
+                          <TouchableOpacity style={styles.dropdownItem} onPress={() => { setQrActivityCommunity(''); setQrActivityCreateSelectedUserIds([]); setQrActivityCommunityDropdownOpen(false); }}>
                             <Text style={styles.dropdownItemText}>Todas</Text>
                           </TouchableOpacity>
                           {qrActivityCommunityOptions.map((community) => (
-                            <TouchableOpacity key={community.id ?? community.name} style={styles.dropdownItem} onPress={() => { setQrActivityCommunity(community.name); setQrActivityCommunityDropdownOpen(false); }}>
+                            <TouchableOpacity key={community.id ?? community.name} style={styles.dropdownItem} onPress={() => { setQrActivityCommunity(community.name); setQrActivityCreateSelectedUserIds([]); setQrActivityCommunityDropdownOpen(false); }}>
                               <Text style={styles.dropdownItemText}>{community.name}</Text>
                             </TouchableOpacity>
                           ))}
                         </ScrollView>
                       ) : null}
+                      <Text style={styles.inputLabel}>Usuarios seleccionados ({qrActivityCreateSelectedUserIds.length})</Text>
+                      <TextInput style={styles.input} placeholder="Buscar usuario para agregar" value={qrActivityUserSearch} onChangeText={setQrActivityUserSearch} placeholderTextColor={inputPlaceholderColor} />
+                      <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                        {qrActivityCreateUserOptions.slice(0, 90).map((user) => {
+                          const selected = qrActivityCreateSelectedUserIds.includes(user.id);
+                          return (
+                            <TouchableOpacity key={user.id} style={[styles.dropdownItem, selected && styles.qrActivityUserSelected]} onPress={() => toggleQrActivityCreateUser(user.id)}>
+                              <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={selected ? palette.white : palette.red} />
+                              <View style={styles.adminUserHeaderText}>
+                                <Text style={[styles.dropdownItemText, selected && styles.qrActivityUserSelectedText]}>{user.full_name ?? user.email ?? 'Usuario'}</Text>
+                                <Text style={[styles.feedMeta, selected && styles.qrActivityUserSelectedText]}>{user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                        {qrActivityCreateUserOptions.length === 0 ? <Text style={styles.cardText}>No hay usuarios disponibles con este filtro.</Text> : null}
+                      </ScrollView>
                       <TouchableOpacity style={styles.primaryButton} onPress={saveQrActivityList}>
                         <Text style={styles.primaryButtonText}>Crear lista QR</Text>
                       </TouchableOpacity>
@@ -6421,7 +6482,7 @@ export function ProfileScreen({
                       </View>
                       {qrActivityLists.length === 0 ? <Text style={styles.cardText}>No hay listas QR visibles para tu rango.</Text> : null}
                       {qrActivityLists.map((list) => (
-                        <TouchableOpacity key={list.id} style={[styles.adminListRow, selectedQrActivityListId === list.id && styles.communityChoiceActive]} onPress={() => setSelectedQrActivityListId(selectedQrActivityListId === list.id ? '' : list.id)}>
+                        <TouchableOpacity key={list.id} style={[styles.qrActivityListRow, selectedQrActivityListId === list.id && styles.qrActivityListRowActive]} onPress={() => setSelectedQrActivityListId(selectedQrActivityListId === list.id ? '' : list.id)}>
                           <View style={styles.adminUserHeaderText}>
                             <Text style={styles.adminQuickText}>{list.title}</Text>
                             <Text style={styles.cardText}>{list.province ?? 'Todas las provincias'} - {list.community_name ?? 'Todas las comunidades'}</Text>
