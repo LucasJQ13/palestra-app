@@ -7,7 +7,7 @@ import { AppContentBlock, createCommunityContactMessage } from '../lib/profiles'
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor, provinceDisplayNames, provinceLogos } from '../lib/constants';
 import { changeDone } from '../lib/appMessages';
-import { Coordinates, NearestCommunityResult, findNearestCommunity, googleMapsDirectionsUrl } from '../lib/nearestCommunity';
+import { Coordinates, NearestCommunityResult, findNearestCommunityDetails, googleMapsDirectionsUrl } from '../lib/nearestCommunity';
 import { Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
@@ -55,15 +55,26 @@ export function CommunitiesScreen({ session, title, content, refreshKey, editor 
         setNearestModalVisible(true);
         return;
       }
-      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
       const userLocation = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude
       };
-      const result = findNearestCommunity(visibleCommunityData, userLocation, 5);
+      const sourceCommunities = visibleCommunityData.length > 0 ? visibleCommunityData : await fetchCommunities();
+      if (visibleCommunityData.length === 0 && sourceCommunities.length > 0) {
+        setCommunityData(sourceCommunities);
+      }
+      const search = findNearestCommunityDetails(sourceCommunities, userLocation, 5);
+      const result = search.nearestWithinRadius;
       setNearestUserLocation(userLocation);
       setNearestResult(result);
-      setNearestMessage(result ? '' : 'No hemos encontrado una comunidad cerca de ti dentro de un radio de 5 km.');
+      setNearestMessage(result
+        ? ''
+        : search.communitiesWithCoordinates === 0
+          ? 'No hay comunidades con coordenadas validas cargadas para calcular distancia.'
+          : search.nearestAnyDistance
+            ? `No hemos encontrado una comunidad cerca de ti dentro de un radio de 5 km. La mas cercana cargada es ${search.nearestAnyDistance.community.name}, a ${search.nearestAnyDistance.distanceKm.toFixed(2)} km.`
+            : 'No hemos encontrado una comunidad cerca de ti dentro de un radio de 5 km.');
       setNearestModalVisible(true);
     } catch (error) {
       setNearestMessage(error instanceof Error ? error.message : 'No pude obtener tu ubicacion actual.');

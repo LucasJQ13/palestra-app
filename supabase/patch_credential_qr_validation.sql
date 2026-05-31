@@ -28,7 +28,7 @@ create policy "Usuarios leen sus credenciales"
   on public.profile_credentials
   for select
   to authenticated
-  using (user_id = auth.uid());
+  using (profile_credentials.user_id = auth.uid());
 
 create or replace function public.issue_profile_credential()
 returns table (
@@ -59,11 +59,11 @@ begin
 
   select *
     into current_credential
-  from public.profile_credentials
-  where user_id = current_profile.id
-    and revoked_at is null
-    and (expires_at is null or expires_at > now())
-  order by issued_at desc
+  from public.profile_credentials pc
+  where pc.user_id = current_profile.id
+    and pc.revoked_at is null
+    and (pc.expires_at is null or pc.expires_at > now())
+  order by pc.issued_at desc
   limit 1;
 
   if current_credential.id is null then
@@ -74,7 +74,7 @@ begin
 
   credential_id := current_credential.id;
   token := current_credential.token;
-  user_id := current_credential.user_id;
+  issue_profile_credential.user_id := current_credential.user_id;
   issued_at := current_credential.issued_at;
   expires_at := current_credential.expires_at;
   revoked_at := current_credential.revoked_at;
@@ -108,8 +108,8 @@ declare
 begin
   select *
     into credential
-  from public.profile_credentials
-  where token = p_token
+  from public.profile_credentials pc
+  where pc.token = p_token
   limit 1;
 
   if credential.id is null then
@@ -122,10 +122,10 @@ begin
   select *
     into profile_row
   from public.profiles
-  where id = credential.user_id;
+  where profiles.id = credential.user_id;
 
   credential_id := credential.id;
-  user_id := credential.user_id;
+  validate_profile_credential.user_id := credential.user_id;
   issued_at := credential.issued_at;
   expires_at := credential.expires_at;
 
