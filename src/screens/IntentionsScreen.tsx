@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppContentBlock, PrayerIntentionRecord, createPrayerIntention, deliverNotificationIntent, fetchRandomPrayerIntention, recordPrayerForIntention } from '../lib/profiles';
 import { PageEditorProps } from '../lib/navigationConstants';
@@ -7,7 +7,6 @@ import { inputPlaceholderColor } from '../lib/constants';
 import { changeDone } from '../lib/appMessages';
 import { Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
-import { SectionTitle } from '../components/SectionTitle';
 import { useIsDarkTheme } from '../theme/ThemeContext';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
@@ -25,6 +24,9 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
   const [remainingSeconds, setRemainingSeconds] = useState(PRAYER_SECONDS);
   const [isPraying, setIsPraying] = useState(false);
   const [completedPrayer, setCompletedPrayer] = useState(false);
+  const [prayerAcknowledged, setPrayerAcknowledged] = useState(false);
+  const [prayerModalVisible, setPrayerModalVisible] = useState(false);
+  const [prayerCount, setPrayerCount] = useState(0);
   const flamePulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -87,6 +89,8 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
     const excludeIds = resetSeen ? [] : prayedIds;
     setMessage('Buscando una intencion para rezar...');
     setCompletedPrayer(false);
+    setPrayerAcknowledged(false);
+    setPrayerCount(0);
     const { data, error } = await fetchRandomPrayerIntention(excludeIds);
     if (error) {
       setMessage(error.message);
@@ -104,7 +108,8 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
     setPrayedIds((current) => Array.from(new Set([...current, data.id])));
     setRemainingSeconds(PRAYER_SECONDS);
     setIsPraying(true);
-    setMessage('Tienes 1 minuto para rezar por esta intencion.');
+    setPrayerModalVisible(true);
+    setMessage('');
   }
 
   async function finishPrayer(intentionId: string) {
@@ -115,17 +120,31 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
       setCompletedPrayer(true);
       return;
     }
+    setPrayerCount(data?.prayer_count ?? 0);
     if (data?.notification_intent_id) {
       await deliverNotificationIntent(data.notification_intent_id).catch(() => undefined);
     }
     setCompletedPrayer(true);
-    setMessage(changeDone('Gracias. Ya avisamos al autor que rezaron por su intencion.'));
   }
 
+  function closePrayerModal() {
+    setPrayerModalVisible(false);
+    setIsPraying(false);
+  }
+
+  const authorLabel = currentIntention?.is_anonymous ? 'Anonimo' : currentIntention?.author_name || 'Palestrista';
+
   return (
-    <ScrollView style={isDark ? styles.contentDark : undefined} contentContainerStyle={styles.content}>
-      <SectionTitle title={title} />
-      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Un espacio simple para pedir oracion y acompanar intenciones de otros palestristas.</Text>
+    <ScrollView style={isDark ? styles.contentDark : undefined} contentContainerStyle={[styles.content, styles.intentionsContent]}>
+      <View style={styles.intentionsHero}>
+        <View style={styles.intentionsSpiritImage}>
+          <Ionicons name="paper-plane-outline" size={54} color={palette.red} />
+        </View>
+        <Text style={styles.intentionsHeroTitle}>Deja tus intenciones{'\n'}y ora por otras personas</Text>
+        <View style={styles.intentionsFlameCorner}>
+          <Ionicons name="flame" size={42} color="#f28a00" />
+        </View>
+      </View>
       <EditableIntro content={content} editor={editor} />
 
       {!session?.id ? (
@@ -135,20 +154,23 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
         </View>
       ) : null}
 
-      <View style={styles.compactToolRow}>
-        <TouchableOpacity style={[styles.compactSquareButton, showCreate && styles.compactSquareButtonActive]} onPress={() => setShowCreate((current) => !current)}>
-          <Ionicons name={showCreate ? 'chevron-up-outline' : 'add-circle-outline'} size={17} color={showCreate ? palette.white : palette.red} />
-          <Text style={[styles.compactSquareButtonText, showCreate && styles.compactSquareButtonTextActive]}>Crear Intencion</Text>
+      <View style={styles.intentionsMainActions}>
+        <TouchableOpacity style={[styles.intentionLargeButton, showCreate && styles.intentionLargeButtonActive]} onPress={() => setShowCreate((current) => !current)}>
+          <Ionicons name="create-outline" size={24} color={showCreate ? palette.white : palette.red} />
+          <Text style={[styles.intentionLargeButtonText, showCreate && styles.intentionLargeButtonTextActive]}>Crear Intencion</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.compactSquareButton} onPress={() => startPrayer()} disabled={isPraying}>
-          <Ionicons name="flame-outline" size={17} color={palette.red} />
-          <Text style={styles.compactSquareButtonText}>Rezar por una Intencion</Text>
+        <TouchableOpacity style={styles.intentionLargeButton} onPress={() => startPrayer()} disabled={isPraying}>
+          <Ionicons name="flame-outline" size={24} color={palette.red} />
+          <Text style={styles.intentionLargeButtonText}>Rezar por una Intencion</Text>
         </TouchableOpacity>
       </View>
 
       {showCreate ? (
-        <View style={[styles.card, isDark && styles.surfaceCardDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nueva intencion</Text>
+        <View style={[styles.intentionInputCard, isDark && styles.surfaceCardDark]}>
+          <View style={styles.intentionsInputHeader}>
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Dejo mi intencion aqui</Text>
+            <Ionicons name="pencil-outline" size={20} color={palette.inkMuted} />
+          </View>
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Escribi tu intencion"
@@ -170,39 +192,53 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
         </View>
       ) : null}
 
-      {currentIntention ? (
-        <View style={[styles.intentionPrayerCard, isDark && styles.surfaceCardDark]}>
-          <View style={styles.candleStage}>
-            <Animated.View style={[styles.candleFlame, { opacity: flameOpacity, transform: [{ rotate: '45deg' }, { scale: flameScale }] }]} />
-            <View style={styles.candleGlow} />
-            <View style={styles.candleBody}>
-              <View style={[styles.candleWax, { height: `${Math.round(waxProgress * 100)}%` }]} />
-            </View>
-            <View style={styles.candleBase} />
-          </View>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{isPraying ? `Quedan ${remainingSeconds}s` : 'Oracion finalizada'}</Text>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Tienes 1 minuto para rezar por esta intencion</Text>
-          <Text style={[styles.intentionText, isDark && styles.textDarkBody]}>{currentIntention.body}</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>
-            {currentIntention.is_anonymous ? 'Autor: Anonimo' : `Autor: ${currentIntention.author_name || 'Palestrista'}`}
-          </Text>
-        </View>
-      ) : null}
-
       {message ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{message}</Text> : null}
 
-      {completedPrayer ? (
-        <View style={styles.compactToolRow}>
-          <TouchableOpacity style={styles.compactSquareButton} onPress={() => setShowCreate(true)}>
-            <Ionicons name="add-circle-outline" size={17} color={palette.red} />
-            <Text style={styles.compactSquareButtonText}>Crear Intencion</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.compactSquareButton} onPress={() => startPrayer()}>
-            <Ionicons name="flame-outline" size={17} color={palette.red} />
-            <Text style={styles.compactSquareButtonText}>Rezar por otra intencion</Text>
-          </TouchableOpacity>
+      <Modal visible={prayerModalVisible} transparent animationType="fade" onRequestClose={closePrayerModal} statusBarTranslucent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalPanel, styles.intentionPrayerModal, isDark && styles.surfacePanelDark]}>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={closePrayerModal}>
+              <Ionicons name="close-outline" size={22} color={palette.red} />
+            </TouchableOpacity>
+            <View style={styles.candleStage}>
+              <Animated.View style={[styles.candleFlame, { opacity: flameOpacity, transform: [{ rotate: '45deg' }, { scale: flameScale }] }]} />
+              <View style={styles.candleGlow} />
+              <View style={styles.candleBody}>
+                <View style={[styles.candleWax, { height: `${Math.round(waxProgress * 100)}%` }]} />
+              </View>
+              <View style={styles.candleBase} />
+            </View>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{isPraying ? `Quedan ${remainingSeconds}s` : 'Oracion finalizada'}</Text>
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{isPraying ? 'Tienes 1 minuto para rezar por esta intencion' : 'Gracias por rezar'}</Text>
+            {currentIntention ? (
+              <>
+                <Text style={[styles.intentionText, isDark && styles.textDarkBody]}>{currentIntention.body}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Autor: {authorLabel}</Text>
+              </>
+            ) : null}
+            {completedPrayer && !prayerAcknowledged ? (
+              <TouchableOpacity style={styles.primaryButton} onPress={() => setPrayerAcknowledged(true)}>
+                <Text style={styles.primaryButtonText}>Amen</Text>
+              </TouchableOpacity>
+            ) : null}
+            {prayerAcknowledged ? (
+              <>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{prayerCount} personas oraron contigo</Text>
+                <View style={styles.intentionsMainActions}>
+                  <TouchableOpacity style={styles.intentionLargeButton} onPress={() => { setPrayerModalVisible(false); setShowCreate(true); }}>
+                    <Ionicons name="create-outline" size={22} color={palette.red} />
+                    <Text style={styles.intentionLargeButtonText}>Crear Intencion</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.intentionLargeButton} onPress={() => startPrayer()}>
+                    <Ionicons name="flame-outline" size={22} color={palette.red} />
+                    <Text style={styles.intentionLargeButtonText}>Rezar otra</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : null}
+          </View>
         </View>
-      ) : null}
+      </Modal>
     </ScrollView>
   );
 }

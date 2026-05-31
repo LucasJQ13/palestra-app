@@ -4,7 +4,7 @@ import { GenderPreference } from '../lib/profileDisplay';
 export type TabKey = string;
 
 export type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'listas_qr' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'contenido_publicado' | 'navegacion' | 'permisos_roles' | 'etiquetas_roles' | 'rangos_alias';
-export type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'buzon' | 'configuracion';
+export type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'buzon' | 'configuracion' | 'intenciones';
 export type AdminRequest = {
   id: string;
   userId?: string | null;

@@ -11,7 +11,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -165,6 +165,8 @@ export function ProfileScreen({
   const [pushChannelDebug, setPushChannelDebug] = useState('');
   const [pushTestResult, setPushTestResult] = useState('');
   const [showPushDiagnostics, setShowPushDiagnostics] = useState(false);
+  const [myPrayerIntentions, setMyPrayerIntentions] = useState<PrayerIntentionRecord[]>([]);
+  const [prayerIntentionsMessage, setPrayerIntentionsMessage] = useState('');
   const [credentialQr, setCredentialQr] = useState<CredentialQrRecord | null>(null);
   const [credentialQrPayload, setCredentialQrPayload] = useState('');
   const [credentialQrMessage, setCredentialQrMessage] = useState('');
@@ -1623,6 +1625,19 @@ export function ProfileScreen({
       return;
     }
     setMailboxMessages(await fetchMailboxMessages());
+  }
+
+  async function loadPrayerIntentionsPanel() {
+    if (!session || session.role === 'invitado') {
+      setMyPrayerIntentions([]);
+      return;
+    }
+    setPrayerIntentionsMessage('Cargando intenciones...');
+    const items = session.role === 'administrador'
+      ? await fetchAdminPrayerIntentions()
+      : await fetchMyPrayerIntentions();
+    setMyPrayerIntentions(items);
+    setPrayerIntentionsMessage(items.length === 0 ? 'No hay intenciones publicadas para mostrar.' : '');
   }
 
   function defaultMailboxTargetMode(): MailboxTargetMode {
@@ -3901,11 +3916,38 @@ export function ProfileScreen({
                 { icon: 'create-outline', label: 'Editar perfil', action: () => { setProfilePanel('editar'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } },
                 { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); setShowCommunity(false); setShowCommunityManagement(false); refreshCommunityForum(); setShowAccountMenu(false); } },
                 ...(session.role === 'palestrista' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
+                { icon: 'flame-outline', label: 'Ver intenciones', action: () => { setProfilePanel('intenciones'); setShowCommunity(false); setShowCommunityManagement(false); loadPrayerIntentionsPanel(); setShowAccountMenu(false); } },
                 { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowCommunity(false); setShowCommunityManagement(false); refreshMailbox(); setShowAccountMenu(false); } },
                 { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } }
               ]}
               onSignOut={signOutReal}
             />
+          ) : null}
+          {profilePanel === 'intenciones' ? (
+            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingRowText}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{session.role === 'administrador' ? 'Todas las intenciones' : 'Mis intenciones'}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.role === 'administrador' ? 'Auditoria completa, incluyendo autores de intenciones anonimas.' : 'Revisa cuantas personas rezaron por cada intencion publicada.'}</Text>
+                </View>
+                <TouchableOpacity style={styles.actionPill} onPress={loadPrayerIntentionsPanel}>
+                  <Ionicons name="refresh-outline" size={16} color={palette.red} />
+                  <Text style={styles.actionPillText}>Actualizar</Text>
+                </TouchableOpacity>
+              </View>
+              {prayerIntentionsMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{prayerIntentionsMessage}</Text> : null}
+              {myPrayerIntentions.map((item) => (
+                <View key={item.id} style={[styles.card, isDark && styles.surfaceCardDark]}>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>
+                    {item.created_at ? new Date(item.created_at).toLocaleDateString('es-AR') : 'Intencion'}
+                    {item.is_anonymous ? ' - marcada como anonima' : ''}
+                  </Text>
+                  {session.role === 'administrador' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Autor real: {item.author_name || 'Palestrista'}</Text> : null}
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.body}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.prayer_count} personas rezaron por esta intencion</Text>
+                </View>
+              ))}
+            </View>
           ) : null}
           {profilePanel === 'vista' && !session.perseveranceStartYear ? (
             <TouchableOpacity style={styles.completionNotice} onPress={() => setProfilePanel('editar')} activeOpacity={0.86}>

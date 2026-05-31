@@ -4067,6 +4067,100 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(45, 141, 200, 0.1)'
   },
+  intentionsContent: {
+    gap: 16,
+    backgroundColor: '#fffaf0'
+  },
+  intentionsHero: {
+    minHeight: 210,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    position: 'relative',
+    borderRadius: 24,
+    backgroundColor: '#fff8e9',
+    overflow: 'hidden'
+  },
+  intentionsSpiritImage: {
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(242, 138, 0, 0.18)'
+  },
+  intentionsHeroTitle: {
+    color: '#f28a00',
+    fontSize: 28,
+    lineHeight: 36,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
+  intentionsFlameCorner: {
+    position: 'absolute',
+    right: 18,
+    bottom: 14,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)'
+  },
+  intentionsMainActions: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'stretch'
+  },
+  intentionLargeButton: {
+    flex: 1,
+    minHeight: 82,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    padding: 10
+  },
+  intentionLargeButtonActive: {
+    backgroundColor: palette.red,
+    borderColor: palette.red
+  },
+  intentionLargeButtonText: {
+    color: palette.ink,
+    fontSize: 15,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
+  intentionLargeButtonTextActive: {
+    color: palette.white
+  },
+  intentionInputCard: {
+    borderRadius: 20,
+    padding: 14,
+    gap: 12,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2
+  },
+  intentionsInputHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  intentionPrayerModal: {
+    alignItems: 'center',
+    paddingTop: 34
+  },
   intentionPrayerCard: {
     borderRadius: 20,
     padding: 18,

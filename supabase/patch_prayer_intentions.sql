@@ -256,7 +256,7 @@ begin
     auth.uid(),
     'intencion_rezada',
     'Rezaron por tu intencion',
-    'Rezaron por tu intencion: ' || next_count::text,
+    next_count::text || ' personas rezaron por tu intencion',
     'usuario',
     target_intention.author_id::text,
     'intenciones',
@@ -273,3 +273,65 @@ end;
 $$;
 
 grant execute on function public.record_prayer_for_intention(uuid) to authenticated;
+
+create or replace function public.get_my_prayer_intentions()
+returns table (
+  id uuid,
+  body text,
+  is_anonymous boolean,
+  author_name text,
+  prayer_count integer,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    intentions.id,
+    intentions.body,
+    intentions.is_anonymous,
+    coalesce(author.full_name, 'Palestrista') as author_name,
+    intentions.prayer_count,
+    intentions.created_at
+  from public.prayer_intentions intentions
+  join public.profiles author on author.id = intentions.author_id
+  where intentions.author_id = auth.uid()
+    and intentions.archived_at is null
+  order by intentions.created_at desc;
+$$;
+
+grant execute on function public.get_my_prayer_intentions() to authenticated;
+
+create or replace function public.admin_get_prayer_intentions()
+returns table (
+  id uuid,
+  body text,
+  is_anonymous boolean,
+  author_name text,
+  prayer_count integer,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    intentions.id,
+    intentions.body,
+    intentions.is_anonymous,
+    coalesce(author.full_name, author.email, 'Palestrista') as author_name,
+    intentions.prayer_count,
+    intentions.created_at
+  from public.prayer_intentions intentions
+  join public.profiles admin_profile on admin_profile.id = auth.uid()
+  join public.profiles author on author.id = intentions.author_id
+  where admin_profile.role = 'administrador'
+    and admin_profile.status = 'aprobado'
+    and intentions.archived_at is null
+  order by intentions.created_at desc;
+$$;
+
+grant execute on function public.admin_get_prayer_intentions() to authenticated;

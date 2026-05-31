@@ -1048,6 +1048,30 @@ export async function recordPrayerForIntention(intentionId: string): Promise<{ d
   }
 }
 
+export async function fetchMyPrayerIntentions(): Promise<PrayerIntentionRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_my_prayer_intentions');
+    if (error || !data) {
+      return [];
+    }
+    return data as PrayerIntentionRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchAdminPrayerIntentions(): Promise<PrayerIntentionRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('admin_get_prayer_intentions');
+    if (error || !data) {
+      return [];
+    }
+    return data as PrayerIntentionRecord[];
+  } catch {
+    return [];
+  }
+}
+
 export async function debugPushToDevice(values: {
   token: string;
   projectId: string;
