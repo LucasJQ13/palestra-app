@@ -72,12 +72,6 @@ export function MotivadorScreen({ session, title, content, refreshKey, editor, a
           ) : null}
         </View>
       ))}
-      {session?.role === 'administrador' ? (
-        <View style={styles.notice}>
-          <Ionicons name="archive-outline" size={20} color={palette.red} />
-          <Text style={styles.noticeText}>El registro histórico de PM queda disponible acá; las fechas cargadas en Supabase también se reflejan en el calendario de Noticias.</Text>
-        </View>
-      ) : null}
     </View>
   );
 }

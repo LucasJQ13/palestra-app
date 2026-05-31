@@ -81,6 +81,15 @@ function defaultUsersProvinceFor(session: Session | null, users: AdminUser[]) {
   return scopedUsers.find((item) => item.province)?.province ?? scopedUsers[0]?.province ?? 'Sin provincia';
 }
 
+function userListDisplayName(user: { id?: string; user_id?: string | null; full_name?: string | null; email?: string | null; nickname?: string | null; phone?: string | null }) {
+  const fallbackId = user.id ?? user.user_id ?? '';
+  return user.full_name?.trim()
+    || user.nickname?.trim()
+    || user.email?.trim()
+    || user.phone?.trim()
+    || (fallbackId ? `Usuario ${fallbackId.slice(0, 8)}` : 'Usuario');
+}
+
 export function ProfileScreen({
   session,
   onSessionChange,
@@ -159,6 +168,7 @@ export function ProfileScreen({
   const [credentialQr, setCredentialQr] = useState<CredentialQrRecord | null>(null);
   const [credentialQrPayload, setCredentialQrPayload] = useState('');
   const [credentialQrMessage, setCredentialQrMessage] = useState('');
+  const [credentialQrExpanded, setCredentialQrExpanded] = useState(false);
   const [qrScannerVisible, setQrScannerVisible] = useState(false);
   const [qrScannerActive, setQrScannerActive] = useState(false);
   const [qrScannerMode, setQrScannerMode] = useState<'credential' | 'activity'>('credential');
@@ -4517,14 +4527,18 @@ export function ProfileScreen({
             </View>
             {credentialQrPayload ? (
               <View style={styles.credentialQrPanel}>
-                <View style={styles.credentialQrImage}>
+                <TouchableOpacity style={styles.credentialQrImage} activeOpacity={0.86} onPress={() => setCredentialQrExpanded(true)}>
                   <CredentialQrCode value={credentialQrPayload} size={104} />
-                </View>
+                </TouchableOpacity>
                 <View style={styles.adminUserHeaderText}>
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>QR verificable</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>ID: {credentialQr?.credential_id.slice(0, 8) ?? 'pendiente'} - v{credentialQr?.version ?? 1}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Generada: {credentialQr?.issued_at ? new Date(credentialQr.issued_at).toLocaleDateString('es-AR') : 'pendiente'}</Text>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => { setCredentialQrPayload(''); setCredentialQr(null); setCredentialQrMessage('QR cerrado. Puedes generarlo nuevamente cuando lo necesites.'); }}>
+                  <TouchableOpacity style={styles.actionPill} onPress={() => setCredentialQrExpanded(true)}>
+                    <Ionicons name="expand-outline" size={16} color={palette.red} />
+                    <Text style={styles.actionPillText}>Ampliar QR</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionPill} onPress={() => { setCredentialQrExpanded(false); setCredentialQrPayload(''); setCredentialQr(null); setCredentialQrMessage('QR cerrado. Puedes generarlo nuevamente cuando lo necesites.'); }}>
                     <Ionicons name="close-outline" size={16} color={palette.red} />
                     <Text style={styles.actionPillText}>Cerrar QR</Text>
                   </TouchableOpacity>
@@ -4544,6 +4558,22 @@ export function ProfileScreen({
               </TouchableOpacity>
             ) : null}
           </View>
+          <Modal visible={credentialQrExpanded} transparent animationType="fade" onRequestClose={() => setCredentialQrExpanded(false)} statusBarTranslucent>
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalPanel, styles.credentialQrExpandedPanel, isDark && styles.surfacePanelDark]}>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>QR verificable</Text>
+                {credentialQrPayload ? (
+                  <View style={styles.credentialQrExpandedImage}>
+                    <CredentialQrCode value={credentialQrPayload} size={260} />
+                  </View>
+                ) : null}
+                <TouchableOpacity style={styles.primaryButton} onPress={() => setCredentialQrExpanded(false)}>
+                  <Ionicons name="close-outline" size={17} color={palette.white} />
+                  <Text style={styles.primaryButtonText}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
           <Modal visible={qrScannerVisible} transparent animationType="slide" onRequestClose={() => { setQrScannerVisible(false); setQrScannerActive(false); }} statusBarTranslucent>
             <View style={styles.modalOverlay} pointerEvents="box-none">
               <TouchableOpacity style={styles.modalBackdropTouch} activeOpacity={1} onPress={() => { setQrScannerVisible(false); setQrScannerActive(false); }} />
@@ -6624,7 +6654,7 @@ export function ProfileScreen({
                             <TouchableOpacity key={user.id} style={[styles.dropdownItem, selected && styles.qrActivityUserSelected]} onPress={() => toggleQrActivityCreateUser(user.id)}>
                               <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={selected ? palette.white : palette.red} />
                               <View style={styles.adminUserHeaderText}>
-                                <Text style={[styles.dropdownItemText, selected && styles.qrActivityUserSelectedText]}>{user.full_name ?? user.email ?? 'Usuario'}</Text>
+                                <Text style={[styles.dropdownItemText, selected && styles.qrActivityUserSelectedText]}>{userListDisplayName(user)}</Text>
                                 <Text style={[styles.feedMeta, selected && styles.qrActivityUserSelectedText]}>{user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
                               </View>
                             </TouchableOpacity>
@@ -6657,7 +6687,7 @@ export function ProfileScreen({
                                 <TouchableOpacity key={user.id} style={[styles.dropdownItem, selected && styles.qrActivityUserSelected]} onPress={() => toggleQrActivityShareUser(user.id)}>
                                   <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={selected ? palette.white : palette.red} />
                                   <View style={styles.adminUserHeaderText}>
-                                    <Text style={[styles.dropdownItemText, selected && styles.qrActivityUserSelectedText]}>{user.full_name ?? user.email ?? 'Usuario'}</Text>
+                                    <Text style={[styles.dropdownItemText, selected && styles.qrActivityUserSelectedText]}>{userListDisplayName(user)}</Text>
                                     <Text style={[styles.feedMeta, selected && styles.qrActivityUserSelectedText]}>{roleLabel((user.role || 'palestrista') as Role)} - {user.province ?? 'Sin provincia'}</Text>
                                   </View>
                                 </TouchableOpacity>
@@ -6718,7 +6748,7 @@ export function ProfileScreen({
                       {qrActivityShares.length === 0 ? <Text style={styles.cardText}>Solo visible para el creador y el alcance base.</Text> : null}
                       {qrActivityShares.map((share) => (
                         <Text key={share.id} style={styles.cardText}>
-                          {share.shared_with_role ? `Rango: ${roleLabel(share.shared_with_role as Role)}` : `Usuario: ${share.shared_with_user_name ?? share.shared_with_user_id}`}
+                          {share.shared_with_role ? `Rango: ${roleLabel(share.shared_with_role as Role)}` : `Usuario: ${share.shared_with_user_name?.trim() || share.shared_with_user_id || 'Usuario'}`}
                         </Text>
                       ))}
                       <TouchableOpacity style={styles.dropdownButton} onPress={() => setQrActivityShareDropdownOpen((current) => !current)}>
@@ -6746,7 +6776,7 @@ export function ProfileScreen({
                                 <TouchableOpacity key={user.id} style={[styles.dropdownItem, selected && styles.qrActivityUserSelected]} onPress={() => toggleQrActivityShareUser(user.id, 'edit')}>
                                   <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={selected ? palette.white : palette.red} />
                                   <View style={styles.adminUserHeaderText}>
-                                    <Text style={[styles.dropdownItemText, selected && styles.qrActivityUserSelectedText]}>{user.full_name ?? user.email ?? 'Usuario'}</Text>
+                                    <Text style={[styles.dropdownItemText, selected && styles.qrActivityUserSelectedText]}>{userListDisplayName(user)}</Text>
                                     <Text style={[styles.feedMeta, selected && styles.qrActivityUserSelectedText]}>{roleLabel((user.role || 'palestrista') as Role)} - {user.province ?? 'Sin provincia'}</Text>
                                   </View>
                                 </TouchableOpacity>
@@ -6785,7 +6815,7 @@ export function ProfileScreen({
                                 <TouchableOpacity key={userId} style={styles.dropdownItem} onPress={() => addUserToQrActivity(userId)} disabled={alreadyAdded}>
                                   <Ionicons name={alreadyAdded ? 'checkmark-circle-outline' : 'add-circle-outline'} size={18} color={alreadyAdded ? palette.green : palette.red} />
                                   <View style={styles.adminUserHeaderText}>
-                                    <Text style={styles.dropdownItemText}>{'full_name' in user ? user.full_name ?? 'Usuario' : 'Usuario'}</Text>
+                                    <Text style={styles.dropdownItemText}>{userListDisplayName(user)}</Text>
                                     <Text style={styles.feedMeta}>{'community_name' in user ? user.community_name ?? 'Sin comunidad' : ''}</Text>
                                   </View>
                                 </TouchableOpacity>
@@ -6812,7 +6842,7 @@ export function ProfileScreen({
                       {qrActivityMembers.map((member) => (
                         <View key={member.id} style={styles.adminListRow}>
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{member.full_name ?? 'Usuario'}</Text>
+                            <Text style={styles.adminQuickText}>{userListDisplayName(member)}</Text>
                             <Text style={styles.cardText}>{member.community_name ?? 'Sin comunidad'}</Text>
                           </View>
                           <TouchableOpacity style={styles.actionPill} onPress={() => removeUserFromQrActivity(member.user_id)}>
@@ -6826,7 +6856,7 @@ export function ProfileScreen({
                         <View key={item.id} style={styles.adminListRow}>
                           <Ionicons name="checkmark-circle-outline" size={20} color={palette.green} />
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{item.full_name ?? 'Usuario'}</Text>
+                            <Text style={styles.adminQuickText}>{userListDisplayName(item)}</Text>
                             <Text style={styles.cardText}>{item.community_name ?? 'Sin comunidad'} - {item.validated_at ? new Date(item.validated_at).toLocaleString('es-AR') : ''}</Text>
                           </View>
                         </View>

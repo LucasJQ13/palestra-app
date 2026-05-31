@@ -7,7 +7,7 @@ import { AppContentBlock, createCommunityContactMessage } from '../lib/profiles'
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor, provinceDisplayNames, provinceLogos } from '../lib/constants';
 import { changeDone } from '../lib/appMessages';
-import { Coordinates, NearestCommunityResult, findNearestCommunityDetails, googleMapsDirectionsUrl } from '../lib/nearestCommunity';
+import { Coordinates, NearestCommunityResult, findNearestCommunityDetails } from '../lib/nearestCommunity';
 import { Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
@@ -101,17 +101,18 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
       latitude: Number(nearestResult.community.latitude),
       longitude: Number(nearestResult.community.longitude)
     };
-    const appUrl = `comgooglemaps://?saddr=${nearestUserLocation.latitude},${nearestUserLocation.longitude}&daddr=${destination.latitude},${destination.longitude}&directionsmode=walking`;
-    const webUrl = googleMapsDirectionsUrl(nearestUserLocation, destination);
+    const label = encodeURIComponent(nearestResult.community.name || 'Comunidad Palestra');
+    const query = `${destination.latitude},${destination.longitude}`;
+    const nativeUrl = Platform.OS === 'android'
+      ? `geo:${query}?q=${query}(${label})`
+      : `maps://?q=${label}&ll=${query}`;
+    const webUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
     try {
-      if (await Linking.canOpenURL(appUrl)) {
-        await Linking.openURL(appUrl);
-        return;
-      }
+      await Linking.openURL(nativeUrl);
+      return;
     } catch {
-      // Fall back to the browser URL below.
+      await Linking.openURL(webUrl);
     }
-    await Linking.openURL(webUrl);
   }
 
   function openCommunityPresentation(locationName: string) {

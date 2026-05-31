@@ -2442,6 +2442,20 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  credentialQrExpandedPanel: {
+    alignItems: 'center',
+    maxWidth: 360
+  },
+  credentialQrExpandedImage: {
+    width: 284,
+    height: 284,
+    borderRadius: 22,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)'
+  },
   qrCamera: {
     width: '100%',
     minHeight: 280,
