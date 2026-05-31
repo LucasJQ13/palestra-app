@@ -30,6 +30,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
   const [nearestMessage, setNearestMessage] = useState('');
   const [nearestResult, setNearestResult] = useState<NearestCommunityResult | null>(null);
   const [nearestUserLocation, setNearestUserLocation] = useState<Coordinates | null>(null);
+  const [nearestUserAddress, setNearestUserAddress] = useState('');
   const [nearestModalVisible, setNearestModalVisible] = useState(false);
   const contactScrollRef = useRef<ScrollView | null>(null);
   const visibleCommunityData = communityData;
@@ -48,6 +49,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
     setNearestMessage('Buscando tu ubicacion...');
     setNearestResult(null);
     setNearestUserLocation(null);
+    setNearestUserAddress('');
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== 'granted') {
@@ -60,6 +62,13 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
         latitude: position.coords.latitude,
         longitude: position.coords.longitude
       };
+      try {
+        const [address] = await Location.reverseGeocodeAsync(userLocation);
+        const street = [address?.street, address?.streetNumber].filter(Boolean).join(' ');
+        setNearestUserAddress(street || address?.name || address?.district || address?.city || '');
+      } catch {
+        setNearestUserAddress('');
+      }
       const sourceCommunities = visibleCommunityData.length > 0 ? visibleCommunityData : await fetchCommunities();
       if (visibleCommunityData.length === 0 && sourceCommunities.length > 0) {
         setCommunityData(sourceCommunities);
@@ -361,8 +370,8 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                   </View>
                   <TouchableOpacity style={[styles.card, isDark && styles.surfaceCardDark]} onPress={openNearestInMaps} activeOpacity={0.86}>
                     <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mapa interactivo</Text>
-                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tu ubicacion: {nearestUserLocation.latitude.toFixed(5)}, {nearestUserLocation.longitude.toFixed(5)}</Text>
-                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Comunidad: {Number(nearestResult.community.latitude).toFixed(5)}, {Number(nearestResult.community.longitude).toFixed(5)}</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tu ubicacion: cerca de {nearestUserAddress || 'tu posicion actual'}</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Comunidad: {nearestResult.community.address}</Text>
                     <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>Tocar para abrir ruta interactiva</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.primaryButton} onPress={openNearestInMaps}>

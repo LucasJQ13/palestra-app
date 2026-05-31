@@ -1627,6 +1627,8 @@ export async function createCommunity(values: {
   meetingDay: string;
   meetingTime: string;
   description: string;
+  latitude?: number | null;
+  longitude?: number | null;
   isActive: boolean;
 }) {
   try {
@@ -1639,6 +1641,8 @@ export async function createCommunity(values: {
       p_meeting_day: values.meetingDay,
       p_meeting_time: values.meetingTime,
       p_description: values.description,
+      p_latitude: values.latitude ?? null,
+      p_longitude: values.longitude ?? null,
       p_is_active: values.isActive
     });
   } catch (error) {

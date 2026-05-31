@@ -256,7 +256,7 @@ begin
   update public.profile_credentials
   set revoked_at = now()
   where profile_credentials.user_id = current_profile.id
-    and revoked_at is null;
+    and profile_credentials.revoked_at is null;
 
   insert into public.profile_credentials (user_id, expires_at, version)
   values (

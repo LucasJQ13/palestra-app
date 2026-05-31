@@ -342,6 +342,7 @@ export function ProfileScreen({
   const [adminCommunityImageUploading, setAdminCommunityImageUploading] = useState(false);
   const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
   const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
+  const [showAdminCommunityCreate, setShowAdminCommunityCreate] = useState(false);
   const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; sectionType: AppTabSectionType; isVisible: boolean; visibleRoles: string[] | null }>>({});
   const [newTabLabel, setNewTabLabel] = useState('');
   const [newTabKey, setNewTabKey] = useState('');
@@ -3248,6 +3249,12 @@ export function ProfileScreen({
     }
 
     setAuthMessage('Creando comunidad...');
+    const latitude = adminCommunityLatitude.trim() ? Number(adminCommunityLatitude.replace(',', '.')) : null;
+    const longitude = adminCommunityLongitude.trim() ? Number(adminCommunityLongitude.replace(',', '.')) : null;
+    if ((latitude != null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) || (longitude != null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))) {
+      setAuthMessage('Coordenadas invalidas. Latitud debe estar entre -90 y 90, longitud entre -180 y 180.');
+      return;
+    }
     const { error } = await createCommunity({
       province: adminCommunityProvince,
       name: adminCommunityName.trim(),
@@ -3257,6 +3264,8 @@ export function ProfileScreen({
       meetingDay: adminCommunityDay.trim(),
       meetingTime: adminCommunityTime.trim(),
       description: adminCommunityDescription.trim(),
+      latitude,
+      longitude,
       isActive: adminCommunityIsActive
     });
     if (error) {
@@ -3271,6 +3280,9 @@ export function ProfileScreen({
     setAdminCommunityDay('');
     setAdminCommunityTime('');
     setAdminCommunityDescription('');
+    setAdminCommunityLatitude('');
+    setAdminCommunityLongitude('');
+    setShowAdminCommunityCreate(false);
     setAuthMessage(changeDone('Comunidad creada.'));
     await onContentChanged();
   }
@@ -6400,6 +6412,12 @@ export function ProfileScreen({
                   </ScrollView>
                   {manageableCommunities.length === 0 ? <Text style={styles.cardText}>Tu rango no tiene comunidades editables.</Text> : null}
                   {canAdministrateCommunities && selectedAdminProvince ? (
+                    <TouchableOpacity style={styles.primaryButton} onPress={() => { setShowAdminCommunityCreate((current) => !current); setAdminCommunityId(''); }}>
+                      <Ionicons name={showAdminCommunityCreate ? 'chevron-up-outline' : 'add-circle-outline'} size={17} color={palette.white} />
+                      <Text style={styles.primaryButtonText}>Crear Comunidad</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {canAdministrateCommunities && selectedAdminProvince && showAdminCommunityCreate ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Crear comunidad</Text>
                       <TextInput style={styles.input} placeholder="Nombre de comunidad" value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityName(value); }}  placeholderTextColor={inputPlaceholderColor} />
@@ -6413,11 +6431,21 @@ export function ProfileScreen({
                           </TouchableOpacity>
                         ))}
                       </View>
-                      <TextInput style={styles.input} placeholder="Localidad, zona o dirección" value={adminCommunityId ? '' : adminCommunityAddress} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityAddress(value); }}  placeholderTextColor={inputPlaceholderColor} />
-                      <TextInput style={styles.input} placeholder="Contacto opcional" value={adminCommunityId ? '' : adminCommunityPhone} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityPhone(value); }}  placeholderTextColor={inputPlaceholderColor} />
-                      <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityId ? '' : adminCommunityDay} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDay(value); }}  placeholderTextColor={inputPlaceholderColor} />
-                      <TextInput style={styles.input} placeholder="Horario" value={adminCommunityId ? '' : adminCommunityTime} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityTime(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <View style={styles.filterRow}>
+                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Direccion" value={adminCommunityId ? '' : adminCommunityAddress} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityAddress(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Contacto" value={adminCommunityId ? '' : adminCommunityPhone} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityPhone(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      </View>
+                      <View style={styles.filterRow}>
+                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Dia de reunion" value={adminCommunityId ? '' : adminCommunityDay} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDay(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Horario" value={adminCommunityId ? '' : adminCommunityTime} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityTime(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      </View>
+                      <View style={styles.filterRow}>
+                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Latitud" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Longitud" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
+                      </View>
                       <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={adminCommunityId ? '' : adminCommunityDescription} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDescription(value); }} multiline  placeholderTextColor={inputPlaceholderColor} />
+                      <Text style={styles.cardEyebrow}>Imagen</Text>
+                      <Text style={styles.cardText}>La imagen se carga desde la edicion de la comunidad una vez creada.</Text>
                       <TouchableOpacity style={[styles.filterChip, adminCommunityIsActive && styles.filterChipActive]} onPress={() => setAdminCommunityIsActive(!adminCommunityIsActive)}>
                         <Text style={[styles.filterChipText, adminCommunityIsActive && styles.filterChipTextActive]}>{adminCommunityIsActive ? 'Activa' : 'Inactiva'}</Text>
                       </TouchableOpacity>
@@ -6445,7 +6473,14 @@ export function ProfileScreen({
                               {selected ? (
                                 <View style={styles.adminInlineEditor}>
                                   <TextInput style={styles.input} placeholder="Nombre" value={adminCommunityName} onChangeText={setAdminCommunityName}  placeholderTextColor={inputPlaceholderColor} />
-                                  <TextInput style={styles.input} placeholder="Dirección" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
+                                  <View style={styles.filterRow}>
+                                    <TextInput style={[styles.input, styles.colorInput]} placeholder="Direccion" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
+                                    <TextInput style={[styles.input, styles.colorInput]} placeholder="Contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone}  placeholderTextColor={inputPlaceholderColor} />
+                                  </View>
+                                  <View style={styles.filterRow}>
+                                    <TextInput style={[styles.input, styles.colorInput]} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
+                                    <TextInput style={[styles.input, styles.colorInput]} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
+                                  </View>
                                   <View style={styles.profileCommunityPanel}>
                                     <Text style={styles.cardEyebrow}>Ubicacion</Text>
                                     <Text style={styles.cardText}>Cargar coordenadas habilita "Buscar Comunidad Cercana". PodÃ©s copiarlas desde Google Maps.</Text>
@@ -6458,9 +6493,6 @@ export function ProfileScreen({
                                       <Text style={styles.secondaryButtonText}>Ver direccion en Maps</Text>
                                     </TouchableOpacity>
                                   </View>
-                                  <TextInput style={styles.input} placeholder="Numero de contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone}  placeholderTextColor={inputPlaceholderColor} />
-                                  <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
-                                  <TextInput style={styles.input} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
                                   <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
                                   <Text style={styles.cardEyebrow}>Imagen de comunidad</Text>
                                   <Text style={styles.cardText}>Imagen recomendada: 1200x600 px. La app abre recorte 2:1 para encuadrar antes de guardar.</Text>

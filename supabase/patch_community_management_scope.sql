@@ -3,6 +3,8 @@
 
 alter table public.communities
 add column if not exists is_active boolean not null default true,
+add column if not exists latitude double precision,
+add column if not exists longitude double precision,
 add column if not exists archived_at timestamptz,
 add column if not exists updated_at timestamptz,
 add column if not exists updated_by uuid references public.profiles(id);
@@ -82,6 +84,7 @@ to authenticated
 using (public.current_user_can_manage_community(id))
 with check (public.current_user_can_manage_community(id));
 
+drop function if exists public.admin_create_community(text, text, text, text, text, text, text, text, boolean);
 create or replace function public.admin_create_community(
   p_province text,
   p_name text,
@@ -91,6 +94,8 @@ create or replace function public.admin_create_community(
   p_meeting_day text,
   p_meeting_time text,
   p_description text,
+  p_latitude double precision default null,
+  p_longitude double precision default null,
   p_is_active boolean default true
 )
 returns uuid
@@ -132,7 +137,7 @@ begin
 
   insert into public.communities (
     province_id, name, group_type, address, phone, meeting_day, meeting_time,
-    description, is_active, updated_by, updated_at
+    description, latitude, longitude, is_active, updated_by, updated_at
   )
   values (
     selected_province_id,
@@ -143,6 +148,8 @@ begin
     nullif(trim(p_meeting_day), ''),
     nullif(trim(p_meeting_time), ''),
     nullif(trim(p_description), ''),
+    p_latitude,
+    p_longitude,
     coalesce(p_is_active, true),
     auth.uid(),
     now()
@@ -156,7 +163,7 @@ begin
 end;
 $$;
 
-grant execute on function public.admin_create_community(text, text, text, text, text, text, text, text, boolean) to authenticated;
+grant execute on function public.admin_create_community(text, text, text, text, text, text, text, text, double precision, double precision, boolean) to authenticated;
 
 create or replace function public.admin_update_community(
   p_community_id uuid,
