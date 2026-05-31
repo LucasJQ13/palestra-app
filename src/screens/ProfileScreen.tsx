@@ -3125,11 +3125,16 @@ export function ProfileScreen({
   }
 
   async function pickAdminCommunityImage() {
-    if (!selectedAdminCommunity?.id) {
+    const isCreatingCommunity = showAdminCommunityCreate && !selectedAdminCommunity?.id;
+    if (!isCreatingCommunity && !selectedAdminCommunity?.id) {
       setAuthMessage('Elegir una comunidad antes de cargar imagen.');
       return;
     }
-    if (!canEditCommunity(session, adminCommunityProvince, selectedAdminCommunity.name)) {
+    if (isCreatingCommunity && !canAdministrateCommunities) {
+      setAuthMessage('Tu rango no puede cargar imagen al crear comunidades.');
+      return;
+    }
+    if (!isCreatingCommunity && selectedAdminCommunity && !canEditCommunity(session, adminCommunityProvince, selectedAdminCommunity.name)) {
       setAuthMessage('Tu rango no puede cambiar la imagen de esta comunidad.');
       return;
     }
@@ -3152,9 +3157,9 @@ export function ProfileScreen({
     setAuthMessage('Imagen seleccionada. Revisá la vista previa y guardá la comunidad.');
   }
 
-  async function uploadAdminCommunityImage() {
-    if (!adminCommunityImageAsset || !selectedAdminCommunity?.id) {
-      return adminCommunityImageUrl;
+  async function uploadAdminCommunityImage(communityId = selectedAdminCommunity?.id, fallbackUrl = adminCommunityImageUrl) {
+    if (!adminCommunityImageAsset || !communityId) {
+      return fallbackUrl;
     }
     setAdminCommunityImageUploading(true);
     try {
@@ -3162,7 +3167,7 @@ export function ProfileScreen({
       const bytes = await response.arrayBuffer();
       const extension = adminCommunityImageAsset.uri.split('.').pop()?.split('?')[0] || 'jpg';
       const safeExtension = extension.length <= 5 ? extension : 'jpg';
-      const path = `${selectedAdminCommunity.id}/community-${Date.now()}.${safeExtension}`;
+      const path = `${communityId}/community-${Date.now()}.${safeExtension}`;
       const { error: uploadError } = await supabase.storage
         .from('community-images')
         .upload(path, bytes, {
@@ -3255,7 +3260,7 @@ export function ProfileScreen({
       setAuthMessage('Coordenadas invalidas. Latitud debe estar entre -90 y 90, longitud entre -180 y 180.');
       return;
     }
-    const { error } = await createCommunity({
+    const { data: createdCommunityId, error } = await createCommunity({
       province: adminCommunityProvince,
       name: adminCommunityName.trim(),
       groupType: adminCommunityGroupType,
@@ -3272,6 +3277,19 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
+    if (adminCommunityImageAsset && createdCommunityId) {
+      try {
+        const imageUrl = await uploadAdminCommunityImage(String(createdCommunityId), '');
+        const { error: imageError } = await updateCommunity(String(createdCommunityId), { image_url: imageUrl });
+        if (imageError) {
+          setAuthMessage(imageError.message);
+          return;
+        }
+      } catch (uploadError) {
+        setAuthMessage(uploadError instanceof Error ? uploadError.message : 'Comunidad creada, pero no se pudo subir la imagen.');
+        return;
+      }
+    }
     const items = await fetchCommunities();
     setRegistrationCommunities(items);
     setAdminCommunityName('');
@@ -3282,6 +3300,9 @@ export function ProfileScreen({
     setAdminCommunityDescription('');
     setAdminCommunityLatitude('');
     setAdminCommunityLongitude('');
+    setAdminCommunityImageAsset(null);
+    setAdminCommunityImageUrl('');
+    setAdminCommunityImagePreview('');
     setShowAdminCommunityCreate(false);
     setAuthMessage(changeDone('Comunidad creada.'));
     await onContentChanged();
@@ -6412,7 +6433,13 @@ export function ProfileScreen({
                   </ScrollView>
                   {manageableCommunities.length === 0 ? <Text style={styles.cardText}>Tu rango no tiene comunidades editables.</Text> : null}
                   {canAdministrateCommunities && selectedAdminProvince ? (
-                    <TouchableOpacity style={styles.primaryButton} onPress={() => { setShowAdminCommunityCreate((current) => !current); setAdminCommunityId(''); }}>
+                    <TouchableOpacity style={styles.primaryButton} onPress={() => {
+                      setShowAdminCommunityCreate((current) => !current);
+                      setAdminCommunityId('');
+                      setAdminCommunityImageAsset(null);
+                      setAdminCommunityImageUrl('');
+                      setAdminCommunityImagePreview('');
+                    }}>
                       <Ionicons name={showAdminCommunityCreate ? 'chevron-up-outline' : 'add-circle-outline'} size={17} color={palette.white} />
                       <Text style={styles.primaryButtonText}>Crear Comunidad</Text>
                     </TouchableOpacity>
@@ -6445,12 +6472,17 @@ export function ProfileScreen({
                       </View>
                       <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={adminCommunityId ? '' : adminCommunityDescription} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDescription(value); }} multiline  placeholderTextColor={inputPlaceholderColor} />
                       <Text style={styles.cardEyebrow}>Imagen</Text>
-                      <Text style={styles.cardText}>La imagen se carga desde la edicion de la comunidad una vez creada.</Text>
+                      <Text style={styles.cardText}>Opcional. Podés guardar la comunidad sin imagen.</Text>
+                      {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
+                      <TouchableOpacity style={styles.secondaryButton} onPress={pickAdminCommunityImage}>
+                        <Ionicons name="image-outline" size={17} color={palette.red} />
+                        <Text style={styles.secondaryButtonText}>{adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'}</Text>
+                      </TouchableOpacity>
                       <TouchableOpacity style={[styles.filterChip, adminCommunityIsActive && styles.filterChipActive]} onPress={() => setAdminCommunityIsActive(!adminCommunityIsActive)}>
                         <Text style={[styles.filterChipText, adminCommunityIsActive && styles.filterChipTextActive]}>{adminCommunityIsActive ? 'Activa' : 'Inactiva'}</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.primaryButton} onPress={adminCreateCommunity}>
-                        <Text style={styles.primaryButtonText}>Crear comunidad</Text>
+                      <TouchableOpacity style={styles.primaryButton} onPress={adminCreateCommunity} disabled={adminCommunityImageUploading}>
+                        <Text style={styles.primaryButtonText}>{adminCommunityImageUploading ? 'Subiendo imagen...' : 'Crear comunidad'}</Text>
                       </TouchableOpacity>
                     </View>
                   ) : null}

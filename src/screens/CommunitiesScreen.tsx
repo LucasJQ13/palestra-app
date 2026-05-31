@@ -93,14 +93,25 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
     }
   }
 
-  function openNearestInMaps() {
+  async function openNearestInMaps() {
     if (!nearestResult || !nearestUserLocation || nearestResult.community.latitude == null || nearestResult.community.longitude == null) {
       return;
     }
-    Linking.openURL(googleMapsDirectionsUrl(nearestUserLocation, {
+    const destination = {
       latitude: Number(nearestResult.community.latitude),
       longitude: Number(nearestResult.community.longitude)
-    }));
+    };
+    const appUrl = `comgooglemaps://?saddr=${nearestUserLocation.latitude},${nearestUserLocation.longitude}&daddr=${destination.latitude},${destination.longitude}&directionsmode=walking`;
+    const webUrl = googleMapsDirectionsUrl(nearestUserLocation, destination);
+    try {
+      if (await Linking.canOpenURL(appUrl)) {
+        await Linking.openURL(appUrl);
+        return;
+      }
+    } catch {
+      // Fall back to the browser URL below.
+    }
+    await Linking.openURL(webUrl);
   }
 
   function openCommunityPresentation(locationName: string) {
