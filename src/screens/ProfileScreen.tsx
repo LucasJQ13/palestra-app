@@ -1873,7 +1873,20 @@ export function ProfileScreen({
         setAuthMessage('Este usuario esta bloqueado o eliminado. Contacta a un administrador.');
         return;
       }
-      onSessionChange(result.session);
+      onSessionChange(session ? {
+        ...result.session,
+        subroleKey: result.session.subroleKey ?? session.subroleKey,
+        displayRoleLabel: result.session.displayRoleLabel ?? session.displayRoleLabel,
+        genderPreference: result.session.genderPreference ?? session.genderPreference,
+        nickname: result.session.nickname ?? session.nickname,
+        credentialNameMode: result.session.credentialNameMode ?? session.credentialNameMode,
+        perseveranceStartYear: result.session.perseveranceStartYear ?? session.perseveranceStartYear,
+        personalPmType: result.session.personalPmType ?? session.personalPmType,
+        personalPmNumber: result.session.personalPmNumber ?? session.personalPmNumber,
+        personalPmProvince: result.session.personalPmProvince ?? session.personalPmProvince,
+        personalPmMotto: result.session.personalPmMotto ?? session.personalPmMotto,
+        pmMotto: result.session.pmMotto ?? session.pmMotto
+      } : result.session);
     }
   }
 

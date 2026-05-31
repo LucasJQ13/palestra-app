@@ -327,6 +327,7 @@ create or replace function public.get_my_profile()
 returns table (
   user_id uuid,
   email text,
+  email_confirmed_at timestamptz,
   full_name text,
   avatar_url text,
   phone text,
@@ -334,7 +335,18 @@ returns table (
   community_name text,
   status public.user_status,
   role public.user_role,
-  display_role_label text
+  subrole_key text,
+  display_role_label text,
+  gender_preference text,
+  nickname text,
+  use_nickname_in_greetings boolean,
+  credential_name_mode text,
+  perseverance_start_year integer,
+  personal_pm_type text,
+  personal_pm_number integer,
+  personal_pm_province text,
+  personal_pm_motto text,
+  pm_motto text
 )
 language sql
 security definer
@@ -343,6 +355,7 @@ as $$
   select
     profiles.id as user_id,
     auth.users.email,
+    auth.users.email_confirmed_at,
     profiles.full_name,
     profiles.avatar_url,
     profiles.phone,
@@ -350,11 +363,24 @@ as $$
     profiles.community_name,
     profiles.status,
     profiles.role,
-    profiles.display_role_label
+    profiles.subrole_key,
+    profiles.display_role_label,
+    profiles.gender_preference,
+    profiles.nickname,
+    coalesce(profiles.use_nickname_in_greetings, false),
+    profiles.credential_name_mode,
+    profiles.perseverance_start_year,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then profiles.personal_pm_type else null end,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then profiles.personal_pm_number else null end,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then pm_provinces.name else null end,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then coalesce(profiles.personal_pm_motto, profiles.pm_motto) else null end,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then coalesce(profiles.personal_pm_motto, profiles.pm_motto) else null end
   from public.profiles
   join auth.users on auth.users.id = profiles.id
   left join public.provinces on provinces.id = profiles.province_id
-  where profiles.id = auth.uid();
+  left join public.provinces pm_provinces on pm_provinces.id = profiles.personal_pm_province_id
+  where profiles.id = auth.uid()
+  limit 1;
 $$;
 
 grant execute on function public.get_my_profile() to authenticated;
@@ -371,7 +397,18 @@ returns table (
   community_name text,
   status text,
   role text,
+  subrole_key text,
   display_role_label text,
+  gender_preference text,
+  nickname text,
+  use_nickname_in_greetings boolean,
+  credential_name_mode text,
+  perseverance_start_year integer,
+  personal_pm_type text,
+  personal_pm_number integer,
+  personal_pm_province text,
+  personal_pm_motto text,
+  pm_motto text,
   email_confirmed_at timestamptz
 )
 language sql
@@ -388,11 +425,23 @@ as $$
     profiles.community_name,
     profiles.status::text,
     profiles.role::text,
+    profiles.subrole_key,
     profiles.display_role_label,
+    profiles.gender_preference,
+    profiles.nickname,
+    coalesce(profiles.use_nickname_in_greetings, false),
+    profiles.credential_name_mode,
+    profiles.perseverance_start_year,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then profiles.personal_pm_type else null end,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then profiles.personal_pm_number else null end,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then pm_provinces.name else null end,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then coalesce(profiles.personal_pm_motto, profiles.pm_motto) else null end,
+    case when public.role_rank(profiles.role) >= public.role_rank('sedimentador'::public.user_role) then coalesce(profiles.personal_pm_motto, profiles.pm_motto) else null end,
     auth.users.email_confirmed_at
   from public.profiles
   left join auth.users on auth.users.id = profiles.id
   left join public.provinces on provinces.id = profiles.province_id
+  left join public.provinces pm_provinces on pm_provinces.id = profiles.personal_pm_province_id
   where public.current_user_can_edit_profile(profiles.id)
      or public.current_user_is_admin()
   order by provinces.name nulls last, profiles.full_name;

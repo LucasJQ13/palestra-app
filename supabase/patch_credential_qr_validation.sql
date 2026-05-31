@@ -59,14 +59,14 @@ begin
 
   update public.profile_credentials
   set revoked_at = now()
-  where user_id = current_profile.id
+  where profile_credentials.user_id = current_profile.id
     and revoked_at is null;
 
   insert into public.profile_credentials (user_id, expires_at, version)
   values (
     current_profile.id,
     now() + interval '365 days',
-    coalesce((select max(version) + 1 from public.profile_credentials where user_id = current_profile.id), 1)
+    coalesce((select max(pc2.version) + 1 from public.profile_credentials pc2 where pc2.user_id = current_profile.id), 1)
   )
   returning * into current_credential;
 

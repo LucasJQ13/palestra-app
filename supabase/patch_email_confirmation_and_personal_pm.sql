@@ -129,29 +129,29 @@ begin
 
   update public.profiles
   set
-    nickname = nullif(trim(coalesce(p_nickname, '')), ''),
+    nickname = coalesce(nullif(trim(coalesce(p_nickname, '')), ''), profiles.nickname),
     use_nickname_in_greetings = coalesce(p_use_nickname_in_greetings, false),
-    credential_name_mode = case when p_credential_name_mode in ('name', 'nickname', 'both') then p_credential_name_mode else 'name' end,
-    perseverance_start_year = p_perseverance_start_year,
+    credential_name_mode = case when p_credential_name_mode in ('name', 'nickname', 'both') then p_credential_name_mode else profiles.credential_name_mode end,
+    perseverance_start_year = coalesce(p_perseverance_start_year, profiles.perseverance_start_year),
     personal_pm_type = case
       when public.role_rank(actor_role) >= public.role_rank('sedimentador'::public.user_role) and p_personal_pm_type in ('pmm', 'pmf') then p_personal_pm_type
-      else null
+      else profiles.personal_pm_type
     end,
     personal_pm_number = case
-      when public.role_rank(actor_role) >= public.role_rank('sedimentador'::public.user_role) then p_personal_pm_number
-      else null
+      when public.role_rank(actor_role) >= public.role_rank('sedimentador'::public.user_role) then coalesce(p_personal_pm_number, profiles.personal_pm_number)
+      else profiles.personal_pm_number
     end,
     personal_pm_province_id = case
-      when public.role_rank(actor_role) >= public.role_rank('sedimentador'::public.user_role) then selected_pm_province_id
-      else null
+      when public.role_rank(actor_role) >= public.role_rank('sedimentador'::public.user_role) then coalesce(selected_pm_province_id, profiles.personal_pm_province_id)
+      else profiles.personal_pm_province_id
     end,
     personal_pm_motto = case
-      when public.role_rank(actor_role) >= public.role_rank('sedimentador'::public.user_role) then nullif(trim(coalesce(p_personal_pm_motto, '')), '')
-      else null
+      when public.role_rank(actor_role) >= public.role_rank('sedimentador'::public.user_role) then coalesce(nullif(trim(coalesce(p_personal_pm_motto, '')), ''), profiles.personal_pm_motto)
+      else profiles.personal_pm_motto
     end,
     pm_motto = case
-      when public.role_rank(actor_role) >= public.role_rank('sedimentador'::public.user_role) then nullif(trim(coalesce(p_personal_pm_motto, '')), '')
-      else null
+      when public.role_rank(actor_role) >= public.role_rank('sedimentador'::public.user_role) then coalesce(nullif(trim(coalesce(p_personal_pm_motto, '')), ''), profiles.pm_motto)
+      else profiles.pm_motto
     end
   where id = auth.uid();
 
