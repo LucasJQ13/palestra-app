@@ -210,6 +210,15 @@ export type QrActivityListRecord = {
   created_at: string;
 };
 
+export type QrActivityListShareRecord = {
+  id: string;
+  list_id: string;
+  shared_with_user_id: string | null;
+  shared_with_user_name: string | null;
+  shared_with_role: string | null;
+  created_at: string;
+};
+
 export type QrActivityMemberRecord = {
   id: string;
   list_id: string;
@@ -310,6 +319,30 @@ export async function archiveQrActivityList(listId: string) {
     });
   } catch (error) {
     return networkError(error);
+  }
+}
+
+export async function shareQrActivityList(values: { listId: string; userIds?: string[]; roles?: string[] }) {
+  try {
+    return await supabase.rpc('share_qr_activity_list', {
+      p_list_id: values.listId,
+      p_user_ids: values.userIds ?? [],
+      p_roles: values.roles ?? []
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchQrActivityListShares(listId: string): Promise<QrActivityListShareRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_qr_activity_list_shares', { p_list_id: listId });
+    if (error || !data) {
+      return [];
+    }
+    return data as QrActivityListShareRecord[];
+  } catch {
+    return [];
   }
 }
 
@@ -1564,6 +1597,8 @@ export async function updateCommunity(id: string, values: {
   meeting_time?: string;
   description?: string;
   image_url?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }) {
   try {
     return await supabase.rpc('admin_update_community', {
@@ -1574,7 +1609,9 @@ export async function updateCommunity(id: string, values: {
       p_meeting_day: values.meeting_day ?? null,
       p_meeting_time: values.meeting_time ?? null,
       p_description: values.description ?? null,
-      p_image_url: values.image_url ?? null
+      p_image_url: values.image_url ?? null,
+      p_latitude: values.latitude ?? null,
+      p_longitude: values.longitude ?? null
     });
   } catch (error) {
     return networkError(error);

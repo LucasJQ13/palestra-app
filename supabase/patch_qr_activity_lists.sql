@@ -32,12 +32,25 @@ create table if not exists public.qr_activity_attendance (
   unique (list_id, user_id)
 );
 
+create table if not exists public.qr_activity_list_shares (
+  id uuid primary key default gen_random_uuid(),
+  list_id uuid not null references public.qr_activity_lists(id) on delete cascade,
+  shared_with_user_id uuid references public.profiles(id) on delete cascade,
+  shared_with_role text,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  check (shared_with_user_id is not null or shared_with_role is not null),
+  unique (list_id, shared_with_user_id),
+  unique (list_id, shared_with_role)
+);
+
 alter table public.qr_activity_lists
   alter column province drop not null;
 
 alter table public.qr_activity_lists enable row level security;
 alter table public.qr_activity_members enable row level security;
 alter table public.qr_activity_attendance enable row level security;
+alter table public.qr_activity_list_shares enable row level security;
 
 create or replace function public.current_profile_role()
 returns text language sql security definer set search_path = public as $$
@@ -77,6 +90,42 @@ begin
 end;
 $$;
 
+create or replace function public.can_access_qr_activity_list_id(p_list_id uuid)
+returns boolean language sql security definer set search_path = public as $$
+  select exists (
+    select 1
+    from public.qr_activity_lists lists
+    where lists.id = p_list_id
+      and (
+        lists.created_by = auth.uid()
+        or public.can_access_qr_activity_list(lists.province, lists.community_name, lists.created_by_role)
+        or exists (
+          select 1
+          from public.qr_activity_list_shares shares
+          where shares.list_id = lists.id
+            and (shares.shared_with_user_id = auth.uid() or shares.shared_with_role = public.current_profile_role())
+        )
+      )
+  )
+$$;
+
+create or replace function public.can_manage_qr_activity_list(p_list_id uuid)
+returns boolean language sql security definer set search_path = public as $$
+  select exists (
+    select 1
+    from public.qr_activity_lists lists
+    where lists.id = p_list_id
+      and (
+        lists.created_by = auth.uid()
+        or public.current_profile_role() = 'administrador'
+        or (
+          public.current_profile_role() in ('vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional')
+          and public.can_access_qr_activity_list(lists.province, lists.community_name, lists.created_by_role)
+        )
+      )
+  )
+$$;
+
 create or replace function public.get_qr_activity_lists()
 returns table (
   id uuid,
@@ -94,8 +143,52 @@ language sql security definer set search_path = public as $$
   from public.qr_activity_lists l
   left join public.profiles p on p.id = l.created_by
   where l.status <> 'archivada'
-    and public.can_access_qr_activity_list(l.province, l.community_name, l.created_by_role)
+    and public.can_access_qr_activity_list_id(l.id)
   order by l.created_at desc
+$$;
+
+create or replace function public.share_qr_activity_list(p_list_id uuid, p_user_ids uuid[] default '{}', p_roles text[] default '{}')
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  target_user uuid;
+  target_role text;
+begin
+  if not public.can_manage_qr_activity_list(p_list_id) then
+    raise exception 'No autorizado para compartir esta lista QR.';
+  end if;
+
+  foreach target_user in array coalesce(p_user_ids, '{}') loop
+    insert into public.qr_activity_list_shares (list_id, shared_with_user_id, created_by)
+    values (p_list_id, target_user, auth.uid())
+    on conflict (list_id, shared_with_user_id) do nothing;
+  end loop;
+
+  foreach target_role in array coalesce(p_roles, '{}') loop
+    insert into public.qr_activity_list_shares (list_id, shared_with_role, created_by)
+    values (p_list_id, target_role, auth.uid())
+    on conflict (list_id, shared_with_role) do nothing;
+  end loop;
+end;
+$$;
+
+create or replace function public.get_qr_activity_list_shares(p_list_id uuid)
+returns table (
+  id uuid,
+  list_id uuid,
+  shared_with_user_id uuid,
+  shared_with_user_name text,
+  shared_with_role text,
+  created_at timestamptz
+)
+language sql security definer set search_path = public as $$
+  select shares.id, shares.list_id, shares.shared_with_user_id, profiles.full_name, shares.shared_with_role, shares.created_at
+  from public.qr_activity_list_shares shares
+  left join public.profiles profiles on profiles.id = shares.shared_with_user_id
+  join public.qr_activity_lists lists on lists.id = shares.list_id
+  where shares.list_id = p_list_id
+    and public.can_access_qr_activity_list_id(lists.id)
+  order by shares.created_at desc
 $$;
 
 create or replace function public.create_qr_activity_list(p_title text, p_province text, p_community_name text default null)
@@ -123,7 +216,7 @@ declare
   my_role text := public.current_profile_role();
 begin
   select * into list_row from public.qr_activity_lists where id = p_list_id;
-  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+  if list_row.id is null or not public.can_manage_qr_activity_list(list_row.id) then
     raise exception 'Lista QR no disponible.';
   end if;
   if my_role not in ('vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador') then
@@ -145,7 +238,7 @@ declare
   my_role text := public.current_profile_role();
 begin
   select * into list_row from public.qr_activity_lists where id = p_list_id;
-  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+  if list_row.id is null or not public.can_manage_qr_activity_list(list_row.id) then
     raise exception 'Lista QR no disponible.';
   end if;
   if my_role not in ('vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador') then
@@ -174,7 +267,7 @@ language sql security definer set search_path = public as $$
   join public.profiles p on p.id = m.user_id
   left join public.provinces pr on pr.id = p.province_id
   where m.list_id = p_list_id
-    and public.can_access_qr_activity_list(l.province, l.community_name, l.created_by_role)
+    and public.can_access_qr_activity_list_id(l.id)
   order by p.full_name asc
 $$;
 
@@ -197,7 +290,7 @@ language sql security definer set search_path = public as $$
   join public.profiles p on p.id = a.user_id
   left join public.provinces pr on pr.id = p.province_id
   where a.list_id = p_list_id
-    and public.can_access_qr_activity_list(l.province, l.community_name, l.created_by_role)
+    and public.can_access_qr_activity_list_id(l.id)
   order by a.validated_at desc
 $$;
 
@@ -211,7 +304,7 @@ declare
   my_role text := public.current_profile_role();
 begin
   select * into list_row from public.qr_activity_lists where id = p_list_id;
-  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+  if list_row.id is null or not public.can_manage_qr_activity_list(list_row.id) then
     raise exception 'Lista QR no disponible.';
   end if;
 
@@ -244,7 +337,7 @@ declare
   my_role text := public.current_profile_role();
 begin
   select * into list_row from public.qr_activity_lists where id = p_list_id;
-  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+  if list_row.id is null or not public.can_manage_qr_activity_list(list_row.id) then
     raise exception 'Lista QR no disponible.';
   end if;
   insert into public.qr_activity_members (list_id, user_id, added_by)
@@ -268,7 +361,7 @@ declare
   list_row public.qr_activity_lists%rowtype;
 begin
   select * into list_row from public.qr_activity_lists where id = p_list_id;
-  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+  if list_row.id is null or not public.can_manage_qr_activity_list(list_row.id) then
     raise exception 'Lista QR no disponible.';
   end if;
   delete from public.qr_activity_attendance where list_id = p_list_id and user_id = p_user_id;
@@ -298,7 +391,7 @@ declare
   list_row public.qr_activity_lists%rowtype;
 begin
   select * into list_row from public.qr_activity_lists where id = p_list_id;
-  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+  if list_row.id is null or not public.can_access_qr_activity_list_id(list_row.id) then
     raise exception 'Lista QR no disponible.';
   end if;
 
@@ -326,9 +419,13 @@ end;
 $$;
 
 grant execute on function public.get_qr_activity_lists() to authenticated;
+grant execute on function public.can_access_qr_activity_list_id(uuid) to authenticated;
+grant execute on function public.can_manage_qr_activity_list(uuid) to authenticated;
 grant execute on function public.create_qr_activity_list(text, text, text) to authenticated;
 grant execute on function public.update_qr_activity_list(uuid, text, text, text) to authenticated;
 grant execute on function public.archive_qr_activity_list(uuid) to authenticated;
+grant execute on function public.share_qr_activity_list(uuid, uuid[], text[]) to authenticated;
+grant execute on function public.get_qr_activity_list_shares(uuid) to authenticated;
 grant execute on function public.get_qr_activity_members(uuid) to authenticated;
 grant execute on function public.get_qr_activity_attendance(uuid) to authenticated;
 grant execute on function public.add_qr_activity_member(uuid, uuid) to authenticated;

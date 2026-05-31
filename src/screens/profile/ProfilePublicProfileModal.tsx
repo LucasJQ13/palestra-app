@@ -49,6 +49,7 @@ export function ProfilePublicProfileModal({
               </View>
               <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Perfil palestrista</Text>
               <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{profile.fullName}</Text>
+              {viewerSession?.role === 'administrador' && profile.id ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>ID interno: {profile.id}</Text> : null}
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(visibleRole ?? profile.role, profile.province, provinceRoleLabels, roleAliases, visibleAssignedRoleLabel, profile.genderPreference)}</Text>
               {profile.communityName ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Comunidad: {profile.communityName}</Text> : null}
               {profile.province ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Provincia: {profile.province}</Text> : null}

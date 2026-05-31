@@ -6,6 +6,8 @@ alter table public.profiles
 
 alter table public.communities
   add column if not exists image_url text,
+  add column if not exists latitude double precision,
+  add column if not exists longitude double precision,
   add column if not exists is_active boolean not null default true,
   add column if not exists archived_at timestamptz,
   add column if not exists updated_at timestamptz,
@@ -133,6 +135,7 @@ with check (
 );
 
 drop function if exists public.admin_update_community(uuid, text, text, text, text, text, text);
+drop function if exists public.admin_update_community(uuid, text, text, text, text, text, text, text);
 create or replace function public.admin_update_community(
   p_community_id uuid,
   p_name text,
@@ -141,7 +144,9 @@ create or replace function public.admin_update_community(
   p_meeting_day text,
   p_meeting_time text,
   p_description text,
-  p_image_url text default null
+  p_image_url text default null,
+  p_latitude double precision default null,
+  p_longitude double precision default null
 )
 returns void
 language plpgsql
@@ -172,6 +177,8 @@ begin
     meeting_time = nullif(trim(p_meeting_time), ''),
     description = nullif(trim(p_description), ''),
     image_url = coalesce(nullif(trim(p_image_url), ''), image_url),
+    latitude = p_latitude,
+    longitude = p_longitude,
     updated_by = auth.uid(),
     updated_at = now()
   where id = p_community_id;
@@ -190,7 +197,7 @@ begin
 end;
 $$;
 
-grant execute on function public.admin_update_community(uuid, text, text, text, text, text, text, text) to authenticated;
+grant execute on function public.admin_update_community(uuid, text, text, text, text, text, text, text, double precision, double precision) to authenticated;
 
 create or replace function public.get_assignable_role_aliases()
 returns table (

@@ -57,20 +57,18 @@ begin
     raise exception 'No existe perfil para esta sesion.';
   end if;
 
-  select *
-    into current_credential
-  from public.profile_credentials pc
-  where pc.user_id = current_profile.id
-    and pc.revoked_at is null
-    and (pc.expires_at is null or pc.expires_at > now())
-  order by pc.issued_at desc
-  limit 1;
+  update public.profile_credentials
+  set revoked_at = now()
+  where user_id = current_profile.id
+    and revoked_at is null;
 
-  if current_credential.id is null then
-    insert into public.profile_credentials (user_id, expires_at)
-    values (current_profile.id, now() + interval '365 days')
-    returning * into current_credential;
-  end if;
+  insert into public.profile_credentials (user_id, expires_at, version)
+  values (
+    current_profile.id,
+    now() + interval '365 days',
+    coalesce((select max(version) + 1 from public.profile_credentials where user_id = current_profile.id), 1)
+  )
+  returning * into current_credential;
 
   credential_id := current_credential.id;
   token := current_credential.token;

@@ -11,7 +11,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -168,6 +168,7 @@ export function ProfileScreen({
   const [selectedQrActivityListId, setSelectedQrActivityListId] = useState('');
   const [qrActivityMembers, setQrActivityMembers] = useState<QrActivityMemberRecord[]>([]);
   const [qrActivityAttendance, setQrActivityAttendance] = useState<QrActivityAttendanceRecord[]>([]);
+  const [qrActivityShares, setQrActivityShares] = useState<QrActivityListShareRecord[]>([]);
   const [qrActivityTitle, setQrActivityTitle] = useState('');
   const [qrActivityEditTitle, setQrActivityEditTitle] = useState('');
   const [qrActivityProvince, setQrActivityProvince] = useState(session?.province ?? '');
@@ -176,6 +177,11 @@ export function ProfileScreen({
   const [qrActivityCreateSelectedUserIds, setQrActivityCreateSelectedUserIds] = useState<string[]>([]);
   const [qrActivityProvinceDropdownOpen, setQrActivityProvinceDropdownOpen] = useState(false);
   const [qrActivityCommunityDropdownOpen, setQrActivityCommunityDropdownOpen] = useState(false);
+  const [qrActivityShareDropdownOpen, setQrActivityShareDropdownOpen] = useState(false);
+  const [qrActivityCreateShareUserIds, setQrActivityCreateShareUserIds] = useState<string[]>([]);
+  const [qrActivityCreateShareRoles, setQrActivityCreateShareRoles] = useState<string[]>([]);
+  const [qrActivityEditShareUserIds, setQrActivityEditShareUserIds] = useState<string[]>([]);
+  const [qrActivityEditShareRoles, setQrActivityEditShareRoles] = useState<string[]>([]);
   const [qrActivityUserMode, setQrActivityUserMode] = useState<'usuarios' | 'todos'>('usuarios');
   const [showQrActivityCreateMenu, setShowQrActivityCreateMenu] = useState(false);
   const [showQrActivityListsMenu, setShowQrActivityListsMenu] = useState(false);
@@ -328,6 +334,8 @@ export function ProfileScreen({
   const [adminCommunityDay, setAdminCommunityDay] = useState('');
   const [adminCommunityTime, setAdminCommunityTime] = useState('');
   const [adminCommunityDescription, setAdminCommunityDescription] = useState('');
+  const [adminCommunityLatitude, setAdminCommunityLatitude] = useState('');
+  const [adminCommunityLongitude, setAdminCommunityLongitude] = useState('');
   const [adminCommunityImageUrl, setAdminCommunityImageUrl] = useState('');
   const [adminCommunityImagePreview, setAdminCommunityImagePreview] = useState('');
   const [adminCommunityImageAsset, setAdminCommunityImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -459,6 +467,23 @@ export function ProfileScreen({
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(query));
   });
+  const qrActivityShareUserOptions = adminUsers.filter((user) => {
+    if (['vocal', 'coordinador_diocesano'].includes(session?.role ?? '') && user.province !== session?.province) {
+      return false;
+    }
+    return user.status === 'aprobado';
+  });
+  const qrActivityShareRoleOptions = roleDefinitions
+    .filter((item) => !['invitado', 'palestrista', 'administrador'].includes(item.role))
+    .filter((item) => {
+      if (session?.role === 'administrador') {
+        return true;
+      }
+      if (['vocal_nacional', 'coordinador_nacional'].includes(session?.role ?? '')) {
+        return ['vocal_nacional', 'coordinador_nacional', 'vocal', 'coordinador_diocesano', 'animador_comunidad', 'coordinador_comunidad', 'sedimentador'].includes(item.role);
+      }
+      return ['vocal', 'coordinador_diocesano', 'animador_comunidad', 'coordinador_comunidad', 'sedimentador'].includes(item.role);
+    });
   const qrActivityMemberOptions = adminUsers.filter((user) => {
     if (!selectedQrActivityList) {
       return false;
@@ -1147,6 +1172,8 @@ export function ProfileScreen({
       setAdminCommunityDay('');
       setAdminCommunityTime('');
       setAdminCommunityDescription('');
+      setAdminCommunityLatitude('');
+      setAdminCommunityLongitude('');
       setAdminCommunityImageUrl('');
       setAdminCommunityImagePreview('');
       setAdminCommunityImageAsset(null);
@@ -1159,6 +1186,8 @@ export function ProfileScreen({
     setAdminCommunityDay(selectedAdminCommunity.meetingDay);
     setAdminCommunityTime(selectedAdminCommunity.meetingTime);
     setAdminCommunityDescription(selectedAdminCommunity.description);
+    setAdminCommunityLatitude(selectedAdminCommunity.latitude != null ? String(selectedAdminCommunity.latitude) : '');
+    setAdminCommunityLongitude(selectedAdminCommunity.longitude != null ? String(selectedAdminCommunity.longitude) : '');
     setAdminCommunityImageUrl(selectedAdminCommunity.imageUrl ?? '');
     setAdminCommunityImagePreview(selectedAdminCommunity.imageUrl ?? '');
     setAdminCommunityImageAsset(null);
@@ -1229,12 +1258,6 @@ export function ProfileScreen({
     setCredentialQrMessage('Credencial verificable activa.');
   }
 
-  useEffect(() => {
-    if (profilePanel === 'vista' && session?.status === 'aprobado') {
-      refreshCredentialQr();
-    }
-  }, [profilePanel, session?.id, session?.status, session?.role]);
-
   async function openQrScanner(mode: 'credential' | 'activity' = 'credential') {
     if (!canScanCredentialQr(session)) {
       setAuthMessage('Tu rango no tiene acceso a Escanear QR.');
@@ -1286,14 +1309,17 @@ export function ProfileScreen({
     if (!listId) {
       setQrActivityMembers([]);
       setQrActivityAttendance([]);
+      setQrActivityShares([]);
       return;
     }
-    const [members, attendance] = await Promise.all([
+    const [members, attendance, shares] = await Promise.all([
       fetchQrActivityMembers(listId),
-      fetchQrActivityAttendance(listId)
+      fetchQrActivityAttendance(listId),
+      fetchQrActivityListShares(listId)
     ]);
     setQrActivityMembers(members);
     setQrActivityAttendance(attendance);
+    setQrActivityShares(shares);
   }
 
   async function saveQrActivityList() {
@@ -1326,10 +1352,24 @@ export function ProfileScreen({
           return;
         }
       }
+      if (qrActivityCreateShareUserIds.length > 0 || qrActivityCreateShareRoles.length > 0) {
+        const { error: shareError } = await shareQrActivityList({
+          listId,
+          userIds: qrActivityCreateShareUserIds,
+          roles: qrActivityCreateShareRoles
+        });
+        if (shareError) {
+          setAuthMessage(shareError.message);
+          await loadQrActivityLists();
+          return;
+        }
+      }
     }
     setQrActivityTitle('');
     setQrActivityCommunity('');
     setQrActivityCreateSelectedUserIds([]);
+    setQrActivityCreateShareUserIds([]);
+    setQrActivityCreateShareRoles([]);
     if (data) {
       setSelectedQrActivityListId(String(data));
     }
@@ -1346,6 +1386,41 @@ export function ProfileScreen({
     setQrActivityCreateSelectedUserIds((current) =>
       current.includes(userId) ? current.filter((item) => item !== userId) : [...current, userId]
     );
+  }
+
+  function markAllQrActivityCreateUsers() {
+    const ids = qrActivityCreateUserOptions.map((user) => user.id);
+    setQrActivityCreateSelectedUserIds((current) => current.length === ids.length && ids.every((id) => current.includes(id)) ? [] : ids);
+  }
+
+  function toggleQrActivityShareUser(userId: string, mode: 'create' | 'edit' = 'create') {
+    const setter = mode === 'create' ? setQrActivityCreateShareUserIds : setQrActivityEditShareUserIds;
+    setter((current) => current.includes(userId) ? current.filter((item) => item !== userId) : [...current, userId]);
+  }
+
+  function toggleQrActivityShareRole(role: string, mode: 'create' | 'edit' = 'create') {
+    const setter = mode === 'create' ? setQrActivityCreateShareRoles : setQrActivityEditShareRoles;
+    setter((current) => current.includes(role) ? current.filter((item) => item !== role) : [...current, role]);
+  }
+
+  async function saveQrActivityShares() {
+    if (!selectedQrActivityList) {
+      setAuthMessage('Selecciona una lista QR.');
+      return;
+    }
+    const { error } = await shareQrActivityList({
+      listId: selectedQrActivityList.id,
+      userIds: qrActivityEditShareUserIds,
+      roles: qrActivityEditShareRoles
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setQrActivityEditShareUserIds([]);
+    setQrActivityEditShareRoles([]);
+    setAuthMessage(changeDone('Lista compartida.'));
+    await loadQrActivityDetails(selectedQrActivityList.id);
   }
 
   async function saveQrActivityListEdit() {
@@ -3104,6 +3179,12 @@ export function ProfileScreen({
 
     setAuthMessage('Guardando comunidad...');
     let imageUrl = adminCommunityImageUrl;
+    const latitude = adminCommunityLatitude.trim() ? Number(adminCommunityLatitude.replace(',', '.')) : null;
+    const longitude = adminCommunityLongitude.trim() ? Number(adminCommunityLongitude.replace(',', '.')) : null;
+    if ((latitude != null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) || (longitude != null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))) {
+      setAuthMessage('Coordenadas invalidas. Latitud debe estar entre -90 y 90, longitud entre -180 y 180.');
+      return;
+    }
     try {
       imageUrl = await uploadAdminCommunityImage();
     } catch (error) {
@@ -3117,7 +3198,9 @@ export function ProfileScreen({
       meeting_day: adminCommunityDay,
       meeting_time: adminCommunityTime,
       description: adminCommunityDescription,
-      image_url: imageUrl
+      image_url: imageUrl,
+      latitude,
+      longitude
     });
     if (error) {
       setAuthMessage(error.message);
@@ -5685,7 +5768,7 @@ export function ProfileScreen({
                   <Text style={styles.cardTitle}>Usuarios registrados</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
                     {([
-                      ['crear', 'Crear Usuarios'],
+                      ...(session.role === 'administrador' ? [['crear', 'Crear Usuarios'] as const] : []),
                       ['editar', 'Editar Usuarios'],
                       ['listado', 'Listado de Usuarios'],
                       ['pendientes', 'Cargar usuarios pendientes de aprobacion'],
@@ -6352,6 +6435,11 @@ export function ProfileScreen({
                                   <TextInput style={styles.input} placeholder="Dirección" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
                                   <View style={styles.profileCommunityPanel}>
                                     <Text style={styles.cardEyebrow}>Ubicacion</Text>
+                                    <Text style={styles.cardText}>Cargar coordenadas habilita "Buscar Comunidad Cercana". PodÃ©s copiarlas desde Google Maps.</Text>
+                                    <View style={styles.filterRow}>
+                                      <TextInput style={[styles.input, styles.colorInput]} placeholder="Latitud. Ej: -31.4167" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
+                                      <TextInput style={[styles.input, styles.colorInput]} placeholder="Longitud. Ej: -64.1833" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
+                                    </View>
                                     <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityAddress}, ${adminCommunityProvince}, Argentina`)}`)}>
                                       <Ionicons name="map-outline" size={17} color={palette.red} />
                                       <Text style={styles.secondaryButtonText}>Ver direccion en Maps</Text>
@@ -6447,6 +6535,10 @@ export function ProfileScreen({
                         </ScrollView>
                       ) : null}
                       <Text style={styles.inputLabel}>Usuarios seleccionados ({qrActivityCreateSelectedUserIds.length})</Text>
+                      <TouchableOpacity style={styles.secondaryButton} onPress={markAllQrActivityCreateUsers}>
+                        <Ionicons name={qrActivityCreateSelectedUserIds.length > 0 && qrActivityCreateSelectedUserIds.length === qrActivityCreateUserOptions.length ? 'remove-circle-outline' : 'checkmark-done-outline'} size={17} color={palette.red} />
+                        <Text style={styles.secondaryButtonText}>{qrActivityCreateSelectedUserIds.length > 0 && qrActivityCreateSelectedUserIds.length === qrActivityCreateUserOptions.length ? 'Desmarcar todos' : 'Marcar a todos'}</Text>
+                      </TouchableOpacity>
                       <TextInput style={styles.input} placeholder="Buscar usuario para agregar" value={qrActivityUserSearch} onChangeText={setQrActivityUserSearch} placeholderTextColor={inputPlaceholderColor} />
                       <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
                         {qrActivityCreateUserOptions.slice(0, 90).map((user) => {
@@ -6463,6 +6555,40 @@ export function ProfileScreen({
                         })}
                         {qrActivityCreateUserOptions.length === 0 ? <Text style={styles.cardText}>No hay usuarios disponibles con este filtro.</Text> : null}
                       </ScrollView>
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setQrActivityShareDropdownOpen((current) => !current)}>
+                        <Text style={styles.dropdownButtonText}>Compartir lista ({qrActivityCreateShareUserIds.length + qrActivityCreateShareRoles.length})</Text>
+                        <Ionicons name={qrActivityShareDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {qrActivityShareDropdownOpen ? (
+                        <View style={styles.profileCommunityPanel}>
+                          <Text style={styles.cardEyebrow}>Compartir con rangos</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                            {qrActivityShareRoleOptions.map((role) => {
+                              const selected = qrActivityCreateShareRoles.includes(role.role);
+                              return (
+                                <TouchableOpacity key={role.role} style={[styles.filterChip, selected && styles.filterChipActive]} onPress={() => toggleQrActivityShareRole(role.role)}>
+                                  <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{role.label}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                          <Text style={styles.cardEyebrow}>Compartir con usuarios</Text>
+                          <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                            {qrActivityShareUserOptions.slice(0, 80).map((user) => {
+                              const selected = qrActivityCreateShareUserIds.includes(user.id);
+                              return (
+                                <TouchableOpacity key={user.id} style={[styles.dropdownItem, selected && styles.qrActivityUserSelected]} onPress={() => toggleQrActivityShareUser(user.id)}>
+                                  <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={selected ? palette.white : palette.red} />
+                                  <View style={styles.adminUserHeaderText}>
+                                    <Text style={[styles.dropdownItemText, selected && styles.qrActivityUserSelectedText]}>{user.full_name ?? user.email ?? 'Usuario'}</Text>
+                                    <Text style={[styles.feedMeta, selected && styles.qrActivityUserSelectedText]}>{roleLabel((user.role || 'palestrista') as Role)} - {user.province ?? 'Sin provincia'}</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                        </View>
+                      ) : null}
                       <TouchableOpacity style={styles.primaryButton} onPress={saveQrActivityList}>
                         <Text style={styles.primaryButtonText}>Crear lista QR</Text>
                       </TouchableOpacity>
@@ -6511,6 +6637,50 @@ export function ProfileScreen({
                           <Text style={styles.secondaryButtonText}>Guardar lista</Text>
                         </TouchableOpacity>
                       </View>
+                      <Text style={styles.cardEyebrow}>Compartir / Ver lista</Text>
+                      {qrActivityShares.length === 0 ? <Text style={styles.cardText}>Solo visible para el creador y el alcance base.</Text> : null}
+                      {qrActivityShares.map((share) => (
+                        <Text key={share.id} style={styles.cardText}>
+                          {share.shared_with_role ? `Rango: ${roleLabel(share.shared_with_role as Role)}` : `Usuario: ${share.shared_with_user_name ?? share.shared_with_user_id}`}
+                        </Text>
+                      ))}
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setQrActivityShareDropdownOpen((current) => !current)}>
+                        <Text style={styles.dropdownButtonText}>Agregar comparticion ({qrActivityEditShareUserIds.length + qrActivityEditShareRoles.length})</Text>
+                        <Ionicons name={qrActivityShareDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {qrActivityShareDropdownOpen ? (
+                        <View style={styles.profileCommunityPanel}>
+                          <Text style={styles.cardEyebrow}>Rangos</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                            {qrActivityShareRoleOptions.map((role) => {
+                              const selected = qrActivityEditShareRoles.includes(role.role);
+                              return (
+                                <TouchableOpacity key={role.role} style={[styles.filterChip, selected && styles.filterChipActive]} onPress={() => toggleQrActivityShareRole(role.role, 'edit')}>
+                                  <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{role.label}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                          <Text style={styles.cardEyebrow}>Usuarios</Text>
+                          <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                            {qrActivityShareUserOptions.slice(0, 80).map((user) => {
+                              const selected = qrActivityEditShareUserIds.includes(user.id);
+                              return (
+                                <TouchableOpacity key={user.id} style={[styles.dropdownItem, selected && styles.qrActivityUserSelected]} onPress={() => toggleQrActivityShareUser(user.id, 'edit')}>
+                                  <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={selected ? palette.white : palette.red} />
+                                  <View style={styles.adminUserHeaderText}>
+                                    <Text style={[styles.dropdownItemText, selected && styles.qrActivityUserSelectedText]}>{user.full_name ?? user.email ?? 'Usuario'}</Text>
+                                    <Text style={[styles.feedMeta, selected && styles.qrActivityUserSelectedText]}>{roleLabel((user.role || 'palestrista') as Role)} - {user.province ?? 'Sin provincia'}</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                          <TouchableOpacity style={styles.primaryButton} onPress={saveQrActivityShares}>
+                            <Text style={styles.primaryButtonText}>Guardar comparticion</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : null}
                       {['animador_comunidad', 'coordinador_comunidad'].includes(session.role) || roleRank(session.role) >= roleRank('vocal') ? (
                         <>
                           <Text style={styles.cardEyebrow}>Agregar miembros</Text>
