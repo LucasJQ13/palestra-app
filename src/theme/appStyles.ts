@@ -2422,6 +2422,31 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900'
   },
+  credentialQrPanel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)',
+    backgroundColor: palette.whiteSoft,
+    padding: 10
+  },
+  credentialQrImage: {
+    width: 112,
+    height: 112,
+    borderRadius: 8,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  qrCamera: {
+    width: '100%',
+    minHeight: 280,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: palette.ink
+  },
   avatarFrameLarge: {
     width: 132,
     height: 132,

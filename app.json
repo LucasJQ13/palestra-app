@@ -43,11 +43,15 @@
         }
       ],
       "permissions": [
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "CAMERA"
       ]
     },
     "ios": {
-      "bundleIdentifier": "org.palestra.argentina"
+      "bundleIdentifier": "org.palestra.argentina",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Palestra usa la camara para escanear credenciales QR verificables."
+      }
     },
     "extra": {
       "supabaseUrl": "https://lqnwdoehandtzxfzeghc.supabase.co",
@@ -58,7 +62,13 @@
     },
     "plugins": [
       "expo-font",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Palestra usa la camara para escanear credenciales QR verificables."
+        }
+      ]
     ]
   }
 }

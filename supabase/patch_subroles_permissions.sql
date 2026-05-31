@@ -4,6 +4,22 @@
 alter table public.profiles
   add column if not exists subrole_key text;
 
+alter table public.profiles
+  drop constraint if exists profiles_subrole_key_check;
+
+alter table public.profiles
+  add constraint profiles_subrole_key_check
+  check (
+    subrole_key is null
+    or subrole_key in (
+      'proceso_educativo',
+      'formacion_espiritualidad',
+      'retaguardia_finanzas',
+      'pastoral',
+      'secretario'
+    )
+  );
+
 alter table public.news
   add column if not exists subrole_key text;
 

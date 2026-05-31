@@ -3,6 +3,7 @@ import { Alert, Image, Linking, Modal, Platform, ScrollView, Switch, Text, TextI
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
+import { BarcodeScanningResult, Camera, CameraView } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../theme/palette';
 import { AppTheme, ThemeName, themePresets } from '../theme/themes';
@@ -10,7 +11,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, issueMyCredentialQr, validateCredentialQrToken } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -18,6 +19,7 @@ import { ExternalCatholicNewsItem, fetchExternalCatholicNews } from '../lib/exte
 import { ActionButton } from '../components/ActionButton';
 import { SectionTitle } from '../components/SectionTitle';
 import { RoleDropdown } from '../components/RoleDropdown';
+import { CredentialQrCode } from '../components/CredentialQrCode';
 import { styles } from '../theme/appStyles';
 import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from '../lib/runtimeConfig';
 import { appRuntimeOwner, appVersionLabel, authConfirmedPreviewUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos } from '../lib/constants';
@@ -33,6 +35,7 @@ import { AdminModule, AdminRequest, ProfilePanel, PublicProfilePreview, TabKey }
 import { internalTestSessions } from '../lib/internalTestSessions';
 import { permissionOptions } from '../lib/permissionLabels';
 import { subroleLabel, subrolesForRole } from '../lib/subroles';
+import { buildCredentialQrPayload, parseCredentialQrPayload } from '../lib/credentialQr';
 import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, requestAndRegisterPushToken, showFeedbackMessage } from '../lib/notificationHelpers';
 import { ProfilePublicProfileModal } from './profile/ProfilePublicProfileModal';
 import { ProfileAccountMenu } from './profile/ProfileAccountMenu';
@@ -48,6 +51,10 @@ function notificationPermissionLabel(session: Session | null) {
     return 'La notificacion quedara disponible solo para roles con permiso de enviar notificaciones.';
   }
   return 'Tambi??n se dejar?? preparada una notificaci??n push para los usuarios alcanzados.';
+}
+
+function canScanCredentialQr(session: Session | null) {
+  return Boolean(session && ['vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role));
 }
 
 export function ProfileScreen({
@@ -125,6 +132,13 @@ export function ProfileScreen({
   const [pushChannelDebug, setPushChannelDebug] = useState('');
   const [pushTestResult, setPushTestResult] = useState('');
   const [showPushDiagnostics, setShowPushDiagnostics] = useState(false);
+  const [credentialQr, setCredentialQr] = useState<CredentialQrRecord | null>(null);
+  const [credentialQrPayload, setCredentialQrPayload] = useState('');
+  const [credentialQrMessage, setCredentialQrMessage] = useState('');
+  const [qrScannerVisible, setQrScannerVisible] = useState(false);
+  const [qrScannerActive, setQrScannerActive] = useState(false);
+  const [qrValidationResult, setQrValidationResult] = useState<CredentialValidationRecord | null>(null);
+  const [qrValidationMessage, setQrValidationMessage] = useState('');
   const [registerFullName, setRegisterFullName] = useState('');
   const [registerContact, setRegisterContact] = useState('');
   const [registerProvince, setRegisterProvince] = useState('');
@@ -1090,6 +1104,76 @@ export function ProfileScreen({
     setAdminUserPmProvince(selectedAdminUser.personal_pm_province ?? selectedAdminUser.province ?? '');
     setAdminUserPmMotto(selectedAdminUser.personal_pm_motto ?? selectedAdminUser.pm_motto ?? '');
   }, [selectedAdminUser]);
+
+  async function refreshCredentialQr() {
+    if (!session || session.role === 'invitado') {
+      setCredentialQr(null);
+      setCredentialQrPayload('');
+      return;
+    }
+    setCredentialQrMessage('Generando credencial verificable...');
+    const { data, error } = await issueMyCredentialQr();
+    if (error || !data?.token) {
+      setCredentialQrMessage(error?.message ?? 'No pude generar la credencial QR. Ejecuta el patch SQL de credenciales en Supabase.');
+      return;
+    }
+    setCredentialQr(data);
+    const payload = buildCredentialQrPayload({
+      credentialId: data.credential_id,
+      token: data.token,
+      issuedAt: data.issued_at
+    });
+    setCredentialQrPayload(payload);
+    setCredentialQrMessage('Credencial verificable activa.');
+  }
+
+  useEffect(() => {
+    if (profilePanel === 'vista' && session?.status === 'aprobado') {
+      refreshCredentialQr();
+    }
+  }, [profilePanel, session?.id, session?.status, session?.role]);
+
+  async function openQrScanner() {
+    if (!canScanCredentialQr(session)) {
+      setAuthMessage('Tu rango no tiene acceso a Escanear QR.');
+      return;
+    }
+    const permission = await Camera.requestCameraPermissionsAsync();
+    if (permission.status !== 'granted') {
+      setAuthMessage('Necesito permiso de camara para escanear credenciales.');
+      return;
+    }
+    setQrValidationResult(null);
+    setQrValidationMessage('Apunta la camara al QR de la credencial.');
+    setQrScannerActive(true);
+    setQrScannerVisible(true);
+  }
+
+  async function validateScannedCredential(data: string) {
+    const payload = parseCredentialQrPayload(data);
+    if (!payload) {
+      setQrValidationResult({ status: 'invalid', message: 'Credencial no valida', credential_id: null, user_id: null, full_name: null, role: null, province: null, community_name: null, user_status: null, issued_at: null, expires_at: null });
+      setQrValidationMessage('Credencial no valida.');
+      return;
+    }
+    setQrValidationMessage('Validando credencial en Supabase...');
+    const { data: validation, error } = await validateCredentialQrToken(payload.token);
+    if (error || !validation) {
+      setQrValidationResult({ status: 'invalid', message: error?.message ?? 'Credencial no valida', credential_id: payload.credentialId, user_id: null, full_name: null, role: null, province: null, community_name: null, user_status: null, issued_at: null, expires_at: null });
+      setQrValidationMessage(error?.message ?? 'Credencial no valida.');
+      return;
+    }
+    setQrValidationResult(validation);
+    setQrValidationMessage(validation.message);
+  }
+
+  async function handleCredentialBarcode(scanningResult: BarcodeScanningResult) {
+    if (!qrScannerActive) {
+      return;
+    }
+    setQrScannerActive(false);
+    await validateScannedCredential(scanningResult.data);
+  }
 
   function normalizeRequest(item: UserRequestRecord): AdminRequest {
     return {
@@ -3901,6 +3985,7 @@ export function ProfileScreen({
               <View style={styles.adminUserHeaderText}>
                 <Text style={[styles.credentialName, isDark && styles.textDarkStrong]}>{credentialDisplayName(session)}</Text>
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
+                {session.subroleKey ? <Text style={[styles.cardText, isDark && styles.textDarkAccent]}>{subroleLabel(session.subroleKey, session.genderPreference)}</Text> : null}
                 {perseveranceLabel(session.perseveranceStartYear) ? <Text style={[styles.cardText, isDark && styles.textDarkAccent]}>{perseveranceLabel(session.perseveranceStartYear)}</Text> : null}
                 {roleRank(session.role) >= roleRank('sedimentador') && personalPmSummary({
                   type: session.personalPmType,
@@ -3916,10 +4001,74 @@ export function ProfileScreen({
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.communityOfOrigin}, {session.province}</Text>
               </View>
             </View>
-            {session.role === 'administrador' ? (
-              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
+            {credentialQrPayload ? (
+              <View style={styles.credentialQrPanel}>
+                <View style={styles.credentialQrImage}>
+                  <CredentialQrCode value={credentialQrPayload} size={104} />
+                </View>
+                <View style={styles.adminUserHeaderText}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>QR verificable</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>ID: {credentialQr?.credential_id.slice(0, 8) ?? 'pendiente'} - v{credentialQr?.version ?? 1}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Generada: {credentialQr?.issued_at ? new Date(credentialQr.issued_at).toLocaleDateString('es-AR') : 'pendiente'}</Text>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.secondaryButton} onPress={refreshCredentialQr}>
+                <Ionicons name="qr-code-outline" size={17} color={palette.red} />
+                <Text style={styles.secondaryButtonText}>Generar QR verificable</Text>
+              </TouchableOpacity>
+            )}
+            {credentialQrMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{credentialQrMessage}</Text> : null}
+            {canScanCredentialQr(session) ? (
+              <TouchableOpacity style={styles.primaryButton} onPress={openQrScanner}>
+                <Ionicons name="scan-outline" size={17} color={palette.white} />
+                <Text style={styles.primaryButtonText}>Escanear QR</Text>
+              </TouchableOpacity>
             ) : null}
           </View> : null}
+          <Modal visible={qrScannerVisible} transparent animationType="slide" onRequestClose={() => { setQrScannerVisible(false); setQrScannerActive(false); }} statusBarTranslucent>
+            <View style={styles.modalOverlay} pointerEvents="box-none">
+              <TouchableOpacity style={styles.modalBackdropTouch} activeOpacity={1} onPress={() => { setQrScannerVisible(false); setQrScannerActive(false); }} />
+              <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]} pointerEvents="auto">
+                <TouchableOpacity style={styles.modalCloseButton} onPress={() => { setQrScannerVisible(false); setQrScannerActive(false); }} activeOpacity={0.8}>
+                  <Ionicons name="close" size={22} color={palette.red} />
+                </TouchableOpacity>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Escanear QR</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{qrValidationMessage || 'Apunta la camara al QR de la credencial.'}</Text>
+                {qrScannerActive ? (
+                  <CameraView
+                    style={styles.qrCamera}
+                    facing="back"
+                    barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                    onBarcodeScanned={handleCredentialBarcode}
+                  />
+                ) : null}
+                {qrValidationResult ? (
+                  <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+                    {qrValidationResult.status === 'valid' ? (
+                      <>
+                        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Credencial valida</Text>
+                        <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{qrValidationResult.full_name}</Text>
+                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel((qrValidationResult.role ?? 'palestrista') as Role, qrValidationResult.province, provinceRoleLabels, adminConfig.settings.roleAliases, null, null)}</Text>
+                        {qrValidationResult.subrole_key ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{subroleLabel(qrValidationResult.subrole_key)}</Text> : null}
+                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{qrValidationResult.community_name ?? 'Sin comunidad'}, {qrValidationResult.province ?? 'Sin provincia'}</Text>
+                        <Text style={[styles.profileHonorText, isDark && styles.textDarkAccent]}>Estado: Credencial valida</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{qrValidationResult.status === 'expired' ? 'Credencial vencida' : qrValidationResult.status === 'revoked' ? 'Credencial revocada' : 'Credencial no valida'}</Text>
+                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{qrValidationResult.message || 'Credencial no valida'}</Text>
+                      </>
+                    )}
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => { setQrValidationResult(null); setQrValidationMessage('Apunta la camara al QR de la credencial.'); setQrScannerActive(true); }}>
+                      <Ionicons name="scan-outline" size={17} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Escanear otra</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+          </Modal>
           {profilePanel === 'vista' && session.role !== 'administrador' && selectedRequest ? (
             <View style={styles.profileCommunityPanel}>
               <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Solicitudes</Text>
@@ -5245,7 +5394,7 @@ export function ProfileScreen({
                                 <View style={styles.adminUserHeaderText}>
                                   <Text style={styles.cardTitle}>{user.full_name ?? 'Usuario sin nombre'}</Text>
                                   <Text style={styles.cardText}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - {user.community_name ?? 'Sin comunidad'}</Text>
-                                  {user.subrole_key ? <Text style={styles.feedMeta}>Subrango: {subroleLabel(user.subrole_key)}</Text> : null}
+                                  {user.subrole_key ? <Text style={styles.feedMeta}>Subrango: {subroleLabel(user.subrole_key, user.gender_preference ?? null)}</Text> : null}
                                   {perseveranceLabel(user.perseverance_start_year) ? <Text style={styles.feedMeta}>{perseveranceLabel(user.perseverance_start_year)}</Text> : null}
                                   {session.role === 'administrador' ? <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text> : null}
                                 </View>
@@ -5412,7 +5561,7 @@ export function ProfileScreen({
                                   <>
                                     <Text style={styles.cardEyebrow}>Subrango dirigencial</Text>
                                     <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserSubroleDropdownOpen(!adminUserSubroleDropdownOpen)}>
-                                      <Text style={styles.dropdownButtonText}>{subroleLabel(adminUserSubroleKey)}</Text>
+                                      <Text style={styles.dropdownButtonText}>{subroleLabel(adminUserSubroleKey, selectedAdminUser?.gender_preference ?? null)}</Text>
                                       <Ionicons name={adminUserSubroleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
                                     </TouchableOpacity>
                                     {adminUserSubroleDropdownOpen ? (

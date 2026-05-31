@@ -173,6 +173,31 @@ export type RoleAliasRecord = {
   updated_at: string;
 };
 
+export type CredentialQrRecord = {
+  credential_id: string;
+  token: string;
+  user_id: string;
+  issued_at: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+  version: number;
+};
+
+export type CredentialValidationRecord = {
+  status: 'valid' | 'invalid' | 'expired' | 'revoked';
+  message: string;
+  credential_id: string | null;
+  user_id: string | null;
+  full_name: string | null;
+  role: string | null;
+  subrole_key?: string | null;
+  province: string | null;
+  community_name: string | null;
+  user_status: string | null;
+  issued_at: string | null;
+  expires_at: string | null;
+};
+
 export async function fetchPendingProfiles(): Promise<PendingProfile[]> {
   const { data, error } = await supabase.rpc('admin_get_pending_profiles');
 
@@ -181,6 +206,28 @@ export async function fetchPendingProfiles(): Promise<PendingProfile[]> {
   }
 
   return data as PendingProfile[];
+}
+
+export async function issueMyCredentialQr(): Promise<{ data: CredentialQrRecord | null; error: any }> {
+  try {
+    const { data, error } = await supabase.rpc('issue_profile_credential');
+    const row = Array.isArray(data) ? data[0] : data;
+    return { data: error ? null : (row as CredentialQrRecord | null), error };
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function validateCredentialQrToken(token: string): Promise<{ data: CredentialValidationRecord | null; error: any }> {
+  try {
+    const { data, error } = await supabase.rpc('validate_profile_credential', {
+      p_token: token
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    return { data: error ? null : (row as CredentialValidationRecord | null), error };
+  } catch (error) {
+    return networkError(error);
+  }
 }
 
 export async function approveProfile(id: string, role: string) {
