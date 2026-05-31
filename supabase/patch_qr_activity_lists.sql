@@ -32,6 +32,9 @@ create table if not exists public.qr_activity_attendance (
   unique (list_id, user_id)
 );
 
+alter table public.qr_activity_lists
+  alter column province drop not null;
+
 alter table public.qr_activity_lists enable row level security;
 alter table public.qr_activity_members enable row level security;
 alter table public.qr_activity_attendance enable row level security;
@@ -106,9 +109,49 @@ begin
     raise exception 'Tu rango no puede crear listas QR.';
   end if;
   insert into public.qr_activity_lists (title, province, community_name, created_by, created_by_role)
-  values (trim(p_title), p_province, nullif(trim(coalesce(p_community_name, '')), ''), auth.uid(), my_role)
+  values (trim(p_title), nullif(trim(coalesce(p_province, '')), ''), nullif(trim(coalesce(p_community_name, '')), ''), auth.uid(), my_role)
   returning id into new_id;
   return new_id;
+end;
+$$;
+
+create or replace function public.update_qr_activity_list(p_list_id uuid, p_title text, p_province text default null, p_community_name text default null)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  list_row public.qr_activity_lists%rowtype;
+  my_role text := public.current_profile_role();
+begin
+  select * into list_row from public.qr_activity_lists where id = p_list_id;
+  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+    raise exception 'Lista QR no disponible.';
+  end if;
+  if my_role not in ('vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador') then
+    raise exception 'Tu rango no puede editar listas QR.';
+  end if;
+  update public.qr_activity_lists
+  set title = trim(p_title),
+      province = nullif(trim(coalesce(p_province, '')), ''),
+      community_name = nullif(trim(coalesce(p_community_name, '')), '')
+  where id = p_list_id;
+end;
+$$;
+
+create or replace function public.archive_qr_activity_list(p_list_id uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  list_row public.qr_activity_lists%rowtype;
+  my_role text := public.current_profile_role();
+begin
+  select * into list_row from public.qr_activity_lists where id = p_list_id;
+  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+    raise exception 'Lista QR no disponible.';
+  end if;
+  if my_role not in ('vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador') then
+    raise exception 'Tu rango no puede eliminar listas QR.';
+  end if;
+  update public.qr_activity_lists set status = 'archivada' where id = p_list_id;
 end;
 $$;
 
@@ -176,8 +219,11 @@ begin
   from public.profiles p left join public.provinces pr on pr.id = p.province_id
   where p.id = p_user_id;
 
-  if user_province <> list_row.province then
+  if list_row.province is not null and user_province <> list_row.province then
     raise exception 'El usuario no pertenece a la provincia de la lista.';
+  end if;
+  if list_row.community_name is not null and user_community <> list_row.community_name then
+    raise exception 'El usuario no pertenece a la comunidad de la lista.';
   end if;
   if my_role in ('animador_comunidad', 'coordinador_comunidad') and user_community <> public.current_profile_community() then
     raise exception 'Solo puedes cargar miembros de tu comunidad.';
@@ -186,6 +232,47 @@ begin
   insert into public.qr_activity_members (list_id, user_id, added_by)
   values (p_list_id, p_user_id, auth.uid())
   on conflict (list_id, user_id) do nothing;
+end;
+$$;
+
+create or replace function public.add_qr_activity_members_by_scope(p_list_id uuid, p_province text default null, p_community_name text default null)
+returns integer
+language plpgsql security definer set search_path = public as $$
+declare
+  list_row public.qr_activity_lists%rowtype;
+  inserted_count integer := 0;
+  my_role text := public.current_profile_role();
+begin
+  select * into list_row from public.qr_activity_lists where id = p_list_id;
+  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+    raise exception 'Lista QR no disponible.';
+  end if;
+  insert into public.qr_activity_members (list_id, user_id, added_by)
+  select p_list_id, p.id, auth.uid()
+  from public.profiles p
+  left join public.provinces pr on pr.id = p.province_id
+  where p.status = 'aprobado'
+    and (coalesce(p_province, list_row.province) is null or pr.name = coalesce(p_province, list_row.province))
+    and (coalesce(p_community_name, list_row.community_name) is null or p.community_name = coalesce(p_community_name, list_row.community_name))
+    and (my_role not in ('animador_comunidad', 'coordinador_comunidad') or p.community_name = public.current_profile_community())
+  on conflict (list_id, user_id) do nothing;
+  get diagnostics inserted_count = row_count;
+  return inserted_count;
+end;
+$$;
+
+create or replace function public.remove_qr_activity_member(p_list_id uuid, p_user_id uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  list_row public.qr_activity_lists%rowtype;
+begin
+  select * into list_row from public.qr_activity_lists where id = p_list_id;
+  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+    raise exception 'Lista QR no disponible.';
+  end if;
+  delete from public.qr_activity_attendance where list_id = p_list_id and user_id = p_user_id;
+  delete from public.qr_activity_members where list_id = p_list_id and user_id = p_user_id;
 end;
 $$;
 
@@ -208,7 +295,13 @@ language plpgsql security definer set search_path = public as $$
 declare
   validated record;
   is_member boolean;
+  list_row public.qr_activity_lists%rowtype;
 begin
+  select * into list_row from public.qr_activity_lists where id = p_list_id;
+  if list_row.id is null or not public.can_access_qr_activity_list(list_row.province, list_row.community_name, list_row.created_by_role) then
+    raise exception 'Lista QR no disponible.';
+  end if;
+
   select * into validated from public.validate_profile_credential(p_token) limit 1;
   if validated.status <> 'valid' then
     return query select validated.status, validated.message, validated.credential_id, validated.user_id, validated.full_name, validated.role, validated.subrole_key, validated.province, validated.community_name, validated.user_status, validated.issued_at, validated.expires_at;
@@ -234,7 +327,11 @@ $$;
 
 grant execute on function public.get_qr_activity_lists() to authenticated;
 grant execute on function public.create_qr_activity_list(text, text, text) to authenticated;
+grant execute on function public.update_qr_activity_list(uuid, text, text, text) to authenticated;
+grant execute on function public.archive_qr_activity_list(uuid) to authenticated;
 grant execute on function public.get_qr_activity_members(uuid) to authenticated;
 grant execute on function public.get_qr_activity_attendance(uuid) to authenticated;
 grant execute on function public.add_qr_activity_member(uuid, uuid) to authenticated;
+grant execute on function public.add_qr_activity_members_by_scope(uuid, text, text) to authenticated;
+grant execute on function public.remove_qr_activity_member(uuid, uuid) to authenticated;
 grant execute on function public.validate_qr_activity_attendance(uuid, text) to authenticated;

@@ -11,7 +11,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -169,9 +169,15 @@ export function ProfileScreen({
   const [qrActivityMembers, setQrActivityMembers] = useState<QrActivityMemberRecord[]>([]);
   const [qrActivityAttendance, setQrActivityAttendance] = useState<QrActivityAttendanceRecord[]>([]);
   const [qrActivityTitle, setQrActivityTitle] = useState('');
+  const [qrActivityEditTitle, setQrActivityEditTitle] = useState('');
   const [qrActivityProvince, setQrActivityProvince] = useState(session?.province ?? '');
   const [qrActivityCommunity, setQrActivityCommunity] = useState('');
   const [qrActivityUserSearch, setQrActivityUserSearch] = useState('');
+  const [qrActivityProvinceDropdownOpen, setQrActivityProvinceDropdownOpen] = useState(false);
+  const [qrActivityCommunityDropdownOpen, setQrActivityCommunityDropdownOpen] = useState(false);
+  const [qrActivityUserMode, setQrActivityUserMode] = useState<'usuarios' | 'todos'>('usuarios');
+  const [showQrActivityCreateMenu, setShowQrActivityCreateMenu] = useState(false);
+  const [showQrActivityListsMenu, setShowQrActivityListsMenu] = useState(false);
   const [registerFullName, setRegisterFullName] = useState('');
   const [registerContact, setRegisterContact] = useState('');
   const [registerProvince, setRegisterProvince] = useState('');
@@ -202,6 +208,7 @@ export function ProfileScreen({
   const [realPendingProfiles, setRealPendingProfiles] = useState<PendingProfile[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedAdminUserId, setSelectedAdminUserId] = useState('');
+  const [adminUsersTool, setAdminUsersTool] = useState<'crear' | 'editar' | 'listado' | 'pendientes' | 'diagnostico'>('listado');
   const [adminUserSearch, setAdminUserSearch] = useState('');
   const [selectedUsersProvince, setSelectedUsersProvince] = useState('');
   const [adminUserFullName, setAdminUserFullName] = useState('');
@@ -308,6 +315,7 @@ export function ProfileScreen({
   const [pmTimeFilter, setPmTimeFilter] = useState<'todos' | 'proximos' | 'pasados'>('todos');
   const [pmYearFilter, setPmYearFilter] = useState('todos');
   const [pmFilterDropdownOpen, setPmFilterDropdownOpen] = useState<'' | 'province' | 'gender' | 'status' | 'time' | 'year'>('');
+  const [showPmForm, setShowPmForm] = useState(false);
   const [adminModule, setAdminModule] = useState<AdminModule>('resumen');
   const [adminConfigDraft, setAdminConfigDraft] = useState<AppAdminConfig>(adminConfig);
   const [runtimeConfigDraft, setRuntimeConfigDraft] = useState<AppRuntimeConfig>(runtimeConfig);
@@ -425,14 +433,21 @@ export function ProfileScreen({
   const selectedAdminUser = adminUsers.find((item) => item.id === selectedAdminUserId && canSeeUserInUsersPanel(session, item));
   const selectedQrActivityList = qrActivityLists.find((item) => item.id === selectedQrActivityListId) ?? null;
   const qrActivityProvinceOptions = session?.role === 'administrador'
-    ? registrationCommunities.map((item) => item.province)
-    : session?.province ? [session.province] : [];
+    ? ['', ...registrationCommunities.map((item) => item.province)]
+    : ['vocal_nacional', 'coordinador_nacional'].includes(session?.role ?? '')
+      ? ['', ...registrationCommunities.map((item) => item.province)]
+      : session?.province ? [session.province] : [];
   const qrActivityCommunityOptions = registrationCommunities.find((item) => item.province === (qrActivityProvince || session?.province))?.locations ?? [];
+  const qrActivityCommunityDisabled = !qrActivityProvince;
+  const qrActivityUserSelectionDisabled = !selectedQrActivityList?.province || !selectedQrActivityList?.community_name;
   const qrActivityMemberOptions = adminUsers.filter((user) => {
     if (!selectedQrActivityList) {
       return false;
     }
-    if (user.province !== selectedQrActivityList.province) {
+    if (selectedQrActivityList.province && user.province !== selectedQrActivityList.province) {
+      return false;
+    }
+    if (selectedQrActivityList.community_name && user.community_name !== selectedQrActivityList.community_name) {
       return false;
     }
     if (['animador_comunidad', 'coordinador_comunidad'].includes(session?.role ?? '') && user.community_name !== session?.communityOfOrigin) {
@@ -963,6 +978,7 @@ export function ProfileScreen({
     setPmVisibleToLowerRoles(false);
     setPmStatus('borrador');
     setPmCalendarOpen(false);
+    setShowPmForm(false);
   }
 
   function editMotivadorPeriod(period: MotivadorPeriodRecord) {
@@ -981,6 +997,7 @@ export function ProfileScreen({
     setPmVisibleToLowerRoles(Boolean(period.visible_to_lower_roles));
     setPmStatus(period.status === 'archivado' ? 'inactivo' : period.status);
     setPmCalendarOpen(true);
+    setShowPmForm(true);
   }
 
   async function submitMotivadorPeriod() {
@@ -1266,9 +1283,9 @@ export function ProfileScreen({
       return;
     }
     const title = qrActivityTitle.trim();
-    const province = qrActivityProvince || session.province;
-    if (!title || !province) {
-      setAuthMessage('Completa nombre y provincia de la lista.');
+    const province = qrActivityProvince || (['administrador', 'vocal_nacional', 'coordinador_nacional'].includes(session.role) ? null : session.province);
+    if (!title) {
+      setAuthMessage('Completa el nombre de la lista.');
       return;
     }
     const { data, error } = await createQrActivityList({ title, province, communityName: qrActivityCommunity || null });
@@ -1281,8 +1298,35 @@ export function ProfileScreen({
     if (data) {
       setSelectedQrActivityListId(String(data));
     }
+    setShowQrActivityCreateMenu(false);
+    setShowQrActivityListsMenu(true);
     setAuthMessage(changeDone('Lista QR creada.'));
     await loadQrActivityLists();
+  }
+
+  async function saveQrActivityListEdit() {
+    if (!selectedQrActivityList) {
+      setAuthMessage('Selecciona una lista QR.');
+      return;
+    }
+    const title = qrActivityEditTitle.trim();
+    if (!title) {
+      setAuthMessage('El nombre de la lista no puede quedar vacio.');
+      return;
+    }
+    const { error } = await updateQrActivityList({
+      listId: selectedQrActivityList.id,
+      title,
+      province: qrActivityProvince || null,
+      communityName: qrActivityCommunity || null
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Lista QR actualizada.'));
+    await loadQrActivityLists();
+    await loadQrActivityDetails(selectedQrActivityList.id);
   }
 
   async function addUserToQrActivity(userId: string) {
@@ -1297,6 +1341,55 @@ export function ProfileScreen({
     }
     setAuthMessage(changeDone('Usuario agregado a la lista.'));
     await loadQrActivityDetails(selectedQrActivityListId);
+  }
+
+  async function addAllUsersToQrActivity() {
+    if (!selectedQrActivityList) {
+      setAuthMessage('Selecciona una lista QR.');
+      return;
+    }
+    const { error } = await addQrActivityMembersByScope(selectedQrActivityList.id, selectedQrActivityList.province, selectedQrActivityList.community_name);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Usuarios agregados a la lista.'));
+    await loadQrActivityDetails(selectedQrActivityList.id);
+  }
+
+  async function removeUserFromQrActivity(userId: string) {
+    if (!selectedQrActivityList) {
+      return;
+    }
+    const { error } = await removeQrActivityMember(selectedQrActivityList.id, userId);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Usuario quitado de la lista.'));
+    await loadQrActivityDetails(selectedQrActivityList.id);
+  }
+
+  async function deleteQrActivityList(list = selectedQrActivityList) {
+    if (!list) {
+      return;
+    }
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm(`Eliminar lista ${list.title}?`))
+      : true;
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await archiveQrActivityList(list.id);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setSelectedQrActivityListId('');
+    setQrActivityMembers([]);
+    setQrActivityAttendance([]);
+    setAuthMessage(changeDone('Lista QR eliminada.'));
+    await loadQrActivityLists();
   }
 
   async function validateScannedCredentialForActivity(data: string) {
@@ -1319,28 +1412,20 @@ export function ProfileScreen({
     await loadQrActivityDetails(selectedQrActivityListId);
   }
 
-  function exportQrActivityAttendance() {
+  function exportQrActivityAttendanceDoc() {
     if (!selectedQrActivityList) {
       setAuthMessage('Selecciona una lista para exportar.');
       return;
     }
-    const rows = [
-      ['Nombre', 'Rango', 'Provincia', 'Comunidad', 'Validado'],
-      ...qrActivityAttendance.map((item) => [
-        item.full_name ?? '',
-        roleLabel((item.role ?? 'palestrista') as Role),
-        item.province ?? '',
-        item.community_name ?? '',
-        item.validated_at ? new Date(item.validated_at).toLocaleString('es-AR') : ''
-      ])
-    ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join('\t')).join('\n');
+    const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] ?? char));
+    const rows = qrActivityAttendance.map((item) => `<tr><td>${escapeHtml(item.full_name ?? '')}</td><td>${escapeHtml(roleLabel((item.role ?? 'palestrista') as Role))}</td><td>${escapeHtml(item.province ?? '')}</td><td>${escapeHtml(item.community_name ?? '')}</td><td>${escapeHtml(item.validated_at ? new Date(item.validated_at).toLocaleString('es-AR') : '')}</td></tr>`).join('');
+    const html = `<html><head><meta charset="utf-8"><title>${escapeHtml(selectedQrActivityList.title)}</title></head><body><h1>${escapeHtml(selectedQrActivityList.title)}</h1><p>${escapeHtml(selectedQrActivityList.province ?? 'Todas las provincias')} - ${escapeHtml(selectedQrActivityList.community_name ?? 'Todas las comunidades')}</p><table border="1" cellspacing="0" cellpadding="6"><thead><tr><th>Nombre</th><th>Rango</th><th>Provincia</th><th>Comunidad</th><th>Validado</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
     if (Platform.OS === 'web') {
-      const url = `data:application/vnd.ms-excel;charset=utf-8,${encodeURIComponent(csv)}`;
+      const url = `data:application/msword;charset=utf-8,${encodeURIComponent(html)}`;
       Linking.openURL(url);
       return;
     }
-    setAuthMessage('Exportacion Excel disponible en web. En Android se puede copiar desde la lista por ahora.');
+    setAuthMessage('Exportacion DOC disponible en web. En Android se puede copiar desde la lista por ahora.');
   }
 
   async function handleCredentialBarcode(scanningResult: BarcodeScanningResult) {
@@ -1637,8 +1722,13 @@ export function ProfileScreen({
   useEffect(() => {
     if (adminModule === 'listas_qr') {
       loadQrActivityDetails();
+      if (selectedQrActivityList) {
+        setQrActivityEditTitle(selectedQrActivityList.title);
+        setQrActivityProvince(selectedQrActivityList.province ?? '');
+        setQrActivityCommunity(selectedQrActivityList.community_name ?? '');
+      }
     }
-  }, [adminModule, selectedQrActivityListId]);
+  }, [adminModule, selectedQrActivityListId, selectedQrActivityList?.title, selectedQrActivityList?.province, selectedQrActivityList?.community_name]);
 
   useEffect(() => {
     if (canManageUsersPanel(session) && adminUsers.length === 0) {
@@ -3627,7 +3717,7 @@ export function ProfileScreen({
                 { icon: 'person-outline', label: 'Mi perfil', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } },
                 { icon: 'create-outline', label: 'Editar perfil', action: () => { setProfilePanel('editar'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } },
                 { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); setShowCommunity(false); setShowCommunityManagement(false); refreshCommunityForum(); setShowAccountMenu(false); } },
-                ...(session.role !== 'administrador' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
+                ...(session.role === 'palestrista' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
                 { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowCommunity(false); setShowCommunityManagement(false); refreshMailbox(); setShowAccountMenu(false); } },
                 { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } }
               ]}
@@ -4225,7 +4315,9 @@ export function ProfileScreen({
               ))}
             </View>
           ) : null}
-          {profilePanel === 'vista' ? <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+          {profilePanel === 'vista' ? (
+            <>
+          <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Credencial digital</Text>
             <View style={[styles.digitalCredential, isDark && styles.digitalCredentialDark]}>
               <View style={styles.credentialAvatar}>
@@ -4278,7 +4370,7 @@ export function ProfileScreen({
                 <Text style={styles.primaryButtonText}>Escanear QR</Text>
               </TouchableOpacity>
             ) : null}
-          </View> : null}
+          </View>
           <Modal visible={qrScannerVisible} transparent animationType="slide" onRequestClose={() => { setQrScannerVisible(false); setQrScannerActive(false); }} statusBarTranslucent>
             <View style={styles.modalOverlay} pointerEvents="box-none">
               <TouchableOpacity style={styles.modalBackdropTouch} activeOpacity={1} onPress={() => { setQrScannerVisible(false); setQrScannerActive(false); }} />
@@ -4322,10 +4414,12 @@ export function ProfileScreen({
               </View>
             </View>
           </Modal>
-          {profilePanel === 'vista' && session.role !== 'administrador' && selectedRequest ? (
+            </>
+          ) : null}
+          {profilePanel === 'vista' && session.role === 'palestrista' && selectedRequest ? (
             <View style={styles.profileCommunityPanel}>
               <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Solicitudes</Text>
-              {selectedRequest === 'menu' || (selectedRequest && ['Solicitud de perseverancia', 'Solicitud Especial'].includes(selectedRequest)) ? (
+              {selectedRequest === 'menu' || selectedRequest === 'Solicitud de perseverancia' ? (
                 <View style={styles.inlineEditorPanel}>
                   {roleRank(session.role) < roleRank('sedimentador') ? (
                     <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === 'Solicitud de perseverancia' ? 'menu' : 'Solicitud de perseverancia')}>
@@ -4334,11 +4428,6 @@ export function ProfileScreen({
                       <Text style={styles.expandHint}>{selectedRequest === 'Solicitud de perseverancia' ? 'Cerrar solicitud' : 'Abrir solicitud'}</Text>
                     </TouchableOpacity>
                   ) : null}
-                  <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === 'Solicitud Especial' ? 'menu' : 'Solicitud Especial')}>
-                    <Text style={styles.cardTitle}>Solicitud Especial</Text>
-                    <Text style={styles.cardText}>Contacto con Vocal Diocesano o Coordinador Diocesano de tu provincia.</Text>
-                    <Text style={styles.expandHint}>{selectedRequest === 'Solicitud Especial' ? 'Cerrar solicitud' : 'Abrir solicitud'}</Text>
-                  </TouchableOpacity>
                   {selectedRequest && selectedRequest !== 'menu' ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Solicitud</Text>
@@ -4346,7 +4435,7 @@ export function ProfileScreen({
                       <Text style={styles.cardText}>Escribí el motivo de la solicitud. Máximo 500 caracteres.</Text>
                       <TextInput
                         style={[styles.input, styles.textArea]}
-                        placeholder={selectedRequest === 'Solicitud Especial' ? 'Escribí tu consulta para la dirigencia diocesana' : 'Detalle de la solicitud'}
+                        placeholder="Detalle de la solicitud"
                         value={userRequestText}
                         onChangeText={(value) => setUserRequestText(value.slice(0, 500))}
                         multiline
@@ -5075,7 +5164,11 @@ export function ProfileScreen({
                   ) : null}
                   {canManageMotivadorPanel(session) ? (
                     <>
-                      <View style={styles.inlineEditorPanel}>
+                      <TouchableOpacity style={styles.primaryButton} onPress={() => setShowPmForm((current) => !current)}>
+                        <Ionicons name={showPmForm ? 'chevron-up-outline' : 'add-circle-outline'} size={17} color={palette.white} />
+                        <Text style={styles.primaryButtonText}>Cargar Nuevo PM</Text>
+                      </TouchableOpacity>
+                      {showPmForm ? <View style={styles.inlineEditorPanel}>
                         <Text style={styles.cardEyebrow}>{pmEditingId ? 'Editar PM' : 'Nuevo PM'}</Text>
                         <View style={styles.filterRow}>
                           {(['masculino', 'femenino'] as const).map((item) => (
@@ -5162,7 +5255,7 @@ export function ProfileScreen({
                             <Text style={styles.secondaryButtonText}>Cancelar edición</Text>
                           </TouchableOpacity>
                         ) : null}
-                      </View>
+                      </View> : null}
                       <SectionTitle title="PM cargados" />
                       <View style={styles.pmFilterGrid}>
                         {session?.role === 'administrador' ? renderPmFilterDropdown(
@@ -5546,9 +5639,22 @@ export function ProfileScreen({
               {adminModule === 'usuarios' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Usuarios registrados</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                    {([
+                      ['crear', 'Crear Usuarios'],
+                      ['editar', 'Editar Usuarios'],
+                      ['listado', 'Listado de Usuarios'],
+                      ['pendientes', 'Cargar usuarios pendientes de aprobacion'],
+                      ['diagnostico', 'Diagnostico y Liberacion de Login']
+                    ] as const).map(([key, label]) => (
+                      <TouchableOpacity key={key} style={[styles.filterChip, adminUsersTool === key && styles.filterChipActive]} onPress={() => setAdminUsersTool(key)}>
+                        <Text style={[styles.filterChipText, adminUsersTool === key && styles.filterChipTextActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                   {session.role !== 'administrador' ? (
                     <Text style={styles.cardText}>Tu rango puede revisar y gestionar usuarios dentro de su alcance. Crear usuarios, confirmar mails y eliminar accesos queda reservado al Administrador.</Text>
-                  ) : (
+                  ) : adminUsersTool === 'crear' ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Crear usuario básico</Text>
                       <Text style={styles.cardText}>Crea una cuenta habilitada con mail y contraseña. Al ingresar, el usuario deberá completar provincia y comunidad.</Text>
@@ -5574,15 +5680,19 @@ export function ProfileScreen({
                         <Text style={styles.primaryButtonText}>Crear usuario</Text>
                       </TouchableOpacity>
                     </View>
-                  )}
-                  <TextInput style={styles.input} placeholder="Buscar por nombre, apellido o apodo" value={adminUserSearch} onChangeText={setAdminUserSearch}  placeholderTextColor={inputPlaceholderColor} />
-                  <View style={styles.communityActionRow}>
-                    <TouchableOpacity style={styles.communityMiniButton} onPress={loadAdminUsers} activeOpacity={0.85}>
-                      <Ionicons name="refresh-outline" size={15} color={palette.red} />
-                      <Text style={styles.communityMiniButtonText}>Actualizar usuarios</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {session.role === 'administrador' ? (
+                  ) : null}
+                  {['editar', 'listado'].includes(adminUsersTool) ? (
+                    <>
+                      <TextInput style={styles.input} placeholder="Buscar por nombre, apellido o apodo" value={adminUserSearch} onChangeText={setAdminUserSearch}  placeholderTextColor={inputPlaceholderColor} />
+                      <View style={styles.communityActionRow}>
+                        <TouchableOpacity style={styles.communityMiniButton} onPress={loadAdminUsers} activeOpacity={0.85}>
+                          <Ionicons name="refresh-outline" size={15} color={palette.red} />
+                          <Text style={styles.communityMiniButtonText}>Actualizar usuarios</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : null}
+                  {session.role === 'administrador' && adminUsersTool === 'diagnostico' ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Diagnostico y liberacion de login</Text>
                       <Text style={styles.cardText}>Usalo cuando un mail no puede ingresar, no aparece en usuarios o quedo atrapado en Auth/Profile.</Text>
@@ -5621,13 +5731,13 @@ export function ProfileScreen({
                       ) : null}
                     </View>
                   ) : null}
-                  <View style={styles.profileCommunityPanel}>
+                  {['editar', 'listado'].includes(adminUsersTool) ? <View style={styles.profileCommunityPanel}>
                     <Text style={styles.cardEyebrow}>Coordinaciones activas</Text>
                     <Text style={styles.cardText}>Coordinador Nacional: {activeNationalCoordinator?.full_name ?? activeNationalCoordinator?.email ?? 'Sin coordinador activo cargado'}</Text>
                     {selectedUsersProvince ? <Text style={styles.cardText}>Coordinador Diocesano en {selectedUsersProvince}: {activeDiocesanCoordinator?.full_name ?? activeDiocesanCoordinator?.email ?? 'Sin coordinador activo'}</Text> : null}
-                  </View>
-                  {adminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios cargados.</Text> : null}
-                  {userProvinceOptions.length > 0 ? (
+                  </View> : null}
+                  {['editar', 'listado'].includes(adminUsersTool) && adminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios cargados.</Text> : null}
+                  {['editar', 'listado'].includes(adminUsersTool) && userProvinceOptions.length > 0 ? (
                     <>
                       <Text style={styles.cardEyebrow}>Provincia</Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
@@ -5639,7 +5749,7 @@ export function ProfileScreen({
                       </ScrollView>
                     </>
                   ) : null}
-                  {selectedUsersProvince ? (
+                  {selectedUsersProvince && ['editar', 'listado'].includes(adminUsersTool) ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>{selectedUsersProvince}</Text>
                       {visibleAdminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios para esta provincia.</Text> : null}
@@ -5886,8 +5996,8 @@ export function ProfileScreen({
                         );
                       })}
                     </View>
-                  ) : adminUsers.length > 0 ? <Text style={styles.cardText}>Elegir una provincia para ver sus usuarios.</Text> : null}
-                  <View style={styles.profileCommunityPanel}>
+                  ) : ['editar', 'listado'].includes(adminUsersTool) && adminUsers.length > 0 ? <Text style={styles.cardText}>Elegir una provincia para ver sus usuarios.</Text> : null}
+                  {adminUsersTool === 'pendientes' ? <View style={styles.profileCommunityPanel}>
                     <Text style={styles.cardEyebrow}>Pendientes rapido</Text>
                     <TouchableOpacity style={styles.secondaryButton} onPress={loadPendingProfiles}>
                       <Text style={styles.secondaryButtonText}>Cargar pendientes</Text>
@@ -5904,7 +6014,7 @@ export function ProfileScreen({
                         </TouchableOpacity>
                       </View>
                     ))}
-                  </View>
+                  </View> : null}
                 </View>
               ) : null}
 
@@ -6245,54 +6355,119 @@ export function ProfileScreen({
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Listas QR</Text>
                   <Text style={styles.cardText}>Crea listas por actividad, carga miembros y valida asistencia escaneando credenciales.</Text>
-                  {['vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role) ? (
+                  <View style={styles.compactToolRow}>
+                    {['vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role) ? (
+                      <TouchableOpacity style={[styles.compactSquareButton, showQrActivityCreateMenu && styles.compactSquareButtonActive]} onPress={() => setShowQrActivityCreateMenu((current) => !current)}>
+                        <Ionicons name={showQrActivityCreateMenu ? 'chevron-up-outline' : 'add-circle-outline'} size={17} color={showQrActivityCreateMenu ? palette.white : palette.red} />
+                        <Text style={[styles.compactSquareButtonText, showQrActivityCreateMenu && styles.compactSquareButtonTextActive]}>Crear Lista</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                    <TouchableOpacity style={[styles.compactSquareButton, showQrActivityListsMenu && styles.compactSquareButtonActive]} onPress={async () => { await loadQrActivityLists(); setShowQrActivityListsMenu((current) => !current); }}>
+                      <Ionicons name={showQrActivityListsMenu ? 'chevron-up-outline' : 'refresh-outline'} size={17} color={showQrActivityListsMenu ? palette.white : palette.red} />
+                      <Text style={[styles.compactSquareButtonText, showQrActivityListsMenu && styles.compactSquareButtonTextActive]}>Actualizar</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {showQrActivityCreateMenu && ['vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role) ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Crear lista</Text>
                       <TextInput style={styles.input} placeholder="Ej: Equipistas de PMF N 102" value={qrActivityTitle} onChangeText={setQrActivityTitle} placeholderTextColor={inputPlaceholderColor} />
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                        {qrActivityProvinceOptions.map((province) => (
-                          <TouchableOpacity key={province} style={[styles.filterChip, (qrActivityProvince || session.province) === province && styles.filterChipActive]} onPress={() => setQrActivityProvince(province)}>
-                            <Text style={[styles.filterChipText, (qrActivityProvince || session.province) === province && styles.filterChipTextActive]}>{province}</Text>
+                      <Text style={styles.inputLabel}>Provincia</Text>
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setQrActivityProvinceDropdownOpen((current) => !current)}>
+                        <Text style={styles.dropdownButtonText}>{qrActivityProvince || 'Todas'}</Text>
+                        <Ionicons name={qrActivityProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {qrActivityProvinceDropdownOpen ? (
+                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                          {qrActivityProvinceOptions.map((province) => (
+                            <TouchableOpacity key={province || 'todas'} style={styles.dropdownItem} onPress={() => { setQrActivityProvince(province); setQrActivityCommunity(''); setQrActivityProvinceDropdownOpen(false); }}>
+                              <Text style={styles.dropdownItemText}>{province || 'Todas'}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      ) : null}
+                      <Text style={styles.inputLabel}>Comunidad</Text>
+                      <TouchableOpacity style={[styles.dropdownButton, qrActivityCommunityDisabled && styles.lockedCard]} disabled={qrActivityCommunityDisabled} onPress={() => setQrActivityCommunityDropdownOpen((current) => !current)}>
+                        <Text style={styles.dropdownButtonText}>{qrActivityCommunityDisabled ? 'Inhabilitado por Todas las provincias' : qrActivityCommunity || 'Todas'}</Text>
+                        <Ionicons name={qrActivityCommunityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {qrActivityCommunityDropdownOpen && !qrActivityCommunityDisabled ? (
+                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                          <TouchableOpacity style={styles.dropdownItem} onPress={() => { setQrActivityCommunity(''); setQrActivityCommunityDropdownOpen(false); }}>
+                            <Text style={styles.dropdownItemText}>Todas</Text>
                           </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                        <TouchableOpacity style={[styles.filterChip, !qrActivityCommunity && styles.filterChipActive]} onPress={() => setQrActivityCommunity('')}>
-                          <Text style={[styles.filterChipText, !qrActivityCommunity && styles.filterChipTextActive]}>Todas</Text>
-                        </TouchableOpacity>
-                        {qrActivityCommunityOptions.map((community) => (
-                          <TouchableOpacity key={community.id ?? community.name} style={[styles.filterChip, qrActivityCommunity === community.name && styles.filterChipActive]} onPress={() => setQrActivityCommunity(community.name)}>
-                            <Text style={[styles.filterChipText, qrActivityCommunity === community.name && styles.filterChipTextActive]}>{community.name}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
+                          {qrActivityCommunityOptions.map((community) => (
+                            <TouchableOpacity key={community.id ?? community.name} style={styles.dropdownItem} onPress={() => { setQrActivityCommunity(community.name); setQrActivityCommunityDropdownOpen(false); }}>
+                              <Text style={styles.dropdownItemText}>{community.name}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      ) : null}
                       <TouchableOpacity style={styles.primaryButton} onPress={saveQrActivityList}>
                         <Text style={styles.primaryButtonText}>Crear lista QR</Text>
                       </TouchableOpacity>
                     </View>
                   ) : null}
-                  <TouchableOpacity style={styles.secondaryButton} onPress={loadQrActivityLists}>
-                    <Ionicons name="refresh-outline" size={17} color={palette.red} />
-                    <Text style={styles.secondaryButtonText}>Actualizar listas</Text>
-                  </TouchableOpacity>
-                  {session.role === 'administrador' ? (
+                  {session.role === 'administrador' && adminUsersTool === 'diagnostico' ? (
                     <Text style={styles.cardText}>Administrador: selecciona una provincia en cada lista para ver sus registros.</Text>
                   ) : null}
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                    {qrActivityLists.map((list) => (
-                      <TouchableOpacity key={list.id} style={[styles.filterChip, selectedQrActivityListId === list.id && styles.filterChipActive]} onPress={() => setSelectedQrActivityListId(list.id)}>
-                        <Text style={[styles.filterChipText, selectedQrActivityListId === list.id && styles.filterChipTextActive]}>{list.title}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                  {qrActivityLists.length === 0 ? <Text style={styles.cardText}>No hay listas QR visibles para tu rango.</Text> : null}
-                  {selectedQrActivityList ? (
+                  {showQrActivityListsMenu ? (
                     <View style={styles.profileCommunityPanel}>
-                      <Text style={styles.cardEyebrow}>{selectedQrActivityList.province} - {selectedQrActivityList.community_name ?? 'Todas las comunidades'}</Text>
+                      <View style={styles.settingRow}>
+                        <Text style={styles.cardEyebrow}>Listas activas</Text>
+                        <TouchableOpacity style={styles.actionPill} onPress={() => { setShowQrActivityListsMenu(false); setSelectedQrActivityListId(''); }}>
+                          <Ionicons name="close-outline" size={16} color={palette.red} />
+                          <Text style={styles.actionPillText}>Cerrar</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {qrActivityLists.length === 0 ? <Text style={styles.cardText}>No hay listas QR visibles para tu rango.</Text> : null}
+                      {qrActivityLists.map((list) => (
+                        <TouchableOpacity key={list.id} style={[styles.adminListRow, selectedQrActivityListId === list.id && styles.communityChoiceActive]} onPress={() => setSelectedQrActivityListId(selectedQrActivityListId === list.id ? '' : list.id)}>
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.adminQuickText}>{list.title}</Text>
+                            <Text style={styles.cardText}>{list.province ?? 'Todas las provincias'} - {list.community_name ?? 'Todas las comunidades'}</Text>
+                          </View>
+                          <View style={styles.inlineActions}>
+                            <TouchableOpacity style={styles.actionPill} onPress={() => setSelectedQrActivityListId(list.id)}>
+                              <Text style={styles.actionPillText}>Editar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionPill} onPress={() => deleteQrActivityList(list)}>
+                              <Text style={styles.actionPillText}>Eliminar</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : null}
+                  {showQrActivityListsMenu && selectedQrActivityList ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>{selectedQrActivityList.province ?? 'Todas las provincias'} - {selectedQrActivityList.community_name ?? 'Todas las comunidades'}</Text>
                       <Text style={styles.cardTitle}>{selectedQrActivityList.title}</Text>
+                      <Text style={styles.cardEyebrow}>Editar lista</Text>
+                      <TextInput style={styles.input} placeholder="Nombre de la lista" value={qrActivityEditTitle} onChangeText={setQrActivityEditTitle} placeholderTextColor={inputPlaceholderColor} />
+                      <View style={styles.inlineActions}>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={saveQrActivityListEdit}>
+                          <Ionicons name="save-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>Guardar lista</Text>
+                        </TouchableOpacity>
+                      </View>
                       {['animador_comunidad', 'coordinador_comunidad'].includes(session.role) || roleRank(session.role) >= roleRank('vocal') ? (
                         <>
                           <Text style={styles.cardEyebrow}>Agregar miembros</Text>
+                          <View style={styles.filterRow}>
+                            {(['usuarios', 'todos'] as const).map((mode) => (
+                              <TouchableOpacity key={mode} style={[styles.filterChip, qrActivityUserMode === mode && styles.filterChipActive, qrActivityUserSelectionDisabled && styles.lockedCard]} disabled={qrActivityUserSelectionDisabled} onPress={() => setQrActivityUserMode(mode)}>
+                                <Text style={[styles.filterChipText, qrActivityUserMode === mode && styles.filterChipTextActive]}>{mode === 'usuarios' ? 'Usuarios' : 'Todos'}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                          {qrActivityUserSelectionDisabled ? <Text style={styles.cardText}>La seleccion de usuarios queda inhabilitada por el alcance Todas.</Text> : null}
+                          {qrActivityUserMode === 'todos' && !qrActivityUserSelectionDisabled ? (
+                            <TouchableOpacity style={styles.primaryButton} onPress={addAllUsersToQrActivity}>
+                              <Text style={styles.primaryButtonText}>Agregar todos los usuarios del alcance</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                          {qrActivityUserMode === 'usuarios' && !qrActivityUserSelectionDisabled ? (
+                            <>
                           <TextInput style={styles.input} placeholder="Buscar usuario" value={qrActivityUserSearch} onChangeText={setQrActivityUserSearch} placeholderTextColor={inputPlaceholderColor} />
                           <ScrollView style={styles.dropdownList} nestedScrollEnabled>
                             {(['animador_comunidad', 'coordinador_comunidad'].includes(session.role) ? communityMembers : qrActivityMemberOptions).slice(0, 80).map((user) => {
@@ -6309,6 +6484,8 @@ export function ProfileScreen({
                               );
                             })}
                           </ScrollView>
+                            </>
+                          ) : null}
                         </>
                       ) : null}
                       <View style={styles.inlineActions}>
@@ -6318,14 +6495,23 @@ export function ProfileScreen({
                             <Text style={styles.primaryButtonText}>Validar QR</Text>
                           </TouchableOpacity>
                         ) : null}
-                        <TouchableOpacity style={styles.secondaryButton} onPress={exportQrActivityAttendance}>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={exportQrActivityAttendanceDoc}>
                           <Ionicons name="download-outline" size={17} color={palette.red} />
-                          <Text style={styles.secondaryButtonText}>Exportar Excel</Text>
+                          <Text style={styles.secondaryButtonText}>Exportar DOC</Text>
                         </TouchableOpacity>
                       </View>
                       <Text style={styles.cardEyebrow}>Miembros cargados ({qrActivityMembers.length})</Text>
                       {qrActivityMembers.map((member) => (
-                        <Text key={member.id} style={styles.cardText}>{member.full_name ?? 'Usuario'} - {member.community_name ?? 'Sin comunidad'}</Text>
+                        <View key={member.id} style={styles.adminListRow}>
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.adminQuickText}>{member.full_name ?? 'Usuario'}</Text>
+                            <Text style={styles.cardText}>{member.community_name ?? 'Sin comunidad'}</Text>
+                          </View>
+                          <TouchableOpacity style={styles.actionPill} onPress={() => removeUserFromQrActivity(member.user_id)}>
+                            <Ionicons name="trash-outline" size={16} color={palette.red} />
+                            <Text style={styles.actionPillText}>Quitar</Text>
+                          </TouchableOpacity>
+                        </View>
                       ))}
                       <Text style={styles.cardEyebrow}>Validados por QR ({qrActivityAttendance.length})</Text>
                       {qrActivityAttendance.map((item) => (

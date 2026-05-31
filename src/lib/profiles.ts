@@ -201,7 +201,7 @@ export type CredentialValidationRecord = {
 export type QrActivityListRecord = {
   id: string;
   title: string;
-  province: string;
+  province: string | null;
   community_name: string | null;
   created_by: string | null;
   created_by_name?: string | null;
@@ -278,12 +278,35 @@ export async function fetchQrActivityLists(): Promise<QrActivityListRecord[]> {
   }
 }
 
-export async function createQrActivityList(values: { title: string; province: string; communityName?: string | null }) {
+export async function createQrActivityList(values: { title: string; province?: string | null; communityName?: string | null }) {
   try {
     return await supabase.rpc('create_qr_activity_list', {
       p_title: values.title,
       p_province: values.province,
       p_community_name: values.communityName ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function updateQrActivityList(values: { listId: string; title: string; province?: string | null; communityName?: string | null }) {
+  try {
+    return await supabase.rpc('update_qr_activity_list', {
+      p_list_id: values.listId,
+      p_title: values.title,
+      p_province: values.province ?? null,
+      p_community_name: values.communityName ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function archiveQrActivityList(listId: string) {
+  try {
+    return await supabase.rpc('archive_qr_activity_list', {
+      p_list_id: listId
     });
   } catch (error) {
     return networkError(error);
@@ -317,6 +340,29 @@ export async function fetchQrActivityAttendance(listId: string): Promise<QrActiv
 export async function addQrActivityMember(listId: string, userId: string) {
   try {
     return await supabase.rpc('add_qr_activity_member', {
+      p_list_id: listId,
+      p_user_id: userId
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function addQrActivityMembersByScope(listId: string, province?: string | null, communityName?: string | null) {
+  try {
+    return await supabase.rpc('add_qr_activity_members_by_scope', {
+      p_list_id: listId,
+      p_province: province ?? null,
+      p_community_name: communityName ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function removeQrActivityMember(listId: string, userId: string) {
+  try {
+    return await supabase.rpc('remove_qr_activity_member', {
       p_list_id: listId,
       p_user_id: userId
     });
