@@ -39,6 +39,7 @@ import { NotilestraScreen } from './src/screens/NotilestraScreen';
 import { MotivadorScreen } from './src/screens/MotivadorScreen';
 import { MaterialsScreen } from './src/screens/MaterialsScreen';
 import { CommunitiesScreen } from './src/screens/CommunitiesScreen';
+import { IntentionsScreen } from './src/screens/IntentionsScreen';
 import { DynamicNavigationSectionScreen } from './src/screens/DynamicNavigationSectionScreen';
 import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
 import { appRuntimeOwner, appVersionLabel, authConfirmedPreviewUrl, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey, themePreferenceKey, touchPointerPreferenceKey } from './src/lib/constants';
@@ -888,6 +889,9 @@ export default function App() {
     }
     if (activeTab === 'comunidades') {
       return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} nearbySearchEnabled={adminConfig.settings.nearbyCommunitySearchEnabled} editor={pageEditorProps('comunidades')} />;
+    }
+    if (activeTab === 'intenciones') {
+      return <IntentionsScreen session={session} title={tabLabel('intenciones')} content={appContent.find((item) => item.tab_key === 'intenciones')} editor={pageEditorProps('intenciones')} />;
     }
     if (activeTab === 'historia') {
       return <HistoryScreen title={tabLabel('historia')} content={appContent.find((item) => item.tab_key === 'historia')} editor={pageEditorProps('historia')} />;

@@ -145,6 +145,20 @@ export type UserAgendaPreferenceRecord = {
   created_at: string;
 };
 
+export type PrayerIntentionRecord = {
+  id: string;
+  body: string;
+  is_anonymous: boolean;
+  author_name: string | null;
+  prayer_count: number;
+  created_at?: string | null;
+};
+
+export type PrayerIntentionResult = {
+  prayer_count: number;
+  notification_intent_id: string | null;
+};
+
 export type RolePermissionRecord = {
   role: string;
   permission_key: string;
@@ -990,6 +1004,47 @@ export async function deliverNotificationIntent(intentId: string) {
     });
   } catch (error) {
     return networkError(error);
+  }
+}
+
+export async function createPrayerIntention(body: string, isAnonymous: boolean) {
+  try {
+    return await supabase.rpc('create_prayer_intention', {
+      p_body: body,
+      p_is_anonymous: isAnonymous
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchRandomPrayerIntention(excludeIds: string[] = []): Promise<{ data: PrayerIntentionRecord | null; error: Error | null }> {
+  try {
+    const { data, error } = await supabase.rpc('get_random_prayer_intention', {
+      p_exclude_ids: excludeIds
+    });
+    if (error) {
+      return { data: null, error };
+    }
+    const items = (data ?? []) as PrayerIntentionRecord[];
+    return { data: items[0] ?? null, error: null };
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error : new Error('No se pudo cargar una intencion.') };
+  }
+}
+
+export async function recordPrayerForIntention(intentionId: string): Promise<{ data: PrayerIntentionResult | null; error: Error | null }> {
+  try {
+    const { data, error } = await supabase.rpc('record_prayer_for_intention', {
+      p_intention_id: intentionId
+    });
+    if (error) {
+      return { data: null, error };
+    }
+    const items = (data ?? []) as PrayerIntentionResult[];
+    return { data: items[0] ?? null, error: null };
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error : new Error('No se pudo registrar la oracion.') };
   }
 }
 

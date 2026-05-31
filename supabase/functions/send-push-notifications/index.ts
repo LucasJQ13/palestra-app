@@ -8,6 +8,9 @@ type PushTicket = {
 };
 
 function notificationTitle(intent: any) {
+  if (String(intent.notification_type ?? '').includes('intencion')) {
+    return 'Intenciones';
+  }
   if (String(intent.notification_type ?? '').includes('privado')) {
     return 'Mensaje privado';
   }

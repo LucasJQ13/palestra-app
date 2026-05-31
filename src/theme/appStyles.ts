@@ -4052,5 +4052,74 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(45, 141, 200, 0.1)'
+  },
+  intentionPrayerCard: {
+    borderRadius: 20,
+    padding: 18,
+    gap: 12,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)'
+  },
+  candleStage: {
+    width: 116,
+    height: 170,
+    alignItems: 'center',
+    justifyContent: 'flex-end'
+  },
+  candleGlow: {
+    position: 'absolute',
+    top: 10,
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: 'rgba(255, 190, 92, 0.24)'
+  },
+  candleFlame: {
+    position: 'absolute',
+    top: 18,
+    width: 28,
+    height: 44,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 8,
+    backgroundColor: '#ffb23f',
+    transform: [{ rotate: '45deg' }],
+    shadowColor: '#ff8a00',
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 5
+  },
+  candleBody: {
+    width: 54,
+    height: 108,
+    borderRadius: 18,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(255,255,255,0.42)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.18)'
+  },
+  candleWax: {
+    width: '100%',
+    backgroundColor: '#fff4df',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16
+  },
+  candleBase: {
+    width: 86,
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(45, 141, 200, 0.18)'
+  },
+  intentionText: {
+    color: palette.ink,
+    fontSize: 17,
+    lineHeight: 25,
+    textAlign: 'center',
+    fontWeight: '700'
   }
 });
