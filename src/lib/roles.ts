@@ -164,7 +164,7 @@ export function canApproveRole(session: Session | null, targetRole: Role) {
     return false;
   }
   if (targetRole === 'administrador') {
-    return false;
+    return session.role === 'administrador';
   }
   if (session.role === 'administrador') {
     return true;
@@ -183,7 +183,7 @@ export function canApproveRole(session: Session | null, targetRole: Role) {
 }
 
 export function assignableRolesFor(session: Session | null) {
-  return roleHierarchy.filter((item) => !['invitado', 'administrador'].includes(item.role) && canApproveRole(session, item.role));
+  return roleHierarchy.filter((item) => item.role !== 'invitado' && canApproveRole(session, item.role));
 }
 
 export function visibleHierarchyFor(session: Session | null) {

@@ -1,0 +1,6239 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Image, Linking, Modal, Platform, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as Notifications from 'expo-notifications';
+import { Ionicons } from '@expo/vector-icons';
+import { palette } from '../theme/palette';
+import { AppTheme, ThemeName, themePresets } from '../theme/themes';
+import { auditLog, calendarActivities, communities, contactInfo, communityNews, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from '../data/content';
+import { Permission, PersonalPmType, Role, Session } from '../types/auth';
+import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
+import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from '../lib/profiles';
+import { supabase } from '../lib/supabase';
+import { getMyProfileSession } from '../lib/authProfile';
+import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
+import { ExternalCatholicNewsItem, fetchExternalCatholicNews } from '../lib/externalNews';
+import { ActionButton } from '../components/ActionButton';
+import { SectionTitle } from '../components/SectionTitle';
+import { RoleDropdown } from '../components/RoleDropdown';
+import { styles } from '../theme/appStyles';
+import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from '../lib/runtimeConfig';
+import { appRuntimeOwner, appVersionLabel, authConfirmedPreviewUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos } from '../lib/constants';
+import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, protectedTabKeys } from '../lib/navigationConstants';
+import { AppAdminConfig, ContactBlock, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from '../lib/appConfig';
+import { normalizeExternalUrl } from '../lib/urls';
+import { uploadPickedImageToPublicUrl } from '../lib/uploads';
+import { credentialDisplayName, displayRoleLabel, firstNameOf, GenderPreference, genderNarratives, homeGreetingName, perseveranceLabel, personalPmSummary, personalPmTypeLabel, renderGreetingTemplate, roleLabel, roleLabelForProvince, roleShortLabel } from '../lib/profileDisplay';
+import { changeDone, communityDowngradesRole, friendlyUploadError, hasPlausibleEmailDomain, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError, verifyEmailDomainExists } from '../lib/appMessages';
+import { buildInitialBlocksForSection, fallbackContentKey, tabLabelFromKey } from '../lib/contentBlocks';
+import { canCreateOrAdministrateCommunities, canEditAdminUser, canEditStaticInstitutionalPage, canManageGlobalInstagram, canManageMotivadorPanel, canManageNewsContent, canManagePublishedContent, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from '../lib/sessionAccess';
+import { AdminModule, AdminRequest, ProfilePanel, PublicProfilePreview, TabKey } from '../types/appUi';
+import { internalTestSessions } from '../lib/internalTestSessions';
+import { permissionOptions } from '../lib/permissionLabels';
+import { subroleLabel, subrolesForRole } from '../lib/subroles';
+import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, requestAndRegisterPushToken, showFeedbackMessage } from '../lib/notificationHelpers';
+import { ProfilePublicProfileModal } from './profile/ProfilePublicProfileModal';
+import { ProfileAccountMenu } from './profile/ProfileAccountMenu';
+import { ProfileSummary } from './profile/ProfileSummary';
+import { PendingEmailProfile } from './profile/PendingEmailProfile';
+import { GuestProfileAuthCard } from './profile/GuestProfileAuthCard';
+import { AdminOverviewPanel } from './profile/AdminOverviewPanel';
+
+type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
+
+function notificationPermissionLabel(session: Session | null) {
+  if (!session || (!hasPermission(session, 'enviar_notificaciones') && !['animador_comunidad', 'coordinador_comunidad'].includes(session.role))) {
+    return 'La notificacion quedara disponible solo para roles con permiso de enviar notificaciones.';
+  }
+  return 'Tambi??n se dejar?? preparada una notificaci??n push para los usuarios alcanzados.';
+}
+
+export function ProfileScreen({
+  session,
+  onSessionChange,
+  tabs,
+  appContent,
+  adminConfig,
+  runtimeConfig,
+  onRuntimeConfigChange,
+  touchPointerEnabled,
+  onTouchPointerEnabledChange,
+  themeName,
+  appTheme,
+  onThemeChange,
+  onAdminConfigChange,
+  onTabsChanged,
+  onContentChanged,
+  onNavigate,
+  onSavedFeedback,
+  onErrorFeedback,
+  onViewAsSession,
+  initialPanel = 'vista',
+  initialPublicProfile,
+  onInitialPublicProfileHandled
+}: {
+  session: Session | null;
+  onSessionChange: (session: Session | null) => void;
+  tabs: AppTabDisplay[];
+  appContent: AppContentBlock[];
+  adminConfig: AppAdminConfig;
+  runtimeConfig: AppRuntimeConfig;
+  onRuntimeConfigChange: (config: AppRuntimeConfig) => void;
+  touchPointerEnabled: boolean;
+  onTouchPointerEnabledChange: (value: boolean) => void;
+  themeName: ThemeName;
+  appTheme: AppTheme;
+  onThemeChange: (theme: ThemeName) => Promise<void>;
+  onAdminConfigChange: (config: AppAdminConfig) => void;
+  onTabsChanged: () => Promise<void>;
+  onContentChanged: () => Promise<void>;
+  onNavigate: (tab: TabKey) => void;
+  onSavedFeedback: (message?: string) => void;
+  onErrorFeedback: (message?: string) => void;
+  onViewAsSession: (session: Session) => void;
+  initialPanel?: ProfilePanel;
+  initialPublicProfile?: PublicProfilePreview | null;
+  onInitialPublicProfileHandled?: () => void;
+}) {
+  const isDark = appTheme.mode === 'dark';
+  const [showCommunity, setShowCommunity] = useState(false);
+  const [showCommunityManagement, setShowCommunityManagement] = useState(false);
+  const [showCommunityMembersList, setShowCommunityMembersList] = useState(false);
+  const [showLeadershipUsersSummary, setShowLeadershipUsersSummary] = useState(false);
+  const [showProfilePhoto, setShowProfilePhoto] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
+  const [userRequestText, setUserRequestText] = useState('');
+  const [selectedSentRequestId, setSelectedSentRequestId] = useState('');
+  const [showSentRequests, setShowSentRequests] = useState(false);
+  const [profilePanel, setProfilePanel] = useState<ProfilePanel>(initialPanel);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
+  const [authPasswordVisible, setAuthPasswordVisible] = useState(false);
+  const [authFocusedField, setAuthFocusedField] = useState('');
+  const [authErrors, setAuthErrors] = useState<Record<string, string>>({});
+  const [authMessage, setAuthMessage] = useState('');
+  const [notificationPermissionStatus, setNotificationPermissionStatus] = useState('desconocido');
+  const [pushTokenPreview, setPushTokenPreview] = useState('');
+  const [pushDebugInfo, setPushDebugInfo] = useState('');
+  const [pushCurrentToken, setPushCurrentToken] = useState('');
+  const [pushChannelDebug, setPushChannelDebug] = useState('');
+  const [pushTestResult, setPushTestResult] = useState('');
+  const [showPushDiagnostics, setShowPushDiagnostics] = useState(false);
+  const [registerFullName, setRegisterFullName] = useState('');
+  const [registerContact, setRegisterContact] = useState('');
+  const [registerProvince, setRegisterProvince] = useState('');
+  const [registerCommunity, setRegisterCommunity] = useState('');
+  const [registerPerseveranceStartYear, setRegisterPerseveranceStartYear] = useState('');
+  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>(communities);
+  const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
+  const [communityDropdownOpen, setCommunityDropdownOpen] = useState(false);
+  const [registerPerseveranceYearDropdownOpen, setRegisterPerseveranceYearDropdownOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [editFullName, setEditFullName] = useState(session?.fullName ?? '');
+  const [editContact, setEditContact] = useState(session?.contact ?? '');
+  const [editProvince, setEditProvince] = useState(session?.province ?? '');
+  const [editCommunity, setEditCommunity] = useState(session?.communityOfOrigin ?? '');
+  const [editGenderPreference, setEditGenderPreference] = useState<'male' | 'female' | null>(session?.genderPreference ?? null);
+  const [editNickname, setEditNickname] = useState(session?.nickname ?? '');
+  const [editUseNicknameInGreetings, setEditUseNicknameInGreetings] = useState(Boolean(session?.useNicknameInGreetings));
+  const [editCredentialNameMode, setEditCredentialNameMode] = useState<'name' | 'nickname' | 'both'>(session?.credentialNameMode ?? 'name');
+  const [editPerseveranceStartYear, setEditPerseveranceStartYear] = useState(session?.perseveranceStartYear ? String(session.perseveranceStartYear) : '');
+  const [editPerseveranceYearDropdownOpen, setEditPerseveranceYearDropdownOpen] = useState(false);
+  const [editPmType, setEditPmType] = useState<PersonalPmType | ''>(session?.personalPmType ?? '');
+  const [editPmNumber, setEditPmNumber] = useState(session?.personalPmNumber ? String(session.personalPmNumber) : '');
+  const [editPmProvince, setEditPmProvince] = useState(session?.personalPmProvince ?? session?.province ?? '');
+  const [editPmProvinceDropdownOpen, setEditPmProvinceDropdownOpen] = useState(false);
+  const [editPmMotto, setEditPmMotto] = useState(session?.personalPmMotto ?? session?.pmMotto ?? '');
+  const [editProvinceDropdownOpen, setEditProvinceDropdownOpen] = useState(false);
+  const [editCommunityDropdownOpen, setEditCommunityDropdownOpen] = useState(false);
+  const [realPendingProfiles, setRealPendingProfiles] = useState<PendingProfile[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [selectedAdminUserId, setSelectedAdminUserId] = useState('');
+  const [adminUserSearch, setAdminUserSearch] = useState('');
+  const [selectedUsersProvince, setSelectedUsersProvince] = useState('');
+  const [adminUserFullName, setAdminUserFullName] = useState('');
+  const [adminUserEmail, setAdminUserEmail] = useState('');
+  const [adminUserPassword, setAdminUserPassword] = useState('');
+  const [adminUserPhone, setAdminUserPhone] = useState('');
+  const [adminUserProvince, setAdminUserProvince] = useState('');
+  const [adminUserCommunity, setAdminUserCommunity] = useState('');
+  const [adminUserProvinceDropdownOpen, setAdminUserProvinceDropdownOpen] = useState(false);
+  const [adminUserCommunityDropdownOpen, setAdminUserCommunityDropdownOpen] = useState(false);
+  const [adminUserRoleDropdownOpen, setAdminUserRoleDropdownOpen] = useState(false);
+  const [adminUserRoleAliasDropdownOpen, setAdminUserRoleAliasDropdownOpen] = useState(false);
+  const [adminUserSubroleDropdownOpen, setAdminUserSubroleDropdownOpen] = useState(false);
+  const [adminUserStatus, setAdminUserStatus] = useState('pendiente');
+  const [adminUserRole, setAdminUserRole] = useState<Role>('palestrista');
+  const [adminUserSubroleKey, setAdminUserSubroleKey] = useState<string | null>(null);
+  const [adminUserDisplayRoleLabel, setAdminUserDisplayRoleLabel] = useState('');
+  const [adminUserNickname, setAdminUserNickname] = useState('');
+  const [adminUserUseNicknameInGreetings, setAdminUserUseNicknameInGreetings] = useState(false);
+  const [adminUserCredentialNameMode, setAdminUserCredentialNameMode] = useState<'name' | 'nickname' | 'both'>('name');
+  const [adminUserPerseveranceStartYear, setAdminUserPerseveranceStartYear] = useState('');
+  const [adminUserPerseveranceYearDropdownOpen, setAdminUserPerseveranceYearDropdownOpen] = useState(false);
+  const [adminUserPmType, setAdminUserPmType] = useState<PersonalPmType | ''>('');
+  const [adminUserPmNumber, setAdminUserPmNumber] = useState('');
+  const [adminUserPmProvince, setAdminUserPmProvince] = useState('');
+  const [adminUserPmProvinceDropdownOpen, setAdminUserPmProvinceDropdownOpen] = useState(false);
+  const [adminUserPmMotto, setAdminUserPmMotto] = useState('');
+  const [adminCreateEmail, setAdminCreateEmail] = useState('');
+  const [adminCreatePassword, setAdminCreatePassword] = useState('');
+  const [adminCreatePasswordVisible, setAdminCreatePasswordVisible] = useState(false);
+  const [adminDiagnosticEmail, setAdminDiagnosticEmail] = useState('lucas.lsd.13@gmail.com');
+  const [adminLoginDiagnostic, setAdminLoginDiagnostic] = useState<AdminUserLoginDiagnostic | null>(null);
+  const [permissionRole, setPermissionRole] = useState<Role>('palestrista');
+  const [permissionRoleDropdownOpen, setPermissionRoleDropdownOpen] = useState(false);
+  const [rolePermissionRows, setRolePermissionRows] = useState<RolePermissionRecord[]>([]);
+  const [rolePermissionDraft, setRolePermissionDraft] = useState<Permission[]>(rolePermissions.palestrista);
+  const [provinceRoleLabels, setProvinceRoleLabels] = useState<ProvinceRoleLabelRecord[]>([]);
+  const [roleAliases, setRoleAliases] = useState<RoleAliasRecord[]>([]);
+  const [roleLabelProvince, setRoleLabelProvince] = useState(session?.province ?? '');
+  const [roleLabelRole, setRoleLabelRole] = useState<Role>('animador_comunidad');
+  const [roleLabelDraft, setRoleLabelDraft] = useState('');
+  const [roleLabelDescription, setRoleLabelDescription] = useState('');
+  const [roleLabelActive, setRoleLabelActive] = useState(true);
+  const [roleLabelProvinceDropdownOpen, setRoleLabelProvinceDropdownOpen] = useState(false);
+  const [roleLabelRoleDropdownOpen, setRoleLabelRoleDropdownOpen] = useState(false);
+  const [roleAliasBaseRole, setRoleAliasBaseRole] = useState<Role>('animador_comunidad');
+  const [roleAliasLabel, setRoleAliasLabel] = useState('');
+  const [roleAliasProvince, setRoleAliasProvince] = useState('');
+  const [roleAliasIsGlobal, setRoleAliasIsGlobal] = useState(true);
+  const [roleAliasActive, setRoleAliasActive] = useState(true);
+  const [roleAliasRoleDropdownOpen, setRoleAliasRoleDropdownOpen] = useState(false);
+  const [roleAliasProvinceDropdownOpen, setRoleAliasProvinceDropdownOpen] = useState(false);
+  const [adminNewsTitle, setAdminNewsTitle] = useState('');
+  const [adminNewsBody, setAdminNewsBody] = useState('');
+  const [adminNewsCategory, setAdminNewsCategory] = useState('General');
+  const [adminNewsImage, setAdminNewsImage] = useState('');
+  const [adminNewsDraft, setAdminNewsDraft] = useState(false);
+  const [adminNewsFeatured, setAdminNewsFeatured] = useState(false);
+  const [adminNewsNotify, setAdminNewsNotify] = useState(false);
+  const [adminNewsScope, setAdminNewsScope] = useState<'nacional' | 'provincial'>('provincial');
+  const [adminNewsProvince, setAdminNewsProvince] = useState('');
+  const [adminNewsProvinceDropdownOpen, setAdminNewsProvinceDropdownOpen] = useState(false);
+  const [newsDrafts, setNewsDrafts] = useState<NewsDraftRecord[]>([]);
+  const [adminMaterials, setAdminMaterials] = useState<AppMaterialRecord[]>([]);
+  const [adminChurchDocuments, setAdminChurchDocuments] = useState<ChurchDocumentButtonRecord[]>([]);
+  const [churchDocumentEditingId, setChurchDocumentEditingId] = useState<string | null>(null);
+  const [churchDocumentTitle, setChurchDocumentTitle] = useState('');
+  const [churchDocumentLogoUrl, setChurchDocumentLogoUrl] = useState('');
+  const [churchDocumentTargetUrl, setChurchDocumentTargetUrl] = useState('');
+  const [churchDocumentEnabled, setChurchDocumentEnabled] = useState(true);
+  const [churchDocumentSortOrder, setChurchDocumentSortOrder] = useState('1');
+  const [materialTitle, setMaterialTitle] = useState('');
+  const [materialDescription, setMaterialDescription] = useState('');
+  const [materialCategory, setMaterialCategory] = useState('General');
+  const [materialVisibility, setMaterialVisibility] = useState('interno');
+  const [materialPermission, setMaterialPermission] = useState('');
+  const [materialFileUrl, setMaterialFileUrl] = useState('');
+  const [adminEventTitle, setAdminEventTitle] = useState('');
+  const [adminEventBody, setAdminEventBody] = useState('');
+  const [adminEventDate, setAdminEventDate] = useState('');
+  const [adminEventNotify, setAdminEventNotify] = useState(false);
+  const [adminEventCalendarOpen, setAdminEventCalendarOpen] = useState(false);
+  const [adminEventCalendarMonth, setAdminEventCalendarMonth] = useState(new Date());
+  const [adminMotivadorPeriods, setAdminMotivadorPeriods] = useState<MotivadorPeriodRecord[]>([]);
+  const [pmEditingId, setPmEditingId] = useState<string | null>(null);
+  const [pmGender, setPmGender] = useState<'masculino' | 'femenino'>('masculino');
+  const [pmNumber, setPmNumber] = useState('');
+  const [pmProvince, setPmProvince] = useState(session?.role === 'administrador' ? '' : session?.province ?? '');
+  const [pmSelectedDates, setPmSelectedDates] = useState<string[]>([]);
+  const [pmCalendarOpen, setPmCalendarOpen] = useState(false);
+  const [pmCalendarMonth, setPmCalendarMonth] = useState(new Date());
+  const [pmRetreatHouse, setPmRetreatHouse] = useState('');
+  const [pmAddress, setPmAddress] = useState('');
+  const [pmOpeningTime, setPmOpeningTime] = useState('');
+  const [pmClosingTime, setPmClosingTime] = useState('');
+  const [pmDescription, setPmDescription] = useState('');
+  const [pmPlacePhotoUrl, setPmPlacePhotoUrl] = useState('');
+  const [pmFlyerUrl, setPmFlyerUrl] = useState('');
+  const [pmVisibleToLowerRoles, setPmVisibleToLowerRoles] = useState(false);
+  const [pmStatus, setPmStatus] = useState<'activo' | 'inactivo' | 'borrador' | 'archivado'>('borrador');
+  const [pmProvinceFilter, setPmProvinceFilter] = useState('');
+  const [pmGenderFilter, setPmGenderFilter] = useState<'todos' | 'masculino' | 'femenino'>('todos');
+  const [pmStatusFilter, setPmStatusFilter] = useState<'todos' | 'activo' | 'inactivo' | 'borrador'>('todos');
+  const [pmTimeFilter, setPmTimeFilter] = useState<'todos' | 'proximos' | 'pasados'>('todos');
+  const [pmYearFilter, setPmYearFilter] = useState('todos');
+  const [pmFilterDropdownOpen, setPmFilterDropdownOpen] = useState<'' | 'province' | 'gender' | 'status' | 'time' | 'year'>('');
+  const [adminModule, setAdminModule] = useState<AdminModule>('resumen');
+  const [adminConfigDraft, setAdminConfigDraft] = useState<AppAdminConfig>(adminConfig);
+  const [runtimeConfigDraft, setRuntimeConfigDraft] = useState<AppRuntimeConfig>(runtimeConfig);
+  const [adminCommunityProvince, setAdminCommunityProvince] = useState('');
+  const [adminCommunityId, setAdminCommunityId] = useState('');
+  const [adminCommunityName, setAdminCommunityName] = useState('');
+  const [adminCommunityAddress, setAdminCommunityAddress] = useState('');
+  const [adminCommunityPhone, setAdminCommunityPhone] = useState('');
+  const [adminCommunityDay, setAdminCommunityDay] = useState('');
+  const [adminCommunityTime, setAdminCommunityTime] = useState('');
+  const [adminCommunityDescription, setAdminCommunityDescription] = useState('');
+  const [adminCommunityImageUrl, setAdminCommunityImageUrl] = useState('');
+  const [adminCommunityImagePreview, setAdminCommunityImagePreview] = useState('');
+  const [adminCommunityImageAsset, setAdminCommunityImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [adminCommunityImageUploading, setAdminCommunityImageUploading] = useState(false);
+  const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
+  const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
+  const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; sectionType: AppTabSectionType; isVisible: boolean; visibleRoles: string[] | null }>>({});
+  const [newTabLabel, setNewTabLabel] = useState('');
+  const [newTabKey, setNewTabKey] = useState('');
+  const [newTabIcon, setNewTabIcon] = useState('document-text-outline');
+  const [newTabSectionType, setNewTabSectionType] = useState<AppTabSectionType>('simple');
+  const [newTabRoles, setNewTabRoles] = useState<string[]>(['sedimentador', 'coordinador_comunidad', 'animador_comunidad', 'vocal', 'coordinador_diocesano', 'asesor', 'vocal_nacional', 'coordinador_nacional', 'administrador']);
+  const [selectedNavigationTabKey, setSelectedNavigationTabKey] = useState('');
+  const [navigationRolesDropdownOpen, setNavigationRolesDropdownOpen] = useState(false);
+  const [newNavigationRolesDropdownOpen, setNewNavigationRolesDropdownOpen] = useState(false);
+  const [selectedContentTab, setSelectedContentTab] = useState<TabKey>('inicio');
+  const [contentTitle, setContentTitle] = useState('');
+  const [contentBody, setContentBody] = useState('');
+  const [contentBlocks, setContentBlocks] = useState<ContentEditorBlock[]>([]);
+  const [adminRequestMessage, setAdminRequestMessage] = useState('');
+  const [perseveranceRole, setPerseveranceRole] = useState<Role>('sedimentador');
+  const [perseveranceRoleDropdownOpen, setPerseveranceRoleDropdownOpen] = useState(false);
+  const [communityMembers, setCommunityMembers] = useState<CommunityMember[]>([]);
+  const [leadershipRole, setLeadershipRole] = useState<Role>('animador_comunidad');
+  const [leadershipRoleDropdownOpen, setLeadershipRoleDropdownOpen] = useState(false);
+  const [successorUserId, setSuccessorUserId] = useState('');
+  const [successorDropdownOpen, setSuccessorDropdownOpen] = useState(false);
+  const [communityPostKind, setCommunityPostKind] = useState<'aviso' | 'noticia' | 'fecha' | 'encuesta'>('aviso');
+  const [communityPostVisibility, setCommunityPostVisibility] = useState<'publica' | 'registrados' | 'sedimentadores'>('publica');
+  const [communityPostTitle, setCommunityPostTitle] = useState('');
+  const [communityPostBody, setCommunityPostBody] = useState('');
+  const [communityPostDate, setCommunityPostDate] = useState('');
+  const [communityPollOptions, setCommunityPollOptions] = useState('');
+  const [communityPostNotify, setCommunityPostNotify] = useState(false);
+  const [editingCommunityPublicationId, setEditingCommunityPublicationId] = useState<string | null>(null);
+  const [editingCommunityPublicationTitle, setEditingCommunityPublicationTitle] = useState('');
+  const [editingCommunityPublicationBody, setEditingCommunityPublicationBody] = useState('');
+  const [myCommunityPublications, setMyCommunityPublications] = useState<CommunityPublication[]>([]);
+  const [mailboxMessages, setMailboxMessages] = useState<MailboxMessageRecord[]>([]);
+  const [mailboxResponses, setMailboxResponses] = useState<Record<string, string>>({});
+  const [mailboxFilter, setMailboxFilter] = useState<'todos' | 'enviados' | 'recibidos' | 'nuevo' | 'respondido' | 'cerrado'>('todos');
+  const [showMailboxComposer, setShowMailboxComposer] = useState(false);
+  const [mailboxDraft, setMailboxDraft] = useState('');
+  const [mailboxTargetMode, setMailboxTargetMode] = useState<MailboxTargetMode>('my_community');
+  const [mailboxTargetCommunityId, setMailboxTargetCommunityId] = useState('');
+  const [mailboxTargetProvince, setMailboxTargetProvince] = useState('');
+  const [mailboxTargetRole, setMailboxTargetRole] = useState<Role>('palestrista');
+  const [mailboxTargetUserId, setMailboxTargetUserId] = useState('');
+  const [mailboxRecipientSearch, setMailboxRecipientSearch] = useState('');
+  const [mailboxSelectedUserIds, setMailboxSelectedUserIds] = useState<string[]>([]);
+  const [mailboxUserDropdownOpen, setMailboxUserDropdownOpen] = useState(false);
+  const [mailboxProvinceDropdownOpen, setMailboxProvinceDropdownOpen] = useState(false);
+  const [mailboxRoleDropdownOpen, setMailboxRoleDropdownOpen] = useState(false);
+  const [localPollVotes, setLocalPollVotes] = useState<Record<string, string>>({});
+  const [forumComments, setForumComments] = useState<Record<string, PublicationComment[]>>({});
+  const [forumCommentDrafts, setForumCommentDrafts] = useState<Record<string, string>>({});
+  const [forumReportDrafts, setForumReportDrafts] = useState<Record<string, string>>({});
+  const [expandedForumItem, setExpandedForumItem] = useState<string | null>(null);
+  const [selectedPublicProfile, setSelectedPublicProfile] = useState<PublicProfilePreview | null>(null);
+  const [sentRequests, setSentRequests] = useState<AdminRequest[]>([]);
+  const [requestSubtab, setRequestSubtab] = useState<'pendientes' | 'resueltas'>('pendientes');
+  const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([
+    {
+      id: 'req-001',
+      title: 'Solicitud de perseverancia',
+      requester: 'Usuario de prueba 1',
+      definition: 'Pide revision para acceder al rango de Sedimentador.',
+      createdAt: '2026-05-10T09:00:00-03:00',
+      status: 'pendiente'
+    },
+    {
+      id: 'req-002',
+      title: 'Solicitud de material exclusivo',
+      requester: 'Usuario de prueba 2',
+      definition: 'Pide acceso a material interno de formacion.',
+      createdAt: '2026-05-14T08:15:00-03:00',
+      status: 'pendiente'
+    }
+  ]);
+  const selectedRegistrationProvince = registrationCommunities.find((item) => item.province === registerProvince);
+  const selectedEditProvince = registrationCommunities.find((item) => item.province === editProvince);
+  const visibleRegistrationCommunities = useMemo(() => registrationCommunities.filter((item) => canAccessProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
+  const manageableCommunities = useMemo(() => registrationCommunities
+    .map((province) => ({
+      ...province,
+      locations: province.locations.filter((community) => canEditCommunity(session, province.province, community.name))
+    }))
+    .filter((province) => province.locations.length > 0), [registrationCommunities, session?.province, session?.role, session?.communityOfOrigin]);
+  const motivadorProvinceOptions = useMemo(() => {
+    if (session?.role === 'administrador') {
+      return registrationCommunities.map((item) => item.province);
+    }
+    return session?.province ? [session.province] : [];
+  }, [registrationCommunities, session?.province, session?.role]);
+  const newsProvinceOptions = useMemo(() => {
+    if (['vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session?.role ?? 'invitado')) {
+      return registrationCommunities.map((item) => item.province);
+    }
+    return session?.province ? [session.province] : [];
+  }, [registrationCommunities, session?.province, session?.role]);
+  const selectedAdminProvince = manageableCommunities.find((item) => item.province === adminCommunityProvince);
+  const selectedAdminCommunity = selectedAdminProvince?.locations.find((item) => (item.id ?? item.name) === adminCommunityId);
+  const selectedAdminUser = adminUsers.find((item) => item.id === selectedAdminUserId);
+  const selectedAdminUserProvince = visibleRegistrationCommunities.find((item) => item.province === adminUserProvince);
+  const assignableRoles = useMemo(() => assignableRolesFor(session), [session?.role]);
+  const selectedEditableContent = appContent.find((item) => item.tab_key === selectedContentTab);
+  const canOpenCommunityAdmin = canUseCommunityAdmin(session);
+  const editableTabs = useMemo(
+    () => (tabs.length > 0 ? tabs : defaultTabs.map((tab, index) => ({ ...tab, sectionType: 'internal' as AppTabSectionType, visible: true, sortOrder: index, visibleRoles: null }))),
+    [tabs]
+  );
+  const selectedNavigationTab = editableTabs.find((tab) => tab.key === selectedNavigationTabKey) ?? editableTabs[0];
+  const selectedNavigationDraft = selectedNavigationTab
+    ? (editingTabs[selectedNavigationTab.key] ?? {
+      label: selectedNavigationTab.label,
+      iconName: selectedNavigationTab.icon,
+      sectionType: selectedNavigationTab.sectionType,
+      isVisible: selectedNavigationTab.visible,
+      visibleRoles: selectedNavigationTab.visibleRoles
+    })
+    : null;
+  const tabLabel = (key: TabKey) => editableTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
+  const profileNews = session ? communityNews.filter((item) => item.community === session.communityOfOrigin) : [];
+  const isCommunityLeader = isCommunityLeaderRole(session);
+  const canManageUsers = canManageUsersPanel(session);
+  const canAdministrateCommunities = canCreateOrAdministrateCommunities(session);
+  const canReviewLeadershipRequests = Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
+  const showDedicatedNavigationManager = adminModule === 'navegacion' && session?.role === 'administrador';
+  const selectableCommunityMembers = communityMembers.filter((member) => (
+    member.email !== session?.email
+    && member.full_name !== session?.fullName
+  ));
+  const pendingAdminRequests = adminRequests.filter((item) => item.status === 'pendiente').sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  const resolvedAdminRequests = adminRequests.filter((item) => item.status !== 'pendiente').sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const filteredAdminUsers = adminUsers.filter((user) => {
+    const query = adminUserSearch.trim().toLowerCase();
+    if (!query) {
+      return true;
+    }
+    return [user.full_name, user.nickname]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
+  const navigationVisibleCount = editableTabs.filter((tab) => {
+    const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+    return draft.isVisible;
+  }).length;
+  const navigationLockedCount = editableTabs.filter((tab) => protectedTabKeys.has(tab.key) || defaultTabByKey.has(tab.key)).length;
+  const adminUsersByProvince = filteredAdminUsers.reduce<Record<string, AdminUser[]>>((groups, user) => {
+    const province = user.province || 'Sin provincia';
+    groups[province] = groups[province] ?? [];
+    groups[province].push(user);
+    return groups;
+  }, {});
+  const userProvinceOptions = Object.keys(adminUsersByProvince).sort((a, b) => a.localeCompare(b));
+  const visibleAdminUsers = selectedUsersProvince ? (adminUsersByProvince[selectedUsersProvince] ?? []) : [];
+  const editableProvinceUsers = adminUsers.filter((user) => canAccessProvince(session, user.province));
+  const usersSummaryCount = session?.role === 'administrador'
+    ? adminUsers.length || realPendingProfiles.length
+    : editableProvinceUsers.length;
+  const leadershipSummaryUsers = (session?.role === 'administrador' || canSeeAllProvinces(session))
+    ? adminUsers
+    : editableProvinceUsers;
+  const activeNationalCoordinator = adminUsers.find((user) => user.role === 'coordinador_nacional' && user.status === 'aprobado');
+  const activeDiocesanCoordinator = selectedUsersProvince
+    ? adminUsersByProvince[selectedUsersProvince]?.find((user) => user.role === 'coordinador_diocesano' && user.status === 'aprobado')
+    : null;
+  const motivadorYearOptions = Array.from(new Set(adminMotivadorPeriods.map((period) => String(new Date(`${period.starts_on}T00:00:00`).getFullYear()))))
+    .filter((year) => year !== 'NaN')
+    .sort((a, b) => Number(b) - Number(a));
+  const filteredMotivadorPeriods = adminMotivadorPeriods.filter((period) => {
+    if (pmProvinceFilter && period.province !== pmProvinceFilter) {
+      return false;
+    }
+    if (pmGenderFilter !== 'todos' && period.gender !== pmGenderFilter) {
+      return false;
+    }
+    if (pmStatusFilter !== 'todos' && period.status !== pmStatusFilter) {
+      return false;
+    }
+    if (pmYearFilter !== 'todos' && String(new Date(`${period.starts_on}T00:00:00`).getFullYear()) !== pmYearFilter) {
+      return false;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endsAt = new Date(`${period.ends_on}T00:00:00`);
+    if (pmTimeFilter === 'proximos' && endsAt < today) {
+      return false;
+    }
+    if (pmTimeFilter === 'pasados' && endsAt >= today) {
+      return false;
+    }
+    return true;
+  });
+  const visibleMailboxMessages = mailboxMessages.filter((message) => {
+    if (mailboxFilter === 'todos') {
+      return true;
+    }
+    if (mailboxFilter === 'enviados') {
+      return message.sender_id === session?.id;
+    }
+    if (mailboxFilter === 'recibidos') {
+      return message.can_respond;
+    }
+    return message.status === mailboxFilter;
+  });
+  const mailboxCommunityOptions = registrationCommunities
+    .flatMap((province) => province.locations.map((community) => ({ ...community, province: province.province })))
+    .filter((community) => {
+      if (!session) {
+        return false;
+      }
+      if (session.role === 'administrador' || ['vocal_nacional', 'coordinador_nacional'].includes(session.role)) {
+        return true;
+      }
+      if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
+        return community.province === session.province;
+      }
+      return community.name === session.communityOfOrigin;
+    });
+  const mailboxProvinceOptions = Array.from(new Set(registrationCommunities.map((item) => item.province))).sort((a, b) => a.localeCompare(b));
+  const mailboxUserOptions = adminUsers.filter((user) => user.role !== 'administrador');
+  const mailboxRecipientQuery = mailboxRecipientSearch.trim().toLowerCase();
+  const filteredMailboxUserOptions = mailboxUserOptions.filter((user) => {
+    if (!mailboxRecipientQuery) {
+      return true;
+    }
+    return [user.full_name, user.email, user.province, user.community_name, user.role]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(mailboxRecipientQuery));
+  });
+  const selectedMailboxUsers = mailboxUserOptions.filter((user) => mailboxSelectedUserIds.includes(user.id));
+  const estimatedMailboxRecipients = (() => {
+    if (mailboxTargetMode === 'user') {
+      return mailboxSelectedUserIds.length;
+    }
+    if (mailboxTargetMode === 'all') {
+      return mailboxUserOptions.length;
+    }
+    if (mailboxTargetMode === 'role') {
+      return mailboxUserOptions.filter((user) => user.role === mailboxTargetRole).length;
+    }
+    if (mailboxTargetMode === 'province') {
+      const province = mailboxTargetProvince || session?.province;
+      return mailboxUserOptions.filter((user) => user.province === province).length;
+    }
+    if (mailboxTargetMode === 'role_province') {
+      const province = mailboxTargetProvince || session?.province;
+      return mailboxUserOptions.filter((user) => user.role === mailboxTargetRole && user.province === province).length;
+    }
+    if (mailboxTargetMode === 'diocesan_leadership') {
+      const province = mailboxTargetProvince || '';
+      return mailboxUserOptions.filter((user) => ['vocal', 'coordinador_diocesano'].includes(user.role) && (!province || user.province === province)).length;
+    }
+    if (mailboxTargetMode === 'province_communities') {
+      return mailboxUserOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.province === session?.province).length;
+    }
+    if (['community', 'my_community'].includes(mailboxTargetMode)) {
+      const communityName = mailboxCommunityOptions.find((community) => community.id === (mailboxTargetCommunityId || mailboxCommunityOptions[0]?.id))?.name ?? session?.communityOfOrigin;
+      return mailboxUserOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.community_name === communityName).length;
+    }
+    return 0;
+  })();
+  const enabledAdminModules = adminModuleCatalog.filter((item) => {
+    if (item.key === 'navegacion') {
+      return session?.role === 'administrador';
+    }
+    if (item.key === 'usuarios') {
+      return canManageUsers;
+    }
+    if (item.key === 'home') {
+      return session?.role === 'administrador';
+    }
+    if (item.key === 'noticias') {
+      return canManageNewsContent(session);
+    }
+    if (item.key === 'comunidades') {
+      return canOpenCommunityAdmin;
+    }
+    if (item.key === 'descargas') {
+      return session?.role === 'administrador';
+    }
+    if (hasPermission(session, 'gestionar_sistema')) {
+      return true;
+    }
+    if (['resumen', 'solicitudes'].includes(item.key)) {
+      return true;
+    }
+    if (item.key === 'periodo_motivador') {
+      return canManageMotivadorPanel(session);
+    }
+    if (canEditStaticInstitutionalPage(session) && ['contacto_admin'].includes(item.key)) {
+      return true;
+    }
+    return !item.systemOnly;
+  });
+  const adminDraftSummary = [
+    { label: 'Usuarios', value: String(usersSummaryCount), icon: 'people-outline' as keyof typeof Ionicons.glyphMap },
+    { label: 'Solicitudes', value: String(pendingAdminRequests.length), icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap },
+    { label: 'Comunidades', value: String(manageableCommunities.reduce((total, item) => total + item.locations.length, 0)), icon: 'location-outline' as keyof typeof Ionicons.glyphMap }
+  ];
+
+  useEffect(() => {
+    setEditFullName(session?.fullName ?? '');
+    setEditContact(session?.contact ?? '');
+    setEditProvince(session?.province ?? '');
+    setEditCommunity(session?.communityOfOrigin ?? '');
+    setEditGenderPreference(session?.genderPreference ?? null);
+    setEditNickname(session?.nickname ?? '');
+    setEditUseNicknameInGreetings(Boolean(session?.useNicknameInGreetings));
+    setEditCredentialNameMode(session?.credentialNameMode ?? 'name');
+    setEditPerseveranceStartYear(session?.perseveranceStartYear ? String(session.perseveranceStartYear) : '');
+    setEditPmType(session?.personalPmType ?? '');
+    setEditPmNumber(session?.personalPmNumber ? String(session.personalPmNumber) : '');
+    setEditPmProvince(session?.personalPmProvince ?? session?.province ?? '');
+    setEditPmMotto(session?.personalPmMotto ?? session?.pmMotto ?? '');
+  }, [session]);
+
+  useEffect(() => {
+    setAdminConfigDraft(adminConfig);
+  }, [adminConfig]);
+
+  useEffect(() => {
+    setRuntimeConfigDraft(runtimeConfig);
+  }, [runtimeConfig]);
+
+  useEffect(() => {
+    let alive = true;
+    async function loadNotificationStatus() {
+      if (Platform.OS === 'web') {
+        setNotificationPermissionStatus('solo celular');
+        return;
+      }
+      try {
+        const permission = await Notifications.getPermissionsAsync();
+        if (alive) {
+          setNotificationPermissionStatus(permission.status);
+        }
+      } catch {
+        if (alive) {
+          setNotificationPermissionStatus('no disponible');
+        }
+      }
+    }
+    loadNotificationStatus();
+    return () => {
+      alive = false;
+    };
+  }, [session?.id, profilePanel]);
+
+  useEffect(() => {
+    if (session?.role !== 'administrador') {
+      setPmProvince(session?.province ?? '');
+      setPmProvinceFilter('');
+    }
+  }, [session?.province, session?.role]);
+
+  useEffect(() => {
+    if (isMissingProfileScope(session)) {
+      setProfilePanel('editar');
+      setAuthMessage('Completa provincia y comunidad para continuar.');
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (!isMissingProfileScope(session)) {
+      setProfilePanel(initialPanel);
+    }
+  }, [initialPanel]);
+
+  useEffect(() => {
+    if (!initialPublicProfile) {
+      return;
+    }
+    setProfilePanel('vista');
+    openPublicProfile(initialPublicProfile);
+    onInitialPublicProfileHandled?.();
+  }, [initialPublicProfile?.id]);
+
+  useEffect(() => {
+    fetchProvinceRoleLabels().then(setProvinceRoleLabels);
+  }, [session?.id]);
+
+  useEffect(() => {
+    if (authMessage.startsWith('Cambio realizado.')) {
+      onSavedFeedback('Cambios guardados');
+    } else if (authMessage && !authMessage.startsWith('Completa provincia')) {
+      const lowerMessage = authMessage.toLowerCase();
+      if (lowerMessage.includes('error') || lowerMessage.includes('no se pudo') || lowerMessage.includes('failed')) {
+        onErrorFeedback(authMessage);
+      }
+    }
+  }, [authMessage, onErrorFeedback, onSavedFeedback]);
+
+  function updateAdminConfigSection<K extends keyof AppAdminConfig>(section: K, patch: Partial<AppAdminConfig[K]>) {
+    setAdminConfigDraft((current) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        ...patch
+      }
+    }));
+  }
+
+  function updateRuntimeCatholicNews(patch: Partial<Omit<AppRuntimeConfig['catholicNews'], 'sources' | 'sourceLabels' | 'sourceUrls'>> & {
+    sources?: Partial<Record<CatholicNewsSourceKey, boolean>>;
+    sourceLabels?: Partial<Record<CatholicNewsSourceKey, string>>;
+    sourceUrls?: Partial<Record<CatholicNewsSourceKey, string>>;
+  }) {
+    setRuntimeConfigDraft((current) => ({
+      ...current,
+      catholicNews: {
+        ...current.catholicNews,
+        ...patch,
+        sources: {
+          ...current.catholicNews.sources,
+          ...(patch.sources ?? {})
+        },
+        sourceLabels: {
+          ...current.catholicNews.sourceLabels,
+          ...(patch.sourceLabels ?? {})
+        },
+        sourceUrls: {
+          ...current.catholicNews.sourceUrls,
+          ...(patch.sourceUrls ?? {})
+        }
+      },
+      featureFlags: {
+        ...current.featureFlags,
+        externalCatholicNews: patch.enabled ?? current.featureFlags.externalCatholicNews
+      }
+    }));
+  }
+
+  async function saveRuntimeConfigDraft() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede guardar configuracion remota.');
+      return;
+    }
+    setAuthMessage('Guardando configuracion remota...');
+    const { error } = await saveAppRuntimeConfig(runtimeConfigDraft);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    onRuntimeConfigChange(runtimeConfigDraft);
+    setAuthMessage(changeDone('Configuracion remota guardada en Supabase.'));
+  }
+
+  function toggleAdminConfigList(section: 'home', key: string) {
+    setAdminConfigDraft((current) => {
+      const currentList = current[section].visibleModules;
+      const nextList = currentList.includes(key) ? currentList.filter((item) => item !== key) : [...currentList, key];
+      return { ...current, [section]: { ...current[section], visibleModules: nextList } };
+    });
+  }
+
+  async function saveAdminConfigDraft(scope: string) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede guardar configuración global.');
+      return;
+    }
+    setAuthMessage(`Guardando ${scope}...`);
+    const { error } = await saveAdminConfig(adminConfigDraft);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    onAdminConfigChange(adminConfigDraft);
+    setAuthMessage(changeDone(`${scope} guardado en Supabase.`));
+  }
+
+  async function setFallbackContentHidden(key: string, hidden: boolean) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede gestionar contenido publicado.');
+      return;
+    }
+    const current = adminConfigDraft.settings.hiddenFallbackContent ?? [];
+    const nextHidden = hidden ? Array.from(new Set([...current, key])) : current.filter((item) => item !== key);
+    const nextConfig = {
+      ...adminConfigDraft,
+      settings: {
+        ...adminConfigDraft.settings,
+        hiddenFallbackContent: nextHidden
+      }
+    };
+    setAuthMessage('Guardando visibilidad de contenido...');
+    const { error } = await saveAdminConfig(nextConfig);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAdminConfigDraft(nextConfig);
+    onAdminConfigChange(nextConfig);
+    setAuthMessage(changeDone(hidden ? 'Contenido ocultado.' : 'Contenido restaurado.'));
+  }
+
+  async function saveRoleAliasDraft() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede duplicar o renombrar rangos.');
+      return;
+    }
+    if (!roleAliasLabel.trim()) {
+      setAuthMessage('Escribir el nuevo nombre visible del rango.');
+      return;
+    }
+    if (!roleAliasIsGlobal && !roleAliasProvince) {
+      setAuthMessage('Elegir provincia o marcar alcance global.');
+      return;
+    }
+    setAuthMessage('Guardando alias de rango...');
+    const { error } = await saveRoleAlias({
+      baseRole: roleAliasBaseRole,
+      displayLabel: roleAliasLabel.trim(),
+      province: roleAliasIsGlobal ? null : roleAliasProvince,
+      isActive: roleAliasActive
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadRoleAliases(false);
+    setRoleAliasLabel('');
+    setAuthMessage(changeDone('Alias de rango guardado y disponible para asignar.'));
+  }
+
+  async function toggleSavedRoleAlias(aliasId: string, active: boolean) {
+    const { error } = await setRoleAliasStatus(aliasId, active);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadRoleAliases(false);
+    setAuthMessage(changeDone(active ? 'Alias activado.' : 'Alias desactivado.'));
+  }
+
+  async function saveInstagramConfigDraft() {
+    if (!canManageGlobalInstagram(session)) {
+      setAuthMessage('Solo Coordinador Nacional y Administrador pueden modificar Instagram.');
+      return;
+    }
+    setAuthMessage('Guardando Instagram...');
+    const instagram = adminConfigDraft.contact.instagram.trim();
+    const nextConfig = {
+      ...adminConfig,
+      contact: {
+        ...adminConfig.contact,
+        instagram
+      }
+    };
+    const { error } = await saveAdminInstagram(instagram);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAdminConfigDraft(nextConfig);
+    onAdminConfigChange(nextConfig);
+    setAuthMessage(changeDone('Instagram guardado en Supabase.'));
+  }
+
+  function formatPmDate(date: string) {
+    return new Date(`${date}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function isoDate(year: number, month: number, day: number) {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  function selectedDatesSummary(dates: string[]) {
+    if (dates.length === 0) {
+      return 'Sin fechas seleccionadas';
+    }
+    return [...dates].sort().map(formatPmDate).join(', ');
+  }
+
+  function togglePmDate(date: string) {
+    setPmSelectedDates((current) => current.includes(date)
+      ? current.filter((item) => item !== date)
+      : [...current, date].sort());
+  }
+
+  function selectAdminEventDate(date: string) {
+    setAdminEventDate(`${date}T09:00:00-03:00`);
+    setAdminEventCalendarOpen(false);
+  }
+
+  async function loadMotivadorAdminPeriods() {
+    if (!canManageMotivadorPanel(session)) {
+      setAdminMotivadorPeriods([]);
+      return;
+    }
+    const items = await fetchAdminMotivadorPeriods();
+    setAdminMotivadorPeriods(items);
+  }
+
+  function resetMotivadorForm() {
+    setPmEditingId(null);
+    setPmGender('masculino');
+    setPmNumber('');
+    setPmProvince(session?.role === 'administrador' ? (motivadorProvinceOptions[0] ?? '') : session?.province ?? '');
+    setPmSelectedDates([]);
+    setPmRetreatHouse('');
+    setPmAddress('');
+    setPmOpeningTime('');
+    setPmClosingTime('');
+    setPmDescription('');
+    setPmPlacePhotoUrl('');
+    setPmFlyerUrl('');
+    setPmVisibleToLowerRoles(false);
+    setPmStatus('borrador');
+    setPmCalendarOpen(false);
+  }
+
+  function editMotivadorPeriod(period: MotivadorPeriodRecord) {
+    setPmEditingId(period.id);
+    setPmGender(period.gender);
+    setPmNumber(String(period.pm_number));
+    setPmProvince(period.province ?? session?.province ?? '');
+    setPmSelectedDates((period.selected_dates?.length ? period.selected_dates : [period.starts_on, period.ends_on]).map((date) => String(date).slice(0, 10)).filter(Boolean));
+    setPmRetreatHouse(period.retreat_house ?? '');
+    setPmAddress(period.address ?? '');
+    setPmOpeningTime(period.opening_time ?? '');
+    setPmClosingTime(period.closing_time ?? '');
+    setPmDescription(period.description ?? '');
+    setPmPlacePhotoUrl(period.place_photo_url ?? '');
+    setPmFlyerUrl(period.flyer_url ?? '');
+    setPmVisibleToLowerRoles(Boolean(period.visible_to_lower_roles));
+    setPmStatus(period.status === 'archivado' ? 'inactivo' : period.status);
+    setPmCalendarOpen(true);
+  }
+
+  async function submitMotivadorPeriod() {
+    if (!canManageMotivadorPanel(session)) {
+      setAuthMessage('No tenes permisos para gestionar PM.');
+      return;
+    }
+    if (!pmProvince || !pmNumber.trim() || pmSelectedDates.length === 0 || !pmRetreatHouse.trim() || !pmAddress.trim() || !pmOpeningTime.trim() || !pmClosingTime.trim()) {
+      setAuthMessage('Completá tipo, número, provincia, fechas, casa, dirección y horarios.');
+      return;
+    }
+    const { error } = await saveMotivadorPeriod({
+      id: pmEditingId,
+      province: pmProvince,
+      gender: pmGender,
+      pmNumber: Number.parseInt(pmNumber, 10),
+      selectedDates: pmSelectedDates,
+      retreatHouse: pmRetreatHouse.trim(),
+      address: pmAddress.trim(),
+      openingTime: pmOpeningTime.trim(),
+      closingTime: pmClosingTime.trim(),
+      description: pmDescription.trim(),
+      placePhotoUrl: pmPlacePhotoUrl.trim(),
+      flyerUrl: pmFlyerUrl.trim(),
+      visibleToLowerRoles: pmVisibleToLowerRoles,
+      status: pmStatus
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('PM guardado.'));
+    resetMotivadorForm();
+    await loadMotivadorAdminPeriods();
+  }
+
+  async function updateMotivadorStatus(id: string, status: 'activo' | 'inactivo' | 'borrador' | 'archivado') {
+    const { error } = await setMotivadorPeriodStatus(id, status);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone(status === 'archivado' ? 'PM archivado.' : `Estado actualizado a ${status}.`));
+    await loadMotivadorAdminPeriods();
+  }
+
+  useEffect(() => {
+    const tab = editableTabs.find((item) => item.key === selectedContentTab);
+    setContentTitle(selectedEditableContent?.title ?? tab?.label ?? '');
+    setContentBody(selectedEditableContent?.body ?? '');
+    setContentBlocks(selectedEditableContent?.blocks?.length ? selectedEditableContent.blocks : [
+      { id: 'block-title', type: 'titulo', value: selectedEditableContent?.title ?? tab?.label ?? '' },
+      { id: 'block-body', type: 'texto', value: selectedEditableContent?.body ?? '' }
+    ]);
+  }, [selectedContentTab, selectedEditableContent, editableTabs]);
+
+  useEffect(() => {
+    let alive = true;
+    fetchCommunities().then((items) => {
+      if (alive) {
+        setRegistrationCommunities(items);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (adminModule === 'periodo_motivador') {
+      loadMotivadorAdminPeriods();
+      if (!pmProvince && motivadorProvinceOptions.length > 0) {
+        setPmProvince(motivadorProvinceOptions[0]);
+      }
+    }
+  }, [adminModule, session?.role, session?.province, motivadorProvinceOptions.length]);
+
+  useEffect(() => {
+    if (adminModule !== 'comunidades' || manageableCommunities.length === 0) {
+      return;
+    }
+    if (!manageableCommunities.some((item) => item.province === adminCommunityProvince)) {
+      setAdminCommunityProvince(manageableCommunities[0].province);
+      setAdminCommunityId('');
+    }
+  }, [adminModule, manageableCommunities, adminCommunityProvince]);
+
+  useEffect(() => {
+    if (!canManageNewsContent(session)) {
+      setAdminNewsScope('provincial');
+      setAdminNewsProvince('');
+      return;
+    }
+    if (session && ['vocal', 'coordinador_diocesano'].includes(session.role)) {
+      setAdminNewsScope('provincial');
+      setAdminNewsProvince(session.province);
+      return;
+    }
+    if (!adminNewsProvince && newsProvinceOptions.length > 0) {
+      setAdminNewsProvince(newsProvinceOptions[0]);
+    }
+  }, [session?.role, session?.province, newsProvinceOptions.length]);
+
+  useEffect(() => {
+    if (adminModule === 'etiquetas_roles' && session?.role === 'administrador') {
+      loadProvinceRoleLabels();
+    }
+  }, [adminModule, session?.role]);
+
+  useEffect(() => {
+    if (['rangos_alias', 'usuarios', 'permisos_roles'].includes(adminModule) && session?.role === 'administrador') {
+      loadRoleAliases(false);
+    }
+  }, [adminModule, session?.role]);
+
+  useEffect(() => {
+    const current = provinceRoleLabels.find((item) => item.province === roleLabelProvince && item.role_key === roleLabelRole);
+    setRoleLabelDraft(current?.display_label ?? roleLabel(roleLabelRole));
+    setRoleLabelDescription(current?.description ?? '');
+    setRoleLabelActive(current?.is_active ?? true);
+  }, [provinceRoleLabels, roleLabelProvince, roleLabelRole]);
+
+  useEffect(() => {
+    if (!selectedAdminCommunity) {
+      setAdminCommunityName('');
+      setAdminCommunityAddress('');
+      setAdminCommunityPhone('');
+      setAdminCommunityDay('');
+      setAdminCommunityTime('');
+      setAdminCommunityDescription('');
+      setAdminCommunityImageUrl('');
+      setAdminCommunityImagePreview('');
+      setAdminCommunityImageAsset(null);
+      return;
+    }
+
+    setAdminCommunityName(selectedAdminCommunity.name);
+    setAdminCommunityAddress(selectedAdminCommunity.address);
+    setAdminCommunityPhone(selectedAdminCommunity.phone);
+    setAdminCommunityDay(selectedAdminCommunity.meetingDay);
+    setAdminCommunityTime(selectedAdminCommunity.meetingTime);
+    setAdminCommunityDescription(selectedAdminCommunity.description);
+    setAdminCommunityImageUrl(selectedAdminCommunity.imageUrl ?? '');
+    setAdminCommunityImagePreview(selectedAdminCommunity.imageUrl ?? '');
+    setAdminCommunityImageAsset(null);
+    setAdminCommunityGroupType(selectedAdminCommunity.group ?? 'jovenes');
+    setAdminCommunityIsActive(true);
+  }, [selectedAdminCommunity]);
+
+  useEffect(() => {
+    if (!selectedAdminUser) {
+      setAdminUserFullName('');
+      setAdminUserPhone('');
+      setAdminUserProvince('');
+      setAdminUserCommunity('');
+      setAdminUserStatus('pendiente');
+      setAdminUserRole('palestrista');
+      setAdminUserSubroleKey(null);
+      setAdminUserDisplayRoleLabel('');
+      setAdminUserNickname('');
+      setAdminUserUseNicknameInGreetings(false);
+      setAdminUserCredentialNameMode('name');
+      setAdminUserPerseveranceStartYear('');
+      setAdminUserPmType('');
+      setAdminUserPmNumber('');
+      setAdminUserPmProvince('');
+      setAdminUserPmMotto('');
+      return;
+    }
+
+    setAdminUserFullName(selectedAdminUser.full_name ?? '');
+    setAdminUserEmail(selectedAdminUser.email ?? '');
+    setAdminUserPassword('');
+    setAdminUserPhone(selectedAdminUser.phone ?? '');
+    setAdminUserProvince(selectedAdminUser.province ?? '');
+    setAdminUserCommunity(selectedAdminUser.community_name ?? '');
+    setAdminUserStatus(selectedAdminUser.status);
+    setAdminUserRole((selectedAdminUser.role || 'palestrista') as Role);
+    setAdminUserSubroleKey(selectedAdminUser.subrole_key ?? null);
+    setAdminUserDisplayRoleLabel(selectedAdminUser.display_role_label ?? '');
+    setAdminUserNickname(selectedAdminUser.nickname ?? '');
+    setAdminUserUseNicknameInGreetings(Boolean(selectedAdminUser.use_nickname_in_greetings));
+    setAdminUserCredentialNameMode(selectedAdminUser.credential_name_mode ?? 'name');
+    setAdminUserPerseveranceStartYear(selectedAdminUser.perseverance_start_year ? String(selectedAdminUser.perseverance_start_year) : '');
+    setAdminUserPmType(selectedAdminUser.personal_pm_type ?? '');
+    setAdminUserPmNumber(selectedAdminUser.personal_pm_number ? String(selectedAdminUser.personal_pm_number) : '');
+    setAdminUserPmProvince(selectedAdminUser.personal_pm_province ?? selectedAdminUser.province ?? '');
+    setAdminUserPmMotto(selectedAdminUser.personal_pm_motto ?? selectedAdminUser.pm_motto ?? '');
+  }, [selectedAdminUser]);
+
+  function normalizeRequest(item: UserRequestRecord): AdminRequest {
+    return {
+      id: item.id,
+      userId: item.user_id,
+      title: item.title,
+      requester: item.requester,
+      definition: item.definition,
+      createdAt: item.created_at,
+      status: item.status === 'rechazada' ? 'denegada' : item.status as AdminRequest['status'],
+      message: item.admin_message ?? undefined,
+      resolvedAt: item.resolved_at ?? undefined,
+      resolvedBy: item.resolved_by_name ? `${item.resolved_by_name}${item.resolved_by_role ? ` - ${roleLabel(item.resolved_by_role as Role)}` : ''}` : undefined,
+      targetUserId: item.target_user_id,
+      targetUserName: item.target_user_name,
+      targetRole: item.target_role,
+      communityName: item.community_name
+    };
+  }
+
+  async function loadMyRequests() {
+    const items = await fetchMyRequests();
+    if (items.length > 0) {
+      setSentRequests(items.map(normalizeRequest));
+    }
+  }
+
+  async function loadAdminRequests() {
+    const items = await fetchAdminRequests();
+    if (items.length > 0) {
+      setAdminRequests(items.map(normalizeRequest));
+    }
+  }
+
+  async function refreshCommunityForum() {
+    if (!session) {
+      setMyCommunityPublications([]);
+      setForumComments({});
+      return;
+    }
+    const normalizeCommunity = (value?: string | null) => (value ?? '').trim().toLowerCase();
+    const items = await fetchCommunityPublications(session);
+    const scopedItems = items.filter((item) => normalizeCommunity(item.communityName) === normalizeCommunity(session.communityOfOrigin));
+    setMyCommunityPublications(scopedItems);
+    const ids = scopedItems.map((item) => item.id).filter(Boolean) as string[];
+    setForumComments(await fetchPublicationComments(ids));
+  }
+
+  async function refreshMailbox() {
+    if (!session || session.role === 'invitado') {
+      setMailboxMessages([]);
+      return;
+    }
+    setMailboxMessages(await fetchMailboxMessages());
+  }
+
+  function defaultMailboxTargetMode(): MailboxTargetMode {
+    if (!session) {
+      return 'my_community';
+    }
+    if (session.role === 'administrador') {
+      return 'user';
+    }
+    if (['vocal_nacional', 'coordinador_nacional'].includes(session.role)) {
+      return 'diocesan_leadership';
+    }
+    if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
+      return 'community';
+    }
+    return 'my_community';
+  }
+
+  async function confirmMailboxSend(total: number) {
+    if (total <= 10) {
+      return true;
+    }
+    const message = `Vas a enviar este mensaje a ${total} destinatarios. Confirmas el envio?`;
+    if (Platform.OS === 'web') {
+      return typeof window === 'undefined' ? true : window.confirm(message);
+    }
+    return new Promise<boolean>((resolve) => {
+      Alert.alert('Confirmar envio', message, [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Enviar', onPress: () => resolve(true) }
+      ]);
+    });
+  }
+
+  function toggleMailboxUser(userId: string) {
+    setMailboxSelectedUserIds((current) => current.includes(userId)
+      ? current.filter((id) => id !== userId)
+      : [...current, userId]);
+  }
+
+  async function submitNewMailboxMessage() {
+    if (!session || session.role === 'invitado') {
+      setAuthMessage('Iniciá sesión para enviar mensajes.');
+      return;
+    }
+    if (!mailboxDraft.trim()) {
+      setAuthMessage('Escribe un mensaje antes de enviar.');
+      return;
+    }
+
+    const mode = mailboxTargetMode || defaultMailboxTargetMode();
+    const fallbackCommunity = mailboxCommunityOptions[0];
+    const communityId = mode === 'my_community' ? fallbackCommunity?.id : mailboxTargetCommunityId || fallbackCommunity?.id;
+    const province = mailboxTargetProvince || session.province;
+
+    if (['my_community', 'community'].includes(mode) && !communityId) {
+      setAuthMessage('No hay responsables asignados para tu comunidad actualmente.');
+      return;
+    }
+    if (mode === 'user' && mailboxSelectedUserIds.length === 0) {
+      setAuthMessage('Selecciona al menos un usuario destinatario.');
+      return;
+    }
+    if (estimatedMailboxRecipients === 0) {
+      setAuthMessage('No hay destinatarios para el criterio seleccionado.');
+      return;
+    }
+
+    const confirmed = await confirmMailboxSend(estimatedMailboxRecipients);
+    if (!confirmed) {
+      return;
+    }
+
+    const errors: string[] = [];
+    if (mode === 'user') {
+      for (const userId of mailboxSelectedUserIds) {
+        const { error } = await createMailboxMessage({
+          targetMode: mode,
+          message: mailboxDraft.trim(),
+          userId
+        });
+        if (error) {
+          errors.push(error.message);
+        }
+      }
+    } else {
+      const { error } = await createMailboxMessage({
+        targetMode: mode,
+        message: mailboxDraft.trim(),
+        communityId,
+        province,
+        role: mailboxTargetRole,
+        userId: mailboxTargetUserId || null
+      });
+      if (error) {
+        errors.push(error.message);
+      }
+    }
+
+    if (errors.length > 0) {
+      setAuthMessage(errors[0]);
+      return;
+    }
+
+    setMailboxDraft('');
+    setMailboxRecipientSearch('');
+    setMailboxSelectedUserIds([]);
+    setShowMailboxComposer(false);
+    setAuthMessage(changeDone('Mensaje enviado.'));
+    await refreshMailbox();
+  }
+
+  async function submitMailboxResponse(messageId: string) {
+    const response = (mailboxResponses[messageId] ?? '').trim();
+    if (!response) {
+      setAuthMessage('Escribi una respuesta antes de enviarla.');
+      return;
+    }
+    const { error } = await respondMailboxMessage(messageId, response);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setMailboxResponses((current) => ({ ...current, [messageId]: '' }));
+    setAuthMessage(changeDone('Respuesta enviada.'));
+    await refreshMailbox();
+  }
+
+  async function updateMailboxStatus(messageId: string, status: MailboxMessageRecord['status']) {
+    const { error } = await setMailboxMessageStatus(messageId, status);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone(`Mensaje marcado como ${status}.`));
+    await refreshMailbox();
+  }
+
+  useEffect(() => {
+    if (session) {
+      loadMyRequests();
+      refreshCommunityForum();
+      if (['animador_comunidad', 'coordinador_comunidad'].includes(session.role)) {
+        fetchMyCommunityMembers().then(setCommunityMembers);
+      }
+      if (session.role === 'administrador') {
+        loadAdminRequests();
+      }
+      if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
+        loadAdminRequests();
+      }
+    }
+  }, [session?.email, session?.role, session?.communityOfOrigin]);
+
+  useEffect(() => {
+    if (profilePanel === 'comunidad') {
+      refreshCommunityForum();
+      if (session && communityMembers.length === 0) {
+        fetchMyCommunityMembers().then(setCommunityMembers);
+      }
+    }
+    if (profilePanel === 'buzon') {
+      setMailboxTargetMode(defaultMailboxTargetMode());
+      refreshMailbox();
+      if (session?.role === 'administrador' && adminUsers.length === 0) {
+        loadAdminUsers();
+      }
+    }
+  }, [profilePanel, session?.email, session?.communityOfOrigin, adminUsers.length, communityMembers.length]);
+
+  useEffect(() => {
+    if (canManageUsersPanel(session) && adminUsers.length === 0) {
+      fetchAdminUsers().then((items) => {
+        setAdminUsers(items);
+        if (!selectedUsersProvince && items.length > 0) {
+          setSelectedUsersProvince(items.find((item) => item.province)?.province ?? 'Sin provincia');
+        }
+      });
+    }
+  }, [session?.email, session?.role, adminUsers.length, selectedUsersProvince]);
+
+  async function loadRealProfile(userId: string, fallbackEmail: string) {
+    const result = await getMyProfileSession(fallbackEmail);
+    if (result.error) {
+      setAuthMessage(`No pude leer tu perfil: ${result.error}`);
+      return;
+    }
+    if (result.session) {
+      if (result.session.status === 'bloqueado') {
+        await supabase.auth.signOut();
+        onSessionChange(null);
+        setAuthMessage('Este usuario esta bloqueado o eliminado. Contacta a un administrador.');
+        return;
+      }
+      onSessionChange(result.session);
+    }
+  }
+
+  function validateAuthForm() {
+    const nextErrors: Record<string, string> = {};
+    if (!isValidEmail(authEmail)) {
+      nextErrors.email = 'Ingresa un correo valido';
+    }
+    if (!authPassword) {
+      nextErrors.password = 'La contraseña es obligatoria';
+    }
+    if (authMode === 'register') {
+      if (!registerFullName.trim()) {
+        nextErrors.fullName = 'Ingresa tu nombre completo';
+      }
+      if (!registerProvince) {
+        nextErrors.province = 'Selecciona tu provincia';
+      }
+      if (!registerCommunity) {
+        nextErrors.community = 'Selecciona tu comunidad';
+      }
+      if (!registerPerseveranceStartYear) {
+        nextErrors.perseverance = 'Selecciona el año de inicio';
+      }
+      if (authPassword.length < 6) {
+        nextErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+      }
+      if (authPasswordConfirm !== authPassword) {
+        nextErrors.confirm = 'Las contraseñas no coinciden';
+      }
+    }
+    setAuthErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+
+  function confirmProfileChangeIfNeeded() {
+    if (!session) {
+      return Promise.resolve(false);
+    }
+    const changesProvince = editProvince && editProvince !== session.province;
+    const changesCommunity = editCommunity && editCommunity !== session.communityOfOrigin;
+    const canDowngrade = (changesProvince && provinceDowngradesRole(session.role)) || (changesCommunity && communityDowngradesRole(session.role));
+    if (!canDowngrade) {
+      return Promise.resolve(true);
+    }
+
+    const message = 'Al cambiar tu provincia o comunidad, tu rango actual puede volver a Sedimentador hasta nueva aprobación.';
+    if (Platform.OS === 'web') {
+      return Promise.resolve(typeof window === 'undefined' ? true : window.confirm(message));
+    }
+
+    return new Promise<boolean>((resolve) => {
+      Alert.alert('Confirmar cambio', message, [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Continuar', style: 'destructive', onPress: () => resolve(true) }
+      ]);
+    });
+  }
+
+  async function signInReal() {
+    if (!validateAuthForm()) {
+      return;
+    }
+    setAuthMessage('Ingresando...');
+    const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
+    if (error || !data.user) {
+      setAuthMessage(safeAuthError(error?.message));
+      return;
+    }
+    await loadRealProfile(data.user.id, authEmail.trim());
+    setAuthMessage('Sesión iniciada.');
+  }
+
+  async function registerReal() {
+    if (!validateAuthForm()) {
+      return;
+    }
+
+    setAuthMessage('Registrando...');
+    const { data, error } = await supabase.auth.signUp({
+      email: authEmail.trim(),
+      password: authPassword,
+      options: {
+        emailRedirectTo: authConfirmedPreviewUrl,
+        data: {
+          full_name: registerFullName.trim() || authEmail.trim(),
+          phone: registerContact.trim(),
+          province: registerProvince.trim(),
+          community_name: registerCommunity.trim(),
+          perseverance_start_year: registerPerseveranceStartYear
+        }
+      }
+    });
+    if (error || !data.user) {
+      setAuthMessage(safeAuthError(error?.message));
+      return;
+    }
+
+    if (data.session) {
+      await loadRealProfile(data.user.id, authEmail.trim());
+      setAuthMessage('Registro creado. Queda pendiente de aprobación.');
+      return;
+    }
+
+    setAuthMessage('Registro creado como Palestrista pendiente. Iniciá sesión cuando el email esté confirmado o un administrador lo habilite.');
+  }
+
+  async function signOutReal() {
+    await supabase.auth.signOut();
+    setAuthMessage('');
+    onSessionChange(null);
+  }
+
+  async function refreshRealProfile() {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      setAuthMessage('No hay una sesión real activa. Cerrá e iniciá sesión otra vez.');
+      return;
+    }
+
+    await loadRealProfile(data.user.id, data.user.email ?? 'Usuario');
+    setAuthMessage('Estado actualizado desde Supabase.');
+  }
+
+  async function saveProfile() {
+    if (!session) {
+      return;
+    }
+
+    if (!editProvince || !editCommunity) {
+      setAuthMessage('Elegir provincia y comunidad es obligatorio.');
+      return;
+    }
+    const canUsePersonalPm = roleRank(session.role) >= roleRank('sedimentador');
+    if (canUsePersonalPm && (editPmType || editPmNumber || editPmProvince || editPmMotto.trim())) {
+      if (!editPmType || !editPmNumber.trim() || !editPmProvince) {
+        setAuthMessage('Para cargar tu PM personal completá tipo, número y provincia.');
+        return;
+      }
+      const pmNumberValue = Number(editPmNumber);
+      if (!Number.isInteger(pmNumberValue) || pmNumberValue <= 0) {
+        setAuthMessage('El número de PM debe ser un número válido.');
+        return;
+      }
+    }
+
+    const confirmed = await confirmProfileChangeIfNeeded();
+    if (!confirmed) {
+      return;
+    }
+    const changesProvince = editProvince !== session.province;
+    const changesCommunity = editCommunity !== session.communityOfOrigin;
+    const finalSessionRole = roleAfterScopeChange(session.role, changesProvince, changesCommunity);
+    const mayDowngrade = finalSessionRole !== session.role;
+    const coreProfileChanged = (
+      (editFullName || session.fullName) !== session.fullName
+      || (editContact || session.contact) !== session.contact
+      || (editProvince || session.province) !== session.province
+      || (editCommunity || session.communityOfOrigin) !== session.communityOfOrigin
+      || editGenderPreference !== (session.genderPreference ?? null)
+    );
+
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      setAuthMessage('Perfil de prueba actualizado visualmente. Iniciá sesión real para guardar en Supabase.');
+      onSessionChange({
+        ...session,
+        fullName: editFullName || session.fullName,
+        province: editProvince || session.province,
+        contact: editContact || session.contact,
+        communityOfOrigin: editCommunity || session.communityOfOrigin,
+        role: finalSessionRole,
+        subroleKey: finalSessionRole === session.role ? session.subroleKey : null,
+        genderPreference: editGenderPreference,
+        nickname: editNickname.trim() || null,
+        useNicknameInGreetings: editUseNicknameInGreetings,
+        credentialNameMode: editCredentialNameMode,
+        perseveranceStartYear: editPerseveranceStartYear ? Number(editPerseveranceStartYear) : null,
+        personalPmType: canUsePersonalPm ? (editPmType || null) : null,
+        personalPmNumber: canUsePersonalPm && editPmNumber ? Number(editPmNumber) : null,
+        personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
+        personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
+        pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null
+      });
+      return;
+    }
+
+    const profileDetails = {
+      nickname: editNickname.trim() || null,
+      useNicknameInGreetings: editUseNicknameInGreetings,
+      credentialNameMode: editCredentialNameMode,
+      perseveranceStartYear: editPerseveranceStartYear ? Number(editPerseveranceStartYear) : null,
+      personalPmType: canUsePersonalPm ? (editPmType || null) : null,
+      personalPmNumber: canUsePersonalPm && editPmNumber ? Number(editPmNumber) : null,
+      personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
+      personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
+      pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null
+    };
+    const { error } = coreProfileChanged ? await updateMyProfile({
+      fullName: editFullName || session.fullName,
+      phone: editContact || session.contact,
+      province: editProvince || session.province,
+      communityName: editCommunity || session.communityOfOrigin,
+      genderPreference: editGenderPreference,
+      ...profileDetails
+    }) : await updateMyProfileDetails(profileDetails);
+
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+
+    onSessionChange({
+      ...session,
+      fullName: editFullName || session.fullName,
+      province: editProvince || session.province,
+      contact: editContact || session.contact,
+      communityOfOrigin: editCommunity || session.communityOfOrigin,
+      role: finalSessionRole,
+      subroleKey: finalSessionRole === session.role ? session.subroleKey : null,
+      genderPreference: editGenderPreference,
+      nickname: editNickname.trim() || null,
+      useNicknameInGreetings: editUseNicknameInGreetings,
+      credentialNameMode: editCredentialNameMode,
+      perseveranceStartYear: editPerseveranceStartYear ? Number(editPerseveranceStartYear) : null,
+      personalPmType: canUsePersonalPm ? (editPmType || null) : null,
+      personalPmNumber: canUsePersonalPm && editPmNumber ? Number(editPmNumber) : null,
+      personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
+      personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
+      pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null
+    });
+    await loadRealProfile(authData.user.id, authData.user.email ?? session.email ?? session.fullName);
+    setAuthMessage(mayDowngrade
+      ? 'Tu provincia/comunidad fue actualizada. Tu rango fue ajustado a Sedimentador según las reglas del movimiento.'
+      : changeDone('Perfil guardado.'));
+  }
+
+  async function uploadProfilePhoto() {
+    if (!session) {
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage('Necesito permiso para acceder a tus fotos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.75
+    });
+
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) {
+      setAuthMessage('Iniciá sesión real para subir una foto.');
+      return;
+    }
+
+    try {
+      setAuthMessage('Subiendo foto...');
+      const asset = result.assets[0];
+      const response = await fetch(asset.uri);
+      const bytes = await response.arrayBuffer();
+      const extension = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+      const path = `${authData.user.id}/profile-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(path, bytes, {
+          contentType: asset.mimeType ?? 'image/jpeg',
+          upsert: true
+        });
+
+      if (uploadError) {
+        setAuthMessage(uploadError.message);
+        return;
+      }
+
+      const { data: publicUrl } = supabase.storage.from('profile-photos').getPublicUrl(path);
+      const avatarUrl = publicUrl.publicUrl;
+      const { error } = await updateMyAvatar(avatarUrl);
+      if (error) {
+        setAuthMessage(error.message);
+        return;
+      }
+
+      onSessionChange({ ...session, avatarUrl });
+      setAuthMessage(changeDone('Foto de perfil actualizada.'));
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No pude subir la foto.');
+    }
+  }
+
+  async function loadPendingProfiles() {
+    const items = await fetchPendingProfiles();
+    setRealPendingProfiles(items);
+  }
+
+  async function loadAdminUsers() {
+    if (!canManageUsersPanel(session)) {
+      setAuthMessage('Tu rango no tiene acceso a la herramienta Usuarios.');
+      return;
+    }
+    setAuthMessage('Cargando usuarios...');
+    const items = await fetchAdminUsers();
+    setAdminUsers(items);
+    if (!selectedUsersProvince && items.length > 0) {
+      const firstProvince = items.find((item) => item.province)?.province ?? 'Sin provincia';
+      setSelectedUsersProvince(firstProvince);
+    }
+    setAuthMessage(items.length > 0 ? 'Usuarios cargados.' : 'No se encontraron usuarios visibles para tu rango.');
+  }
+
+  async function createBasicAdminUser() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede crear usuarios.');
+      return;
+    }
+    if (!isValidEmail(adminCreateEmail)) {
+      setAuthMessage('Ingresa un correo valido.');
+      return;
+    }
+    if (adminCreatePassword.length < 6) {
+      setAuthMessage('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    setAuthMessage('Creando usuario...');
+    const { error } = await createAdminBasicUser(adminCreateEmail.trim(), adminCreatePassword);
+    if (error) {
+      setAuthMessage(safeAuthError(error.message));
+      return;
+    }
+    setAdminCreateEmail('');
+    setAdminCreatePassword('');
+    await loadAdminUsers();
+    setAuthMessage(changeDone('Usuario creado y habilitado. Debera completar provincia y comunidad al ingresar.'));
+  }
+
+  async function approvePendingProfile(id: string, role: Role) {
+    const { error } = await approveProfile(id, role);
+    setAuthMessage(error ? error.message : changeDone('Usuario aprobado.'));
+    await loadPendingProfiles();
+  }
+
+  async function saveAdminUser() {
+    if (!selectedAdminUser) {
+      setAuthMessage('Elegir un usuario para editar.');
+      return;
+    }
+    if (!canEditAdminUser(session, selectedAdminUser)) {
+      setAuthMessage('No podes editar administradores, usuarios superiores o usuarios fuera de tu alcance.');
+      return;
+    }
+    const previousRole = (selectedAdminUser.role || 'palestrista') as Role;
+    const changesProvince = Boolean(adminUserProvince && adminUserProvince !== selectedAdminUser.province);
+    const changesCommunity = Boolean(adminUserCommunity && adminUserCommunity !== selectedAdminUser.community_name);
+    let finalRole = roleAfterScopeChange(adminUserRole, changesProvince, changesCommunity);
+    if (previousRole === 'administrador' && adminUserRole !== 'administrador' && session?.role !== 'administrador') {
+      setAuthMessage('Solo otro Administrador puede quitar el rango Administrador.');
+      return;
+    }
+    if (adminUserRole === 'administrador') {
+      if (session?.role !== 'administrador') {
+        setAuthMessage('Solo Administrador puede otorgar Administrador.');
+        return;
+      }
+      const firstMessage = `Vas a otorgar Administrador a ${adminUserFullName || selectedAdminUser.email}. Este rango puede modificar toda la app. Confirmas?`;
+      const secondMessage = 'Confirmacion final: otorgar Administrador puede cambiar permisos, usuarios y contenido global. Escribe aceptar en la siguiente confirmacion visual.';
+      const firstConfirmed = Platform.OS === 'web'
+        ? (typeof window === 'undefined' ? true : window.confirm(firstMessage))
+        : await new Promise<boolean>((resolve) => {
+          Alert.alert('Otorgar Administrador', firstMessage, [
+            { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Confirmar', style: 'destructive', onPress: () => resolve(true) }
+          ]);
+        });
+      if (!firstConfirmed) {
+        return;
+      }
+      const secondConfirmed = Platform.OS === 'web'
+        ? (typeof window === 'undefined' ? true : window.confirm(secondMessage))
+        : await new Promise<boolean>((resolve) => {
+          Alert.alert('Confirmacion obligatoria', secondMessage, [
+            { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Otorgar Administrador', style: 'destructive', onPress: () => resolve(true) }
+          ]);
+        });
+      if (!secondConfirmed) {
+        return;
+      }
+      finalRole = 'administrador';
+    }
+    if (!canAccessProvince(session, adminUserProvince)) {
+      setAuthMessage('No podes editar usuarios de otra provincia.');
+      return;
+    }
+    if (!canApproveRole(session, finalRole)) {
+      setAuthMessage(`Tu rango no puede asignar el rol ${roleLabel(finalRole)}.`);
+      return;
+    }
+    if (finalRole !== adminUserRole) {
+      const warning = `Al cambiar provincia/comunidad, ${roleLabel(adminUserRole)} pierde rango y pasa a Sedimentador. Confirmas guardar?`;
+      const confirmed = Platform.OS === 'web'
+        ? (typeof window === 'undefined' ? true : window.confirm(warning))
+        : await new Promise<boolean>((resolve) => {
+          Alert.alert('Advertencia obligatoria', warning, [
+            { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Guardar y ajustar rango', style: 'destructive', onPress: () => resolve(true) }
+          ]);
+        });
+      if (!confirmed) {
+        return;
+      }
+    }
+    const canAdminUsePersonalPm = roleRank(finalRole) >= roleRank('sedimentador');
+    const hasCompleteAdminPersonalPm = Boolean(canAdminUsePersonalPm && adminUserPmType && adminUserPmNumber.trim() && adminUserPmProvince);
+    if (hasCompleteAdminPersonalPm) {
+      const parsedPmNumber = Number(adminUserPmNumber);
+      if (!Number.isInteger(parsedPmNumber) || parsedPmNumber <= 0) {
+        setAuthMessage('El número de PM debe ser válido.');
+        return;
+      }
+    }
+
+    setAuthMessage('Guardando usuario...');
+    const { error } = await updateAdminUser({
+      id: selectedAdminUser.id,
+      email: session?.role === 'administrador' ? adminUserEmail : (selectedAdminUser.email ?? ''),
+      password: session?.role === 'administrador' ? adminUserPassword : '',
+      fullName: adminUserFullName,
+      phone: adminUserPhone,
+      province: adminUserProvince,
+      communityName: adminUserCommunity,
+      status: adminUserStatus,
+      role: finalRole,
+      subroleKey: subrolesForRole(finalRole).some((item) => item.key === adminUserSubroleKey) ? adminUserSubroleKey : null,
+      displayRoleLabel: adminUserDisplayRoleLabel.trim() || null,
+      nickname: adminUserNickname.trim() || null,
+      useNicknameInGreetings: adminUserUseNicknameInGreetings,
+      credentialNameMode: adminUserCredentialNameMode,
+      perseveranceStartYear: adminUserPerseveranceStartYear ? Number(adminUserPerseveranceStartYear) : null,
+      personalPmType: hasCompleteAdminPersonalPm ? (adminUserPmType || null) : null,
+      personalPmNumber: hasCompleteAdminPersonalPm ? Number(adminUserPmNumber) : null,
+      personalPmProvince: hasCompleteAdminPersonalPm ? (adminUserPmProvince || null) : null,
+      personalPmMotto: hasCompleteAdminPersonalPm ? (adminUserPmMotto.trim() || null) : null,
+      pmMotto: hasCompleteAdminPersonalPm ? (adminUserPmMotto.trim() || null) : null
+    });
+    if (error) {
+      setAuthMessage(error.message || 'No se pudo guardar el usuario. Revisa permisos y datos.');
+      return;
+    }
+    await loadAdminUsers();
+    setSelectedAdminUserId('');
+    setAuthMessage(changeDone(finalRole !== adminUserRole ? `Usuario actualizado. Rango ajustado a ${roleLabel(finalRole)}.` : 'Usuario actualizado.'));
+  }
+
+  async function confirmSelectedUserEmail() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede confirmar mails desde Auth.');
+      return;
+    }
+    if (!selectedAdminUser) {
+      setAuthMessage('Elegir un usuario para aprobar email.');
+      return;
+    }
+    if (selectedAdminUser.email_confirmed_at) {
+      setAuthMessage('Este usuario ya confirmo el mail. Si corresponde, aprobalo como usuario desde Estado/Rol.');
+      return;
+    }
+
+    const { error } = await confirmAdminUserEmail(selectedAdminUser.id);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadAdminUsers();
+    setAuthMessage(changeDone('Mail confirmado correctamente.'));
+  }
+
+  async function deleteSelectedAdminUser() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede eliminar usuarios y liberar mails.');
+      return;
+    }
+    if (!selectedAdminUser) {
+      setAuthMessage('Elegir un usuario para eliminar.');
+      return;
+    }
+    if (!canEditAdminUser(session, selectedAdminUser)) {
+      setAuthMessage('No podes eliminar administradores, usuarios superiores o usuarios fuera de tu alcance.');
+      return;
+    }
+
+    const message = 'Esta acción eliminará el acceso del usuario y liberará su correo para reutilizarlo. Se guardará un backup interno antes de eliminar.';
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm(message))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Eliminar usuario', message, [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+
+    setAuthMessage('Eliminando usuario...');
+    const { error } = await softDeleteAdminUser(selectedAdminUser.id);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setSelectedAdminUserId('');
+    await loadAdminUsers();
+    setAuthMessage(changeDone('Usuario eliminado y correo liberado correctamente.'));
+  }
+
+  async function diagnoseUserLogin() {
+    const email = adminDiagnosticEmail.trim();
+    if (!isValidEmail(email)) {
+      setAuthMessage('Ingresa un mail valido para diagnosticar.');
+      return;
+    }
+    setAuthMessage('Diagnosticando usuario...');
+    const { data, error } = await diagnoseAdminUserLogin(email);
+    if (error) {
+      setAuthMessage(error.message || 'No pude diagnosticar el usuario.');
+      return;
+    }
+    setAdminLoginDiagnostic(data);
+    setAuthMessage(data ? 'Diagnostico listo.' : 'No hubo respuesta de diagnostico.');
+  }
+
+  async function repairUserLogin() {
+    const email = adminDiagnosticEmail.trim();
+    if (!isValidEmail(email)) {
+      setAuthMessage('Ingresa un mail valido para reparar.');
+      return;
+    }
+    setAuthMessage('Reparando usuario...');
+    const { error } = await repairAdminUserLogin(email);
+    if (error) {
+      setAuthMessage(error.message || 'No pude reparar el usuario.');
+      return;
+    }
+    await diagnoseUserLogin();
+    await loadAdminUsers();
+    setAuthMessage(changeDone('Usuario reparado. Probalo iniciando sesión nuevamente.'));
+  }
+
+  async function deleteUserByDiagnosticEmail() {
+    const email = adminDiagnosticEmail.trim();
+    if (!isValidEmail(email)) {
+      setAuthMessage('Ingresa un mail valido para liberar.');
+      return;
+    }
+    const message = `Esta acción eliminará Auth/Profile/datos vinculados de ${email} y liberará el correo. Se guardará backup interno antes de eliminar.`;
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm(message))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Liberar correo', message, [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Eliminar y liberar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+
+    setAuthMessage('Liberando correo...');
+    const { error } = await deleteAdminUserByEmail(email, 'Liberacion manual de correo desde panel administrador');
+    if (error) {
+      setAuthMessage(error.message || 'No pude liberar el correo.');
+      return;
+    }
+    setSelectedAdminUserId('');
+    setAdminLoginDiagnostic(null);
+    await loadAdminUsers();
+    setAuthMessage(changeDone('Usuario eliminado y correo liberado correctamente.'));
+  }
+
+  async function loadRolePermissionDraft(role: Role = permissionRole) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede gestionar permisos de rangos.');
+      return;
+    }
+    setAuthMessage('Cargando permisos del rango...');
+    const rows = await fetchRolePermissions(role);
+    setRolePermissionRows(rows);
+    if (rows.length > 0) {
+      setRolePermissionDraft(rows.filter((item) => item.enabled).map((item) => item.permission_key as Permission));
+    } else {
+      setRolePermissionDraft(rolePermissions[role] ?? []);
+    }
+    setAuthMessage(rows.length > 0 ? 'Permisos cargados.' : 'No hay permisos remotos cargados; se muestra base local.');
+  }
+
+  function toggleRolePermission(permission: Permission) {
+    setRolePermissionDraft((current) => (
+      current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...current, permission]
+    ));
+  }
+
+  async function saveRolePermissionDraft() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede guardar permisos de rangos.');
+      return;
+    }
+    const { error } = await saveRolePermissions(permissionRole, rolePermissionDraft);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadRolePermissionDraft(permissionRole);
+    if (session?.role === permissionRole) {
+      onSessionChange({ ...session, permissions: rolePermissionDraft });
+    }
+    setAuthMessage(changeDone('Permisos del rango actualizados.'));
+  }
+
+  async function loadProvinceRoleLabels() {
+    setAuthMessage('Cargando etiquetas de rangos...');
+    const rows = await fetchProvinceRoleLabels();
+    setProvinceRoleLabels(rows);
+    setAuthMessage(rows.length > 0 ? 'Etiquetas cargadas.' : 'No hay etiquetas personalizadas cargadas.');
+  }
+
+  async function saveProvinceRoleLabelDraft() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede editar nombres visibles de rangos.');
+      return;
+    }
+    if (!roleLabelProvince) {
+      setAuthMessage('Elegir provincia.');
+      return;
+    }
+    if (!roleLabelDraft.trim()) {
+      setAuthMessage('Escribir el nombre visible del rango.');
+      return;
+    }
+
+    const { error } = await saveProvinceRoleLabel({
+      province: roleLabelProvince,
+      roleKey: roleLabelRole,
+      displayLabel: roleLabelDraft.trim(),
+      description: roleLabelDescription.trim(),
+      isActive: roleLabelActive
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadProvinceRoleLabels();
+    setAuthMessage(changeDone('Etiqueta de rango actualizada.'));
+  }
+
+  async function loadRoleAliases(showMessage = true) {
+    if (showMessage) {
+      setAuthMessage('Cargando alias de rangos...');
+    }
+    const rows = await fetchAssignableRoleAliases();
+    setRoleAliases(rows);
+    if (showMessage) {
+      setAuthMessage(rows.length > 0 ? 'Alias cargados.' : 'No hay alias asignables cargados.');
+    }
+  }
+
+  async function queueNotificationIfRequested(enabled: boolean, values: {
+    notificationType: string;
+    title: string;
+    body: string;
+    targetKind: string;
+    targetValue?: string | null;
+    targetScope?: string | null;
+    province?: string | null;
+    community?: string | null;
+    minRole?: string | null;
+    tabKey?: string | null;
+    sourceType?: string | null;
+    sourceId?: string | null;
+  }) {
+    if (!enabled) {
+      return null;
+    }
+    const canNotify = hasPermission(session, 'enviar_notificaciones') || (values.targetKind === 'comunidad' && Boolean(session && ['animador_comunidad', 'coordinador_comunidad'].includes(session.role)));
+    if (!canNotify) {
+      return 'El aviso se publico, pero tu rango no tiene permiso para notificar usuarios.';
+    }
+    const { data, error } = await createNotificationIntent({
+      ...values,
+      title: notificationTitleFor(values),
+      body: values.body.slice(0, 220),
+      targetScope: values.targetScope ?? values.targetKind,
+      minRole: values.minRole ?? 'palestrista'
+    });
+    if (error) {
+      return `El aviso se publico, pero no pude preparar la notificacion: ${error.message}`;
+    }
+    const intentId = typeof data === 'string' ? data : Array.isArray(data) ? data[0] : null;
+    if (intentId) {
+      const delivery = await deliverNotificationIntent(intentId);
+      if (delivery.error) {
+        return `El aviso se publico, pero no pude enviar la notificacion: ${delivery.error.message}`;
+      }
+    }
+    return null;
+  }
+
+  async function adminCreateNews() {
+    if (!canManageNewsContent(session)) {
+      setAuthMessage('Tu rango no puede publicar noticias.');
+      return;
+    }
+    if (!adminNewsTitle.trim() || !adminNewsBody.trim()) {
+      setAuthMessage('Completa titulo y texto antes de publicar la noticia.');
+      return;
+    }
+    const forcedProvincial = session && ['vocal', 'coordinador_diocesano'].includes(session.role);
+    const finalScope = forcedProvincial ? 'provincial' : adminNewsScope;
+    const finalProvince = finalScope === 'provincial' ? (forcedProvincial ? session?.province : adminNewsProvince) : null;
+    if (finalScope === 'provincial' && !finalProvince) {
+      setAuthMessage('Elegí provincia para publicar la noticia provincial.');
+      return;
+    }
+
+    setAuthMessage('Publicando noticia...');
+    const { data: newsId, error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true, finalProvince, adminNewsImage.trim() || null);
+    const newsTargetKind = finalScope === 'provincial' ? 'provincia' : 'nacional';
+    const notificationWarning = !error ? await queueNotificationIfRequested(adminNewsNotify, {
+      notificationType: 'aviso_dirigencial',
+      title: adminNewsTitle.trim(),
+      body: adminNewsBody.trim(),
+      targetKind: newsTargetKind,
+      targetValue: newsTargetKind === 'provincia' ? finalProvince ?? null : null,
+      targetScope: newsTargetKind,
+      province: newsTargetKind === 'provincia' ? finalProvince ?? null : null,
+      minRole: 'palestrista',
+      tabKey: 'notilestra',
+      sourceType: 'news',
+      sourceId: typeof newsId === 'string' ? newsId : null
+    }) : null;
+    setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminNewsNotify ? 'Noticia creada y notificacion preparada.' : 'Noticia creada.'));
+    if (!error) {
+      setAdminNewsTitle('');
+      setAdminNewsBody('');
+      setAdminNewsImage('');
+      setAdminNewsDraft(false);
+      setAdminNewsFeatured(false);
+      setAdminNewsNotify(false);
+      setAdminNewsScope(forcedProvincial ? 'provincial' : 'nacional');
+      await onContentChanged();
+    }
+  }
+
+  async function loadNewsDrafts() {
+    const items = await fetchNewsDrafts();
+    setNewsDrafts(items);
+    setAuthMessage(items.length > 0 ? 'Borradores cargados.' : 'No hay borradores guardados.');
+  }
+
+  async function uploadAdminNewsImage() {
+    if (!canManageNewsContent(session)) {
+      setAuthMessage('Tu rango no puede cargar imagenes de noticias.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage('Necesito permiso para seleccionar una imagen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.82
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    try {
+      setAuthMessage('Subiendo imagen...');
+      const publicUrl = await uploadPickedImageToPublicUrl(result.assets[0], 'news');
+      setAdminNewsImage(publicUrl);
+      setAuthMessage('Imagen cargada. La noticia se publica recien al tocar Publicar noticia.');
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No se pudo subir la imagen.');
+    }
+  }
+
+  async function adminSaveNewsDraft(status = 'borrador') {
+    if (!adminNewsTitle.trim() || !adminNewsBody.trim()) {
+      setAuthMessage('Completa titulo y texto antes de guardar el borrador.');
+      return;
+    }
+
+    setAuthMessage('Guardando borrador...');
+    const { error } = await saveNewsDraft({
+      title: adminNewsTitle.trim(),
+      body: adminNewsBody.trim(),
+      category: adminNewsCategory,
+      imageUrl: adminNewsImage.trim() || null,
+      isFeatured: adminNewsFeatured,
+      status
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAdminNewsTitle('');
+    setAdminNewsBody('');
+    setAdminNewsImage('');
+    setAdminNewsDraft(false);
+    setAdminNewsFeatured(false);
+    await loadNewsDrafts();
+    setAuthMessage(changeDone(status === 'borrador' ? 'Borrador guardado.' : 'Borrador actualizado.'));
+  }
+
+  async function loadAdminMaterials() {
+    const [items, documents] = await Promise.all([fetchAppMaterials(session?.role === 'administrador'), fetchChurchDocumentButtons(true)]);
+    setAdminMaterials(items);
+    setAdminChurchDocuments(documents);
+    setAuthMessage(items.length > 0 || documents.length > 0 ? 'Descargas cargadas.' : 'No hay descargas guardadas.');
+  }
+
+  async function adminSaveMaterial() {
+    if (!canManagePublishedContent(session)) {
+      setAuthMessage('Solo Vocal Diocesano en adelante puede guardar materiales.');
+      return;
+    }
+    if (!materialTitle.trim() || !materialDescription.trim()) {
+      setAuthMessage('Completa nombre y descripcion del material.');
+      return;
+    }
+
+    setAuthMessage('Guardando material...');
+    const { error } = await saveAppMaterial({
+      title: materialTitle.trim(),
+      description: materialDescription.trim(),
+      category: materialCategory.trim() || 'General',
+      visibility: materialVisibility,
+      requiredPermission: materialPermission.trim() || null,
+      fileUrl: materialFileUrl.trim() || null,
+      filePath: null,
+      sortOrder: 100
+    });
+    if (error) {
+      setAuthMessage(friendlyUploadError(error.message));
+      return;
+    }
+    setMaterialTitle('');
+    setMaterialDescription('');
+    setMaterialFileUrl('');
+    setMaterialPermission('');
+    await loadAdminMaterials();
+    setAuthMessage(changeDone('Material guardado y visible segun permisos.'));
+  }
+
+  async function adminArchiveMaterial(id: string) {
+    const { error } = await archiveAppMaterial(id);
+    if (error) {
+      setAuthMessage(friendlyUploadError(error.message));
+      return;
+    }
+    await loadAdminMaterials();
+    setAuthMessage(changeDone('Material archivado.'));
+  }
+
+  function resetChurchDocumentForm() {
+    setChurchDocumentEditingId(null);
+    setChurchDocumentTitle('');
+    setChurchDocumentLogoUrl('');
+    setChurchDocumentTargetUrl('');
+    setChurchDocumentEnabled(true);
+    setChurchDocumentSortOrder(String(Math.min(adminChurchDocuments.length + 1, 6)));
+  }
+
+  function editChurchDocument(document: ChurchDocumentButtonRecord) {
+    setChurchDocumentEditingId(document.id);
+    setChurchDocumentTitle(document.title);
+    setChurchDocumentLogoUrl(document.logo_url ?? '');
+    setChurchDocumentTargetUrl(document.target_url);
+    setChurchDocumentEnabled(document.enabled);
+    setChurchDocumentSortOrder(String(document.sort_order ?? 1));
+  }
+
+  async function uploadChurchDocumentLogo() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede subir logos de documentos.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage('Necesito permiso para seleccionar imagen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.82,
+      allowsEditing: true,
+      aspect: [1, 1]
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    try {
+      setAuthMessage('Subiendo logo...');
+      const asset = result.assets[0];
+      const response = await fetch(asset.uri);
+      const bytes = await response.arrayBuffer();
+      const extension = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+      const path = `church-documents/${Date.now()}.${extension.replace(/[^a-zA-Z0-9]/g, '') || 'jpg'}`;
+      const { error } = await supabase.storage
+        .from('materials')
+        .upload(path, bytes, { contentType: asset.mimeType ?? 'image/jpeg', upsert: true });
+      if (error) {
+        setAuthMessage(error.message);
+        return;
+      }
+      const { data } = supabase.storage.from('materials').getPublicUrl(path);
+      setChurchDocumentLogoUrl(data.publicUrl);
+      setAuthMessage('Logo cargado.');
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No se pudo subir el logo.');
+    }
+  }
+
+  async function saveChurchDocumentDraft() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede gestionar documentos de la Iglesia.');
+      return;
+    }
+    if (!churchDocumentTitle.trim() || !churchDocumentTargetUrl.trim()) {
+      setAuthMessage('Completa titulo y link destino.');
+      return;
+    }
+    if (!/^https?:\/\//i.test(churchDocumentTargetUrl.trim())) {
+      setAuthMessage('El link debe empezar con https://');
+      return;
+    }
+    const maxReached = !churchDocumentEditingId && adminChurchDocuments.filter((item) => !item.archived_at).length >= 6;
+    if (maxReached) {
+      setAuthMessage('Solo se permiten hasta 6 botones.');
+      return;
+    }
+    const { error } = await saveChurchDocumentButton({
+      id: churchDocumentEditingId,
+      title: churchDocumentTitle.trim(),
+      logoUrl: churchDocumentLogoUrl.trim() || null,
+      targetUrl: churchDocumentTargetUrl.trim(),
+      enabled: churchDocumentEnabled,
+      sortOrder: Number(churchDocumentSortOrder) || 1
+    });
+    if (error) {
+      setAuthMessage(friendlyUploadError(error.message));
+      return;
+    }
+    resetChurchDocumentForm();
+    await loadAdminMaterials();
+    setAuthMessage(changeDone('Documento de la Iglesia guardado.'));
+  }
+
+  async function duplicateChurchDocument(document: ChurchDocumentButtonRecord) {
+    setChurchDocumentEditingId(null);
+    setChurchDocumentTitle(`${document.title} copia`);
+    setChurchDocumentLogoUrl(document.logo_url ?? '');
+    setChurchDocumentTargetUrl(document.target_url);
+    setChurchDocumentEnabled(document.enabled);
+    setChurchDocumentSortOrder(String(Math.min(adminChurchDocuments.length + 1, 6)));
+  }
+
+  async function toggleChurchDocument(document: ChurchDocumentButtonRecord) {
+    const { error } = await saveChurchDocumentButton({
+      id: document.id,
+      title: document.title,
+      logoUrl: document.logo_url,
+      targetUrl: document.target_url,
+      enabled: !document.enabled,
+      sortOrder: document.sort_order
+    });
+    if (error) {
+      setAuthMessage(friendlyUploadError(error.message));
+      return;
+    }
+    await loadAdminMaterials();
+    setAuthMessage(changeDone('Estado actualizado.'));
+  }
+
+  async function moveChurchDocument(document: ChurchDocumentButtonRecord, direction: -1 | 1) {
+    const nextOrder = Math.max(1, Math.min(6, (document.sort_order ?? 1) + direction));
+    const { error } = await saveChurchDocumentButton({
+      id: document.id,
+      title: document.title,
+      logoUrl: document.logo_url,
+      targetUrl: document.target_url,
+      enabled: document.enabled,
+      sortOrder: nextOrder
+    });
+    if (error) {
+      setAuthMessage(friendlyUploadError(error.message));
+      return;
+    }
+    await loadAdminMaterials();
+  }
+
+  async function deleteChurchDocument(id: string) {
+    const { error } = await archiveChurchDocumentButton(id);
+    if (error) {
+      setAuthMessage(friendlyUploadError(error.message));
+      return;
+    }
+    await loadAdminMaterials();
+    setAuthMessage(changeDone('Documento eliminado.'));
+  }
+
+  async function adminCreateEvent() {
+    if (!adminEventTitle.trim() || !adminEventBody.trim() || !adminEventDate.trim()) {
+      setAuthMessage('Completa titulo, descripcion y fecha antes de publicar el evento.');
+      return;
+    }
+    if (Number.isNaN(Date.parse(adminEventDate))) {
+      setAuthMessage('La fecha debe tener formato valido. Ejemplo: 2026-05-28T21:00:00-03:00');
+      return;
+    }
+
+    setAuthMessage('Publicando evento...');
+    const { data: eventId, error } = await createEvent(adminEventTitle.trim(), adminEventBody.trim(), adminEventDate.trim(), true);
+    const eventTargetKind = session && ['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? 'provincia' : 'nacional';
+    const notificationWarning = !error ? await queueNotificationIfRequested(adminEventNotify, {
+      notificationType: 'recordatorio_evento',
+      title: adminEventTitle.trim(),
+      body: adminEventBody.trim(),
+      targetKind: eventTargetKind,
+      targetValue: eventTargetKind === 'provincia' ? session?.province ?? null : null,
+      targetScope: eventTargetKind,
+      province: eventTargetKind === 'provincia' ? session?.province ?? null : null,
+      minRole: 'palestrista',
+      tabKey: 'notilestra',
+      sourceType: 'event',
+      sourceId: typeof eventId === 'string' ? eventId : null
+    }) : null;
+    setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminEventNotify ? 'Evento creado y notificacion preparada.' : 'Evento creado.'));
+    if (!error) {
+      setAdminEventTitle('');
+      setAdminEventBody('');
+      setAdminEventDate('');
+      setAdminEventNotify(false);
+      await onContentChanged();
+    }
+  }
+
+  async function adminSaveTab(key: string, fallbackLabel: string) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede modificar los accesos.');
+      return;
+    }
+    const tab = editableTabs.find((item) => item.key === key);
+    const draft = editingTabs[key] ?? { label: fallbackLabel, iconName: tab?.icon ?? 'document-text-outline', sectionType: tab?.sectionType ?? 'simple', isVisible: true, visibleRoles: tab?.visibleRoles ?? null };
+    if (!draft.label.trim()) {
+      setAuthMessage('El nombre visible no puede quedar vacio.');
+      return;
+    }
+    if (!isIoniconName(draft.iconName)) {
+      setAuthMessage(`El icono "${draft.iconName}" no existe en Ionicons.`);
+      return;
+    }
+    const { error } = await updateAppTab(key, draft.label.trim() || fallbackLabel, draft.isVisible, draft.visibleRoles, draft.iconName, draft.sectionType);
+    setAuthMessage(error ? error.message : changeDone('Pestana actualizada.'));
+    await onTabsChanged();
+  }
+
+  async function adminCreatePage() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede crear paginas nuevas.');
+      return;
+    }
+    if (!newTabLabel.trim()) {
+      setAuthMessage('Escribir un nombre para la nueva pagina.');
+      return;
+    }
+    const key = normalizeTabKey(newTabKey || newTabLabel);
+    if (!key) {
+      setAuthMessage('La clave interna no puede quedar vacia.');
+      return;
+    }
+    if (editableTabs.some((item) => item.key === key)) {
+      setAuthMessage('Ya existe una sección con esa clave interna.');
+      return;
+    }
+    if (!isIoniconName(newTabIcon)) {
+      setAuthMessage(`El icono "${newTabIcon}" no existe en Ionicons.`);
+      return;
+    }
+    const { error } = await createAppTab(key, newTabLabel.trim(), newTabRoles, newTabIcon, newTabSectionType);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await updateAppContent(key, newTabLabel.trim(), 'Contenido inicial de la pagina.', buildInitialBlocksForSection(newTabSectionType, newTabLabel.trim()));
+    setNewTabLabel('');
+    setNewTabKey('');
+    setNewTabIcon('document-text-outline');
+    setNewTabSectionType('simple');
+    await onTabsChanged();
+    await onContentChanged();
+    setAuthMessage(changeDone('Pagina creada con visibilidad por rol.'));
+  }
+
+  async function adminMoveTab(key: string, direction: -1 | 1) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede ordenar los accesos.');
+      return;
+    }
+    const sorted = editableTabs.map((tab, index) => ({ ...tab, sortOrder: Number.isFinite(tab.sortOrder) ? tab.sortOrder : index * 10 })).sort((a, b) => a.sortOrder - b.sortOrder);
+    const index = sorted.findIndex((item) => item.key === key);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= sorted.length) {
+      return;
+    }
+    const nextOrder = [...sorted];
+    const [moved] = nextOrder.splice(index, 1);
+    nextOrder.splice(targetIndex, 0, moved);
+
+    setAuthMessage('Actualizando orden de accesos...');
+    for (const [orderIndex, tab] of nextOrder.entries()) {
+      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+      const { error } = await updateAppTabPosition({
+        key: tab.key,
+        label: draft.label || tab.label,
+        isVisible: draft.isVisible,
+        sortOrder: (orderIndex + 1) * 10,
+        visibleRoles: draft.visibleRoles,
+        iconName: draft.iconName || tab.icon,
+        sectionType: draft.sectionType
+      });
+      if (error) {
+        setAuthMessage(error.message);
+        return;
+      }
+    }
+    await onTabsChanged();
+    setAuthMessage(changeDone('Orden de accesos actualizado.'));
+  }
+
+  function updateTabRole(key: string, role: Role, checked: boolean) {
+    const tab = editableTabs.find((item) => item.key === key);
+    const currentDraft = editingTabs[key] ?? { label: tab?.label ?? key, iconName: tab?.icon ?? 'document-text-outline', sectionType: tab?.sectionType ?? 'simple', isVisible: tab?.visible ?? true, visibleRoles: tab?.visibleRoles ?? null };
+    const currentRoles = currentDraft.visibleRoles ?? roleDefinitions.map((item) => item.role);
+    const nextRoles = checked ? Array.from(new Set([...currentRoles, role])) : currentRoles.filter((item) => item !== role);
+    setEditingTabs((current) => ({ ...current, [key]: { ...currentDraft, visibleRoles: nextRoles } }));
+  }
+
+  function toggleNewTabRole(role: Role) {
+    setNewTabRoles((current) => current.includes(role) ? current.filter((item) => item !== role) : [...current, role]);
+  }
+
+  async function adminDeleteTab(key: string) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede eliminar secciones.');
+      return;
+    }
+    if (protectedTabKeys.has(key) || defaultTabByKey.has(key)) {
+      setAuthMessage('Esta sección es crítica o propia de la app. Podés ocultarla, pero no eliminarla.');
+      return;
+    }
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm('¿Seguro que deseas eliminar esta sección? También se puede perder contenido asociado.'))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Eliminar sección', '¿Seguro que deseas eliminar esta sección? También se puede perder contenido asociado.', [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await deleteAppTab(key);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await onTabsChanged();
+    await onContentChanged();
+    setAuthMessage(changeDone('Sección eliminada.'));
+  }
+
+  async function adminRestoreDefaultNavigation() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo el administrador puede restaurar navegación.');
+      return;
+    }
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm('¿Restaurar la navegación predeterminada? Se reemplazarán nombres, iconos, orden y visibilidad base.'))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Restaurar navegación', '¿Restaurar la navegación predeterminada? Se reemplazarán nombres, iconos, orden y visibilidad base.', [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Restaurar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await restoreDefaultAppTabs();
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setEditingTabs({});
+    await onTabsChanged();
+    setAuthMessage(changeDone('Navegación predeterminada restaurada.'));
+  }
+
+  async function adminSaveContent() {
+    if (!contentTitle.trim() || !contentBody.trim()) {
+      setAuthMessage('Completa titulo y texto antes de guardar el contenido.');
+      return;
+    }
+
+    setAuthMessage('Guardando contenido...');
+    const normalizedBlocks = contentBlocks
+      .map((block) => ({ ...block, value: block.value.trim() }))
+      .filter((block) => block.value.length > 0);
+    const { error } = await updateAppContent(selectedContentTab, contentTitle.trim(), contentBody.trim(), normalizedBlocks);
+    setAuthMessage(error ? error.message : changeDone('Contenido actualizado.'));
+    if (!error) {
+      await onContentChanged();
+    }
+  }
+
+  async function pickAdminCommunityImage() {
+    if (!selectedAdminCommunity?.id) {
+      setAuthMessage('Elegir una comunidad antes de cargar imagen.');
+      return;
+    }
+    if (!canEditCommunity(session, adminCommunityProvince, selectedAdminCommunity.name)) {
+      setAuthMessage('Tu rango no puede cambiar la imagen de esta comunidad.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage('Necesitamos permiso para elegir una imagen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [2, 1],
+      quality: 0.85
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    setAdminCommunityImageAsset(result.assets[0]);
+    setAdminCommunityImagePreview(result.assets[0].uri);
+    setAuthMessage('Imagen seleccionada. Revisá la vista previa y guardá la comunidad.');
+  }
+
+  async function uploadAdminCommunityImage() {
+    if (!adminCommunityImageAsset || !selectedAdminCommunity?.id) {
+      return adminCommunityImageUrl;
+    }
+    setAdminCommunityImageUploading(true);
+    try {
+      const response = await fetch(adminCommunityImageAsset.uri);
+      const bytes = await response.arrayBuffer();
+      const extension = adminCommunityImageAsset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+      const safeExtension = extension.length <= 5 ? extension : 'jpg';
+      const path = `${selectedAdminCommunity.id}/community-${Date.now()}.${safeExtension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('community-images')
+        .upload(path, bytes, {
+          contentType: adminCommunityImageAsset.mimeType ?? 'image/jpeg',
+          upsert: true
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      const { data: publicUrl } = supabase.storage.from('community-images').getPublicUrl(path);
+      return publicUrl.publicUrl;
+    } finally {
+      setAdminCommunityImageUploading(false);
+    }
+  }
+
+  async function adminSaveCommunity() {
+    if (!selectedAdminCommunity?.id) {
+      setAuthMessage('Elegir una comunidad cargada desde Supabase para editar.');
+      return;
+    }
+    if (!canEditCommunity(session, adminCommunityProvince, selectedAdminCommunity.name)) {
+      setAuthMessage('Tu rango solo puede editar comunidades de tu provincia o de tu alcance.');
+      return;
+    }
+
+    setAuthMessage('Guardando comunidad...');
+    let imageUrl = adminCommunityImageUrl;
+    try {
+      imageUrl = await uploadAdminCommunityImage();
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No se pudo subir la imagen de comunidad.');
+      return;
+    }
+    const { error } = await updateCommunity(selectedAdminCommunity.id, {
+      name: adminCommunityName,
+      address: adminCommunityAddress,
+      phone: adminCommunityPhone,
+      meeting_day: adminCommunityDay,
+      meeting_time: adminCommunityTime,
+      description: adminCommunityDescription,
+      image_url: imageUrl
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+
+    const items = await fetchCommunities();
+    setRegistrationCommunities(items);
+    setAdminCommunityId('');
+    setAdminCommunityImageAsset(null);
+    setAdminCommunityImageUrl(imageUrl);
+    setAdminCommunityImagePreview(imageUrl);
+    setAuthMessage(changeDone('Cambios guardados.'));
+    if (session?.communityOfOrigin === selectedAdminCommunity.name) {
+      onSessionChange({ ...session, communityOfOrigin: adminCommunityName || selectedAdminCommunity.name });
+    }
+    await onContentChanged();
+  }
+
+  async function adminCreateCommunity() {
+    if (!canAdministrateCommunities) {
+      setAuthMessage('Tu rango no puede crear comunidades.');
+      return;
+    }
+    if (!adminCommunityProvince || !adminCommunityName.trim()) {
+      setAuthMessage('Nombre y provincia son obligatorios.');
+      return;
+    }
+    if (!canManageProvince(session, adminCommunityProvince) && !canSeeAllProvinces(session)) {
+      setAuthMessage('Tu rango solo puede crear comunidades dentro de su jurisdiccion.');
+      return;
+    }
+
+    setAuthMessage('Creando comunidad...');
+    const { error } = await createCommunity({
+      province: adminCommunityProvince,
+      name: adminCommunityName.trim(),
+      groupType: adminCommunityGroupType,
+      address: adminCommunityAddress.trim(),
+      phone: adminCommunityPhone.trim(),
+      meetingDay: adminCommunityDay.trim(),
+      meetingTime: adminCommunityTime.trim(),
+      description: adminCommunityDescription.trim(),
+      isActive: adminCommunityIsActive
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    const items = await fetchCommunities();
+    setRegistrationCommunities(items);
+    setAdminCommunityName('');
+    setAdminCommunityAddress('');
+    setAdminCommunityPhone('');
+    setAdminCommunityDay('');
+    setAdminCommunityTime('');
+    setAdminCommunityDescription('');
+    setAuthMessage(changeDone('Comunidad creada.'));
+    await onContentChanged();
+  }
+
+  async function adminToggleCommunityStatus(id: string, isActive: boolean) {
+    const { error } = await setCommunityStatus(id, isActive);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setRegistrationCommunities(await fetchCommunities());
+    setAuthMessage(changeDone(isActive ? 'Comunidad habilitada.' : 'Comunidad deshabilitada.'));
+  }
+
+  async function adminArchiveCommunity(id: string) {
+    const message = '¿Seguro que deseas eliminar esta comunidad? Esta acción puede afectar usuarios, avisos y publicaciones vinculadas.';
+    const confirmed = Platform.OS === 'web' ? (typeof window === 'undefined' ? true : window.confirm(message)) : await new Promise<boolean>((resolve) => {
+      Alert.alert('Eliminar comunidad', message, [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+      ]);
+    });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await archiveCommunity(id);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setRegistrationCommunities(await fetchCommunities());
+    setAdminCommunityId('');
+    setAuthMessage(changeDone('Comunidad eliminada.'));
+  }
+
+  function addContentBlock(type: ContentEditorBlock['type']) {
+    const defaultValue =
+      type === 'imagen'
+        ? 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
+        : type === 'enlace'
+          ? 'Etiqueta|https://palestra.org.ar'
+          : type === 'campo'
+            ? 'destino=Panel de solicitudes'
+            : type === 'modulo'
+              ? 'inicio'
+              : '';
+    setContentBlocks((current) => [
+      ...current,
+      { id: `${type}-${Date.now()}`, type, value: defaultValue }
+    ]);
+  }
+
+  function moveContentBlock(index: number, direction: -1 | 1) {
+    setContentBlocks((current) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= current.length) {
+        return current;
+      }
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      next.splice(nextIndex, 0, item);
+      return next;
+    });
+  }
+
+  function updateContentBlock(id: string, value: string) {
+    setContentBlocks((current) => current.map((block) => block.id === id ? { ...block, value } : block));
+  }
+
+  function deleteContentBlock(id: string) {
+    setContentBlocks((current) => current.filter((block) => block.id !== id));
+  }
+
+  async function resolveAdminRequest(id: string, status: 'aprobada' | 'denegada') {
+    const request = adminRequests.find((item) => item.id === id);
+    const assignRole = status === 'aprobada' && request?.title === 'Solicitud de perseverancia' ? perseveranceRole : status === 'aprobada' && request?.title === 'Cambio de dirigencia' ? (request.targetRole as Role | undefined ?? leadershipRole) : null;
+    if (assignRole && !canApproveRole(session, assignRole)) {
+      setAuthMessage(`Tu rango no puede aprobar el rol ${roleLabel(assignRole)}.`);
+      return;
+    }
+    if (status === 'aprobada' && request?.title === 'Confirmacion de mail' && request.userId) {
+      const confirmation = await confirmAdminUserEmail(request.userId);
+      if (confirmation.error) {
+        setAuthMessage(confirmation.error.message);
+        return;
+      }
+    }
+    const { error } = await resolveUserRequest(id, status === 'denegada' ? 'rechazada' : status, adminRequestMessage || 'Sin mensaje del administrador', assignRole);
+    if (!error) {
+      await loadAdminRequests();
+      setRequestSubtab('resueltas');
+      setAuthMessage(changeDone(assignRole ? `Solicitud aprobada y rol ${roleLabel(assignRole)} asignado.` : `Solicitud ${status}. El usuario vera la resolucion en su perfil.`));
+      setAdminRequestMessage('');
+      return;
+    }
+
+    setAdminRequests((current) => current.map((request) => (
+      request.id === id
+        ? { ...request, status, message: adminRequestMessage || 'Sin mensaje del administrador', resolvedAt: new Date().toISOString(), resolvedBy: `${session?.fullName ?? 'Administrador'} - ${roleLabel(session?.role ?? 'administrador')}` }
+        : request
+    )));
+    setRequestSubtab('resueltas');
+    setAuthMessage(changeDone(`Solicitud ${status}. El usuario vera la resolucion en su perfil.`));
+    setAdminRequestMessage('');
+  }
+
+  async function acceptDiocesanRequest(id: string) {
+    const { error } = await acceptDiocesanCoordinatorRequest(id);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadMyRequests();
+    await refreshRealProfile();
+    setAuthMessage(changeDone('Aceptaste el nuevo rango de coordinación.'));
+  }
+
+  async function submitUserRequest(title: string) {
+    if (!session) {
+      return;
+    }
+    if (userRequestText.trim().length === 0) {
+      setAuthMessage('Escribí una descripción de hasta 500 caracteres para enviar la solicitud.');
+      return;
+    }
+
+    const newRequest = {
+      id: `req-${Date.now()}`,
+      title,
+      requester: session.fullName,
+      definition: userRequestText.trim().slice(0, 500),
+      createdAt: new Date().toISOString(),
+      status: 'pendiente' as const
+    };
+    const { error } = await createUserRequest(title, newRequest.definition);
+    if (error) {
+      setAuthMessage(error.message || 'No se pudo enviar la solicitud.');
+      return;
+    }
+    await loadMyRequests();
+    await loadAdminRequests();
+    setSentRequests((current) => [
+      ...current,
+      newRequest
+    ]);
+    setAdminRequests((current) => [
+      ...current,
+      newRequest
+    ]);
+    setSelectedRequest(null);
+    setUserRequestText('');
+    setAuthMessage(changeDone(title === 'Solicitud Especial' ? 'Solicitud enviada a la dirigencia diocesana.' : 'Solicitud enviada al panel del administrador.'));
+  }
+
+  async function submitLeadershipChangeRequest() {
+    if (!session || !isCommunityLeader) {
+      return;
+    }
+    if (!successorUserId) {
+      setAuthMessage('Selecciona el sucesor dentro de tu comunidad.');
+      return;
+    }
+    if (!userRequestText.trim()) {
+      setAuthMessage('Escribi un mensaje para fundamentar el cambio de dirigencia.');
+      return;
+    }
+
+    const successor = selectableCommunityMembers.find((member) => member.id === successorUserId);
+    const details = `${userRequestText.trim().slice(0, 500)}\n\nSucesor propuesto: ${successor?.full_name ?? 'Usuario seleccionado'}\nRol propuesto: ${roleLabel(leadershipRole)}\nComunidad: ${session.communityOfOrigin}`;
+    const { error } = await createLeadershipChangeRequest({
+      successorUserId,
+      successorRole: leadershipRole,
+      details
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    await loadMyRequests();
+    setSelectedRequest(null);
+    setUserRequestText('');
+    setSuccessorUserId('');
+    setAuthMessage(changeDone('Solicitud de cambio de dirigencia enviada al Vocal Diocesano.'));
+  }
+
+  async function saveAccountSettings() {
+    setAuthMessage('Guardando ajustes...');
+    const updates: { email?: string; password?: string } = {};
+    if (newEmail.trim()) {
+      updates.email = newEmail.trim();
+    }
+    if (newPassword.trim()) {
+      updates.password = newPassword;
+    }
+    if (!updates.email && !updates.password) {
+      setAuthMessage('No hay cambios de mail o contraseña para guardar.');
+      return;
+    }
+    const { error } = await supabase.auth.updateUser(updates);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setNewEmail('');
+    setNewPassword('');
+    await refreshRealProfile();
+    setAuthMessage(changeDone('Ajustes de cuenta actualizados.'));
+  }
+
+  async function enablePushNotificationsFromSettings() {
+    if (!session) {
+      setAuthMessage('Iniciá sesión para activar notificaciones.');
+      return;
+    }
+    setAuthMessage('Solicitando permiso de notificaciones...');
+    try {
+      const result = await requestAndRegisterPushToken(session, true);
+      setNotificationPermissionStatus(result.status);
+      if (result.token) {
+        setPushTokenPreview(`${result.token.slice(0, 18)}...`);
+        setPushCurrentToken(result.token);
+      }
+      const channelDebug = await getAndroidChannelDebug();
+      setPushChannelDebug(channelDebug);
+      setPushDebugInfo([
+        `Permiso: ${result.status}`,
+        `ProjectId: ${result.projectId}`,
+        `Runtime: ${result.appRuntimeOwner}`,
+        `DeviceId: ${result.deviceId ?? 'sin-device-id'}`,
+        `Usuario: ${session.email}`,
+        `Guardado Supabase: ${result.saved ? 'si' : 'no'}`,
+        `Token: ${result.token ?? 'sin-token'}`,
+        `Error técnico: ${result.technicalError ?? 'sin-error-técnico'}`
+      ].join('\n'));
+      setAuthMessage(result.error ? result.error : changeDone('Notificaciones activadas en este dispositivo.'));
+    } catch (error) {
+      setAuthMessage(getFriendlyPushError(error));
+    }
+  }
+
+  async function sendLocalNotificationDebug() {
+    setPushTestResult('Enviando notificacion local...');
+    try {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Palestra',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#2d8dc8',
+          sound: 'default',
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC
+        });
+      }
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Prueba local Palestra',
+          body: 'Si ves esto, Android y el canal local muestran notificaciones.',
+          sound: 'default'
+        },
+        trigger: null
+      });
+      setPushChannelDebug(await getAndroidChannelDebug());
+      setPushTestResult('Notificacion local solicitada. Si aparece, el canal Android funciona.');
+    } catch (error) {
+      setPushTestResult(error instanceof Error ? error.message : 'Fallo la prueba local.');
+    }
+  }
+
+  async function sendRemotePushDebug() {
+    if (session?.role !== 'administrador') {
+      setPushTestResult('Solo Administrador puede enviar prueba push.');
+      return;
+    }
+    let token = pushCurrentToken;
+    if (!token) {
+      const result = await requestAndRegisterPushToken(session, true);
+      token = result.token ?? '';
+      setNotificationPermissionStatus(result.status);
+      setPushCurrentToken(token);
+      setPushTokenPreview(token ? `${token.slice(0, 18)}...` : '');
+      setPushDebugInfo([
+        `Permiso: ${result.status}`,
+        `ProjectId: ${result.projectId}`,
+        `Runtime: ${result.appRuntimeOwner}`,
+        `DeviceId: ${result.deviceId ?? 'sin-device-id'}`,
+        `Usuario: ${session.email}`,
+        `Guardado Supabase: ${result.saved ? 'si' : 'no'}`,
+        `Token: ${result.token ?? 'sin-token'}`,
+        `Error técnico: ${result.technicalError ?? 'sin-error-técnico'}`
+      ].join('\n'));
+    }
+    if (!token) {
+      setPushTestResult('No hay token actual para probar.');
+      return;
+    }
+    setPushTestResult('Enviando push remoto a Expo Push API...');
+    const response = await debugPushToDevice({
+      token,
+      projectId: easProjectId,
+      runtime: appRuntimeOwner
+    });
+    setPushChannelDebug(await getAndroidChannelDebug());
+    setPushTestResult(JSON.stringify({
+      error: response.error?.message ?? null,
+      data: response.data ?? null
+    }, null, 2));
+  }
+
+  async function publishCommunityPost() {
+    if (!session || !isCommunityLeader) {
+      return;
+    }
+    if (!communityPostBody.trim()) {
+      setAuthMessage('Completa el mensaje antes de publicar en tu comunidad.');
+      return;
+    }
+    if (communityPostKind === 'fecha' && !communityPostDate.trim()) {
+      setAuthMessage('Las fechas de calendario necesitan una fecha.');
+      return;
+    }
+
+    const visibility = session.role === 'animador_comunidad' ? 'publica' : communityPostVisibility;
+    const pollOptions = communityPostKind === 'encuesta'
+      ? communityPollOptions.split('\n').map((item) => item.trim()).filter(Boolean).slice(0, 8)
+      : [];
+    if (communityPostKind === 'encuesta' && pollOptions.length < 2) {
+      setAuthMessage('Las encuestas necesitan al menos 2 opciones, una por linea.');
+      return;
+    }
+    const { data: communityPublicationId, error } = await createCommunityPublication({
+      kind: communityPostKind,
+      title: communityPostTitle.trim() || 'Aviso comunitario',
+      body: communityPostBody.trim(),
+      eventDate: communityPostKind === 'fecha' ? communityPostDate.trim() : null,
+      visibility,
+      pollOptions
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    const notificationWarning = await queueNotificationIfRequested(communityPostNotify, {
+      notificationType: 'mensaje_comunidad',
+      title: communityPostTitle.trim() || 'Aviso comunitario',
+      body: communityPostBody.trim(),
+      targetKind: 'comunidad',
+      targetValue: session.communityOfOrigin,
+      targetScope: visibility,
+      province: session.province,
+      community: session.communityOfOrigin,
+      minRole: visibility === 'sedimentadores' ? 'sedimentador' : 'palestrista',
+      tabKey: 'perfil',
+      sourceType: 'community_publication',
+      sourceId: typeof communityPublicationId === 'string' ? communityPublicationId : null
+    });
+    setCommunityPostTitle('');
+    setCommunityPostBody('');
+    setCommunityPostDate('');
+    setCommunityPollOptions('');
+    setCommunityPostNotify(false);
+    const successMessage = notificationWarning ?? changeDone('Mensaje enviado correctamente');
+    setAuthMessage(successMessage);
+    if (!notificationWarning) {
+      showFeedbackMessage('Mensaje enviado correctamente');
+    }
+    await refreshCommunityForum();
+    await onContentChanged();
+  }
+
+  function startEditCommunityPublication(item: CommunityPublication) {
+    setEditingCommunityPublicationId(item.id ?? null);
+    setEditingCommunityPublicationTitle(item.title);
+    setEditingCommunityPublicationBody(item.body);
+  }
+
+  async function saveCommunityPublicationEdit(status: 'activo' | 'cerrado' = 'activo') {
+    if (!editingCommunityPublicationId) {
+      return;
+    }
+    if (!editingCommunityPublicationTitle.trim() || !editingCommunityPublicationBody.trim()) {
+      setAuthMessage('Completa titulo y contenido del aviso.');
+      return;
+    }
+    const { error } = await updateCommunityPublication({
+      publicationId: editingCommunityPublicationId,
+      title: editingCommunityPublicationTitle.trim(),
+      body: editingCommunityPublicationBody.trim(),
+      status
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setEditingCommunityPublicationId(null);
+    setEditingCommunityPublicationTitle('');
+    setEditingCommunityPublicationBody('');
+    setAuthMessage(changeDone(status === 'cerrado' ? 'Aviso cerrado.' : 'Aviso actualizado.'));
+    await refreshCommunityForum();
+  }
+
+  async function removeCommunityPublication(publicationId: string) {
+    const { error } = await archiveCommunityPublication(publicationId);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Aviso eliminado.'));
+    await refreshCommunityForum();
+  }
+
+  async function votePoll(publication: CommunityPublication, option: string) {
+    if (!publication.id) {
+      return;
+    }
+    const { error } = await voteCommunityPoll(publication.id, option);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setLocalPollVotes((current) => ({ ...current, [publication.id]: option }));
+    await refreshCommunityForum();
+  }
+
+  async function submitForumComment(publicationId: string) {
+    const body = (forumCommentDrafts[publicationId] ?? '').trim();
+    if (!body) {
+      setAuthMessage('Escribi un comentario antes de publicar.');
+      return;
+    }
+    const { error } = await createPublicationComment(publicationId, body);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setForumCommentDrafts((current) => ({ ...current, [publicationId]: '' }));
+    setAuthMessage(changeDone('Comentario publicado.'));
+    await refreshCommunityForum();
+  }
+
+  async function submitForumReaction(publicationId: string) {
+    const { error } = await reactToPublication(publicationId, 'amen');
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Reacción registrada.'));
+  }
+
+  async function submitForumReport(publicationId: string) {
+    const reason = (forumReportDrafts[publicationId] ?? '').trim();
+    if (!reason) {
+      setAuthMessage('Escribi un motivo para reportar.');
+      return;
+    }
+    const { error } = await reportPublication(publicationId, reason);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setForumReportDrafts((current) => ({ ...current, [publicationId]: '' }));
+    setAuthMessage(changeDone('Reporte enviado para moderacion.'));
+  }
+
+  async function openPublicProfile(profile: PublicProfilePreview) {
+    setSelectedPublicProfile(profile);
+    if (!profile.id) {
+      return;
+    }
+    const remoteProfile = await fetchPublicProfile(profile.id);
+    if (!remoteProfile) {
+      return;
+    }
+    setSelectedPublicProfile((current) => {
+      if (!current || current.id !== profile.id) {
+        return current;
+      }
+      return {
+        ...current,
+        fullName: remoteProfile.full_name ?? current.fullName,
+        role: (remoteProfile.role || current.role) as Role,
+        province: remoteProfile.province ?? current.province,
+        communityName: remoteProfile.community_name ?? current.communityName,
+        contact: remoteProfile.phone ?? current.contact,
+        avatarUrl: remoteProfile.avatar_url ?? current.avatarUrl,
+        displayRoleLabel: remoteProfile.display_role_label ?? current.displayRoleLabel,
+        genderPreference: remoteProfile.gender_preference ?? current.genderPreference,
+        nickname: remoteProfile.nickname ?? current.nickname,
+        credentialNameMode: remoteProfile.credential_name_mode ?? current.credentialNameMode,
+        perseveranceStartYear: remoteProfile.perseverance_start_year ?? current.perseveranceStartYear,
+        personalPmType: remoteProfile.personal_pm_type ?? current.personalPmType,
+        personalPmNumber: remoteProfile.personal_pm_number ?? current.personalPmNumber,
+        personalPmProvince: remoteProfile.personal_pm_province ?? current.personalPmProvince,
+        personalPmMotto: remoteProfile.personal_pm_motto ?? remoteProfile.pm_motto ?? current.personalPmMotto,
+        pmMotto: remoteProfile.pm_motto ?? current.pmMotto
+      };
+    });
+  }
+
+  async function requestEmailConfirmationHelp() {
+    if (!session) {
+      return;
+    }
+    const { error } = await createEmailConfirmationRequest({
+      userId: session.id ?? '',
+      email: session.email ?? '',
+      fullName: session.fullName,
+      province: session.province,
+      communityName: session.communityOfOrigin,
+      contact: session.contact
+    });
+    setAuthMessage(error ? error.message : 'Mensaje enviado');
+    if (!error) {
+      await loadMyRequests();
+    }
+  }
+
+  function renderPmFilterDropdown<T extends string>(
+    key: 'province' | 'gender' | 'status' | 'time' | 'year',
+    label: string,
+    value: T,
+    options: Array<{ label: string; value: T }>,
+    onSelect: (value: T) => void
+  ) {
+    const currentLabel = options.find((option) => option.value === value)?.label ?? label;
+    const open = pmFilterDropdownOpen === key;
+    return (
+      <View style={styles.pmFilterField}>
+        <Text style={styles.cardEyebrow}>{label}</Text>
+        <TouchableOpacity style={styles.dropdownButton} onPress={() => setPmFilterDropdownOpen(open ? '' : key)} activeOpacity={0.85}>
+          <Text style={styles.dropdownButtonText}>{currentLabel}</Text>
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+        </TouchableOpacity>
+        {open ? (
+          <View style={styles.pmFilterDropdownList}>
+            {options.map((option) => (
+              <TouchableOpacity key={`${key}-${option.value}`} style={styles.dropdownItem} onPress={() => { onSelect(option.value); setPmFilterDropdownOpen(''); }}>
+                <Text style={styles.dropdownItemText}>{option.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
+  if (session && session.status === 'pendiente' && !session.emailConfirmedAt) {
+    return (
+      <PendingEmailProfile
+        session={session}
+        isDark={isDark}
+        authMessage={authMessage}
+        onRequestHelp={requestEmailConfirmationHelp}
+        onSignOut={() => onSessionChange(null)}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.stack}>
+      <SectionTitle title={`${tabLabel('perfil')} y acceso`} />
+      <ProfilePublicProfileModal
+        profile={selectedPublicProfile}
+        isDark={isDark}
+        provinceRoleLabels={provinceRoleLabels}
+        roleAliases={adminConfig.settings.roleAliases}
+        onClose={() => setSelectedPublicProfile(null)}
+      />
+      {session ? (
+        <View style={[styles.profileShell, isDark && styles.surfacePanelDark]}>
+          <View style={styles.profileTopRow}>
+            <View />
+            <TouchableOpacity style={styles.iconButton} onPress={() => setShowAccountMenu(!showAccountMenu)}>
+              <Ionicons name="ellipsis-vertical" size={20} color={palette.red} />
+            </TouchableOpacity>
+          </View>
+          {showAccountMenu ? (
+            <ProfileAccountMenu
+              session={session}
+              isDark={isDark}
+              provinceRoleLabels={provinceRoleLabels}
+              roleAliases={adminConfig.settings.roleAliases}
+              items={[
+                { icon: 'person-outline', label: 'Mi perfil', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } },
+                { icon: 'create-outline', label: 'Editar perfil', action: () => { setProfilePanel('editar'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } },
+                { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); setShowCommunity(false); setShowCommunityManagement(false); refreshCommunityForum(); setShowAccountMenu(false); } },
+                ...(session.role !== 'administrador' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
+                { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowCommunity(false); setShowCommunityManagement(false); refreshMailbox(); setShowAccountMenu(false); } },
+                { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } }
+              ]}
+              onSignOut={signOutReal}
+            />
+          ) : null}
+          {profilePanel === 'vista' && !session.perseveranceStartYear ? (
+            <TouchableOpacity style={styles.completionNotice} onPress={() => setProfilePanel('editar')} activeOpacity={0.86}>
+              <Ionicons name="time-outline" size={20} color={palette.red} />
+              <Text style={styles.completionNoticeText}>Agregar años de perseverancia</Text>
+            </TouchableOpacity>
+          ) : null}
+          {profilePanel === 'vista' ? (
+            <ProfileSummary
+              session={session}
+              isDark={isDark}
+              provinceRoleLabels={provinceRoleLabels}
+              roleAliases={adminConfig.settings.roleAliases}
+              onUploadPhoto={uploadProfilePhoto}
+            />
+          ) : null}
+          {profilePanel === 'editar' ? <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Editar perfil</Text>
+            {isMissingProfileScope(session) ? (
+              <View style={styles.completionNotice}>
+                <Ionicons name="alert-circle-outline" size={20} color={palette.red} />
+                <Text style={styles.completionNoticeText}>Completa provincia y comunidad para usar normalmente la app.</Text>
+              </View>
+            ) : null}
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName}  placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Apodo" value={editNickname} onChangeText={setEditNickname}  placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Contacto" value={editContact} onChangeText={setEditContact}  placeholderTextColor={inputPlaceholderColor} />
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowText}>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Usar apodo en saludos</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Home y saludos usan tu apodo si esta cargado.</Text>
+              </View>
+              <Switch
+                value={editUseNicknameInGreetings}
+                onValueChange={setEditUseNicknameInGreetings}
+                trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
+                thumbColor={editUseNicknameInGreetings ? palette.red : palette.white}
+              />
+            </View>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mostrar en credencial</Text>
+            <View style={styles.filterRow}>
+              {(['name', 'nickname', 'both'] as const).map((mode) => (
+                <TouchableOpacity key={mode} style={[styles.filterChip, editCredentialNameMode === mode && styles.filterChipActive]} onPress={() => setEditCredentialNameMode(mode)}>
+                  <Text style={[styles.filterChipText, editCredentialNameMode === mode && styles.filterChipTextActive]}>{mode === 'name' ? 'Nombre' : mode === 'nickname' ? 'Apodo' : 'Ambos'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Año de inicio en el Movimiento</Text>
+            <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditPerseveranceYearDropdownOpen(!editPerseveranceYearDropdownOpen)}>
+              <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editPerseveranceStartYear || 'Seleccionar año'}</Text>
+              <Ionicons name={editPerseveranceYearDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+            </TouchableOpacity>
+            {editPerseveranceYearDropdownOpen ? (
+              <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                {perseveranceStartYears.map((year) => (
+                  <TouchableOpacity key={year} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditPerseveranceStartYear(year); setEditPerseveranceYearDropdownOpen(false); }}>
+                    <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{year}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : null}
+            {perseveranceLabel(Number(editPerseveranceStartYear)) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{perseveranceLabel(Number(editPerseveranceStartYear))}</Text> : null}
+            {roleRank(session.role) >= roleRank('sedimentador') ? (
+              <>
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>PM personal</Text>
+                <View style={styles.filterRow}>
+                  {(['pmm', 'pmf'] as const).map((type) => (
+                    <TouchableOpacity key={type} style={[styles.filterChip, editPmType === type && styles.filterChipActive]} onPress={() => setEditPmType(type)}>
+                      <Text style={[styles.filterChipText, editPmType === type && styles.filterChipTextActive]}>{personalPmTypeLabel(type)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Numero de PM" value={editPmNumber} onChangeText={(value) => setEditPmNumber(value.replace(/[^0-9]/g, '').slice(0, 4))} keyboardType="number-pad" placeholderTextColor={inputPlaceholderColor} />
+                <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditPmProvinceDropdownOpen(!editPmProvinceDropdownOpen)}>
+                  <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editPmProvince || 'Provincia donde hiciste el PM'}</Text>
+                  <Ionicons name={editPmProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                </TouchableOpacity>
+                {editPmProvinceDropdownOpen ? (
+                  <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                    {registrationCommunities.map((item) => (
+                      <TouchableOpacity key={`pm-${item.province}`} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditPmProvince(item.province); setEditPmProvinceDropdownOpen(false); }}>
+                        <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{item.province}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                ) : null}
+                <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Lema o idea fuerza del PM" value={editPmMotto} onChangeText={setEditPmMotto}  placeholderTextColor={inputPlaceholderColor} />
+                {personalPmSummary({ type: editPmType, number: editPmNumber, province: editPmProvince, motto: editPmMotto }) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{personalPmSummary({ type: editPmType, number: editPmNumber, province: editPmProvince, motto: editPmMotto })}</Text> : null}
+              </>
+            ) : null}
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Provincia</Text>
+            <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditProvinceDropdownOpen(!editProvinceDropdownOpen)}>
+              <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editProvince || 'Seleccionar provincia'}</Text>
+              <Ionicons name={editProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+            </TouchableOpacity>
+            {editProvinceDropdownOpen ? (
+              <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
+                {registrationCommunities.map((item) => (
+                  <TouchableOpacity
+                    key={item.province}
+                    style={[styles.dropdownItem, isDark && styles.dropdownItemDark]}
+                    onPress={() => {
+                      setEditProvince(item.province);
+                      setEditCommunity('');
+                      setEditProvinceDropdownOpen(false);
+                    }}
+                  >
+                    <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{item.province}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : null}
+            {selectedEditProvince ? (
+              <>
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Comunidad de origen</Text>
+                <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditCommunityDropdownOpen(!editCommunityDropdownOpen)}>
+                  <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editCommunity || 'Seleccionar comunidad'}</Text>
+                  <Ionicons name={editCommunityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                </TouchableOpacity>
+                {editCommunityDropdownOpen ? (
+                  <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
+                    {selectedEditProvince.locations.map((item) => (
+                      <TouchableOpacity key={item.name} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditCommunity(item.name); setEditCommunityDropdownOpen(false); }}>
+                        <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{item.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                ) : null}
+              </>
+            ) : null}
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Narrativa</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Elegí cómo querés que la app adapte los textos automáticos del sistema.</Text>
+            {(['male', 'female'] as const).map((option) => {
+              const selected = editGenderPreference === option;
+              const narrative = genderNarratives[option];
+              return (
+                <TouchableOpacity key={option} style={[styles.narrativeEditCard, isDark && styles.surfaceRowDark, selected && styles.narrativeEditCardActive]} onPress={() => setEditGenderPreference(option)} activeOpacity={0.86}>
+                  <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selected ? palette.white : palette.red} />
+                  <View style={styles.narrativeEditTextBlock}>
+                    <Text style={[styles.narrativeEditTitle, isDark && styles.textDarkStrong, selected && styles.narrativeEditTitleActive]}>{narrative.title}</Text>
+                    <Text numberOfLines={3} style={[styles.narrativeEditText, isDark && styles.textDarkBody, selected && styles.narrativeEditTextActive]}>{narrative.text}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity style={styles.primaryButton} onPress={saveProfile}>
+              <Text style={styles.primaryButtonText}>Guardar perfil</Text>
+            </TouchableOpacity>
+            {authMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{authMessage}</Text> : null}
+          </View> : null}
+          {profilePanel === 'configuracion' ? (
+            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+              <Text style={styles.cardEyebrow}>Configuración de usuario</Text>
+              <View style={styles.settingRow}>
+                <View style={styles.settingRowText}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Mostrar puntero tactil</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Ayuda visual para testing: muestra un circulo que sigue tu dedo mientras tocas la pantalla.</Text>
+                </View>
+                <Switch
+                  value={touchPointerEnabled}
+                  onValueChange={onTouchPointerEnabledChange}
+                  trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
+                  thumbColor={touchPointerEnabled ? palette.red : palette.white}
+                />
+              </View>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Esta opcion queda guardada en este dispositivo y por defecto permanece apagada.</Text>
+              <View style={styles.settingRow}>
+                <View style={styles.settingRowText}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Tema</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Preferencia visual solo para este dispositivo: Predeterminado u Oscuro.</Text>
+                </View>
+              </View>
+              <View style={styles.filterRow}>
+                {([
+                  ['default', 'Predeterminado'],
+                  ['dark', 'Oscuro']
+                ] as [ThemeName, string][]).map(([name, label]) => (
+                  <TouchableOpacity key={name} style={[styles.filterChip, themeName === name && styles.filterChipActive]} onPress={() => onThemeChange(name)}>
+                    <Text style={[styles.filterChipText, themeName === name && styles.filterChipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tema activo: {appTheme.name === 'dark' ? 'Oscuro' : 'Predeterminado'}.</Text>
+              <View style={styles.settingRow}>
+                <View style={styles.settingRowText}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Permitir notificaciones</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Estado actual: {notificationPermissionStatus}. Activa este dispositivo para recibir avisos importantes.</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={enablePushNotificationsFromSettings}>
+                <Ionicons name="notifications-outline" size={17} color={palette.red} />
+                <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Solicitar permiso</Text>
+              </TouchableOpacity>
+              {session.role === 'administrador' ? (
+                <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingRowText}>
+                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Diagnóstico de notificaciones</Text>
+                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Herramientas técnicas visibles solo para Administrador.</Text>
+                    </View>
+                    <Switch value={showPushDiagnostics} onValueChange={setShowPushDiagnostics} />
+                  </View>
+                  {showPushDiagnostics ? (
+                    <>
+                      {pushTokenPreview ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Token registrado: {pushTokenPreview}</Text> : null}
+                      <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Runtime: {appRuntimeOwner} - ProjectId: {easProjectId}</Text>
+                      {pushDebugInfo ? <Text selectable style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{pushDebugInfo}</Text> : null}
+                      {pushChannelDebug ? (
+                        <>
+                          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Canales Android</Text>
+                          <Text selectable style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{pushChannelDebug}</Text>
+                        </>
+                      ) : null}
+                      <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={sendLocalNotificationDebug}>
+                        <Ionicons name="phone-portrait-outline" size={17} color={palette.red} />
+                        <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Probar canal local Android</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.primaryButton} onPress={sendRemotePushDebug}>
+                        <Ionicons name="notifications-outline" size={17} color={palette.white} />
+                        <Text style={styles.primaryButtonText}>Enviar notificacion de prueba a este dispositivo</Text>
+                      </TouchableOpacity>
+                      {pushTestResult ? <Text selectable style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{pushTestResult}</Text> : null}
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+              <TextInput style={styles.input} placeholder="Nuevo mail" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+              <TextInput style={styles.input} placeholder="Nueva contraseña" value={newPassword} onChangeText={setNewPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
+              <TouchableOpacity style={styles.primaryButton} onPress={saveAccountSettings}>
+                <Text style={styles.primaryButtonText}>Guardar ajustes</Text>
+              </TouchableOpacity>
+              {authMessage ? <Text style={styles.cardText}>{authMessage}</Text> : null}
+            </View>
+          ) : null}
+          {profilePanel === 'comunidad' ? (
+            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+              <Text style={[styles.communityProfileHeading, isDark && styles.textDarkStrong]}>Comunidad: {session.communityOfOrigin}</Text>
+              {isCommunityLeader ? (
+                <View style={[styles.inlineEditorPanel, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo aviso comunitario</Text>
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo opcional del aviso" value={communityPostTitle} onChangeText={setCommunityPostTitle}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Mensaje para la comunidad" value={communityPostBody} onChangeText={setCommunityPostBody} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingRowText}>
+                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Notificar a miembros</Text>
+                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Preparar aviso push para los miembros alcanzados por este mensaje.</Text>
+                    </View>
+                    <Switch value={communityPostNotify} onValueChange={setCommunityPostNotify} />
+                  </View>
+                  <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
+                    <Text style={styles.primaryButtonText}>Enviar mensaje a comunidad</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              <Text style={[styles.communityProfileSubheading, isDark && styles.textDarkStrong]}>Avisos</Text>
+              <View style={styles.communityActionRow}>
+                <TouchableOpacity style={styles.communityMiniButton} onPress={refreshCommunityForum} activeOpacity={0.85}>
+                  <Ionicons name="refresh-outline" size={15} color={palette.red} />
+                  <Text style={styles.communityMiniButtonText}>Mostrar avisos</Text>
+                </TouchableOpacity>
+              </View>
+              {myCommunityPublications.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay avisos para tu comunidad actualmente</Text> : null}
+              {myCommunityPublications.map((item, index) => (
+                <View key={`${item.id || item.title}-${index}`} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{item.visibility} - {item.status ?? 'activo'}</Text>
+                  {item.title ? <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text> : null}
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.body}</Text>
+                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>
+                    Por {item.authorName ?? 'Palestrista'} - {roleLabelForProvince((item.authorRole || 'palestrista') as Role, session.province, provinceRoleLabels)}
+                  </Text>
+                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>
+                    {item.createdAt ? new Date(item.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Fecha no disponible'}
+                  </Text>
+                  {(item.id && (item.createdBy === session.id || roleRank(session.role) >= roleRank('vocal'))) ? (
+                    <View style={styles.inlineActions}>
+                      <TouchableOpacity style={styles.actionPill} onPress={() => startEditCommunityPublication(item)}>
+                        <Ionicons name="create-outline" size={16} color={palette.red} />
+                        <Text style={styles.actionPillText}>Editar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.actionPill} onPress={() => removeCommunityPublication(item.id as string)}>
+                        <Ionicons name="trash-outline" size={16} color={palette.red} />
+                        <Text style={styles.actionPillText}>Eliminar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                  {editingCommunityPublicationId === item.id ? (
+                    <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+                      <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo del aviso" value={editingCommunityPublicationTitle} onChangeText={setEditingCommunityPublicationTitle}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Contenido del aviso" value={editingCommunityPublicationBody} onChangeText={setEditingCommunityPublicationBody} multiline  placeholderTextColor={inputPlaceholderColor} />
+                      <View style={styles.inlineActions}>
+                        <TouchableOpacity style={styles.primaryButton} onPress={() => saveCommunityPublicationEdit('activo')}>
+                          <Text style={styles.primaryButtonText}>Guardar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={() => saveCommunityPublicationEdit('cerrado')}>
+                          <Text style={styles.secondaryButtonText}>Cerrar aviso</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+              <View style={styles.communityLeadersHeader}>
+                <Text style={[styles.communityProfileSubheading, isDark && styles.textDarkStrong]}>Encargados</Text>
+                <TouchableOpacity
+                  style={[styles.communityMiniButton, styles.communityMembersToggle]}
+                  onPress={async () => {
+                    if (communityMembers.length === 0) {
+                      setCommunityMembers(await fetchMyCommunityMembers());
+                    }
+                    setShowCommunityMembersList((current) => !current);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="people-outline" size={15} color={palette.red} />
+                  <Text style={styles.communityMiniButtonText}>Lista de miembros</Text>
+                  <Ionicons name={showCommunityMembersList ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={palette.red} />
+                </TouchableOpacity>
+              </View>
+              {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).length === 0 ? (
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Sin encargados cargados por el momento.</Text>
+              ) : null}
+              {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).map((member) => (
+                <View key={`leader-${member.id}`} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{member.full_name ?? 'Palestrista'} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
+                  <TouchableOpacity
+                    style={styles.actionPill}
+                    onPress={() => openPublicProfile({
+                      id: member.id,
+                      fullName: member.full_name ?? 'Palestrista',
+                      role: member.role as Role,
+                      province: member.province,
+                      communityName: member.community_name,
+                      contact: '',
+                      avatarUrl: member.avatar_url,
+                      genderPreference: member.gender_preference ?? null
+                    })}
+                  >
+                    <Ionicons name="person-circle-outline" size={16} color={palette.red} />
+                    <Text style={styles.actionPillText}>Ver perfil</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {showCommunityMembersList ? (
+                <ScrollView style={styles.membersDropdownList} nestedScrollEnabled showsVerticalScrollIndicator>
+                  {communityMembers.map((member) => (
+                    <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? 'Palestrista'}</Text>
+                      {member.nickname ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Apodo: {member.nickname}</Text> : null}
+                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
+                      <TouchableOpacity
+                        style={styles.actionPill}
+                        onPress={() => openPublicProfile({
+                          id: member.id,
+                          fullName: member.full_name ?? 'Palestrista',
+                          role: (member.role || 'palestrista') as Role,
+                          province: member.province,
+                          communityName: member.community_name,
+                          contact: '',
+                          avatarUrl: member.avatar_url,
+                          genderPreference: member.gender_preference ?? null
+                        })}
+                      >
+                        <Ionicons name="person-circle-outline" size={16} color={palette.red} />
+                        <Text style={styles.actionPillText}>Ver credencial</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : null}
+            </View>
+          ) : null}
+          {profilePanel === 'buzon' ? (
+            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+              <SectionTitle title="Buzon de mensajes" />
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Consultas enviadas y mensajes recibidos por tu comunidad o jurisdiccion.</Text>
+              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={refreshMailbox}>
+                <Ionicons name="refresh-outline" size={17} color={palette.red} />
+                <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Actualizar buzon</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => setShowMailboxComposer(!showMailboxComposer)}>
+                <Ionicons name="create-outline" size={17} color={palette.white} />
+                <Text style={styles.primaryButtonText}>Nuevo Mensaje</Text>
+              </TouchableOpacity>
+              {showMailboxComposer ? (
+                <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+                  <Text style={styles.cardEyebrow}>Nuevo mensaje</Text>
+                  <Text style={styles.inputLabel}>Destino</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                    {session.role === 'administrador' ? ([
+                      ['user', 'Usuario'],
+                      ['role', 'Rango'],
+                      ['province', 'Provincia'],
+                      ['role_province', 'Rango + provincia'],
+                      ['all', 'Todos']
+                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
+                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
+                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    )) : ['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ([
+                      ['diocesan_leadership', 'Dirigencia diocesana']
+                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
+                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
+                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    )) : ['vocal', 'coordinador_diocesano'].includes(session.role) ? ([
+                      ['community', 'Comunidad'],
+                      ['province_communities', 'Todas de mi provincia']
+                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
+                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
+                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    )) : (
+                      <TouchableOpacity style={[styles.filterChip, styles.filterChipActive]} onPress={() => setMailboxTargetMode('my_community')}>
+                        <Text style={[styles.filterChipText, styles.filterChipTextActive]}>Responsables de mi comunidad</Text>
+                      </TouchableOpacity>
+                    )}
+                  </ScrollView>
+                  {['community', 'my_community'].includes(mailboxTargetMode) ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                      {mailboxCommunityOptions.map((community) => (
+                        <TouchableOpacity key={community.id} style={[styles.filterChip, (mailboxTargetCommunityId || mailboxCommunityOptions[0]?.id) === community.id && styles.filterChipActive]} onPress={() => setMailboxTargetCommunityId(community.id ?? '')}>
+                          <Text style={[styles.filterChipText, (mailboxTargetCommunityId || mailboxCommunityOptions[0]?.id) === community.id && styles.filterChipTextActive]}>{community.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  {['province', 'role_province', 'diocesan_leadership'].includes(mailboxTargetMode) && (session.role === 'administrador' || ['vocal_nacional', 'coordinador_nacional'].includes(session.role)) ? (
+                    <>
+                      <Text style={styles.inputLabel}>Provincia</Text>
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxProvinceDropdownOpen(!mailboxProvinceDropdownOpen)}>
+                        <Text style={styles.dropdownButtonText}>{mailboxTargetProvince || 'Todas / seleccionar provincia'}</Text>
+                        <Ionicons name={mailboxProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {mailboxProvinceDropdownOpen ? (
+                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                          {mailboxTargetMode === 'diocesan_leadership' ? (
+                            <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMailboxTargetProvince(''); setMailboxProvinceDropdownOpen(false); }}>
+                              <Text style={styles.dropdownItemText}>Todas las provincias</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                          {mailboxProvinceOptions.map((province) => (
+                            <TouchableOpacity key={province} style={styles.dropdownItem} onPress={() => { setMailboxTargetProvince(province); setMailboxProvinceDropdownOpen(false); }}>
+                              <Text style={styles.dropdownItemText}>{province}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {['role', 'role_province'].includes(mailboxTargetMode) ? (
+                    <>
+                      <Text style={styles.inputLabel}>Rango</Text>
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxRoleDropdownOpen(!mailboxRoleDropdownOpen)}>
+                        <Text style={styles.dropdownButtonText}>{roleLabel(mailboxTargetRole)}</Text>
+                        <Ionicons name={mailboxRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {mailboxRoleDropdownOpen ? (
+                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                          {visibleHierarchyFor(session).filter((item) => !['invitado', 'administrador'].includes(item.role)).map((item) => (
+                            <TouchableOpacity key={item.role} style={styles.dropdownItem} onPress={() => { setMailboxTargetRole(item.role); setMailboxRoleDropdownOpen(false); }}>
+                              <Text style={styles.dropdownItemText}>{item.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {mailboxTargetMode === 'user' ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.inputLabel}>Buscar usuario</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Buscar por nombre, provincia, comunidad o rango"
+                        value={mailboxRecipientSearch}
+                        onChangeText={setMailboxRecipientSearch}
+                       placeholderTextColor={inputPlaceholderColor} />
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxUserDropdownOpen(!mailboxUserDropdownOpen)}>
+                        <Text style={styles.dropdownButtonText}>{mailboxSelectedUserIds.length} usuario/s seleccionado/s</Text>
+                        <Ionicons name={mailboxUserDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {mailboxUserDropdownOpen ? (
+                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                          {filteredMailboxUserOptions.length === 0 ? <Text style={styles.dropdownItemText}>Sin resultados</Text> : null}
+                          {filteredMailboxUserOptions.slice(0, 60).map((user) => {
+                            const selectedUser = mailboxSelectedUserIds.includes(user.id);
+                            return (
+                              <TouchableOpacity key={user.id} style={styles.dropdownItem} onPress={() => toggleMailboxUser(user.id)}>
+                                <Ionicons name={selectedUser ? 'checkbox-outline' : 'square-outline'} size={18} color={selectedUser ? palette.red : palette.inkMuted} />
+                                <View style={styles.adminUserHeaderText}>
+                                  <Text style={styles.dropdownItemText}>{user.full_name ?? 'Usuario'}</Text>
+                                  <Text style={styles.feedMeta}>{roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.gender_preference ?? null)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      ) : null}
+                      {selectedMailboxUsers.length > 0 ? (
+                        <View style={styles.chipRow}>
+                          {selectedMailboxUsers.slice(0, 8).map((user) => (
+                            <TouchableOpacity key={user.id} style={[styles.filterChip, styles.filterChipActive]} onPress={() => toggleMailboxUser(user.id)}>
+                              <Text style={[styles.filterChipText, styles.filterChipTextActive]}>{user.full_name ?? 'Usuario'}</Text>
+                            </TouchableOpacity>
+                          ))}
+                          {selectedMailboxUsers.length > 8 ? <Text style={styles.cardText}>+{selectedMailboxUsers.length - 8} mas</Text> : null}
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+                  <View style={styles.notice}>
+                    <Ionicons name="people-outline" size={18} color={palette.red} />
+                    <Text style={styles.noticeText}>Destinatarios estimados: {estimatedMailboxRecipients}</Text>
+                  </View>
+                  <Text style={styles.inputLabel}>Mensaje</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    placeholder="Escribe el mensaje para el buzon"
+                    value={mailboxDraft}
+                    onChangeText={(value) => setMailboxDraft(value.slice(0, 500))}
+                    multiline
+                   placeholderTextColor={inputPlaceholderColor} />
+                  <TouchableOpacity style={styles.primaryButton} onPress={submitNewMailboxMessage}>
+                    <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                {(['todos', 'enviados', 'recibidos', 'nuevo', 'respondido', 'cerrado'] as const).map((filter) => (
+                  <TouchableOpacity key={filter} style={[styles.filterChip, mailboxFilter === filter && styles.filterChipActive]} onPress={() => setMailboxFilter(filter)}>
+                    <Text style={[styles.filterChipText, mailboxFilter === filter && styles.filterChipTextActive]}>{filter}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              {visibleMailboxMessages.length === 0 ? (
+                <View style={[styles.card, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>No tienes mensajes actualmente</Text>
+                </View>
+              ) : null}
+              {visibleMailboxMessages.map((message) => (
+                <View key={message.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{message.sender_name ?? 'Consulta externa'}</Text>
+                  {message.sender_contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {message.sender_contact}</Text> : null}
+                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{message.message}</Text>
+                  {message.response ? (
+                    <View style={styles.notice}>
+                      <Ionicons name="return-up-forward-outline" size={18} color={palette.red} />
+                      <Text style={styles.noticeText}>{message.response}</Text>
+                    </View>
+                  ) : null}
+                  {message.can_respond && message.status !== 'cerrado' && message.status !== 'archivado' ? (
+                    <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Respuesta</Text>
+                      <TextInput
+                        style={[styles.input, styles.textArea, isDark && styles.inputDark]}
+                        placeholder="Escribe una respuesta clara"
+                        value={mailboxResponses[message.id] ?? ''}
+                        onChangeText={(value) => setMailboxResponses((current) => ({ ...current, [message.id]: value.slice(0, 1000) }))}
+                        multiline
+                       placeholderTextColor={inputPlaceholderColor} />
+                      <TouchableOpacity style={styles.primaryButton} onPress={() => submitMailboxResponse(message.id)}>
+                        <Text style={styles.primaryButtonText}>Responder</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.actionPill} onPress={() => updateMailboxStatus(message.id, 'leido')}>
+                      <Ionicons name="mail-open-outline" size={16} color={palette.red} />
+                      <Text style={styles.actionPillText}>Leido</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionPill} onPress={() => updateMailboxStatus(message.id, 'nuevo')}>
+                      <Ionicons name="mail-unread-outline" size={16} color={palette.red} />
+                      <Text style={styles.actionPillText}>No leido</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionPill} onPress={() => updateMailboxStatus(message.id, 'cerrado')}>
+                      <Ionicons name="checkmark-done-outline" size={16} color={palette.red} />
+                      <Text style={styles.actionPillText}>Cerrar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {profilePanel === 'vista' ? <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Credencial digital</Text>
+            <View style={[styles.digitalCredential, isDark && styles.digitalCredentialDark]}>
+              <View style={styles.credentialAvatar}>
+                {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.credentialAvatarImage} /> : <Ionicons name="person-outline" size={18} color={palette.red} />}
+              </View>
+              <View style={styles.adminUserHeaderText}>
+                <Text style={[styles.credentialName, isDark && styles.textDarkStrong]}>{credentialDisplayName(session)}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(session.role, session.province, provinceRoleLabels, adminConfig.settings.roleAliases, session.displayRoleLabel, session.genderPreference)}</Text>
+                {perseveranceLabel(session.perseveranceStartYear) ? <Text style={[styles.cardText, isDark && styles.textDarkAccent]}>{perseveranceLabel(session.perseveranceStartYear)}</Text> : null}
+                {roleRank(session.role) >= roleRank('sedimentador') && personalPmSummary({
+                  type: session.personalPmType,
+                  number: session.personalPmNumber,
+                  province: session.personalPmProvince,
+                  motto: session.personalPmMotto ?? session.pmMotto
+                }) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]} numberOfLines={1}>{personalPmSummary({
+                    type: session.personalPmType,
+                    number: session.personalPmNumber,
+                    province: session.personalPmProvince,
+                    motto: session.personalPmMotto ?? session.pmMotto
+                  })}</Text> : null}
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.communityOfOrigin}, {session.province}</Text>
+              </View>
+            </View>
+            {session.role === 'administrador' ? (
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Uso futuro sugerido: validar asistencia a PM, retiros y actividades mediante QR o lectura interna de credencial.</Text>
+            ) : null}
+          </View> : null}
+          {profilePanel === 'vista' && session.role !== 'administrador' && selectedRequest ? (
+            <View style={styles.profileCommunityPanel}>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Solicitudes</Text>
+              {selectedRequest === 'menu' || (selectedRequest && ['Solicitud de perseverancia', 'Solicitud Especial'].includes(selectedRequest)) ? (
+                <View style={styles.inlineEditorPanel}>
+                  {roleRank(session.role) < roleRank('sedimentador') ? (
+                    <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === 'Solicitud de perseverancia' ? 'menu' : 'Solicitud de perseverancia')}>
+                      <Text style={styles.cardTitle}>Solicitud de Perseverancia</Text>
+                      <Text style={styles.cardText}>Para pedir revisión del camino de perseverancia.</Text>
+                      <Text style={styles.expandHint}>{selectedRequest === 'Solicitud de perseverancia' ? 'Cerrar solicitud' : 'Abrir solicitud'}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedRequest(selectedRequest === 'Solicitud Especial' ? 'menu' : 'Solicitud Especial')}>
+                    <Text style={styles.cardTitle}>Solicitud Especial</Text>
+                    <Text style={styles.cardText}>Contacto con Vocal Diocesano o Coordinador Diocesano de tu provincia.</Text>
+                    <Text style={styles.expandHint}>{selectedRequest === 'Solicitud Especial' ? 'Cerrar solicitud' : 'Abrir solicitud'}</Text>
+                  </TouchableOpacity>
+                  {selectedRequest && selectedRequest !== 'menu' ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Solicitud</Text>
+                      <Text style={styles.cardTitle}>{selectedRequest === 'Solicitud de perseverancia' ? 'Solicitud de Perseverancia' : selectedRequest}</Text>
+                      <Text style={styles.cardText}>Escribí el motivo de la solicitud. Máximo 500 caracteres.</Text>
+                      <TextInput
+                        style={[styles.input, styles.textArea]}
+                        placeholder={selectedRequest === 'Solicitud Especial' ? 'Escribí tu consulta para la dirigencia diocesana' : 'Detalle de la solicitud'}
+                        value={userRequestText}
+                        onChangeText={(value) => setUserRequestText(value.slice(0, 500))}
+                        multiline
+                       placeholderTextColor={inputPlaceholderColor} />
+                      <Text style={styles.cardText}>{userRequestText.length}/500</Text>
+                      <TouchableOpacity style={styles.primaryButton} onPress={() => submitUserRequest(selectedRequest)}>
+                        <Text style={styles.primaryButtonText}>Enviar solicitud</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+          {profilePanel === 'vista' && session.role !== 'administrador' && showSentRequests ? (
+            <View style={styles.profileCommunityPanel}>
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={async () => {
+                  const next = !showSentRequests;
+                  setShowSentRequests(next);
+                  if (next) {
+                    await loadMyRequests();
+                  }
+                }}
+              >
+                <Ionicons name="mail-open-outline" size={18} color={palette.red} />
+                <Text style={styles.secondaryButtonText}>Solicitudes enviadas</Text>
+              </TouchableOpacity>
+              {showSentRequests ? (
+                <View style={styles.profileCommunityPanel}>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Historial de solicitudes</Text>
+              {sentRequests.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Todavia no enviaste solicitudes.</Text> : null}
+              {sentRequests.map((item) => (
+                <View key={item.id}>
+                  <TouchableOpacity style={styles.innerNewsCard} onPress={() => setSelectedSentRequestId(selectedSentRequestId === item.id ? '' : item.id)}>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    <Text style={styles.cardText}>Estado: {item.status}</Text>
+                    <Text style={styles.expandHint}>{selectedSentRequestId === item.id ? 'Ocultar detalle' : 'Ver detalle'}</Text>
+                  </TouchableOpacity>
+                  {selectedSentRequestId === item.id ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardText}>Enviada: {new Date(item.createdAt).toLocaleString('es-AR')}</Text>
+                      <Text style={styles.cardText}>Detalle: {item.definition}</Text>
+                      <Text style={styles.cardText}>Respondio: {item.resolvedBy ?? 'Pendiente'}</Text>
+                      <Text style={styles.cardText}>Fecha de resolucion: {item.resolvedAt ? new Date(item.resolvedAt).toLocaleString('es-AR') : 'Pendiente'}</Text>
+                      <Text style={styles.cardText}>Mensaje: {item.message ?? 'Sin mensaje todavía'}</Text>
+                      {['Propuesta Coordinador Diocesano', 'Propuesta Coordinador Nacional', 'Solicitud de Coordinación Diocesana', 'Solicitud de Coordinación Nacional', 'Solicitud de Coordinacion Diocesana', 'Solicitud de Coordinacion Nacional'].includes(item.title) && item.status === 'pendiente' && item.targetUserId === session.id ? (
+                        <TouchableOpacity style={styles.primaryButton} onPress={() => acceptDiocesanRequest(item.id)}>
+                          <Text style={styles.primaryButtonText}>Aceptar rango {roleLabel((item.targetRole ?? 'coordinador_diocesano') as Role)}</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : null}
+            </View>
+          ) : null}
+          {(hasPermission(session, 'gestionar_sistema') || canAdministrateCommunities || hasPermission(session, 'gestionar_contenido') || hasPermission(session, 'gestionar_permisos') || canReviewLeadershipRequests || isCommunityLeader) ? (
+            showDedicatedNavigationManager ? (
+                <View style={styles.navigationDedicatedShell}>
+                  <View style={styles.navigationDedicatedTopbar}>
+                    <View style={styles.navigationDedicatedBrand}>
+                      <View style={styles.navigationDedicatedLogo}>
+                        <Ionicons name="navigate-outline" size={22} color={palette.white} />
+                      </View>
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.navigationDedicatedTitle}>Consola de navegación</Text>
+                        <Text style={styles.navigationDedicatedSubtitle}>Gestión visual de secciones, roles y barra inferior.</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity style={styles.navigationBackButton} onPress={() => setAdminModule('resumen')} activeOpacity={0.85}>
+                      <Ionicons name="arrow-back-outline" size={17} color={palette.red} />
+                      <Text style={styles.navigationBackButtonText}>Regresar a Palestra APP</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {authMessage ? <Text style={styles.navigationDedicatedMessage}>{authMessage}</Text> : null}
+
+                  <View style={styles.navigationBuilderScreen}>
+                    <View style={styles.navigationBuilderHero}>
+                      <View style={styles.navigationHeroText}>
+                        <Text style={styles.navigationHeroEyebrow}>Constructor visual</Text>
+                        <Text style={styles.navigationHeroTitle}>Navegación de la app</Text>
+                        <Text style={styles.navigationHeroBody}>Edita la barra inferior como un panel profesional: orden, iconos, nombres, visibilidad y roles desde una sola pantalla.</Text>
+                      </View>
+                      <View style={styles.navigationHeroBadge}>
+                        <Ionicons name="phone-portrait-outline" size={22} color={palette.white} />
+                      </View>
+                    </View>
+
+                    <View style={styles.navigationStatsRow}>
+                      <View style={styles.navigationStatPill}>
+                        <Text style={styles.navigationStatValue}>{editableTabs.length}</Text>
+                        <Text style={styles.navigationStatLabel}>Secciones</Text>
+                      </View>
+                      <View style={styles.navigationStatPill}>
+                        <Text style={styles.navigationStatValue}>{navigationVisibleCount}</Text>
+                        <Text style={styles.navigationStatLabel}>Visibles</Text>
+                      </View>
+                      <View style={styles.navigationStatPill}>
+                        <Text style={styles.navigationStatValue}>{navigationLockedCount}</Text>
+                        <Text style={styles.navigationStatLabel}>Base</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.navigationPhonePreview}>
+                      <View style={styles.navigationPhoneTop}>
+                        <View>
+                          <Text style={styles.navigationPhoneTitle}>Palestra</Text>
+                          <Text style={styles.navigationPhoneSub}>Vista previa en vivo</Text>
+                        </View>
+                        <View style={styles.navigationPhoneStatus} />
+                      </View>
+                      <View style={styles.navigationPreviewContent}>
+                        <Text style={styles.navigationPreviewLabel}>Barra inferior</Text>
+                        <Text style={styles.navigationPreviewHint}>Los cambios guardados impactan globalmente al refrescar la app.</Text>
+                      </View>
+                      <View style={styles.navPreviewBar}>
+                        {editableTabs.slice(0, 7).map((tab) => {
+                          const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                          const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
+                          const selected = selectedNavigationTab?.key === tab.key;
+                          return (
+                            <TouchableOpacity key={`preview-dedicated-${tab.key}`} style={[styles.navPreviewItem, !draft.isVisible && styles.navPreviewItemHidden, selected && styles.navPreviewItemSelected]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
+                              <Ionicons name={iconName} size={18} color={selected ? palette.white : draft.isVisible ? palette.red : palette.inkMuted} />
+                              <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label || tab.label}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationRail}>
+                      {editableTabs.map((tab, index) => {
+                        const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                        const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
+                        const selected = selectedNavigationTab?.key === tab.key;
+                        return (
+                          <TouchableOpacity key={`rail-dedicated-${tab.key}`} style={[styles.navigationRailItem, selected && styles.navigationRailItemActive]} onPress={() => { setSelectedNavigationTabKey(tab.key); setNavigationRolesDropdownOpen(false); }} activeOpacity={0.85}>
+                            <Ionicons name={iconName} size={20} color={selected ? palette.white : palette.red} />
+                            <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label || tab.label}</Text>
+                            <Text style={[styles.navigationRailMeta, selected && styles.navigationRailTextActive]}>#{index + 1}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {selectedNavigationTab && selectedNavigationDraft ? (
+                      <View style={styles.navigationFocusPanel}>
+                        <View style={styles.navigationFocusHeader}>
+                          <View style={styles.navigationFocusIcon}>
+                            <Ionicons name={isIoniconName(selectedNavigationDraft.iconName) ? selectedNavigationDraft.iconName : 'help-circle-outline'} size={28} color={palette.red} />
+                          </View>
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.navigationFocusTitle}>{selectedNavigationDraft.label || selectedNavigationTab.label}</Text>
+                            <Text style={styles.feedMeta}>Clave interna: {selectedNavigationTab.key}</Text>
+                            <Text style={styles.feedMeta}>Orden actual: {selectedNavigationTab.sortOrder}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.navigationFieldGrid}>
+                          <View style={styles.navigationField}>
+                            <Text style={styles.cardEyebrow}>Nombre visible</Text>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Ej: Noticias"
+                              value={selectedNavigationDraft.label}
+                              onChangeText={(value) => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, label: value } }))}
+                              placeholderTextColor={inputPlaceholderColor}
+                            />
+                          </View>
+                          <View style={styles.navigationField}>
+                            <Text style={styles.cardEyebrow}>Icono Ionicons</Text>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Ej: newspaper-outline"
+                              value={selectedNavigationDraft.iconName}
+                              onChangeText={(value) => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, iconName: value } }))}
+                              autoCapitalize="none"
+                              placeholderTextColor={inputPlaceholderColor}
+                            />
+                          </View>
+                        </View>
+
+                        <Text style={styles.cardEyebrow}>Iconos rápidos</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationIconPicker}>
+                          {navigationIconSuggestions.map((icon) => (
+                            <TouchableOpacity key={`dedicated-${icon}`} style={[styles.navigationIconChoice, selectedNavigationDraft.iconName === icon && styles.navigationIconChoiceActive]} onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, iconName: icon } }))}>
+                              <Ionicons name={icon} size={21} color={selectedNavigationDraft.iconName === icon ? palette.white : palette.red} />
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+
+                        <Text style={styles.cardEyebrow}>Tipo de seccion</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                          {navigationSectionTypes.map((type) => {
+                            const selected = selectedNavigationDraft.sectionType === type.key;
+                            const lockedInternal = defaultTabByKey.has(selectedNavigationTab.key) && type.key !== 'internal';
+                            return (
+                              <TouchableOpacity
+                                key={`dedicated-type-${type.key}`}
+                                style={[styles.filterChip, selected && styles.filterChipActive, lockedInternal && styles.disabledChip]}
+                                disabled={lockedInternal}
+                                onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, sectionType: type.key } }))}
+                              >
+                                <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{type.label}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                        <Text style={styles.feedMeta}>{navigationSectionTypes.find((type) => type.key === selectedNavigationDraft.sectionType)?.description ?? 'Pagina simple.'}</Text>
+
+                        <View style={styles.navigationActionGrid}>
+                          <TouchableOpacity style={styles.navigationMiniAction} onPress={() => adminMoveTab(selectedNavigationTab.key, -1)} disabled={editableTabs[0]?.key === selectedNavigationTab.key}>
+                            <Ionicons name="arrow-back-outline" size={17} color={palette.red} />
+                            <Text style={styles.navigationMiniActionText}>Mover izq.</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.navigationMiniAction} onPress={() => adminMoveTab(selectedNavigationTab.key, 1)} disabled={editableTabs[editableTabs.length - 1]?.key === selectedNavigationTab.key}>
+                            <Ionicons name="arrow-forward-outline" size={17} color={palette.red} />
+                            <Text style={styles.navigationMiniActionText}>Mover der.</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.navigationMiniAction, selectedNavigationDraft.isVisible && styles.navigationMiniActionActive]}
+                            onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, isVisible: !selectedNavigationDraft.isVisible } }))}
+                          >
+                            <Ionicons name={selectedNavigationDraft.isVisible ? 'eye-outline' : 'eye-off-outline'} size={17} color={selectedNavigationDraft.isVisible ? palette.white : palette.red} />
+                            <Text style={[styles.navigationMiniActionText, selectedNavigationDraft.isVisible && styles.navigationMiniActionTextActive]}>{selectedNavigationDraft.isVisible ? 'Visible' : 'Oculta'}</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.navigationRolesPanel}>
+                          <TouchableOpacity style={styles.navigationRolesButton} onPress={() => setNavigationRolesDropdownOpen(!navigationRolesDropdownOpen)} activeOpacity={0.85}>
+                            <View style={styles.adminUserHeaderText}>
+                              <Text style={styles.cardEyebrow}>Roles que ven esta sección</Text>
+                              <Text style={styles.navigationRolesSummary}>{(selectedNavigationDraft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role)).length} roles seleccionados</Text>
+                            </View>
+                            <Ionicons name={navigationRolesDropdownOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.red} />
+                          </TouchableOpacity>
+                          <View style={styles.navigationSelectedRolesWrap}>
+                            {(selectedNavigationDraft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role)).slice(0, 5).map((role) => (
+                              <TouchableOpacity key={`selected-role-${role}`} style={styles.navigationSelectedRoleChip} onPress={() => updateTabRole(selectedNavigationTab.key, role as Role, false)}>
+                                <Text style={styles.navigationSelectedRoleText}>{roleShortLabel(role as Role)}</Text>
+                                <Ionicons name="close-outline" size={13} color={palette.red} />
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                          {navigationRolesDropdownOpen ? (
+                            <View style={styles.navigationRolesDropdown}>
+                              {visibleHierarchyFor(session).map((role) => {
+                                const roles = selectedNavigationDraft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role);
+                                const checked = roles.includes(role.role);
+                                return (
+                                  <TouchableOpacity key={`role-option-${role.role}`} style={styles.navigationRoleOption} onPress={() => updateTabRole(selectedNavigationTab.key, role.role as Role, !checked)} activeOpacity={0.82}>
+                                    <Ionicons name={checked ? 'checkbox-outline' : 'square-outline'} size={18} color={checked ? palette.red : palette.inkMuted} />
+                                    <Text style={styles.navigationRoleOptionText}>{role.label}</Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          ) : null}
+                        </View>
+
+                        <View style={styles.inlineActions}>
+                          <TouchableOpacity style={[styles.primaryButton, styles.navigationLargeButton]} onPress={() => adminSaveTab(selectedNavigationTab.key, selectedNavigationTab.label)}>
+                            <Ionicons name="save-outline" size={17} color={palette.white} />
+                            <Text style={styles.primaryButtonText}>Guardar sección</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.secondaryButton, styles.navigationLargeButton]} onPress={() => adminDeleteTab(selectedNavigationTab.key)}>
+                            <Ionicons name="trash-outline" size={17} color={palette.red} />
+                            <Text style={styles.secondaryButtonText}>{(!protectedTabKeys.has(selectedNavigationTab.key) && !defaultTabByKey.has(selectedNavigationTab.key)) ? 'Eliminar' : 'No eliminable'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : null}
+
+                    <View style={styles.navigationCreatePanel}>
+                      <View style={styles.navigationCreateHeader}>
+                        <Ionicons name="add-circle-outline" size={22} color={palette.red} />
+                        <Text style={styles.navigationFocusTitle}>Nueva sección</Text>
+                      </View>
+                      <TextInput style={styles.input} placeholder="Nombre visible. Ej: Noticias" value={newTabLabel} onChangeText={setNewTabLabel} placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Clave interna. Ej: noticias" value={newTabKey} onChangeText={(value) => setNewTabKey(normalizeTabKey(value))} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Icono. Ej: newspaper-outline" value={newTabIcon} onChangeText={setNewTabIcon} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationIconPicker}>
+                        {navigationIconSuggestions.map((icon) => (
+                          <TouchableOpacity key={`new-dedicated-${icon}`} style={[styles.navigationIconChoice, newTabIcon === icon && styles.navigationIconChoiceActive]} onPress={() => setNewTabIcon(icon)}>
+                            <Ionicons name={icon} size={21} color={newTabIcon === icon ? palette.white : palette.red} />
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                      <Text style={styles.cardEyebrow}>Tipo de seccion</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                        {navigationSectionTypes.map((type) => (
+                          <TouchableOpacity key={`new-dedicated-type-${type.key}`} style={[styles.filterChip, newTabSectionType === type.key && styles.filterChipActive]} onPress={() => setNewTabSectionType(type.key)}>
+                            <Text style={[styles.filterChipText, newTabSectionType === type.key && styles.filterChipTextActive]}>{type.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                      <Text style={styles.feedMeta}>{navigationSectionTypes.find((type) => type.key === newTabSectionType)?.description}</Text>
+                      <TouchableOpacity style={styles.navigationRolesButton} onPress={() => setNewNavigationRolesDropdownOpen(!newNavigationRolesDropdownOpen)} activeOpacity={0.85}>
+                        <View style={styles.adminUserHeaderText}>
+                          <Text style={styles.cardEyebrow}>Roles visibles</Text>
+                          <Text style={styles.navigationRolesSummary}>{newTabRoles.length} roles seleccionados</Text>
+                        </View>
+                        <Ionicons name={newNavigationRolesDropdownOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {newNavigationRolesDropdownOpen ? (
+                        <View style={styles.navigationRolesDropdown}>
+                          {visibleHierarchyFor(session).map((role) => {
+                            const checked = newTabRoles.includes(role.role as Role);
+                            return (
+                              <TouchableOpacity key={`new-role-option-${role.role}`} style={styles.navigationRoleOption} onPress={() => toggleNewTabRole(role.role as Role)} activeOpacity={0.82}>
+                                <Ionicons name={checked ? 'checkbox-outline' : 'square-outline'} size={18} color={checked ? palette.red : palette.inkMuted} />
+                                <Text style={styles.navigationRoleOptionText}>{role.label}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      ) : null}
+                      <TouchableOpacity style={[styles.primaryButton, styles.navigationLargeButton]} onPress={adminCreatePage}>
+                        <Ionicons name="add-circle-outline" size={17} color={palette.white} />
+                        <Text style={styles.primaryButtonText}>Crear sección</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity style={styles.navigationRestoreButton} onPress={adminRestoreDefaultNavigation}>
+                      <Ionicons name="refresh-circle-outline" size={18} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Restaurar navegación predeterminada</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+            <View style={[styles.adminPanel, isDark && styles.surfacePanelDark]}>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{leadershipPanelTitle(session)}</Text>
+              {authMessage ? <Text style={styles.adminMessage}>{authMessage}</Text> : null}
+              {adminConfigDraft.settings.maintenanceMode ? (
+                <View style={styles.adminStatusPill}>
+                  <Ionicons name="warning-outline" size={17} color={palette.gold} />
+                  <Text style={styles.adminStatusText}>Modo mantenimiento activo</Text>
+                </View>
+              ) : null}
+              <View style={[styles.adminModuleGrid, isDark && styles.adminModuleGridDark]}>
+                {enabledAdminModules.map((item) => (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={[styles.adminModuleButton, isDark && styles.adminModuleButtonDark, adminModule === item.key && styles.adminModuleButtonActive]}
+                    onPress={() => setAdminModule(item.key as AdminModule)}
+                  >
+                    <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={18} color={adminModule === item.key ? palette.white : palette.red} />
+                    <Text style={[styles.adminModuleText, isDark && styles.adminModuleTextDark, adminModule === item.key && styles.adminModuleTextActive]}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {adminModule === 'resumen' ? (
+                <AdminOverviewPanel
+                  isDark={isDark}
+                  session={session}
+                  adminDraftSummary={adminDraftSummary}
+                  showLeadershipUsersSummary={showLeadershipUsersSummary}
+                  canManageUsers={canManageUsers}
+                  leadershipSummaryUsers={leadershipSummaryUsers}
+                  provinceRoleLabels={provinceRoleLabels}
+                  roleAliases={adminConfig.settings.roleAliases}
+                  isCommunityLeader={isCommunityLeader}
+                  canAdministrateCommunities={canAdministrateCommunities}
+                  canOpenCommunityAdmin={canOpenCommunityAdmin}
+                  onToggleLeadershipUsers={() => setShowLeadershipUsersSummary((current) => !current)}
+                  onOpenPublicProfile={openPublicProfile}
+                  onSetAdminModule={setAdminModule}
+                  onSetCommunityPanel={() => setProfilePanel('comunidad')}
+                  onViewAsSession={onViewAsSession}
+                />
+              ) : null}
+
+              {adminModule === 'identidad' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Identidad de la app</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Base editable para nombre, subtitulo, logo, portada y colores principales.</Text>
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre de la app" value={adminConfigDraft.identity.appName} onChangeText={(value) => updateAdminConfigSection('identity', { appName: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Subtitulo" value={adminConfigDraft.identity.subtitle} onChangeText={(value) => updateAdminConfigSection('identity', { subtitle: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Descripcion institucional" value={adminConfigDraft.identity.description} onChangeText={(value) => updateAdminConfigSection('identity', { description: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="URL del logo" value={adminConfigDraft.identity.logoUrl} onChangeText={(value) => updateAdminConfigSection('identity', { logoUrl: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="URL de imagen hero/portada" value={adminConfigDraft.identity.heroImageUrl} onChangeText={(value) => updateAdminConfigSection('identity', { heroImageUrl: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={styles.inlineActions}>
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  </View>
+                  <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark]}>
+                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Previsualizacion</Text>
+                    <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{adminConfigDraft.identity.appName}</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{adminConfigDraft.identity.subtitle}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Identidad')}>
+                    <Text style={styles.primaryButtonText}>Guardar identidad</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'home' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Home</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Control visual del panel inicial, accesos rápidos y secciones visibles.</Text>
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo principal" value={adminConfigDraft.home.heroTitle} onChangeText={(value) => updateAdminConfigSection('home', { heroTitle: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Texto principal" value={adminConfigDraft.home.heroText} onChangeText={(value) => updateAdminConfigSection('home', { heroText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Banner destacado" value={adminConfigDraft.home.featuredBanner} onChangeText={(value) => updateAdminConfigSection('home', { featuredBanner: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Saludo editable</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Variables disponibles: {'{nombre}'}, {'{tratamiento}'}, {'{genero_bienvenida}'}, {'{rango}'}.</Text>
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Saludo masculino" value={adminConfigDraft.home.greetingTemplateMale ?? defaultAdminConfig.home.greetingTemplateMale} onChangeText={(value) => updateAdminConfigSection('home', { greetingTemplateMale: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Saludo femenino" value={adminConfigDraft.home.greetingTemplateFemale ?? defaultAdminConfig.home.greetingTemplateFemale} onChangeText={(value) => updateAdminConfigSection('home', { greetingTemplateFemale: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Saludo sin narrativa configurada" value={adminConfigDraft.home.greetingTemplateNeutral ?? defaultAdminConfig.home.greetingTemplateNeutral} onChangeText={(value) => updateAdminConfigSection('home', { greetingTemplateNeutral: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark]}>
+                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Preview</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{renderGreetingTemplate(adminConfigDraft.home.greetingTemplateMale, { nombre: 'Lucas', tratamiento: 'hno.', genero_bienvenida: 'Bienvenido', rango: 'Palestrista' }, 'Bienvenido hno. en Cristo Lucas, Oh Bella Ciao!')}</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{renderGreetingTemplate(adminConfigDraft.home.greetingTemplateFemale, { nombre: 'Maria', tratamiento: 'hna.', genero_bienvenida: 'Bienvenida', rango: 'Palestrista' }, 'Bienvenida hna. en Cristo Maria, Oh Bella Ciao!')}</Text>
+                  </View>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Modulos visibles</Text>
+                  <View style={styles.filterRow}>
+                    {['noticias', 'comunidades', 'materiales', 'foro', 'perfil', 'agenda', 'actividad'].map((item, index) => (
+                      <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipActive]} onPress={() => toggleAdminConfigList('home', item)}>
+                        <Text style={[styles.filterChipText, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipTextActive]}>{item}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nombres de accesos rápidos</Text>
+                  {(['noticias', 'comunidades', 'materiales', 'foro', 'perfil'] as const).map((item) => (
+                    <TextInput
+                      key={`quick-${item}`}
+                      style={styles.input}
+                      placeholder={`Acceso ${item}`}
+                      value={adminConfigDraft.home.quickAccessLabels?.[item] ?? ''}
+                      onChangeText={(value) => setAdminConfigDraft((current) => ({
+                        ...current,
+                        home: {
+                          ...current.home,
+                          quickAccessLabels: {
+                            ...(current.home.quickAccessLabels ?? {}),
+                            [item]: value
+                          }
+                        }
+                      }))}
+                      placeholderTextColor={inputPlaceholderColor}
+                    />
+                  ))}
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Home')}>
+                    <Text style={styles.primaryButtonText}>Guardar Home</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'contenido_publicado' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Contenido Publicado</Text>
+                  <Text style={styles.cardText}>Inventario central para distinguir contenido real de Supabase y contenido base/fallback usado para que la app no quede vacía.</Text>
+                  <Text style={styles.cardEyebrow}>Páginas editables en Supabase</Text>
+                  {appContent.length === 0 ? <Text style={styles.cardText}>No hay páginas publicadas cargadas desde Supabase.</Text> : null}
+                  {appContent.map((item) => (
+                    <View key={item.tab_key} style={styles.adminListRow}>
+                      <Ionicons name="document-text-outline" size={20} color={palette.red} />
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.adminQuickText}>{item.title || item.tab_key}</Text>
+                        <Text style={styles.cardText}>Origen: Supabase - pestaña {item.tab_key}</Text>
+                      </View>
+                      <TouchableOpacity style={styles.actionPill} onPress={() => { setSelectedContentTab(item.tab_key); setAdminModule('contenido_general'); }}>
+                        <Text style={styles.actionPillText}>Editar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <Text style={styles.cardEyebrow}>Contenido base / fallback</Text>
+                  {[
+                    ...news.map((item) => ({ key: fallbackContentKey('home', item.title), section: 'Home', title: item.title, origin: 'Fallback local' })),
+                    ...notilestra.map((item) => ({ key: fallbackContentKey('notilestra', item.title, item.date), section: 'Noticias/Agenda', title: item.title, origin: `Fallback local - ${item.date}` })),
+                    ...calendarActivities.map((item) => ({ key: fallbackContentKey('calendario', item.title, item.date), section: 'Calendario', title: item.title, origin: `Fallback local - ${item.date}` }))
+                  ].map((item) => {
+                    const hidden = (adminConfigDraft.settings.hiddenFallbackContent ?? []).includes(item.key);
+                    return (
+                      <View key={item.key} style={[styles.adminListRow, hidden && styles.lockedCard]}>
+                        <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
+                        <View style={styles.adminUserHeaderText}>
+                          <Text style={styles.adminQuickText}>{item.title}</Text>
+                          <Text style={styles.cardText}>{item.section} - {item.origin} - {hidden ? 'oculto' : 'visible'}</Text>
+                        </View>
+                        <TouchableOpacity style={styles.actionPill} onPress={() => setFallbackContentHidden(item.key, !hidden)}>
+                          <Text style={styles.actionPillText}>{hidden ? 'Mostrar' : 'Ocultar'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
+
+              {adminModule === 'descargas' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Descargas y materiales</Text>
+                  <Text style={styles.cardText}>Biblioteca editable persistida en Supabase. Se puede guardar URL o ruta de archivo y definir visibilidad por rol.</Text>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={loadAdminMaterials}>
+                    <Text style={styles.secondaryButtonText}>Cargar materiales</Text>
+                  </TouchableOpacity>
+                  {session?.role === 'administrador' ? (
+                    <View style={styles.inlineEditorPanel}>
+                      <Text style={styles.cardEyebrow}>Documentos de la Iglesia</Text>
+                      <Text style={styles.cardText}>Botones externos visibles primero en Descargas. Maximo 6.</Text>
+                      <View style={styles.adminQuickGrid}>
+                        {adminChurchDocuments.map((document) => (
+                          <View key={document.id} style={[styles.adminListRow, !document.enabled && styles.lockedCard]}>
+                            {document.logo_url ? <Image source={{ uri: document.logo_url }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="key-outline" size={18} color={palette.red} /></View>}
+                            <View style={styles.adminUserHeaderText}>
+                              <Text style={styles.adminQuickText}>{document.title}</Text>
+                              <Text style={styles.cardText}>Orden {document.sort_order} - {document.enabled ? 'activo' : 'inactivo'}</Text>
+                            </View>
+                            <View style={styles.inlineActions}>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => editChurchDocument(document)}><Text style={styles.actionPillText}>Editar</Text></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => moveChurchDocument(document, -1)}><Ionicons name="arrow-up-outline" size={14} color={palette.red} /></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => moveChurchDocument(document, 1)}><Ionicons name="arrow-down-outline" size={14} color={palette.red} /></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => duplicateChurchDocument(document)}><Text style={styles.actionPillText}>Duplicar</Text></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => toggleChurchDocument(document)}><Text style={styles.actionPillText}>{document.enabled ? 'Ocultar' : 'Activar'}</Text></TouchableOpacity>
+                              <TouchableOpacity style={styles.actionPill} onPress={() => deleteChurchDocument(document.id)}><Text style={styles.actionPillText}>Borrar</Text></TouchableOpacity>
+                            </View>
+                          </View>
+                        ))}
+                        {adminChurchDocuments.length === 0 ? <Text style={styles.cardText}>Carga el listado para ver botones existentes.</Text> : null}
+                      </View>
+                      <Text style={styles.cardEyebrow}>{churchDocumentEditingId ? 'Editar boton' : 'Agregar boton'}</Text>
+                      <TextInput style={styles.input} placeholder="Titulo visible" value={churchDocumentTitle} onChangeText={setChurchDocumentTitle} placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Link destino https://..." value={churchDocumentTargetUrl} onChangeText={setChurchDocumentTargetUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Logo URL o subir imagen" value={churchDocumentLogoUrl} onChangeText={setChurchDocumentLogoUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+                      <TouchableOpacity style={styles.secondaryButton} onPress={uploadChurchDocumentLogo}>
+                        <Ionicons name="image-outline" size={17} color={palette.red} />
+                        <Text style={styles.secondaryButtonText}>Subir logo/imagen</Text>
+                      </TouchableOpacity>
+                      <View style={styles.inlineActions}>
+                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Orden" value={churchDocumentSortOrder} onChangeText={setChurchDocumentSortOrder} keyboardType="numeric" placeholderTextColor={inputPlaceholderColor} />
+                        <TouchableOpacity style={[styles.actionPill, churchDocumentEnabled && styles.actionPillActive]} onPress={() => setChurchDocumentEnabled((current) => !current)}>
+                          <Text style={[styles.actionPillText, churchDocumentEnabled && styles.actionPillTextActive]}>{churchDocumentEnabled ? 'Habilitado' : 'Deshabilitado'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.inlineActions}>
+                        <TouchableOpacity style={styles.primaryButton} onPress={saveChurchDocumentDraft}>
+                          <Text style={styles.primaryButtonText}>{churchDocumentEditingId ? 'Guardar boton' : 'Agregar boton'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={resetChurchDocumentForm}>
+                          <Text style={styles.secondaryButtonText}>Limpiar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : null}
+                  <Text style={styles.cardEyebrow}>Materiales actuales</Text>
+                  {(adminMaterials.length > 0 ? adminMaterials : materials.map((material, index) => ({
+                    id: `fallback-${index}`,
+                    title: material.title,
+                    description: material.description,
+                    category: material.type,
+                    visibility: material.permission ? 'interno' : 'publico',
+                    required_permission: material.permission,
+                    file_url: null,
+                    file_path: null,
+                    sort_order: index,
+                    archived_at: null,
+                    created_at: null,
+                    created_by: null,
+                    province_id: null
+                  } as AppMaterialRecord))).map((material) => (
+                    <View key={material.id} style={styles.adminListRow}>
+                      <Ionicons name="document-text-outline" size={19} color={palette.red} />
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.cardTitle}>{material.title}</Text>
+                        <Text style={styles.cardText}>{material.category ?? 'General'} - {material.visibility ?? 'interno'}{material.required_permission ? ` - ${material.required_permission}` : ''}</Text>
+                      </View>
+                      {!material.id.startsWith('fallback-') ? (
+                        <TouchableOpacity onPress={() => adminArchiveMaterial(material.id)}>
+                          <Text style={styles.adminStateDraft}>Archivar</Text>
+                        </TouchableOpacity>
+                      ) : <Text style={styles.adminStateDraft}>Base</Text>}
+                    </View>
+                  ))}
+                  <Text style={styles.cardEyebrow}>Nuevo material</Text>
+                  <TextInput style={styles.input} placeholder="Nombre del archivo" value={materialTitle} onChangeText={setMaterialTitle}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="Categoria" value={materialCategory} onChangeText={setMaterialCategory}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="URL del archivo o PDF" value={materialFileUrl} onChangeText={setMaterialFileUrl}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialDescription} onChangeText={setMaterialDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={styles.filterRow}>
+                    {['publico', 'interno', 'reservado', 'administrador'].map((item, index) => (
+                      <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, materialVisibility === item && styles.filterChipActive]} onPress={() => setMaterialVisibility(item)}>
+                        <Text style={[styles.filterChipText, materialVisibility === item && styles.filterChipTextActive]}>{item}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput style={styles.input} placeholder="Permiso requerido opcional. Ej: ver_materiales_internos" value={materialPermission} onChangeText={setMaterialPermission}  placeholderTextColor={inputPlaceholderColor} />
+                  <TouchableOpacity style={styles.primaryButton} onPress={adminSaveMaterial}>
+                    <Text style={styles.primaryButtonText}>Guardar material</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'historia_admin' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Nuestra Historia</Text>
+                  <Text style={styles.cardText}>Gestión de capítulos, preguntas frecuentes y textos institucionales desde el editor centralizado.</Text>
+                  <View style={styles.adminListRow}>
+                    <Ionicons name="book-outline" size={19} color={palette.red} />
+                    <View style={styles.adminUserHeaderText}>
+                      <Text style={styles.cardTitle}>{movementHistory.length} capitulos actuales</Text>
+                      <Text style={styles.cardText}>Migracion progresiva al editor de bloques.</Text>
+                    </View>
+                  </View>
+                  <View style={styles.adminListRow}>
+                    <Ionicons name="help-circle-outline" size={19} color={palette.red} />
+                    <View style={styles.adminUserHeaderText}>
+                      <Text style={styles.cardTitle}>{faqItems.length} preguntas frecuentes</Text>
+                      <Text style={styles.cardText}>Editable desde Contenido General por ahora.</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => { setSelectedContentTab('historia'); setAdminModule('contenido_general'); }}>
+                    <Text style={styles.primaryButtonText}>Abrir editor de Historia</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'contacto_admin' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Contacto modular</Text>
+                  <Text style={styles.cardText}>Configura canales nacionales, Instagram por provincia y bloques dinamicos visibles en Contacto.</Text>
+                  {session?.role === 'administrador' ? (
+                    <>
+                      <TextInput style={styles.input} placeholder="Correo electronico oficial. Ej: contacto@palestra.org.ar" value={adminConfigDraft.contact.email} onChangeText={(value) => updateAdminConfigSection('contact', { email: value })}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Numero telefonico oficial. Ej: +54 351 000-0000" value={adminConfigDraft.contact.phone} onChangeText={(value) => updateAdminConfigSection('contact', { phone: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    </>
+                  ) : null}
+                  <Text style={styles.cardEyebrow}>Instagram nacional</Text>
+                  <TextInput style={styles.input} placeholder="URL o usuario de Instagram nacional" value={adminConfigDraft.contact.instagram} onChangeText={(value) => updateAdminConfigSection('contact', { instagram: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <TouchableOpacity style={styles.primaryButton} onPress={saveInstagramConfigDraft}>
+                    <Text style={styles.primaryButtonText}>Guardar Instagram</Text>
+                  </TouchableOpacity>
+                  {session?.role === 'administrador' ? (
+                    <>
+                      <Text style={styles.cardEyebrow}>Instagram por provincia</Text>
+                      {Object.keys(defaultAdminConfig.contact.provinceInstagram).map((province) => (
+                        <TextInput
+                          key={province}
+                          style={styles.input}
+                          placeholder={`Instagram de ${province}`}
+                          value={adminConfigDraft.contact.provinceInstagram?.[province] ?? ''}
+                          onChangeText={(value) => updateAdminConfigSection('contact', {
+                            provinceInstagram: { ...(adminConfigDraft.contact.provinceInstagram ?? {}), [province]: value }
+                          })}
+                          autoCapitalize="none"
+                         placeholderTextColor={inputPlaceholderColor} />
+                      ))}
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de ayuda para orientar a quien visita Contacto" value={adminConfigDraft.contact.helpText} onChangeText={(value) => updateAdminConfigSection('contact', { helpText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto opcional de donaciones o colaboracion" value={adminConfigDraft.contact.donationText} onChangeText={(value) => updateAdminConfigSection('contact', { donationText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                      <Text style={styles.cardEyebrow}>Bloques dinamicos</Text>
+                      {(adminConfigDraft.contact.blocks ?? []).map((block, index) => (
+                        <View key={block.id} style={styles.innerNewsCard}>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Titulo o etiqueta del bloque"
+                            value={block.label}
+                            onChangeText={(value) => {
+                              const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
+                              blocks[index] = { ...block, label: value };
+                              updateAdminConfigSection('contact', { blocks });
+                            }}
+                           placeholderTextColor={inputPlaceholderColor} />
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                            {(['texto', 'telefono', 'email', 'imagen', 'direccion', 'enlace', 'boton', 'red_social'] as ContactBlock['type'][]).map((type) => (
+                              <TouchableOpacity key={type} style={[styles.filterChip, block.type === type && styles.filterChipActive]} onPress={() => {
+                                const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
+                                blocks[index] = { ...block, type };
+                                updateAdminConfigSection('contact', { blocks });
+                              }}>
+                                <Text style={[styles.filterChipText, block.type === type && styles.filterChipTextActive]}>{type}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                          <TextInput
+                            style={[styles.input, styles.textArea]}
+                            placeholder="Contenido, URL, teléfono, email o dirección"
+                            value={block.value}
+                            onChangeText={(value) => {
+                              const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
+                              blocks[index] = { ...block, value };
+                              updateAdminConfigSection('contact', { blocks });
+                            }}
+                            multiline
+                           placeholderTextColor={inputPlaceholderColor} />
+                          <TouchableOpacity style={styles.secondaryButton} onPress={() => updateAdminConfigSection('contact', { blocks: (adminConfigDraft.contact.blocks ?? []).filter((item) => item.id !== block.id) })}>
+                            <Text style={styles.secondaryButtonText}>Eliminar bloque</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                      <TouchableOpacity style={styles.secondaryButton} onPress={() => updateAdminConfigSection('contact', {
+                        blocks: [...(adminConfigDraft.contact.blocks ?? []), { id: `contact-${Date.now()}`, type: 'texto', label: '', value: '' }]
+                      })}>
+                        <Ionicons name="add-circle-outline" size={17} color={palette.red} />
+                        <Text style={styles.secondaryButtonText}>Agregar bloque</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Contacto')}>
+                        <Text style={styles.primaryButtonText}>Guardar contacto completo</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {adminModule === 'periodo_motivador' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Período Motivador</Text>
+                  <Text style={styles.cardText}>Gestión real de PM por provincia. Solo Vocal Diocesano, Coordinador Diocesano y Administrador pueden administrar esta sección.</Text>
+                  {!canManageMotivadorPanel(session) ? (
+                    <View style={styles.notice}>
+                      <Ionicons name="lock-closed-outline" size={20} color={palette.red} />
+                      <Text style={styles.noticeText}>No tenés permisos para gestionar Períodos Motivadores.</Text>
+                    </View>
+                  ) : null}
+                  {canManageMotivadorPanel(session) ? (
+                    <>
+                      <View style={styles.inlineEditorPanel}>
+                        <Text style={styles.cardEyebrow}>{pmEditingId ? 'Editar PM' : 'Nuevo PM'}</Text>
+                        <View style={styles.filterRow}>
+                          {(['masculino', 'femenino'] as const).map((item) => (
+                            <TouchableOpacity key={item} style={[styles.filterChip, pmGender === item && styles.filterChipActive]} onPress={() => setPmGender(item)}>
+                              <Text style={[styles.filterChipText, pmGender === item && styles.filterChipTextActive]}>PM {item === 'masculino' ? 'Masculino' : 'Femenino'}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TextInput style={styles.input} placeholder="Número de PM" value={pmNumber} onChangeText={setPmNumber} keyboardType="numeric"  placeholderTextColor={inputPlaceholderColor} />
+                        <Text style={styles.cardEyebrow}>Provincia</Text>
+                        <View style={styles.filterRow}>
+                          {motivadorProvinceOptions.map((province) => (
+                            <TouchableOpacity
+                              key={province}
+                              style={[styles.filterChip, pmProvince === province && styles.filterChipActive]}
+                              onPress={() => session?.role === 'administrador' ? setPmProvince(province) : undefined}
+                              disabled={session?.role !== 'administrador'}
+                            >
+                              <Text style={[styles.filterChipText, pmProvince === province && styles.filterChipTextActive]}>{province}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={() => setPmCalendarOpen(!pmCalendarOpen)}>
+                          <Ionicons name="calendar-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>Seleccionar fechas</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.cardText}>{selectedDatesSummary(pmSelectedDates)}</Text>
+                        {pmCalendarOpen ? (
+                          <View style={styles.pmCalendarPanel}>
+                            <View style={styles.pmCalendarHeader}>
+                              <TouchableOpacity style={styles.pmCalendarNavButton} onPress={() => setPmCalendarMonth(new Date(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth() - 1, 1))}>
+                                <Text style={styles.pmCalendarNavText}>←</Text>
+                              </TouchableOpacity>
+                              <Text style={styles.pmCalendarTitle}>{pmCalendarMonth.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</Text>
+                              <TouchableOpacity style={styles.pmCalendarNavButton} onPress={() => setPmCalendarMonth(new Date(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth() + 1, 1))}>
+                                <Text style={styles.pmCalendarNavText}>→</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <View style={styles.pmCalendarWeekRow}>
+                              {['DO', 'LU', 'MA', 'MI', 'JU', 'VI', 'SA'].map((day) => (
+                                <Text key={day} style={styles.pmWeekdayText}>{day}</Text>
+                              ))}
+                            </View>
+                            <View style={styles.pmCalendarGrid}>
+                              {Array.from({ length: new Date(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth(), 1).getDay() }, (_, index) => (
+                                <View key={`blank-${index}`} style={styles.pmDaySpacer} />
+                              ))}
+                              {Array.from({ length: new Date(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth() + 1, 0).getDate() }, (_, index) => {
+                                const day = index + 1;
+                                const date = isoDate(pmCalendarMonth.getFullYear(), pmCalendarMonth.getMonth(), day);
+                                const selected = pmSelectedDates.includes(date);
+                                return (
+                                  <TouchableOpacity key={date} style={[styles.pmDayButton, selected && styles.pmDayButtonSelected]} onPress={() => togglePmDate(date)}>
+                                    <Text style={[styles.pmDayText, selected && styles.pmDayTextSelected]}>{day}</Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        ) : null}
+                        <TextInput style={styles.input} placeholder="Casa de retiro" value={pmRetreatHouse} onChangeText={setPmRetreatHouse}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="Dirección de la casa de retiro" value={pmAddress} onChangeText={setPmAddress}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="Horario estimado de apertura. Ej: Viernes 18:00" value={pmOpeningTime} onChangeText={setPmOpeningTime}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="Horario estimado de clausura. Ej: Domingo 17:00" value={pmClosingTime} onChangeText={setPmClosingTime}  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion opcional" value={pmDescription} onChangeText={setPmDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="URL foto del lugar opcional" value={pmPlacePhotoUrl} onChangeText={setPmPlacePhotoUrl} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                        <TextInput style={styles.input} placeholder="URL flyer o invitacion opcional" value={pmFlyerUrl} onChangeText={setPmFlyerUrl} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                        <TouchableOpacity style={[styles.filterChip, pmVisibleToLowerRoles && styles.filterChipActive]} onPress={() => setPmVisibleToLowerRoles(!pmVisibleToLowerRoles)}>
+                          <Text style={[styles.filterChipText, pmVisibleToLowerRoles && styles.filterChipTextActive]}>{pmVisibleToLowerRoles ? 'Visible para inferiores a Sedimentador' : 'Invisible para inferiores a Sedimentador'}</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.cardEyebrow}>Estado</Text>
+                        <View style={styles.filterRow}>
+                          {(['activo', 'inactivo', 'borrador'] as const).map((status) => (
+                            <TouchableOpacity key={status} style={[styles.filterChip, pmStatus === status && styles.filterChipActive]} onPress={() => setPmStatus(status)}>
+                              <Text style={[styles.filterChipText, pmStatus === status && styles.filterChipTextActive]}>{status}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TouchableOpacity style={styles.primaryButton} onPress={submitMotivadorPeriod}>
+                          <Text style={styles.primaryButtonText}>{pmEditingId ? 'Guardar cambios' : 'Crear PM'}</Text>
+                        </TouchableOpacity>
+                        {pmEditingId ? (
+                          <TouchableOpacity style={styles.secondaryButton} onPress={resetMotivadorForm}>
+                            <Text style={styles.secondaryButtonText}>Cancelar edición</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                      <SectionTitle title="PM cargados" />
+                      <View style={styles.pmFilterGrid}>
+                        {session?.role === 'administrador' ? renderPmFilterDropdown(
+                          'province',
+                          'Provincia',
+                          pmProvinceFilter,
+                          [{ label: 'Todas', value: '' }, ...motivadorProvinceOptions.map((province) => ({ label: province, value: province }))],
+                          setPmProvinceFilter
+                        ) : null}
+                        {renderPmFilterDropdown(
+                          'gender',
+                          'Tipo',
+                          pmGenderFilter,
+                          [
+                            { label: 'Todos', value: 'todos' },
+                            { label: 'Masculino', value: 'masculino' },
+                            { label: 'Femenino', value: 'femenino' }
+                          ],
+                          setPmGenderFilter
+                        )}
+                        {renderPmFilterDropdown(
+                          'status',
+                          'Estado',
+                          pmStatusFilter,
+                          [
+                            { label: 'Todos', value: 'todos' },
+                            { label: 'Activo', value: 'activo' },
+                            { label: 'Inactivo', value: 'inactivo' },
+                            { label: 'Borrador', value: 'borrador' }
+                          ],
+                          setPmStatusFilter
+                        )}
+                        {renderPmFilterDropdown(
+                          'time',
+                          'Fecha',
+                          pmTimeFilter,
+                          [
+                            { label: 'Todos', value: 'todos' },
+                            { label: 'Proximos', value: 'proximos' },
+                            { label: 'Pasados', value: 'pasados' }
+                          ],
+                          setPmTimeFilter
+                        )}
+                        {renderPmFilterDropdown(
+                          'year',
+                          'Año',
+                          pmYearFilter,
+                          [{ label: 'Todos', value: 'todos' }, ...motivadorYearOptions.map((year) => ({ label: year, value: year }))],
+                          setPmYearFilter
+                        )}
+                      </View>
+                      {filteredMotivadorPeriods.length === 0 ? <Text style={styles.cardText}>No hay PM cargados para los filtros seleccionados.</Text> : null}
+                      {filteredMotivadorPeriods.map((period) => (
+                        <View key={period.id} style={styles.adminListRow}>
+                          <Ionicons name="flame-outline" size={20} color={palette.red} />
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.cardTitle}>PM {period.gender === 'femenino' ? 'Femenino' : 'Masculino'} {period.pm_number} - {period.province}</Text>
+                            <Text style={styles.cardText}>Fechas: {selectedDatesSummary(period.selected_dates?.map((date) => String(date).slice(0, 10)) ?? [period.starts_on, period.ends_on])}</Text>
+                            <Text style={styles.cardText}>Casa: {period.retreat_house}. Dirección: {period.address}</Text>
+                            <Text style={styles.cardText}>Apertura: {period.opening_time ?? 'Sin horario'} - Clausura: {period.closing_time ?? 'Sin horario'}</Text>
+                            <Text style={styles.cardText}>Estado: {period.status}. Última edición: {period.updated_by_name ?? 'Sin registro'}</Text>
+                            <View style={styles.inlineActions}>
+                              <TouchableOpacity style={styles.secondaryButton} onPress={() => editMotivadorPeriod(period)}>
+                                <Text style={styles.secondaryButtonText}>Editar</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity style={styles.secondaryButton} onPress={() => updateMotivadorStatus(period.id, period.status === 'activo' ? 'inactivo' : 'activo')}>
+                                <Text style={styles.secondaryButtonText}>{period.status === 'activo' ? 'Inhabilitar' : 'Habilitar'}</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity style={styles.secondaryButton} onPress={() => updateMotivadorStatus(period.id, 'archivado')}>
+                                <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {adminModule === 'permisos_roles' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Permisos de Rangos</Text>
+                  <Text style={styles.cardText}>Activa o desactiva permisos reales por rango. Los cambios se guardan en Supabase, se leen al iniciar sesion y actualizan la sesion actual si corresponde.</Text>
+                  <Text style={styles.cardEyebrow}>Rango</Text>
+                  <TouchableOpacity style={styles.dropdownButton} onPress={() => setPermissionRoleDropdownOpen(!permissionRoleDropdownOpen)}>
+                    <Text style={styles.dropdownButtonText}>{roleLabel(permissionRole)}</Text>
+                    <Ionicons name={permissionRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  </TouchableOpacity>
+                  {permissionRoleDropdownOpen ? (
+                    <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                      {roleDefinitions.map((role) => (
+                        <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => {
+                          const nextRole = role.role as Role;
+                          setPermissionRole(nextRole);
+                          setRolePermissionDraft(rolePermissions[nextRole] ?? []);
+                          setRolePermissionRows([]);
+                          setPermissionRoleDropdownOpen(false);
+                          loadRolePermissionDraft(nextRole);
+                        }}>
+                          <Text style={styles.dropdownItemText}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => loadRolePermissionDraft(permissionRole)}>
+                      <Ionicons name="refresh-outline" size={17} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Cargar permisos</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.primaryButton} onPress={saveRolePermissionDraft}>
+                      <Ionicons name="save-outline" size={17} color={palette.white} />
+                      <Text style={styles.primaryButtonText}>Guardar permisos</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.cardEyebrow}>Permisos disponibles</Text>
+                  <Text style={styles.cardText}>Activos: {rolePermissionDraft.length} de {permissionOptions.length}. Inactivos: {permissionOptions.length - rolePermissionDraft.length}.</Text>
+                  <View style={styles.permissionGrid}>
+                    {permissionOptions.map((permission) => {
+                      const checked = rolePermissionDraft.includes(permission.key);
+                      const remoteRow = rolePermissionRows.find((item) => item.permission_key === permission.key);
+                      return (
+                        <TouchableOpacity key={permission.key} style={[styles.permissionToggle, checked && styles.permissionToggleActive]} onPress={() => toggleRolePermission(permission.key)} activeOpacity={0.85}>
+                          <Ionicons name={checked ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={checked ? palette.white : palette.red} />
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={[styles.permissionToggleTitle, checked && styles.permissionToggleTitleActive]}>{remoteRow?.permission_label || permission.label}</Text>
+                            <Text style={[styles.permissionToggleMeta, checked && styles.permissionToggleMetaActive]}>{permission.key}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
+
+              {adminModule === 'etiquetas_roles' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Nombres visibles por provincia</Text>
+                  <Text style={styles.cardText}>Personaliza como se ve un rango en una provincia sin cambiar su role_key interno, permisos ni jerarquia.</Text>
+                  <Text style={styles.cardEyebrow}>Provincia</Text>
+                  <TouchableOpacity style={styles.dropdownButton} onPress={() => setRoleLabelProvinceDropdownOpen(!roleLabelProvinceDropdownOpen)}>
+                    <Text style={styles.dropdownButtonText}>{roleLabelProvince || 'Seleccionar provincia'}</Text>
+                    <Ionicons name={roleLabelProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  </TouchableOpacity>
+                  {roleLabelProvinceDropdownOpen ? (
+                    <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                      {registrationCommunities.map((item) => (
+                        <TouchableOpacity key={item.province} style={styles.dropdownItem} onPress={() => { setRoleLabelProvince(item.province); setRoleLabelProvinceDropdownOpen(false); }}>
+                          <Text style={styles.dropdownItemText}>{item.province}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  <Text style={styles.cardEyebrow}>Rango interno</Text>
+                  <TouchableOpacity style={styles.dropdownButton} onPress={() => setRoleLabelRoleDropdownOpen(!roleLabelRoleDropdownOpen)}>
+                    <Text style={styles.dropdownButtonText}>{roleLabel(roleLabelRole)}</Text>
+                    <Ionicons name={roleLabelRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  </TouchableOpacity>
+                  {roleLabelRoleDropdownOpen ? (
+                    <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                      {roleDefinitions.filter((role) => role.role !== 'invitado' && role.role !== 'administrador').map((role) => (
+                        <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setRoleLabelRole(role.role as Role); setRoleLabelRoleDropdownOpen(false); }}>
+                          <Text style={styles.dropdownItemText}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  <TextInput style={styles.input} placeholder="Nombre visible para esta provincia" value={roleLabelDraft} onChangeText={setRoleLabelDraft} placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion interna opcional" value={roleLabelDescription} onChangeText={setRoleLabelDescription} multiline placeholderTextColor={inputPlaceholderColor} />
+                  <TouchableOpacity style={[styles.adminListRow, roleLabelActive && styles.adminListRowActive]} onPress={() => setRoleLabelActive(!roleLabelActive)}>
+                    <Ionicons name={roleLabelActive ? 'toggle' : 'toggle-outline'} size={24} color={roleLabelActive ? palette.red : palette.inkMuted} />
+                    <Text style={styles.adminQuickText}>{roleLabelActive ? 'Etiqueta activa' : 'Etiqueta inactiva: se usa nombre estandar'}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.profileCommunityPanel}>
+                    <Text style={styles.cardEyebrow}>Vista previa</Text>
+                    <Text style={styles.cardTitle}>{roleLabelForProvince(roleLabelRole, roleLabelProvince, provinceRoleLabels)}</Text>
+                    <Text style={styles.cardText}>Interno: {roleLabelRole}. Los permisos siguen usando este valor interno.</Text>
+                  </View>
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={loadProvinceRoleLabels}>
+                      <Ionicons name="refresh-outline" size={17} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Cargar etiquetas</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.primaryButton} onPress={saveProvinceRoleLabelDraft}>
+                      <Ionicons name="save-outline" size={17} color={palette.white} />
+                      <Text style={styles.primaryButtonText}>Guardar etiqueta</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {provinceRoleLabels.length > 0 ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Etiquetas cargadas</Text>
+                      {provinceRoleLabels.map((item) => (
+                        <View key={item.id} style={styles.adminListRow}>
+                          <Ionicons name={item.is_active ? 'pricetag-outline' : 'eye-off-outline'} size={20} color={palette.red} />
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.adminQuickText}>{item.province} - {roleLabel(item.role_key as Role)}</Text>
+                            <Text style={styles.cardText}>{item.display_label}{item.is_active ? '' : ' (inactiva)'}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {adminModule === 'rangos_alias' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Duplicar / renombrar rangos</Text>
+                  <Text style={styles.cardText}>Crea alias asignables que heredan permisos y jerarquia del rango base. Se guardan en Supabase y se aplican al usuario como nombre visible persistente.</Text>
+                  <Text style={styles.cardEyebrow}>Rango base</Text>
+                  <TouchableOpacity style={styles.dropdownButton} onPress={() => setRoleAliasRoleDropdownOpen(!roleAliasRoleDropdownOpen)}>
+                    <Text style={styles.dropdownButtonText}>{roleLabel(roleAliasBaseRole)}</Text>
+                    <Ionicons name={roleAliasRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  </TouchableOpacity>
+                  {roleAliasRoleDropdownOpen ? (
+                    <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                      {roleDefinitions.filter((role) => role.role !== 'invitado' && role.role !== 'administrador').map((role) => (
+                        <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setRoleAliasBaseRole(role.role as Role); setRoleAliasRoleDropdownOpen(false); }}>
+                          <Text style={styles.dropdownItemText}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                  <TextInput style={styles.input} placeholder="Nuevo nombre visible" value={roleAliasLabel} onChangeText={setRoleAliasLabel} placeholderTextColor={inputPlaceholderColor} />
+                  <TouchableOpacity style={[styles.adminListRow, roleAliasIsGlobal && styles.adminListRowActive]} onPress={() => setRoleAliasIsGlobal(!roleAliasIsGlobal)}>
+                    <Ionicons name={roleAliasIsGlobal ? 'earth-outline' : 'map-outline'} size={22} color={palette.red} />
+                    <Text style={styles.adminQuickText}>{roleAliasIsGlobal ? 'Aplica globalmente' : 'Aplica por provincia'}</Text>
+                  </TouchableOpacity>
+                  {!roleAliasIsGlobal ? (
+                    <>
+                      <Text style={styles.cardEyebrow}>Provincia</Text>
+                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setRoleAliasProvinceDropdownOpen(!roleAliasProvinceDropdownOpen)}>
+                        <Text style={styles.dropdownButtonText}>{roleAliasProvince || 'Seleccionar provincia'}</Text>
+                        <Ionicons name={roleAliasProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                      </TouchableOpacity>
+                      {roleAliasProvinceDropdownOpen ? (
+                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                          {registrationCommunities.map((item) => (
+                            <TouchableOpacity key={item.province} style={styles.dropdownItem} onPress={() => { setRoleAliasProvince(item.province); setRoleAliasProvinceDropdownOpen(false); }}>
+                              <Text style={styles.dropdownItemText}>{item.province}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      ) : null}
+                    </>
+                  ) : null}
+                  <TouchableOpacity style={[styles.adminListRow, roleAliasActive && styles.adminListRowActive]} onPress={() => setRoleAliasActive(!roleAliasActive)}>
+                    <Ionicons name={roleAliasActive ? 'toggle' : 'toggle-outline'} size={24} color={roleAliasActive ? palette.red : palette.inkMuted} />
+                    <Text style={styles.adminQuickText}>{roleAliasActive ? 'Alias activo y visible' : 'Alias guardado inactivo'}</Text>
+                  </TouchableOpacity>
+                  <View style={styles.profileCommunityPanel}>
+                    <Text style={styles.cardEyebrow}>Vista previa</Text>
+                    <Text style={styles.cardTitle}>{roleAliasLabel.trim() || roleLabel(roleAliasBaseRole)}</Text>
+                    <Text style={styles.cardText}>Hereda permisos de {roleLabel(roleAliasBaseRole)}. Alcance: {roleAliasIsGlobal ? 'global' : roleAliasProvince || 'provincia pendiente'}.</Text>
+                  </View>
+                  <TouchableOpacity style={styles.primaryButton} onPress={saveRoleAliasDraft}>
+                    <Ionicons name="save-outline" size={17} color={palette.white} />
+                    <Text style={styles.primaryButtonText}>Guardar alias</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => loadRoleAliases(true)}>
+                    <Ionicons name="refresh-outline" size={17} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>Cargar alias</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.cardEyebrow}>Alias guardados</Text>
+                  {roleAliases.length === 0 ? <Text style={styles.cardText}>No hay alias cargados.</Text> : null}
+                  {roleAliases.map((alias) => (
+                    <View key={alias.id} style={[styles.adminListRow, !alias.is_active && styles.lockedCard]}>
+                      <Ionicons name="copy-outline" size={20} color={palette.red} />
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.adminQuickText}>{alias.display_label}</Text>
+                        <Text style={styles.cardText}>Base: {roleLabel(alias.base_role as Role)} - {alias.province ?? 'Global'} - {alias.is_active ? 'activo' : 'inactivo'}</Text>
+                      </View>
+                      <TouchableOpacity style={styles.actionPill} onPress={() => toggleSavedRoleAlias(alias.id, !alias.is_active)}>
+                        <Text style={styles.actionPillText}>{alias.is_active ? 'Desactivar' : 'Activar'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {adminModule === 'configuracion' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Configuración general</Text>
+                  <Text style={styles.cardText}>Base para mantenimiento, aviso global, permisos, módulos activos, foro y chat.</Text>
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje visible durante mantenimiento" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  {[
+                    { key: 'maintenanceMode', label: 'Modo mantenimiento' },
+                    { key: 'futureForumEnabled', label: 'Preparar foro' }
+                  ].map((item) => {
+                    const key = item.key as keyof AppAdminConfig['settings'];
+                    const active = Boolean(adminConfigDraft.settings[key]);
+                    return (
+                      <TouchableOpacity key={item.key} style={[styles.adminListRow, active && styles.adminListRowActive]} onPress={() => updateAdminConfigSection('settings', { [key]: !active } as Partial<AppAdminConfig['settings']>)}>
+                        <Ionicons name={active ? 'toggle' : 'toggle-outline'} size={24} color={active ? palette.red : palette.inkMuted} />
+                        <Text style={styles.adminQuickText}>{item.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  <Text style={styles.cardEyebrow}>Orden de navegación</Text>
+                  <Text style={styles.cardText}>El orden y visibilidad se administran desde Contenido.</Text>
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Configuración general')}>
+                    <Text style={styles.primaryButtonText}>Guardar configuración</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+                  {adminModule === 'configuracion' && session?.role === 'administrador' ? (
+                    <View style={styles.inlineEditorPanel}>
+                      <Text style={styles.cardEyebrow}>Noticias de la Iglesia</Text>
+                      <Text style={styles.cardText}>Controla el carrusel externo visible en Noticias. Se guarda en app_runtime_config.</Text>
+                      <TouchableOpacity style={[styles.adminListRow, runtimeConfigDraft.catholicNews.enabled && styles.adminListRowActive]} onPress={() => updateRuntimeCatholicNews({ enabled: !runtimeConfigDraft.catholicNews.enabled })}>
+                        <Ionicons name={runtimeConfigDraft.catholicNews.enabled ? 'toggle' : 'toggle-outline'} size={24} color={runtimeConfigDraft.catholicNews.enabled ? palette.red : palette.inkMuted} />
+                        <Text style={styles.adminQuickText}>{runtimeConfigDraft.catholicNews.enabled ? 'Carrusel activo' : 'Carrusel desactivado'}</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.inputLabel}>Cantidad maxima de noticias</Text>
+                      <View style={styles.filterRow}>
+                        {[3, 4, 5, 6].map((amount) => (
+                          <TouchableOpacity key={amount} style={[styles.filterChip, runtimeConfigDraft.catholicNews.maxItems === amount && styles.filterChipActive]} onPress={() => updateRuntimeCatholicNews({ maxItems: amount })}>
+                            <Text style={[styles.filterChipText, runtimeConfigDraft.catholicNews.maxItems === amount && styles.filterChipTextActive]}>{amount}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <Text style={styles.cardEyebrow}>Fuentes</Text>
+                      {([
+                        { key: 'vatican', label: 'Vatican News' },
+                        { key: 'episcopado', label: 'Episcopado Argentino' },
+                        { key: 'aci', label: 'ACI Prensa' }
+                      ] as Array<{ key: CatholicNewsSourceKey; label: string }>).map((source) => {
+                        const active = runtimeConfigDraft.catholicNews.sources[source.key] !== false;
+                        return (
+                          <View key={source.key} style={[styles.profileCommunityPanel, active && styles.adminListRowActive]}>
+                            <TouchableOpacity style={styles.adminListRow} onPress={() => updateRuntimeCatholicNews({ sources: { [source.key]: !active } as Partial<Record<CatholicNewsSourceKey, boolean>> })}>
+                              <Ionicons name={active ? 'checkbox-outline' : 'square-outline'} size={22} color={active ? palette.red : palette.inkMuted} />
+                              <Text style={styles.adminQuickText}>{runtimeConfigDraft.catholicNews.sourceLabels[source.key] || source.label}</Text>
+                            </TouchableOpacity>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Nombre visible de la fuente"
+                              value={runtimeConfigDraft.catholicNews.sourceLabels[source.key] ?? source.label}
+                              onChangeText={(value) => updateRuntimeCatholicNews({ sourceLabels: { [source.key]: value } as Partial<Record<CatholicNewsSourceKey, string>> })}
+                              placeholderTextColor={inputPlaceholderColor}
+                            />
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Link RSS o pagina fuente"
+                              value={runtimeConfigDraft.catholicNews.sourceUrls[source.key] ?? ''}
+                              onChangeText={(value) => updateRuntimeCatholicNews({ sourceUrls: { [source.key]: value } as Partial<Record<CatholicNewsSourceKey, string>> })}
+                              autoCapitalize="none"
+                              placeholderTextColor={inputPlaceholderColor}
+                            />
+                          </View>
+                        );
+                      })}
+                      <Text style={styles.cardEyebrow}>Orden visual</Text>
+                      <View style={styles.filterRow}>
+                        {runtimeConfigDraft.catholicNews.sourceOrder.map((sourceKey, index) => (
+                          <TouchableOpacity
+                            key={`${sourceKey}-${index}`}
+                            style={styles.filterChip}
+                            onPress={() => {
+                              const order = [...runtimeConfigDraft.catholicNews.sourceOrder];
+                              if (index === 0) {
+                                order.push(order.shift() as CatholicNewsSourceKey);
+                              } else {
+                                [order[index - 1], order[index]] = [order[index], order[index - 1]];
+                              }
+                              updateRuntimeCatholicNews({ sourceOrder: order });
+                            }}
+                          >
+                            <Text style={styles.filterChipText}>{index + 1}. {sourceKey}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <TouchableOpacity style={styles.primaryButton} onPress={saveRuntimeConfigDraft}>
+                        <Text style={styles.primaryButtonText}>Guardar carrusel externo</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+
+              {adminModule === 'usuarios' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Usuarios registrados</Text>
+                  {session.role !== 'administrador' ? (
+                    <Text style={styles.cardText}>Tu rango puede revisar y gestionar usuarios dentro de su alcance. Crear usuarios, confirmar mails y eliminar accesos queda reservado al Administrador.</Text>
+                  ) : (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Crear usuario básico</Text>
+                      <Text style={styles.cardText}>Crea una cuenta habilitada con mail y contraseña. Al ingresar, el usuario deberá completar provincia y comunidad.</Text>
+                      <Text style={styles.inputLabel}>Mail</Text>
+                      <TextInput style={styles.input} placeholder="Ingresá el correo electrónico" value={adminCreateEmail} onChangeText={setAdminCreateEmail} autoCapitalize="none" keyboardType="email-address"  placeholderTextColor={inputPlaceholderColor} />
+                      <Text style={styles.inputLabel}>Contraseña</Text>
+                      <View style={styles.passwordInputWrap}>
+                        <TextInput
+                          style={[styles.input, styles.inputWithIcon]}
+                          placeholder="Mínimo 6 caracteres"
+                          value={adminCreatePassword}
+                          onChangeText={setAdminCreatePassword}
+                          secureTextEntry={!adminCreatePasswordVisible}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          returnKeyType="done"
+                         placeholderTextColor={inputPlaceholderColor} />
+                        <TouchableOpacity style={styles.passwordEyeButton} onPress={() => setAdminCreatePasswordVisible(!adminCreatePasswordVisible)} activeOpacity={0.82}>
+                          <Ionicons name={adminCreatePasswordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
+                        </TouchableOpacity>
+                      </View>
+                      <TouchableOpacity style={styles.primaryButton} onPress={createBasicAdminUser}>
+                        <Text style={styles.primaryButtonText}>Crear usuario</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <TextInput style={styles.input} placeholder="Buscar por nombre, apellido o apodo" value={adminUserSearch} onChangeText={setAdminUserSearch}  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={styles.communityActionRow}>
+                    <TouchableOpacity style={styles.communityMiniButton} onPress={loadAdminUsers} activeOpacity={0.85}>
+                      <Ionicons name="refresh-outline" size={15} color={palette.red} />
+                      <Text style={styles.communityMiniButtonText}>Actualizar usuarios</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {session.role === 'administrador' ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Diagnostico y liberacion de login</Text>
+                      <Text style={styles.cardText}>Usalo cuando un mail no puede ingresar, no aparece en usuarios o quedo atrapado en Auth/Profile.</Text>
+                      <TextInput style={styles.input} placeholder="Mail a diagnosticar" value={adminDiagnosticEmail} onChangeText={setAdminDiagnosticEmail} autoCapitalize="none" keyboardType="email-address"  placeholderTextColor={inputPlaceholderColor} />
+                      <View style={styles.inlineActions}>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={diagnoseUserLogin}>
+                          <Ionicons name="search-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>Diagnosticar login</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={repairUserLogin}>
+                          <Ionicons name="construct-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>Reparar usuario</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={deleteUserByDiagnosticEmail}>
+                          <Ionicons name="trash-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>Eliminar y liberar mail</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {adminLoginDiagnostic ? (
+                        <View style={styles.innerNewsCard}>
+                          <Text style={styles.cardTitle}>Informe de {adminLoginDiagnostic.searched_email}</Text>
+                          <Text style={styles.cardText}>Auth: {adminLoginDiagnostic.auth_exists ? 'existe' : 'no existe'} ({adminLoginDiagnostic.auth_count})</Text>
+                          <Text style={styles.cardText}>Auth email: {adminLoginDiagnostic.auth_email ?? 'sin email'} - creado: {adminLoginDiagnostic.auth_created_at ? new Date(adminLoginDiagnostic.auth_created_at).toLocaleString('es-AR') : 'sin fecha'}</Text>
+                          <Text style={styles.cardText}>Identities: {adminLoginDiagnostic.identity_exists ? 'existe' : 'no existe'} ({adminLoginDiagnostic.identities_count ?? 0}) - {adminLoginDiagnostic.identities_provider ?? 'sin provider'}</Text>
+                          <Text style={styles.cardText}>Profile: {adminLoginDiagnostic.profile_exists ? 'existe' : 'no existe'} ({adminLoginDiagnostic.profile_count})</Text>
+                          <Text style={styles.cardText}>Confirmado: {adminLoginDiagnostic.email_confirmed_at ? 'si' : 'no'}</Text>
+                          <Text style={styles.cardText}>Estado/Rol: {adminLoginDiagnostic.profile_status ?? adminLoginDiagnostic.status ?? 'sin estado'} - {adminLoginDiagnostic.profile_role ?? adminLoginDiagnostic.role ?? 'sin rol'}</Text>
+                          <Text style={styles.cardText}>Provincia/Comunidad: {adminLoginDiagnostic.province ?? 'sin provincia'} - {adminLoginDiagnostic.community ?? 'sin comunidad'}</Text>
+                          <Text style={styles.cardText}>Backups: {adminLoginDiagnostic.backups_exists ? `si (${adminLoginDiagnostic.backup_count ?? 0})` : 'no'}</Text>
+                          <Text style={styles.cardText}>Solicitudes/Tokens/Mensajes: {adminLoginDiagnostic.user_requests_exists ? 'solicitudes ' : ''}{adminLoginDiagnostic.device_push_tokens_exists ? 'tokens ' : ''}{adminLoginDiagnostic.internal_messages_exists ? 'mensajes' : ''}{(!adminLoginDiagnostic.user_requests_exists && !adminLoginDiagnostic.device_push_tokens_exists && !adminLoginDiagnostic.internal_messages_exists) ? 'sin relaciones visibles' : ''}</Text>
+                          <Text style={styles.cardText}>Tablas afectadas: {adminLoginDiagnostic.affected_tables?.length ? adminLoginDiagnostic.affected_tables.join(' | ') : 'sin tablas activas detectadas'}</Text>
+                          <Text style={styles.cardText}>Inconsistencias: {adminLoginDiagnostic.inconsistencies?.length ? adminLoginDiagnostic.inconsistencies.join(' | ') : 'Sin inconsistencias evidentes'}</Text>
+                          <Text style={styles.cardText}>Causa probable: {adminLoginDiagnostic.possible_cause}</Text>
+                          <Text style={styles.cardText}>Accion recomendada: {adminLoginDiagnostic.recommended_action}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+                  <View style={styles.profileCommunityPanel}>
+                    <Text style={styles.cardEyebrow}>Coordinaciones activas</Text>
+                    <Text style={styles.cardText}>Coordinador Nacional: {activeNationalCoordinator?.full_name ?? activeNationalCoordinator?.email ?? 'Sin coordinador activo cargado'}</Text>
+                    {selectedUsersProvince ? <Text style={styles.cardText}>Coordinador Diocesano en {selectedUsersProvince}: {activeDiocesanCoordinator?.full_name ?? activeDiocesanCoordinator?.email ?? 'Sin coordinador activo'}</Text> : null}
+                  </View>
+                  {adminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios cargados.</Text> : null}
+                  {userProvinceOptions.length > 0 ? (
+                    <>
+                      <Text style={styles.cardEyebrow}>Provincia</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                        {userProvinceOptions.map((province) => (
+                          <TouchableOpacity key={province} style={[styles.filterChip, selectedUsersProvince === province && styles.filterChipActive]} onPress={() => { setSelectedUsersProvince(province); setSelectedAdminUserId(''); }}>
+                            <Text style={[styles.filterChipText, selectedUsersProvince === province && styles.filterChipTextActive]}>{province}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </>
+                  ) : null}
+                  {selectedUsersProvince ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>{selectedUsersProvince}</Text>
+                      {visibleAdminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios para esta provincia.</Text> : null}
+                      {visibleAdminUsers.map((user) => {
+                        const selected = selectedAdminUserId === user.id;
+                        const canEditThisUser = canEditAdminUser(session, user);
+                        return (
+                          <View key={user.id}>
+                            <TouchableOpacity style={[styles.innerNewsCard, !canEditThisUser && styles.lockedCard]} onPress={() => canEditThisUser ? setSelectedAdminUserId(selected ? '' : user.id) : setAuthMessage('No podes editar administradores, usuarios superiores o usuarios fuera de tu alcance.')}>
+                              <View style={styles.adminUserHeader}>
+                                <View style={styles.adminUserAvatar}>
+                                  {user.avatar_url ? <Image source={{ uri: user.avatar_url }} style={styles.adminUserAvatarImage} /> : <Ionicons name="person-outline" size={20} color={palette.red} />}
+                                </View>
+                                <View style={styles.adminUserHeaderText}>
+                                  <Text style={styles.cardTitle}>{user.full_name ?? 'Usuario sin nombre'}</Text>
+                                  <Text style={styles.cardText}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  {user.subrole_key ? <Text style={styles.feedMeta}>Subrango: {subroleLabel(user.subrole_key)}</Text> : null}
+                                  {perseveranceLabel(user.perseverance_start_year) ? <Text style={styles.feedMeta}>{perseveranceLabel(user.perseverance_start_year)}</Text> : null}
+                                  {session.role === 'administrador' ? <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text> : null}
+                                </View>
+                              </View>
+                              {session.role === 'administrador' ? <Text style={styles.cardText}>Email: {user.email_confirmed_at ? 'confirmado' : 'sin confirmar'}</Text> : null}
+                              <TouchableOpacity
+                                style={styles.actionPill}
+                                onPress={() => openPublicProfile({
+                                  id: user.id,
+                                  fullName: user.full_name ?? 'Usuario sin nombre',
+                                  role: (user.role || 'palestrista') as Role,
+                                  province: user.province,
+                                  communityName: user.community_name,
+                                  avatarUrl: user.avatar_url,
+                                  contact: user.phone ?? '',
+                                  displayRoleLabel: user.display_role_label ?? null,
+                                  genderPreference: user.gender_preference ?? null,
+                                  nickname: user.nickname ?? null,
+                                  credentialNameMode: user.credential_name_mode ?? 'name',
+                                  perseveranceStartYear: user.perseverance_start_year ?? null,
+                                  personalPmType: user.personal_pm_type ?? null,
+                                  personalPmNumber: user.personal_pm_number ?? null,
+                                  personalPmProvince: user.personal_pm_province ?? null,
+                                  personalPmMotto: user.personal_pm_motto ?? user.pm_motto ?? null,
+                                  pmMotto: user.pm_motto ?? null
+                                })}
+                              >
+                                <Ionicons name="person-circle-outline" size={16} color={palette.red} />
+                                <Text style={styles.actionPillText}>Ver perfil</Text>
+                              </TouchableOpacity>
+                              <Text style={styles.expandHint}>{canEditThisUser ? (selected ? 'Cerrar edición' : 'Editar usuario') : 'Edición bloqueada por jerarquía'}</Text>
+                            </TouchableOpacity>
+                            {selected ? (
+                              <View style={styles.adminInlineEditor}>
+                                <TextInput style={styles.input} placeholder="Nombre y apellido" value={adminUserFullName} onChangeText={setAdminUserFullName}  placeholderTextColor={inputPlaceholderColor} />
+                                {session.role === 'administrador' ? (
+                                  <>
+                                    <TextInput style={styles.input} placeholder="Email" value={adminUserEmail} onChangeText={setAdminUserEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                                    <TextInput style={styles.input} placeholder="Nueva contraseña opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
+                                  </>
+                                ) : (
+                                  null
+                                )}
+                                <TextInput style={styles.input} placeholder="Contacto" value={adminUserPhone} onChangeText={setAdminUserPhone}  placeholderTextColor={inputPlaceholderColor} />
+                                <TextInput style={styles.input} placeholder="Apodo" value={adminUserNickname} onChangeText={setAdminUserNickname}  placeholderTextColor={inputPlaceholderColor} />
+                                <View style={styles.settingRow}>
+                                  <View style={styles.settingRowText}>
+                                    <Text style={styles.cardTitle}>Usar apodo en saludos</Text>
+                                    <Text style={styles.cardText}>Aplica en Home y saludos si el apodo esta cargado.</Text>
+                                  </View>
+                                  <Switch
+                                    value={adminUserUseNicknameInGreetings}
+                                    onValueChange={setAdminUserUseNicknameInGreetings}
+                                    trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
+                                    thumbColor={adminUserUseNicknameInGreetings ? palette.red : palette.white}
+                                  />
+                                </View>
+                                <Text style={styles.cardEyebrow}>Mostrar en credencial</Text>
+                                <View style={styles.filterRow}>
+                                  {(['name', 'nickname', 'both'] as const).map((mode) => (
+                                    <TouchableOpacity key={mode} style={[styles.filterChip, adminUserCredentialNameMode === mode && styles.filterChipActive]} onPress={() => setAdminUserCredentialNameMode(mode)}>
+                                      <Text style={[styles.filterChipText, adminUserCredentialNameMode === mode && styles.filterChipTextActive]}>{mode === 'name' ? 'Nombre' : mode === 'nickname' ? 'Apodo' : 'Ambos'}</Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </View>
+                                <Text style={styles.cardEyebrow}>Año de inicio en el Movimiento</Text>
+                                <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserPerseveranceYearDropdownOpen(!adminUserPerseveranceYearDropdownOpen)}>
+                                  <Text style={styles.dropdownButtonText}>{adminUserPerseveranceStartYear || 'Seleccionar año'}</Text>
+                                  <Ionicons name={adminUserPerseveranceYearDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                </TouchableOpacity>
+                                {adminUserPerseveranceYearDropdownOpen ? (
+                                  <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                                    {perseveranceStartYears.map((year) => (
+                                      <TouchableOpacity key={year} style={styles.dropdownItem} onPress={() => { setAdminUserPerseveranceStartYear(year); setAdminUserPerseveranceYearDropdownOpen(false); }}>
+                                        <Text style={styles.dropdownItemText}>{year}</Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </ScrollView>
+                                ) : null}
+                                {perseveranceLabel(Number(adminUserPerseveranceStartYear)) ? <Text style={styles.cardText}>{perseveranceLabel(Number(adminUserPerseveranceStartYear))}</Text> : null}
+                                {roleRank(adminUserRole) >= roleRank('sedimentador') ? (
+                                  <>
+                                    <Text style={styles.cardEyebrow}>PM personal</Text>
+                                    <View style={styles.filterRow}>
+                                      {(['pmm', 'pmf'] as const).map((type) => (
+                                        <TouchableOpacity key={`admin-${type}`} style={[styles.filterChip, adminUserPmType === type && styles.filterChipActive]} onPress={() => setAdminUserPmType(type)}>
+                                          <Text style={[styles.filterChipText, adminUserPmType === type && styles.filterChipTextActive]}>{personalPmTypeLabel(type)}</Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                    </View>
+                                    <TextInput style={styles.input} placeholder="Numero de PM" value={adminUserPmNumber} onChangeText={(value) => setAdminUserPmNumber(value.replace(/[^0-9]/g, '').slice(0, 4))} keyboardType="number-pad" placeholderTextColor={inputPlaceholderColor} />
+                                    <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserPmProvinceDropdownOpen(!adminUserPmProvinceDropdownOpen)}>
+                                      <Text style={styles.dropdownButtonText}>{adminUserPmProvince || 'Provincia donde hizo el PM'}</Text>
+                                      <Ionicons name={adminUserPmProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                    </TouchableOpacity>
+                                    {adminUserPmProvinceDropdownOpen ? (
+                                      <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                                        {visibleRegistrationCommunities.map((item) => (
+                                          <TouchableOpacity key={`admin-pm-${item.province}`} style={styles.dropdownItem} onPress={() => { setAdminUserPmProvince(item.province); setAdminUserPmProvinceDropdownOpen(false); }}>
+                                            <Text style={styles.dropdownItemText}>{item.province}</Text>
+                                          </TouchableOpacity>
+                                        ))}
+                                      </ScrollView>
+                                    ) : null}
+                                    <TextInput style={styles.input} placeholder="Lema o idea fuerza del PM" value={adminUserPmMotto} onChangeText={setAdminUserPmMotto}  placeholderTextColor={inputPlaceholderColor} />
+                                    {personalPmSummary({ type: adminUserPmType, number: adminUserPmNumber, province: adminUserPmProvince, motto: adminUserPmMotto }) ? <Text style={styles.cardText}>{personalPmSummary({ type: adminUserPmType, number: adminUserPmNumber, province: adminUserPmProvince, motto: adminUserPmMotto })}</Text> : null}
+                                  </>
+                                ) : null}
+                                <Text style={styles.cardEyebrow}>Provincia</Text>
+                                <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserProvinceDropdownOpen(!adminUserProvinceDropdownOpen)}>
+                                  <Text style={styles.dropdownButtonText}>{adminUserProvince || 'Seleccionar provincia'}</Text>
+                                  <Ionicons name={adminUserProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                </TouchableOpacity>
+                                {adminUserProvinceDropdownOpen ? (
+                                  <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                                    {visibleRegistrationCommunities.map((item) => (
+                                      <TouchableOpacity key={item.province} style={styles.dropdownItem} onPress={() => { setAdminUserProvince(item.province); setAdminUserCommunity(''); setAdminUserProvinceDropdownOpen(false); }}>
+                                        <Text style={styles.dropdownItemText}>{item.province}</Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </ScrollView>
+                                ) : null}
+                                {selectedAdminUserProvince ? (
+                                  <>
+                                    <Text style={styles.cardEyebrow}>Comunidad</Text>
+                                    <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserCommunityDropdownOpen(!adminUserCommunityDropdownOpen)}>
+                                      <Text style={styles.dropdownButtonText}>{adminUserCommunity || 'Seleccionar comunidad'}</Text>
+                                      <Ionicons name={adminUserCommunityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                    </TouchableOpacity>
+                                    {adminUserCommunityDropdownOpen ? (
+                                      <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                                        {selectedAdminUserProvince.locations.map((item) => (
+                                          <TouchableOpacity key={item.id ?? item.name} style={styles.dropdownItem} onPress={() => { setAdminUserCommunity(item.name); setAdminUserCommunityDropdownOpen(false); }}>
+                                            <Text style={styles.dropdownItemText}>{item.name}</Text>
+                                          </TouchableOpacity>
+                                        ))}
+                                      </ScrollView>
+                                    ) : null}
+                                  </>
+                                ) : null}
+                                <Text style={styles.cardEyebrow}>Estado</Text>
+                                <View style={styles.filterRow}>
+                                  {['pendiente', 'aprobado', 'bloqueado'].map((status) => (
+                                    <TouchableOpacity key={status} style={[styles.filterChip, adminUserStatus === status && styles.filterChipActive]} onPress={() => setAdminUserStatus(status)}>
+                                      <Text style={[styles.filterChipText, adminUserStatus === status && styles.filterChipTextActive]}>{status}</Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </View>
+                                <Text style={styles.cardEyebrow}>Rol</Text>
+                                <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserRoleDropdownOpen(!adminUserRoleDropdownOpen)}>
+                                  <Text style={styles.dropdownButtonText}>{displayRoleLabel(adminUserRole, adminUserProvince, provinceRoleLabels, adminConfig.settings.roleAliases, adminUserDisplayRoleLabel)}</Text>
+                                  <Ionicons name={adminUserRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                </TouchableOpacity>
+                                {adminUserRoleDropdownOpen ? (
+                                  <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                                    {roleDefinitions.filter((role) => role.role === selectedAdminUser?.role || assignableRoles.some((item) => item.role === role.role)).map((role) => (
+                                      <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setAdminUserRole(role.role as Role); setAdminUserSubroleKey(null); setAdminUserDisplayRoleLabel(''); setAdminUserRoleDropdownOpen(false); }}>
+                                        <Text style={styles.dropdownItemText}>{role.label}</Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </ScrollView>
+                                ) : null}
+                                {subrolesForRole(adminUserRole).length > 0 ? (
+                                  <>
+                                    <Text style={styles.cardEyebrow}>Subrango dirigencial</Text>
+                                    <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserSubroleDropdownOpen(!adminUserSubroleDropdownOpen)}>
+                                      <Text style={styles.dropdownButtonText}>{subroleLabel(adminUserSubroleKey)}</Text>
+                                      <Ionicons name={adminUserSubroleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                    </TouchableOpacity>
+                                    {adminUserSubroleDropdownOpen ? (
+                                      <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                                        <TouchableOpacity style={styles.dropdownItem} onPress={() => { setAdminUserSubroleKey(null); setAdminUserSubroleDropdownOpen(false); }}>
+                                          <Text style={styles.dropdownItemText}>Sin subrango</Text>
+                                        </TouchableOpacity>
+                                        {subrolesForRole(adminUserRole).map((subrole) => (
+                                          <TouchableOpacity key={subrole.key} style={styles.dropdownItem} onPress={() => { setAdminUserSubroleKey(subrole.key); setAdminUserSubroleDropdownOpen(false); }}>
+                                            <Text style={styles.dropdownItemText}>{subrole.label}</Text>
+                                          </TouchableOpacity>
+                                        ))}
+                                      </ScrollView>
+                                    ) : null}
+                                    <Text style={styles.cardText}>No crea rangos nuevos: se guarda como role + subrole_key y mantiene permisos del rango base.</Text>
+                                  </>
+                                ) : null}
+                                <Text style={styles.cardEyebrow}>Alias asignable</Text>
+                                <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminUserRoleAliasDropdownOpen(!adminUserRoleAliasDropdownOpen)}>
+                                  <Text style={styles.dropdownButtonText}>{adminUserDisplayRoleLabel || 'Sin alias: usar nombre del rol base'}</Text>
+                                  <Ionicons name={adminUserRoleAliasDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                                </TouchableOpacity>
+                                {adminUserRoleAliasDropdownOpen ? (
+                                  <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                                    <TouchableOpacity style={styles.dropdownItem} onPress={() => { setAdminUserDisplayRoleLabel(''); setAdminUserRoleAliasDropdownOpen(false); }}>
+                                      <Text style={styles.dropdownItemText}>Sin alias</Text>
+                                    </TouchableOpacity>
+                                    {roleAliases
+                                      .filter((alias) => alias.is_active && (!alias.province || !adminUserProvince || alias.province === adminUserProvince))
+                                      .filter((alias) => alias.base_role === selectedAdminUser?.role || assignableRoles.some((item) => item.role === alias.base_role))
+                                      .map((alias) => (
+                                        <TouchableOpacity key={alias.id} style={styles.dropdownItem} onPress={() => {
+                                          setAdminUserRole(alias.base_role as Role);
+                                          setAdminUserDisplayRoleLabel(alias.display_label);
+                                          setAdminUserRoleAliasDropdownOpen(false);
+                                        }}>
+                                          <Text style={styles.dropdownItemText}>{alias.display_label} ({roleLabel(alias.base_role as Role)})</Text>
+                                        </TouchableOpacity>
+                                      ))}
+                                  </ScrollView>
+                                ) : null}
+                                <Text style={styles.cardText}>Los alias heredan permisos y jerarquia del rol base seleccionado.</Text>
+                                <TouchableOpacity style={styles.primaryButton} onPress={saveAdminUser}>
+                                  <Text style={styles.primaryButtonText}>Guardar usuario</Text>
+                                </TouchableOpacity>
+                                {session.role === 'administrador' ? (
+                                  <>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={confirmSelectedUserEmail}>
+                                      <Text style={styles.secondaryButtonText}>Confirmar email</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={deleteSelectedAdminUser}>
+                                      <Ionicons name="trash-outline" size={17} color={palette.red} />
+                                      <Text style={styles.secondaryButtonText}>Eliminar usuario</Text>
+                                    </TouchableOpacity>
+                                  </>
+                                ) : null}
+                              </View>
+                            ) : null}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : adminUsers.length > 0 ? <Text style={styles.cardText}>Elegir una provincia para ver sus usuarios.</Text> : null}
+                  <View style={styles.profileCommunityPanel}>
+                    <Text style={styles.cardEyebrow}>Pendientes rapido</Text>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={loadPendingProfiles}>
+                      <Text style={styles.secondaryButtonText}>Cargar pendientes</Text>
+                    </TouchableOpacity>
+                    {realPendingProfiles.map((user) => (
+                      <View key={user.id} style={styles.innerNewsCard}>
+                        <Text style={styles.cardTitle}>{user.full_name}</Text>
+                        <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text>
+                        <Text style={styles.cardText}>{user.email_confirmed_at ? 'Mail confirmado - pendiente de aprobacion dirigencial' : 'Mail pendiente de confirmacion'}</Text>
+                        <Text style={styles.cardText}>Rol actual: {user.role}</Text>
+                        <Text style={styles.cardText}>Comunidad: {user.community_name ?? 'Sin comunidad'}</Text>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={() => approvePendingProfile(user.id, 'palestrista')}>
+                          <Text style={styles.secondaryButtonText}>Aprobar como Palestrista</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {adminModule === 'solicitudes' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Solicitudes</Text>
+                  <View style={styles.filterRow}>
+                    <TouchableOpacity style={[styles.filterChip, requestSubtab === 'pendientes' && styles.filterChipActive]} onPress={() => setRequestSubtab('pendientes')}>
+                      <Text style={[styles.filterChipText, requestSubtab === 'pendientes' && styles.filterChipTextActive]}>Pendientes</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.filterChip, requestSubtab === 'resueltas' && styles.filterChipActive]} onPress={() => setRequestSubtab('resueltas')}>
+                      <Text style={[styles.filterChipText, requestSubtab === 'resueltas' && styles.filterChipTextActive]}>Resueltas</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {requestSubtab === 'pendientes' && pendingAdminRequests.length === 0 ? <Text style={styles.cardText}>No hay solicitudes pendientes.</Text> : null}
+                  {requestSubtab === 'pendientes' ? pendingAdminRequests.map((item, index) => (
+                    <View key={item.id} style={styles.innerNewsCard}>
+                      <Text style={styles.cardEyebrow}>Llegada #{index + 1} - {new Date(item.createdAt).toLocaleDateString('es-AR')}</Text>
+                      <Text style={styles.cardTitle}>{item.title}</Text>
+                      <Text style={styles.cardText}>Solicitante: {item.requester}</Text>
+                      {item.communityName ? <Text style={styles.cardText}>Comunidad: {item.communityName}</Text> : null}
+                      {item.targetUserName ? <Text style={styles.cardText}>Sucesor propuesto: {item.targetUserName} - {roleLabel((item.targetRole ?? 'palestrista') as Role)}</Text> : null}
+                      <Text style={styles.cardText}>Definicion: {item.definition}</Text>
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje opcional para el usuario" value={adminRequestMessage} onChangeText={setAdminRequestMessage} multiline  placeholderTextColor={inputPlaceholderColor} />
+                      {item.title === 'Solicitud de perseverancia' ? (
+                        <View style={styles.profileCommunityPanel}>
+                          <Text style={styles.cardEyebrow}>Rol a designar si se aprueba</Text>
+                          <TouchableOpacity style={styles.dropdownButton} onPress={() => setPerseveranceRoleDropdownOpen(!perseveranceRoleDropdownOpen)}>
+                            <Text style={styles.dropdownButtonText}>{roleLabel(perseveranceRole)}</Text>
+                            <Ionicons name={perseveranceRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                          </TouchableOpacity>
+                          {perseveranceRoleDropdownOpen ? (
+                            <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                              {assignableRoles.filter((role) => role.role !== 'palestrista').map((role) => (
+                                <TouchableOpacity key={role.role} style={styles.dropdownItem} onPress={() => { setPerseveranceRole(role.role as Role); setPerseveranceRoleDropdownOpen(false); }}>
+                                  <Text style={styles.dropdownItemText}>{role.label}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          ) : null}
+                        </View>
+                      ) : null}
+                      {item.title === 'Cambio de dirigencia' ? (
+                        <View style={styles.profileCommunityPanel}>
+                          <Text style={styles.cardEyebrow}>Resolucion de dirigencia</Text>
+                          <Text style={styles.cardText}>Al aprobar se asignara {roleLabel((item.targetRole ?? 'animador_comunidad') as Role)} al sucesor propuesto.</Text>
+                        </View>
+                      ) : null}
+                      <View style={styles.inlineActions}>
+                        <TouchableOpacity style={styles.primaryButton} onPress={() => resolveAdminRequest(item.id, 'aprobada')}>
+                          <Text style={styles.primaryButtonText}>{item.title === 'Confirmacion de mail' ? 'Confirmar mail' : 'Aprobar'}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={() => resolveAdminRequest(item.id, 'denegada')}>
+                          <Text style={styles.secondaryButtonText}>Denegar</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {item.title === 'Solicitud de perseverancia' ? <Text style={styles.cardText}>Al aprobar esta solicitud se asignara el rol seleccionado.</Text> : null}
+                    </View>
+                  )) : null}
+                  {requestSubtab === 'resueltas' && resolvedAdminRequests.length === 0 ? <Text style={styles.cardText}>Todavia no hay solicitudes resueltas.</Text> : null}
+                  {requestSubtab === 'resueltas' ? resolvedAdminRequests.map((item) => (
+                    <View key={item.id} style={styles.innerNewsCard}>
+                      <Text style={styles.cardEyebrow}>{item.status.toUpperCase()} - {new Date(item.createdAt).toLocaleDateString('es-AR')}</Text>
+                      <Text style={styles.cardTitle}>{item.title}</Text>
+                      <Text style={styles.cardText}>Solicitante: {item.requester}</Text>
+                      {item.communityName ? <Text style={styles.cardText}>Comunidad: {item.communityName}</Text> : null}
+                      {item.targetUserName ? <Text style={styles.cardText}>Sucesor: {item.targetUserName} - {roleLabel((item.targetRole ?? 'palestrista') as Role)}</Text> : null}
+                      <Text style={styles.cardText}>Definicion: {item.definition}</Text>
+                      <Text style={styles.cardText}>Resolvio: {item.resolvedBy ?? 'Sin responsable'}</Text>
+                      <Text style={styles.cardText}>Fecha de resolucion: {item.resolvedAt ? new Date(item.resolvedAt).toLocaleString('es-AR') : 'Sin fecha'}</Text>
+                      <Text style={styles.cardText}>Mensaje enviado: {item.message ?? 'Sin mensaje'}</Text>
+                    </View>
+                  )) : null}
+                </View>
+              ) : null}
+
+              {adminModule === 'noticias' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Noticias</Text>
+                  <Text style={styles.cardText}>Crear noticias segun tu alcance real. Asesores y rangos comunitarios no pueden publicar.</Text>
+                  <Text style={styles.cardEyebrow}>Alcance</Text>
+                  {['vocal', 'coordinador_diocesano'].includes(session?.role ?? 'invitado') ? (
+                    <Text style={styles.cardText}>Noticia Provincial - {session?.province}</Text>
+                  ) : (
+                    <View style={styles.filterRow}>
+                      {(['nacional', 'provincial'] as const).map((scope) => (
+                        <TouchableOpacity key={scope} style={[styles.filterChip, adminNewsScope === scope && styles.filterChipActive]} onPress={() => setAdminNewsScope(scope)}>
+                          <Text style={[styles.filterChipText, adminNewsScope === scope && styles.filterChipTextActive]}>{scope === 'nacional' ? 'Noticia Nacional' : 'Noticia Provincial'}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  {adminNewsScope === 'provincial' || ['vocal', 'coordinador_diocesano'].includes(session?.role ?? 'invitado') ? (
+                    <View>
+                      <Text style={styles.cardEyebrow}>Provincia</Text>
+                      {['vocal', 'coordinador_diocesano'].includes(session?.role ?? 'invitado') ? (
+                        <Text style={styles.cardText}>{session?.province}</Text>
+                      ) : (
+                        <>
+                          <TouchableOpacity style={styles.dropdownButton} onPress={() => setAdminNewsProvinceDropdownOpen(!adminNewsProvinceDropdownOpen)}>
+                            <Text style={styles.dropdownButtonText}>{adminNewsProvince || 'Seleccionar provincia'}</Text>
+                            <Ionicons name={adminNewsProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                          </TouchableOpacity>
+                          {adminNewsProvinceDropdownOpen ? (
+                            <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                              {newsProvinceOptions.map((province) => (
+                                <TouchableOpacity key={province} style={styles.dropdownItem} onPress={() => { setAdminNewsProvince(province); setAdminNewsProvinceDropdownOpen(false); }}>
+                                  <Text style={styles.dropdownItemText}>{province}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          ) : null}
+                        </>
+                      )}
+                    </View>
+                  ) : null}
+                  <TextInput style={styles.input} placeholder="Titulo de la noticia" value={adminNewsTitle} onChangeText={setAdminNewsTitle}  placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={styles.input} placeholder="URL de imagen opcional" value={adminNewsImage} onChangeText={setAdminNewsImage} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={styles.inlineActions}>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={uploadAdminNewsImage}>
+                      <Ionicons name="image-outline" size={16} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Subir imagen</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminNewsImage('')}>
+                      <Ionicons name="close-circle-outline" size={16} color={palette.red} />
+                      <Text style={styles.secondaryButtonText}>Sin imagen</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo de la noticia" value={adminNewsBody} onChangeText={setAdminNewsBody} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <View style={styles.filterRow}>
+                    <TouchableOpacity style={[styles.filterChip, adminNewsDraft && styles.filterChipActive]} onPress={() => setAdminNewsDraft(!adminNewsDraft)}>
+                      <Text style={[styles.filterChipText, adminNewsDraft && styles.filterChipTextActive]}>{adminNewsDraft ? 'Borrador' : 'Publicar'}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.filterChip, adminNewsFeatured && styles.filterChipActive]} onPress={() => setAdminNewsFeatured(!adminNewsFeatured)}>
+                      <Text style={[styles.filterChipText, adminNewsFeatured && styles.filterChipTextActive]}>Destacada</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingRowText}>
+                      <Text style={styles.cardTitle}>Notificar usuarios</Text>
+                      <Text style={styles.cardText}>{notificationPermissionLabel(session)}</Text>
+                    </View>
+                    <Switch value={adminNewsNotify} onValueChange={setAdminNewsNotify} />
+                  </View>
+                  <View style={styles.adminPreviewPane}>
+                    <Text style={styles.cardEyebrow}>{adminNewsCategory}{adminNewsFeatured ? ' - destacada' : ''}</Text>
+                    <Text style={styles.cardTitle}>{adminNewsTitle || 'Titulo de noticia'}</Text>
+                    <Text style={styles.cardText}>{adminNewsBody || 'Previsualizacion del contenido antes de publicar.'}</Text>
+                    {adminNewsImage ? <Image source={{ uri: adminNewsImage }} style={styles.cardImage} /> : null}
+                  </View>
+                  <TouchableOpacity style={styles.primaryButton} onPress={adminNewsDraft ? () => adminSaveNewsDraft('borrador') : adminCreateNews}>
+                    <Text style={styles.primaryButtonText}>{adminNewsDraft ? 'Guardar borrador' : 'Publicar noticia'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={loadNewsDrafts}>
+                    <Text style={styles.secondaryButtonText}>Cargar borradores</Text>
+                  </TouchableOpacity>
+                  {newsDrafts.map((draft) => (
+                    <View key={draft.id} style={styles.adminListRow}>
+                      <Ionicons name={draft.status === 'borrador' ? 'document-outline' : 'checkmark-circle-outline'} size={19} color={palette.red} />
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.cardTitle}>{draft.title}</Text>
+                        <Text style={styles.cardText}>{draft.category} - {draft.status}{draft.is_featured ? ' - destacada' : ''}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {adminModule === 'eventos' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                <Text style={styles.cardTitle}>Crear evento {tabLabel('notilestra')}</Text>
+                <TextInput style={styles.input} placeholder="Titulo del evento" value={adminEventTitle} onChangeText={setAdminEventTitle}  placeholderTextColor={inputPlaceholderColor} />
+                <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion o detalle del evento" value={adminEventBody} onChangeText={setAdminEventBody} multiline  placeholderTextColor={inputPlaceholderColor} />
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => setAdminEventCalendarOpen(!adminEventCalendarOpen)}>
+                  <Ionicons name="calendar-outline" size={17} color={palette.red} />
+                  <Text style={styles.secondaryButtonText}>Seleccionar fecha</Text>
+                </TouchableOpacity>
+                {adminEventCalendarOpen ? (
+                  <View style={styles.pmCalendarPanel}>
+                    <View style={styles.pmCalendarHeader}>
+                      <TouchableOpacity style={styles.pmCalendarNavButton} onPress={() => setAdminEventCalendarMonth(new Date(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth() - 1, 1))}>
+                        <Text style={styles.pmCalendarNavText}>←</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.pmCalendarTitle}>{adminEventCalendarMonth.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</Text>
+                      <TouchableOpacity style={styles.pmCalendarNavButton} onPress={() => setAdminEventCalendarMonth(new Date(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth() + 1, 1))}>
+                        <Text style={styles.pmCalendarNavText}>→</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.pmCalendarWeekRow}>
+                      {['DO', 'LU', 'MA', 'MI', 'JU', 'VI', 'SA'].map((day) => (
+                        <Text key={day} style={styles.pmWeekdayText}>{day}</Text>
+                      ))}
+                    </View>
+                    <View style={styles.pmCalendarGrid}>
+                      {Array.from({ length: new Date(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth(), 1).getDay() }, (_, index) => (
+                        <View key={`event-blank-${index}`} style={styles.pmDaySpacer} />
+                      ))}
+                      {Array.from({ length: new Date(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth() + 1, 0).getDate() }, (_, index) => {
+                        const day = index + 1;
+                        const date = isoDate(adminEventCalendarMonth.getFullYear(), adminEventCalendarMonth.getMonth(), day);
+                        const selected = adminEventDate.slice(0, 10) === date;
+                        return (
+                          <TouchableOpacity key={date} style={[styles.pmDayButton, selected && styles.pmDayButtonSelected]} onPress={() => selectAdminEventDate(date)}>
+                            <Text style={[styles.pmDayText, selected && styles.pmDayTextSelected]}>{day}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : null}
+                <TextInput style={styles.input} placeholder="Fecha y hora del evento. Ej: 2026-05-28T21:00:00-03:00" value={adminEventDate} onChangeText={setAdminEventDate}  placeholderTextColor={inputPlaceholderColor} />
+                <View style={styles.settingRow}>
+                  <View style={styles.settingRowText}>
+                    <Text style={styles.cardTitle}>Notificar usuarios</Text>
+                    <Text style={styles.cardText}>{notificationPermissionLabel(session)}</Text>
+                  </View>
+                  <Switch value={adminEventNotify} onValueChange={setAdminEventNotify} />
+                </View>
+                <TouchableOpacity style={styles.primaryButton} onPress={adminCreateEvent}>
+                  <Text style={styles.primaryButtonText}>Publicar evento</Text>
+                </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'comunidades' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Gestionar comunidades</Text>
+                  <Text style={styles.cardText}>Crear, editar, habilitar, deshabilitar o archivar comunidades segun tu jurisdiccion.</Text>
+                  <Text style={styles.cardEyebrow}>Provincia</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                    {manageableCommunities.map((item) => (
+                      <TouchableOpacity
+                        key={item.province}
+                        style={[styles.filterChip, adminCommunityProvince === item.province && styles.filterChipActive]}
+                        onPress={() => {
+                          setAdminCommunityProvince(item.province);
+                          setAdminCommunityId('');
+                        }}
+                      >
+                        <Text style={[styles.filterChipText, adminCommunityProvince === item.province && styles.filterChipTextActive]}>{item.province}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  {manageableCommunities.length === 0 ? <Text style={styles.cardText}>Tu rango no tiene comunidades editables.</Text> : null}
+                  {canAdministrateCommunities && selectedAdminProvince ? (
+                    <View style={styles.profileCommunityPanel}>
+                      <Text style={styles.cardEyebrow}>Crear comunidad</Text>
+                      <TextInput style={styles.input} placeholder="Nombre de comunidad" value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityName(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <View style={styles.filterRow}>
+                        {[
+                          { key: 'jovenes', label: 'Jovenes' },
+                          { key: 'adultos', label: 'Adultos' }
+                        ].map((item) => (
+                          <TouchableOpacity key={item.key} style={[styles.filterChip, adminCommunityGroupType === item.key && styles.filterChipActive]} onPress={() => setAdminCommunityGroupType(item.key as typeof adminCommunityGroupType)}>
+                            <Text style={[styles.filterChipText, adminCommunityGroupType === item.key && styles.filterChipTextActive]}>{item.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <TextInput style={styles.input} placeholder="Localidad, zona o dirección" value={adminCommunityId ? '' : adminCommunityAddress} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityAddress(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Contacto opcional" value={adminCommunityId ? '' : adminCommunityPhone} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityPhone(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityId ? '' : adminCommunityDay} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDay(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={styles.input} placeholder="Horario" value={adminCommunityId ? '' : adminCommunityTime} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityTime(value); }}  placeholderTextColor={inputPlaceholderColor} />
+                      <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={adminCommunityId ? '' : adminCommunityDescription} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDescription(value); }} multiline  placeholderTextColor={inputPlaceholderColor} />
+                      <TouchableOpacity style={[styles.filterChip, adminCommunityIsActive && styles.filterChipActive]} onPress={() => setAdminCommunityIsActive(!adminCommunityIsActive)}>
+                        <Text style={[styles.filterChipText, adminCommunityIsActive && styles.filterChipTextActive]}>{adminCommunityIsActive ? 'Activa' : 'Inactiva'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.primaryButton} onPress={adminCreateCommunity}>
+                        <Text style={styles.primaryButtonText}>Crear comunidad</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                  {selectedAdminProvince ? (
+                    <>
+                      <Text style={styles.cardEyebrow}>Comunidades existentes</Text>
+                      <ScrollView style={styles.dropdownList} nestedScrollEnabled>
+                        {selectedAdminProvince.locations.map((item) => {
+                          const itemKey = item.id ?? item.name;
+                          const selected = adminCommunityId === itemKey;
+                          const isActive = !('isActive' in item) || Boolean(item.isActive);
+                          return (
+                            <View key={itemKey}>
+                              <TouchableOpacity
+                                style={[styles.dropdownItem, selected && styles.communityChoiceActive]}
+                                onPress={() => setAdminCommunityId(selected ? '' : itemKey)}
+                              >
+                                <Text style={[styles.dropdownItemText, selected && styles.filterChipTextActive]}>{item.name}</Text>
+                              </TouchableOpacity>
+                              {selected ? (
+                                <View style={styles.adminInlineEditor}>
+                                  <TextInput style={styles.input} placeholder="Nombre" value={adminCommunityName} onChangeText={setAdminCommunityName}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={styles.input} placeholder="Dirección" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
+                                  <View style={styles.profileCommunityPanel}>
+                                    <Text style={styles.cardEyebrow}>Ubicacion</Text>
+                                    <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityAddress}, ${adminCommunityProvince}, Argentina`)}`)}>
+                                      <Ionicons name="map-outline" size={17} color={palette.red} />
+                                      <Text style={styles.secondaryButtonText}>Ver direccion en Maps</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                  <TextInput style={styles.input} placeholder="Numero de contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={styles.input} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={styles.input} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
+                                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
+                                  <Text style={styles.cardEyebrow}>Imagen de comunidad</Text>
+                                  <Text style={styles.cardText}>Imagen recomendada: 1200x600 px. La app abre recorte 2:1 para encuadrar antes de guardar.</Text>
+                                  {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
+                                  <TouchableOpacity style={styles.secondaryButton} onPress={pickAdminCommunityImage}>
+                                    <Ionicons name="image-outline" size={17} color={palette.red} />
+                                    <Text style={styles.secondaryButtonText}>{adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'}</Text>
+                                  </TouchableOpacity>
+                                  {adminCommunityImageAsset ? <Text style={styles.cardText}>Vista previa lista. Tocá Guardar comunidad para subirla y asociarla.</Text> : null}
+                                  <View style={styles.filterRow}>
+                                    {canAdministrateCommunities ? (
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => adminToggleCommunityStatus(itemKey, !isActive)}>
+                                        <Text style={styles.secondaryButtonText}>{isActive ? 'Deshabilitar' : 'Habilitar'}</Text>
+                                      </TouchableOpacity>
+                                    ) : null}
+                                    {canAdministrateCommunities ? (
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => adminArchiveCommunity(itemKey)}>
+                                        <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                                      </TouchableOpacity>
+                                    ) : null}
+                                  </View>
+                                  <TouchableOpacity style={styles.primaryButton} onPress={adminSaveCommunity} disabled={adminCommunityImageUploading}>
+                                    <Text style={styles.primaryButtonText}>{adminCommunityImageUploading ? 'Subiendo imagen...' : 'Guardar comunidad'}</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ) : null}
+                            </View>
+                          );
+                        })}
+                      </ScrollView>
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {adminModule === 'navegacion' ? (
+                <View style={styles.navigationBuilderScreen}>
+                  <View style={styles.navigationBuilderHero}>
+                    <View style={styles.navigationHeroText}>
+                      <Text style={styles.navigationHeroEyebrow}>Constructor visual</Text>
+                      <Text style={styles.navigationHeroTitle}>Navegación de la app</Text>
+                      <Text style={styles.navigationHeroBody}>Edita la barra inferior como un panel profesional: orden, iconos, nombres, visibilidad y roles desde una sola pantalla.</Text>
+                    </View>
+                    <View style={styles.navigationHeroBadge}>
+                      <Ionicons name="phone-portrait-outline" size={22} color={palette.white} />
+                    </View>
+                  </View>
+
+                  <View style={styles.navigationStatsRow}>
+                    <View style={styles.navigationStatPill}>
+                      <Text style={styles.navigationStatValue}>{editableTabs.length}</Text>
+                      <Text style={styles.navigationStatLabel}>Secciones</Text>
+                    </View>
+                    <View style={styles.navigationStatPill}>
+                      <Text style={styles.navigationStatValue}>{navigationVisibleCount}</Text>
+                      <Text style={styles.navigationStatLabel}>Visibles</Text>
+                    </View>
+                    <View style={styles.navigationStatPill}>
+                      <Text style={styles.navigationStatValue}>{navigationLockedCount}</Text>
+                      <Text style={styles.navigationStatLabel}>Base</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.navigationPhonePreview}>
+                    <View style={styles.navigationPhoneTop}>
+                      <View>
+                        <Text style={styles.navigationPhoneTitle}>Palestra</Text>
+                        <Text style={styles.navigationPhoneSub}>Vista previa en vivo</Text>
+                      </View>
+                      <View style={styles.navigationPhoneStatus} />
+                    </View>
+                    <View style={styles.navigationPreviewContent}>
+                      <Text style={styles.navigationPreviewLabel}>Barra inferior</Text>
+                      <Text style={styles.navigationPreviewHint}>Los cambios de esta pantalla impactan globalmente al refrescar la app.</Text>
+                    </View>
+                    <View style={styles.navPreviewBar}>
+                      {editableTabs.slice(0, 7).map((tab) => {
+                        const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                        const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
+                        const selected = selectedNavigationTab?.key === tab.key;
+                        return (
+                          <TouchableOpacity key={`preview-${tab.key}`} style={[styles.navPreviewItem, !draft.isVisible && styles.navPreviewItemHidden, selected && styles.navPreviewItemSelected]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
+                            <Ionicons name={iconName} size={18} color={selected ? palette.white : draft.isVisible ? palette.red : palette.inkMuted} />
+                            <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label || tab.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationRail}>
+                    {editableTabs.map((tab, index) => {
+                      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                      const iconName = isIoniconName(draft.iconName) ? draft.iconName : 'help-circle-outline';
+                      const selected = selectedNavigationTab?.key === tab.key;
+                      return (
+                        <TouchableOpacity key={`rail-${tab.key}`} style={[styles.navigationRailItem, selected && styles.navigationRailItemActive]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
+                          <Ionicons name={iconName} size={20} color={selected ? palette.white : palette.red} />
+                          <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label || tab.label}</Text>
+                          <Text style={[styles.navigationRailMeta, selected && styles.navigationRailTextActive]}>#{index + 1}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {selectedNavigationTab && selectedNavigationDraft ? (
+                    <View style={styles.navigationFocusPanel}>
+                      <View style={styles.navigationFocusHeader}>
+                        <View style={styles.navigationFocusIcon}>
+                          <Ionicons name={isIoniconName(selectedNavigationDraft.iconName) ? selectedNavigationDraft.iconName : 'help-circle-outline'} size={28} color={palette.red} />
+                        </View>
+                        <View style={styles.adminUserHeaderText}>
+                          <Text style={styles.navigationFocusTitle}>{selectedNavigationDraft.label || selectedNavigationTab.label}</Text>
+                          <Text style={styles.feedMeta}>Clave interna: {selectedNavigationTab.key}</Text>
+                          <Text style={styles.feedMeta}>Orden actual: {selectedNavigationTab.sortOrder}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.navigationFieldGrid}>
+                        <View style={styles.navigationField}>
+                          <Text style={styles.cardEyebrow}>Nombre visible</Text>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Ej: Noticias"
+                            value={selectedNavigationDraft.label}
+                            onChangeText={(value) => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, label: value } }))}
+                           placeholderTextColor={inputPlaceholderColor} />
+                        </View>
+                        <View style={styles.navigationField}>
+                          <Text style={styles.cardEyebrow}>Icono Ionicons</Text>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Ej: newspaper-outline"
+                            value={selectedNavigationDraft.iconName}
+                            onChangeText={(value) => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, iconName: value } }))}
+                            autoCapitalize="none"
+                           placeholderTextColor={inputPlaceholderColor} />
+                        </View>
+                      </View>
+
+                      <Text style={styles.cardEyebrow}>Iconos rápidos</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationIconPicker}>
+                        {navigationIconSuggestions.map((icon) => (
+                          <TouchableOpacity key={icon} style={[styles.navigationIconChoice, selectedNavigationDraft.iconName === icon && styles.navigationIconChoiceActive]} onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, iconName: icon } }))}>
+                            <Ionicons name={icon} size={21} color={selectedNavigationDraft.iconName === icon ? palette.white : palette.red} />
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+
+                      <Text style={styles.cardEyebrow}>Tipo de seccion</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                        {navigationSectionTypes.map((type) => {
+                          const selected = selectedNavigationDraft.sectionType === type.key;
+                          const lockedInternal = defaultTabByKey.has(selectedNavigationTab.key) && type.key !== 'internal';
+                          return (
+                            <TouchableOpacity
+                              key={`type-${type.key}`}
+                              style={[styles.filterChip, selected && styles.filterChipActive, lockedInternal && styles.disabledChip]}
+                              disabled={lockedInternal}
+                              onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, sectionType: type.key } }))}
+                            >
+                              <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{type.label}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                      <Text style={styles.feedMeta}>{navigationSectionTypes.find((type) => type.key === selectedNavigationDraft.sectionType)?.description ?? 'Pagina simple.'}</Text>
+
+                      <View style={styles.navigationActionGrid}>
+                        <TouchableOpacity style={styles.navigationMiniAction} onPress={() => adminMoveTab(selectedNavigationTab.key, -1)} disabled={editableTabs[0]?.key === selectedNavigationTab.key}>
+                          <Ionicons name="arrow-back-outline" size={17} color={palette.red} />
+                          <Text style={styles.navigationMiniActionText}>Mover izq.</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.navigationMiniAction} onPress={() => adminMoveTab(selectedNavigationTab.key, 1)} disabled={editableTabs[editableTabs.length - 1]?.key === selectedNavigationTab.key}>
+                          <Ionicons name="arrow-forward-outline" size={17} color={palette.red} />
+                          <Text style={styles.navigationMiniActionText}>Mover der.</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.navigationMiniAction, selectedNavigationDraft.isVisible && styles.navigationMiniActionActive]}
+                          onPress={() => setEditingTabs((current) => ({ ...current, [selectedNavigationTab.key]: { ...selectedNavigationDraft, isVisible: !selectedNavigationDraft.isVisible } }))}
+                        >
+                          <Ionicons name={selectedNavigationDraft.isVisible ? 'eye-outline' : 'eye-off-outline'} size={17} color={selectedNavigationDraft.isVisible ? palette.white : palette.red} />
+                          <Text style={[styles.navigationMiniActionText, selectedNavigationDraft.isVisible && styles.navigationMiniActionTextActive]}>{selectedNavigationDraft.isVisible ? 'Visible' : 'Oculta'}</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <Text style={styles.cardEyebrow}>Roles que ven esta sección</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                        {visibleHierarchyFor(session).map((role) => {
+                          const roles = selectedNavigationDraft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role);
+                          const checked = roles.includes(role.role);
+                          return (
+                            <TouchableOpacity key={role.role} style={[styles.filterChip, checked && styles.filterChipActive]} onPress={() => updateTabRole(selectedNavigationTab.key, role.role as Role, !checked)}>
+                              <Text style={[styles.filterChipText, checked && styles.filterChipTextActive]}>{role.label}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+
+                      <View style={styles.inlineActions}>
+                        <TouchableOpacity style={styles.primaryButton} onPress={() => adminSaveTab(selectedNavigationTab.key, selectedNavigationTab.label)}>
+                          <Ionicons name="save-outline" size={17} color={palette.white} />
+                          <Text style={styles.primaryButtonText}>Guardar sección</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.secondaryButton} onPress={() => adminDeleteTab(selectedNavigationTab.key)}>
+                          <Ionicons name="trash-outline" size={17} color={palette.red} />
+                          <Text style={styles.secondaryButtonText}>{(!protectedTabKeys.has(selectedNavigationTab.key) && !defaultTabByKey.has(selectedNavigationTab.key)) ? 'Eliminar' : 'No eliminable'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  <View style={styles.navigationCreatePanel}>
+                    <View style={styles.navigationCreateHeader}>
+                      <Ionicons name="add-circle-outline" size={22} color={palette.red} />
+                      <Text style={styles.navigationFocusTitle}>Nueva sección</Text>
+                    </View>
+                    <TextInput style={styles.input} placeholder="Nombre visible. Ej: Noticias" value={newTabLabel} onChangeText={setNewTabLabel}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={styles.input} placeholder="Clave interna. Ej: noticias" value={newTabKey} onChangeText={(value) => setNewTabKey(normalizeTabKey(value))} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={styles.input} placeholder="Icono. Ej: newspaper-outline" value={newTabIcon} onChangeText={setNewTabIcon} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.navigationIconPicker}>
+                      {navigationIconSuggestions.map((icon) => (
+                        <TouchableOpacity key={`new-${icon}`} style={[styles.navigationIconChoice, newTabIcon === icon && styles.navigationIconChoiceActive]} onPress={() => setNewTabIcon(icon)}>
+                          <Ionicons name={icon} size={21} color={newTabIcon === icon ? palette.white : palette.red} />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <Text style={styles.cardEyebrow}>Tipo de seccion</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                      {navigationSectionTypes.map((type) => (
+                        <TouchableOpacity key={`new-type-${type.key}`} style={[styles.filterChip, newTabSectionType === type.key && styles.filterChipActive]} onPress={() => setNewTabSectionType(type.key)}>
+                          <Text style={[styles.filterChipText, newTabSectionType === type.key && styles.filterChipTextActive]}>{type.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <Text style={styles.feedMeta}>{navigationSectionTypes.find((type) => type.key === newTabSectionType)?.description}</Text>
+                    <Text style={styles.cardEyebrow}>Roles visibles</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                      {visibleHierarchyFor(session).map((role) => (
+                        <TouchableOpacity key={role.role} style={[styles.filterChip, newTabRoles.includes(role.role as Role) && styles.filterChipActive]} onPress={() => toggleNewTabRole(role.role as Role)}>
+                          <Text style={[styles.filterChipText, newTabRoles.includes(role.role as Role) && styles.filterChipTextActive]}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <TouchableOpacity style={styles.primaryButton} onPress={adminCreatePage}>
+                      <Ionicons name="add-circle-outline" size={17} color={palette.white} />
+                      <Text style={styles.primaryButtonText}>Crear sección</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity style={styles.navigationRestoreButton} onPress={adminRestoreDefaultNavigation}>
+                    <Ionicons name="refresh-circle-outline" size={18} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>Restaurar navegación predeterminada</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'contenido_general' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                <Text style={styles.cardTitle}>Contenido General</Text>
+                <Text style={styles.cardText}>Modificar nombres de pestanas y editar el contenido completo de cada pagina.</Text>
+                {session?.role === 'administrador' ? (
+                  <>
+                    <Text style={styles.cardEyebrow}>Crear pagina nueva</Text>
+                    <TextInput style={styles.input} placeholder="Nombre de la pagina" value={newTabLabel} onChangeText={setNewTabLabel}  placeholderTextColor={inputPlaceholderColor} />
+                    <Text style={styles.cardText}>Roles que pueden verla</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                      {visibleHierarchyFor(session).map((role) => (
+                        <TouchableOpacity key={role.role} style={[styles.filterChip, newTabRoles.includes(role.role as Role) && styles.filterChipActive]} onPress={() => toggleNewTabRole(role.role as Role)}>
+                          <Text style={[styles.filterChipText, newTabRoles.includes(role.role as Role) && styles.filterChipTextActive]}>{role.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <TouchableOpacity style={styles.primaryButton} onPress={adminCreatePage}>
+                      <Text style={styles.primaryButtonText}>Crear pagina</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.cardEyebrow}>Accesos, orden y visibilidad</Text>
+                    {editableTabs.map((tab, index) => {
+                      const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
+                      return (
+                        <View key={tab.key} style={styles.tabEditorRow}>
+                          <Text style={styles.cardEyebrow}>{tab.key}</Text>
+                          <TextInput
+                            style={styles.input}
+                            value={draft.label}
+                            onChangeText={(value) => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, label: value } }))}
+                           placeholderTextColor={inputPlaceholderColor} />
+                          <View style={styles.inlineActions}>
+                            <TouchableOpacity style={styles.secondaryButton} onPress={() => adminMoveTab(tab.key, -1)} disabled={index === 0}>
+                              <Text style={styles.secondaryButtonText}>Subir</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.secondaryButton} onPress={() => adminMoveTab(tab.key, 1)} disabled={index === editableTabs.length - 1}>
+                              <Text style={styles.secondaryButtonText}>Bajar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.secondaryButton, draft.isVisible && styles.filterChipActive]}
+                              onPress={() => setEditingTabs((current) => ({ ...current, [tab.key]: { ...draft, isVisible: !draft.isVisible } }))}
+                            >
+                              <Text style={[styles.secondaryButtonText, draft.isVisible && styles.filterChipTextActive]}>{draft.isVisible ? 'Visible' : 'Oculta'}</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <TouchableOpacity style={styles.primaryButton} onPress={() => adminSaveTab(tab.key, tab.label)}>
+                            <Text style={styles.primaryButtonText}>Guardar pestana</Text>
+                          </TouchableOpacity>
+                          <Text style={styles.cardEyebrow}>Visible para roles</Text>
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                            {visibleHierarchyFor(session).map((role) => {
+                              const roles = draft.visibleRoles ?? visibleHierarchyFor(session).map((item) => item.role);
+                              const checked = roles.includes(role.role);
+                              return (
+                                <TouchableOpacity key={role.role} style={[styles.filterChip, checked && styles.filterChipActive]} onPress={() => updateTabRole(tab.key, role.role as Role, !checked)}>
+                                  <Text style={[styles.filterChipText, checked && styles.filterChipTextActive]}>{role.label}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                        </View>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <Text style={styles.cardText}>La creacion, orden y visibilidad de accesos queda reservada al administrador.</Text>
+                )}
+                <Text style={styles.cardEyebrow}>Contenido de pagina</Text>
+                <Text style={styles.cardText}>Editor por bloques: podes mover, borrar, cambiar titulos, texto e imagenes.</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                  {editableTabs.filter((tab) => tab.key !== 'perfil').map((tab) => (
+                    <TouchableOpacity
+                      key={tab.key}
+                      style={[styles.filterChip, selectedContentTab === tab.key && styles.filterChipActive]}
+                      onPress={() => setSelectedContentTab(tab.key)}
+                    >
+                      <Text style={[styles.filterChipText, selectedContentTab === tab.key && styles.filterChipTextActive]}>{tab.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TextInput style={styles.input} placeholder="Título de la sección" value={contentTitle} onChangeText={setContentTitle}  placeholderTextColor={inputPlaceholderColor} />
+                <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de la sección" value={contentBody} onChangeText={setContentBody} multiline  placeholderTextColor={inputPlaceholderColor} />
+                <View style={styles.inlineActions}>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('titulo')}>
+                    <Text style={styles.secondaryButtonText}>+ Titulo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('texto')}>
+                    <Text style={styles.secondaryButtonText}>+ Texto</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('imagen')}>
+                    <Text style={styles.secondaryButtonText}>+ Imagen</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('enlace')}>
+                    <Text style={styles.secondaryButtonText}>+ Enlace</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('campo')}>
+                    <Text style={styles.secondaryButtonText}>+ Campo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => addContentBlock('modulo')}>
+                    <Text style={styles.secondaryButtonText}>+ Modulo</Text>
+                  </TouchableOpacity>
+                </View>
+                {contentBlocks.map((block, index) => (
+                  <View key={`${block.id}-${index}`} style={styles.blockEditorCard}>
+                    <Text style={styles.cardEyebrow}>{block.type}</Text>
+                    <TextInput
+                      style={[styles.input, block.type === 'texto' && styles.textArea]}
+                      placeholder={
+                        block.type === 'imagen'
+                          ? 'URL de imagen'
+                          : block.type === 'enlace'
+                            ? 'Etiqueta|https://...'
+                            : block.type === 'campo'
+                              ? 'destino=Panel de solicitudes'
+                              : block.type === 'modulo'
+                                ? 'inicio, noticias, comunidades, descargas...'
+                                : 'Contenido'
+                      }
+                      value={block.value}
+                      onChangeText={(value) => updateContentBlock(block.id, value)}
+                      multiline={block.type !== 'titulo'}
+                     placeholderTextColor={inputPlaceholderColor} />
+                    <View style={styles.inlineActions}>
+                      <TouchableOpacity style={styles.secondaryButton} onPress={() => moveContentBlock(index, -1)}>
+                        <Text style={styles.secondaryButtonText}>Subir</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.secondaryButton} onPress={() => moveContentBlock(index, 1)}>
+                        <Text style={styles.secondaryButtonText}>Bajar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.secondaryButton} onPress={() => deleteContentBlock(block.id)}>
+                        <Text style={styles.secondaryButtonText}>Borrar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.primaryButton} onPress={adminSaveContent}>
+                  <Text style={styles.primaryButtonText}>Guardar contenido</Text>
+                </TouchableOpacity>
+                </View>
+              ) : null}
+            </View>
+              )
+          ) : null}
+        </View>
+      ) : (
+        <GuestProfileAuthCard
+          authMode={authMode}
+          setAuthMode={setAuthMode}
+          authFocusedField={authFocusedField}
+          setAuthFocusedField={setAuthFocusedField}
+          authErrors={authErrors}
+          setAuthErrors={setAuthErrors}
+          authMessage={authMessage}
+          authEmail={authEmail}
+          setAuthEmail={setAuthEmail}
+          authPassword={authPassword}
+          setAuthPassword={setAuthPassword}
+          authPasswordConfirm={authPasswordConfirm}
+          setAuthPasswordConfirm={setAuthPasswordConfirm}
+          authPasswordVisible={authPasswordVisible}
+          setAuthPasswordVisible={setAuthPasswordVisible}
+          registerFullName={registerFullName}
+          setRegisterFullName={setRegisterFullName}
+          registerContact={registerContact}
+          setRegisterContact={setRegisterContact}
+          registerProvince={registerProvince}
+          setRegisterProvince={setRegisterProvince}
+          registerCommunity={registerCommunity}
+          setRegisterCommunity={setRegisterCommunity}
+          registerPerseveranceStartYear={registerPerseveranceStartYear}
+          setRegisterPerseveranceStartYear={setRegisterPerseveranceStartYear}
+          registrationCommunities={registrationCommunities}
+          selectedRegistrationProvince={selectedRegistrationProvince}
+          provinceDropdownOpen={provinceDropdownOpen}
+          setProvinceDropdownOpen={setProvinceDropdownOpen}
+          communityDropdownOpen={communityDropdownOpen}
+          setCommunityDropdownOpen={setCommunityDropdownOpen}
+          registerPerseveranceYearDropdownOpen={registerPerseveranceYearDropdownOpen}
+          setRegisterPerseveranceYearDropdownOpen={setRegisterPerseveranceYearDropdownOpen}
+          onRegister={registerReal}
+          onSignIn={signInReal}
+        />
+      )}
+    </View>
+  );
+}

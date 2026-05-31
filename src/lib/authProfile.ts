@@ -13,6 +13,7 @@ type MyProfileRow = {
   community_name: string | null;
   status: UserStatus | null;
   role: Role | null;
+  subrole_key?: string | null;
   display_role_label?: string | null;
   gender_preference?: 'male' | 'female' | null;
   nickname?: string | null;
@@ -54,6 +55,7 @@ export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ 
       contact: row.phone ?? 'Sin contacto',
       communityOfOrigin: row.community_name ?? 'Sin comunidad asignada',
       role,
+      subroleKey: row.subrole_key ?? null,
       displayRoleLabel: row.display_role_label ?? null,
       genderPreference: row.gender_preference ?? null,
       nickname: row.nickname ?? null,

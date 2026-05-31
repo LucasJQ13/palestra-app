@@ -29,6 +29,7 @@ export type AdminUser = {
   community_name: string | null;
   status: string;
   role: string;
+  subrole_key?: string | null;
   display_role_label?: string | null;
   gender_preference?: 'male' | 'female' | null;
   nickname?: string | null;
@@ -213,6 +214,7 @@ export async function updateAdminUser(values: {
   communityName: string;
   status: string;
   role: string;
+  subroleKey?: string | null;
   displayRoleLabel?: string | null;
   nickname?: string | null;
   useNicknameInGreetings?: boolean | null;
@@ -239,6 +241,15 @@ export async function updateAdminUser(values: {
     });
     if (baseResult.error) {
       return baseResult;
+    }
+    if (values.subroleKey !== undefined) {
+      const subroleResult = await supabase
+        .from('profiles')
+        .update({ subrole_key: values.subroleKey })
+        .eq('id', values.id);
+      if (subroleResult.error && !/subrole_key|column/i.test(subroleResult.error.message ?? '')) {
+        return subroleResult;
+      }
     }
     return await supabase.rpc('admin_update_profile_details_v2', {
       p_profile_id: values.id,
@@ -988,8 +999,15 @@ export type AppContentBlock = {
 
 export type ContentEditorBlock = {
   id: string;
-  type: 'titulo' | 'texto' | 'imagen' | 'enlace' | 'campo' | 'modulo';
+  type: 'card' | 'titulo' | 'texto' | 'imagen' | 'enlace' | 'campo' | 'modulo';
   value: string;
+  title?: string;
+  text?: string;
+  imageUrl?: string;
+  linkLabel?: string;
+  linkUrl?: string;
+  isVisible?: boolean;
+  sortOrder?: number;
 };
 
 export type AdminConfigRecord = Record<string, any>;

@@ -50,6 +50,7 @@ export type Session = {
   contact: string;
   communityOfOrigin: string;
   role: Role;
+  subroleKey?: string | null;
   displayRoleLabel?: string | null;
   genderPreference?: 'male' | 'female' | null;
   nickname?: string | null;

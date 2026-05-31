@@ -28,7 +28,7 @@ export async function getDynamicPermissionsForRole(role: Role): Promise<Permissi
       .select('permission_key')
       .eq('role', role);
 
-    if (error || !data || data.length === 0) {
+    if (error || !data) {
       return getPermissionsForRole(role);
     }
 
@@ -36,7 +36,7 @@ export async function getDynamicPermissionsForRole(role: Role): Promise<Permissi
       .map((item) => item.permission_key)
       .filter((permission): permission is Permission => typeof permission === 'string');
 
-    return remotePermissions.length > 0 ? remotePermissions : getPermissionsForRole(role);
+    return remotePermissions;
   } catch {
     return getPermissionsForRole(role);
   }
