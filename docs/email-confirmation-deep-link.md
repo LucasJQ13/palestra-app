@@ -17,6 +17,14 @@ La pantalla interna se llama `MailConfirmedScreen` y muestra:
 
 ## Comando de prueba visual
 
+Desde PC, para abrir una preview local en navegador:
+
+```bash
+npm run preview:mail-confirmed:web
+```
+
+Esta preview web solo muestra la pantalla visual con logo, titulo, texto y boton. No prueba Supabase, no confirma mails y no prueba el deep link real.
+
 Con la app instalada en Android:
 
 ```bash
@@ -30,6 +38,8 @@ npx uri-scheme open "palestra://auth/callback?preview=mail-confirmed" --android
 ```
 
 Ese link solo prueba la pantalla visual. No procesa tokens ni intenta confirmar un mail real.
+
+La prueba real del deep link requiere una APK instalada en Android, porque el navegador de PC no puede validar que Android abra `palestra://auth/callback`.
 
 ## Callback real de Supabase
 

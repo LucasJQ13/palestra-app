@@ -8,6 +8,7 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "preview:mail-confirmed": "node scripts/preview-mail-confirmed.js",
+    "preview:mail-confirmed:web": "node scripts/preview-mail-confirmed-web.js",
     "typecheck": "tsc --noEmit",
     "build:apk": "npx eas-cli build -p android --profile beta-apk --clear-cache",
     "build:apk:fast": "npx eas-cli build -p android --profile beta-apk",
