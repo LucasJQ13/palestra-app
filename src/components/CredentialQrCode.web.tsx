@@ -6,7 +6,7 @@ const qrLogo = require('../../assets/qr-logo.png');
 
 export function CredentialQrCode({ value, size = 104 }: { value: string; size?: number }) {
   const [uri, setUri] = useState('');
-  const logoSize = Math.max(22, Math.round(size * 0.24));
+  const logoSize = Math.max(33, Math.round(size * 0.36));
 
   useEffect(() => {
     let alive = true;

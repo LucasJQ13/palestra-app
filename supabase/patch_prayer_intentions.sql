@@ -349,3 +349,75 @@ as $$
 $$;
 
 grant execute on function public.admin_get_prayer_intentions() to authenticated;
+
+create or replace function public.admin_archive_prayer_intention(
+  p_intention_id uuid
+)
+returns table (
+  notification_intent_id uuid
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_intention public.prayer_intentions%rowtype;
+  new_intent_id uuid;
+begin
+  if not exists (
+    select 1
+    from public.profiles admin_profile
+    where admin_profile.id = auth.uid()
+      and admin_profile.role = 'administrador'
+      and admin_profile.status = 'aprobado'
+  ) then
+    raise exception 'Solo Administrador puede eliminar intenciones';
+  end if;
+
+  select * into target_intention
+  from public.prayer_intentions
+  where id = p_intention_id
+    and archived_at is null
+  for update;
+
+  if target_intention.id is null then
+    raise exception 'Intencion no encontrada';
+  end if;
+
+  update public.prayer_intentions
+  set archived_at = now(),
+      updated_at = now()
+  where id = target_intention.id;
+
+  insert into public.notification_intents (
+    created_by,
+    notification_type,
+    title,
+    body,
+    target_kind,
+    target_value,
+    tab_key,
+    source_type,
+    source_id,
+    payload
+  )
+  values (
+    auth.uid(),
+    'intencion_rezada',
+    'Intencion removida',
+    'Esta intencion fue removida por considerarse inadecuada',
+    'usuario',
+    target_intention.author_id::text,
+    'intenciones',
+    'prayer_intention',
+    target_intention.id,
+    jsonb_build_object('removed', true, 'intention_id', target_intention.id)
+  )
+  returning id into new_intent_id;
+
+  notification_intent_id := new_intent_id;
+  return next;
+end;
+$$;
+
+grant execute on function public.admin_archive_prayer_intention(uuid) to authenticated;

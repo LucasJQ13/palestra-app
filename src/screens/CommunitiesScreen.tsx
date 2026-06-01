@@ -104,9 +104,9 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
     const label = encodeURIComponent(nearestResult.community.name || 'Comunidad Palestra');
     const query = `${destination.latitude},${destination.longitude}`;
     const nativeUrl = Platform.OS === 'android'
-      ? `geo:${query}?q=${query}(${label})`
+      ? `geo:0,0?q=${query}(${label})`
       : `maps://?q=${label}&ll=${query}`;
-    const webUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    const webUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${query} ${nearestResult.community.name}`)}`;
     try {
       await Linking.openURL(nativeUrl);
       return;
@@ -356,7 +356,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
       <Modal visible={nearestModalVisible} transparent animationType="slide" onRequestClose={() => setNearestModalVisible(false)} statusBarTranslucent>
         <View style={styles.modalOverlay} pointerEvents="box-none">
           <Pressable style={styles.modalBackdropTouch} onPress={() => setNearestModalVisible(false)} />
-          <View style={[styles.modalPanel, styles.communityModalPanel, isDark && styles.surfacePanelDark]} pointerEvents="auto">
+          <View style={[styles.modalPanel, styles.communityModalPanel, styles.modalContentAboveBackdrop, isDark && styles.surfacePanelDark]} pointerEvents="auto">
             <ScrollView contentContainerStyle={styles.modalScrollContent}>
               <TouchableOpacity style={styles.modalCloseButton} onPress={() => setNearestModalVisible(false)} activeOpacity={0.8}>
                 <Ionicons name="close" size={22} color={palette.red} />

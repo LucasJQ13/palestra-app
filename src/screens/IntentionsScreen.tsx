@@ -241,9 +241,9 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
           <Image source={heroImageUrl ? { uri: heroImageUrl } : defaultSpiritImage} style={styles.intentionsSpiritPhoto} />
         </View>
         <Text style={styles.intentionsHeroTitle}>{heroTitle}</Text>
-      </View>
-      <View pointerEvents="none" style={styles.intentionsBottomFlame}>
-        <Image source={defaultFireImage} style={styles.intentionsBottomFlameImage} />
+        <View style={styles.intentionsFlameCorner}>
+          <Image source={defaultFireImage} style={styles.intentionsFlameImage} />
+        </View>
       </View>
       {editor?.isAdmin ? (
         <View style={styles.stackTight}>
@@ -281,11 +281,11 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
 
       <View style={styles.intentionsMainActions}>
         <TouchableOpacity style={[styles.intentionLargeButton, showCreate && styles.intentionLargeButtonActive]} onPress={() => setShowCreate((current) => !current)}>
-          <Ionicons name="create-outline" size={24} color={showCreate ? palette.white : palette.red} />
+          <Ionicons name="create-outline" size={24} color={showCreate ? palette.white : '#f28a00'} />
           <Text style={[styles.intentionLargeButtonText, showCreate && styles.intentionLargeButtonTextActive]}>Crear Intencion</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.intentionLargeButton} onPress={() => startPrayer()} disabled={isPraying}>
-          <Ionicons name="flame-outline" size={24} color={palette.red} />
+          <Ionicons name="flame-outline" size={24} color="#f28a00" />
           <Text style={styles.intentionLargeButtonText}>Rezar por una Intencion</Text>
         </TouchableOpacity>
       </View>
@@ -351,11 +351,11 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
                 <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{prayerCount} personas oraron contigo</Text>
                 <View style={styles.intentionsMainActions}>
                   <TouchableOpacity style={styles.intentionLargeButton} onPress={() => { setPrayerModalVisible(false); setShowCreate(true); }}>
-                    <Ionicons name="create-outline" size={22} color={palette.red} />
+                    <Ionicons name="create-outline" size={22} color="#f28a00" />
                     <Text style={styles.intentionLargeButtonText}>Crear Intencion</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.intentionLargeButton} onPress={() => startPrayer()}>
-                    <Ionicons name="flame-outline" size={22} color={palette.red} />
+                    <Ionicons name="flame-outline" size={22} color="#f28a00" />
                     <Text style={styles.intentionLargeButtonText}>Rezar otra</Text>
                   </TouchableOpacity>
                 </View>

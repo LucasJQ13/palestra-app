@@ -11,7 +11,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -1638,6 +1638,36 @@ export function ProfileScreen({
       : await fetchMyPrayerIntentions();
     setMyPrayerIntentions(items);
     setPrayerIntentionsMessage(items.length === 0 ? 'No hay intenciones publicadas para mostrar.' : '');
+  }
+
+  async function deletePrayerIntentionFromAdmin(item: PrayerIntentionRecord) {
+    if (session?.role !== 'administrador') {
+      setPrayerIntentionsMessage('Solo Administrador puede eliminar intenciones.');
+      return;
+    }
+    const confirmed = Platform.OS === 'web'
+      ? (typeof window === 'undefined' ? true : window.confirm('¿Eliminar esta intencion y notificar al autor?'))
+      : await new Promise<boolean>((resolve) => {
+        Alert.alert('Eliminar intencion', 'Se notificara al autor que fue removida por considerarse inadecuada.', [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+        ]);
+      });
+    if (!confirmed) {
+      return;
+    }
+    setPrayerIntentionsMessage('Eliminando intencion...');
+    const { data, error } = await archivePrayerIntention(item.id);
+    if (error) {
+      setPrayerIntentionsMessage(error.message);
+      return;
+    }
+    const intentId = Array.isArray(data) ? data[0]?.notification_intent_id : data?.notification_intent_id;
+    if (intentId) {
+      await deliverNotificationIntent(intentId).catch(() => undefined);
+    }
+    setPrayerIntentionsMessage(changeDone('Intencion eliminada y autor notificado.'));
+    await loadPrayerIntentionsPanel();
   }
 
   function defaultMailboxTargetMode(): MailboxTargetMode {
@@ -3936,8 +3966,8 @@ export function ProfileScreen({
                 </TouchableOpacity>
               </View>
               {prayerIntentionsMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{prayerIntentionsMessage}</Text> : null}
-              {myPrayerIntentions.map((item) => (
-                <View key={item.id} style={[styles.card, isDark && styles.surfaceCardDark]}>
+                  {myPrayerIntentions.map((item) => (
+                    <View key={item.id} style={[styles.card, isDark && styles.surfaceCardDark]}>
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>
                     {item.created_at ? new Date(item.created_at).toLocaleDateString('es-AR') : 'Intencion'}
                     {item.is_anonymous ? ' - marcada como anonima' : ''}
@@ -3945,6 +3975,12 @@ export function ProfileScreen({
                   {session.role === 'administrador' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Autor real: {item.author_name || 'Palestrista'}</Text> : null}
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.body}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.prayer_count} personas rezaron por esta intencion</Text>
+                  {session.role === 'administrador' ? (
+                    <TouchableOpacity style={styles.actionPill} onPress={() => deletePrayerIntentionFromAdmin(item)}>
+                      <Ionicons name="trash-outline" size={16} color={palette.red} />
+                      <Text style={styles.actionPillText}>Eliminar</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -5840,6 +5876,10 @@ export function ProfileScreen({
                         <Text style={styles.cardText}>{item.body}</Text>
                         <Text style={styles.feedMeta}>{item.prayer_count} oraciones - {item.is_anonymous ? 'Subida como anonima' : 'Publica'}</Text>
                       </View>
+                      <TouchableOpacity style={styles.actionPill} onPress={() => deletePrayerIntentionFromAdmin(item)}>
+                        <Ionicons name="trash-outline" size={16} color={palette.red} />
+                        <Text style={styles.actionPillText}>Eliminar</Text>
+                      </TouchableOpacity>
                     </View>
                   ))}
                 </View>

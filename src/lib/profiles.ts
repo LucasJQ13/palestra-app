@@ -1072,6 +1072,16 @@ export async function fetchAdminPrayerIntentions(): Promise<PrayerIntentionRecor
   }
 }
 
+export async function archivePrayerIntention(intentionId: string) {
+  try {
+    return await supabase.rpc('admin_archive_prayer_intention', {
+      p_intention_id: intentionId
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function debugPushToDevice(values: {
   token: string;
   projectId: string;

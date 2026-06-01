@@ -1643,6 +1643,9 @@ export const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 1
   },
+  modalContentAboveBackdrop: {
+    zIndex: 2
+  },
   modalKeyboardAvoider: {
     width: '100%',
     maxWidth: 520,
@@ -4103,21 +4106,21 @@ export const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center'
   },
-  intentionsBottomFlame: {
-    alignSelf: 'flex-end',
-    marginTop: -8,
-    marginRight: 18,
-    marginBottom: -4,
-    width: 150,
-    height: 118,
-    alignItems: 'flex-end',
-    justifyContent: 'center'
+  intentionsFlameCorner: {
+    position: 'absolute',
+    right: 18,
+    bottom: 14,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)'
   },
-  intentionsBottomFlameImage: {
-    width: 132,
-    height: 112,
-    resizeMode: 'contain',
-    opacity: 0.98
+  intentionsFlameImage: {
+    width: 50,
+    height: 50,
+    resizeMode: 'contain'
   },
   intentionsMainActions: {
     flexDirection: 'row',
