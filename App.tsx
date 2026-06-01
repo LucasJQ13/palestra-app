@@ -29,7 +29,7 @@ import { RoleDropdown } from './src/components/RoleDropdown';
 import { EditableIntro } from './src/components/EditableIntro';
 import { styles } from './src/theme/appStyles';
 import { AppLoadingScreen } from './src/screens/AppLoadingScreen';
-import { AuthConfirmationScreen, AuthScreen } from './src/screens/auth/AuthFlow';
+import { AuthScreen, MailConfirmedScreen } from './src/screens/auth/AuthFlow';
 import { ContactScreen, DynamicContactForm, EmptyRemoteContent, GenericPageScreen, HistoryScreen, MaintenanceScreen } from './src/screens/StaticScreens';
 import { LibrarySectionScreen } from './src/screens/LibrarySectionScreen';
 import { ForumScreen } from './src/screens/ForumScreen';
@@ -42,7 +42,7 @@ import { CommunitiesScreen } from './src/screens/CommunitiesScreen';
 import { IntentionsScreen } from './src/screens/IntentionsScreen';
 import { DynamicNavigationSectionScreen } from './src/screens/DynamicNavigationSectionScreen';
 import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
-import { appRuntimeOwner, appVersionLabel, authConfirmedPreviewUrl, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey, themePreferenceKey, touchPointerPreferenceKey } from './src/lib/constants';
+import { appRuntimeOwner, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey, themePreferenceKey, touchPointerPreferenceKey } from './src/lib/constants';
 import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, PageEditorProps, protectedTabKeys } from './src/lib/navigationConstants';
 import { AppAdminConfig, ContactBlock, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from './src/lib/appConfig';
 import { normalizeExternalUrl } from './src/lib/urls';
@@ -109,6 +109,7 @@ export default function App() {
   const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
   const [runtimeConfig, setRuntimeConfig] = useState<AppRuntimeConfig>(defaultRuntimeConfig);
   const [authConfirmationOpen, setAuthConfirmationOpen] = useState(false);
+  const [authConfirmationError, setAuthConfirmationError] = useState('');
   const [contentVersion, setContentVersion] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -780,6 +781,23 @@ export default function App() {
     try {
       const parsed = new URL(url);
       const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+      const preview = parsed.searchParams.get('preview') ?? hashParams.get('preview');
+      if (preview === 'mail-confirmed') {
+        setAuthConfirmationError('');
+        setAuthConfirmationOpen(true);
+        setAuthScreenOpen(false);
+        return;
+      }
+      const callbackError = parsed.searchParams.get('error_description')
+        ?? hashParams.get('error_description')
+        ?? parsed.searchParams.get('error')
+        ?? hashParams.get('error');
+      if (callbackError) {
+        setAuthConfirmationError('No pudimos confirmar tu correo. Pedí un nuevo mail de confirmación e intentá nuevamente.');
+        setAuthConfirmationOpen(true);
+        setAuthScreenOpen(false);
+        return;
+      }
       const flow = parsed.searchParams.get('flow') ?? parsed.searchParams.get('type') ?? hashParams.get('type');
       if (flow === 'password-reset' || flow === 'recovery') {
         setAuthConfirmationOpen(false);
@@ -798,11 +816,13 @@ export default function App() {
         await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
       }
       await hydrateRealSession();
+      setAuthConfirmationError('');
       setAuthConfirmationOpen(true);
       setActiveTab('perfil');
       setAuthScreenOpen(false);
       setAppMessage('Mail confirmado correctamente.');
     } catch (error) {
+      setAuthConfirmationError('No pudimos procesar el link de confirmación. Abrí Palestra APP e intentá iniciar sesión.');
       setAuthConfirmationOpen(true);
       console.error('auth callback link', error);
     }
@@ -945,8 +965,17 @@ export default function App() {
             }}
           />
         ) : null}
-        <Modal visible={authConfirmationOpen} transparent animationType="fade" onRequestClose={() => setAuthConfirmationOpen(false)}>
-          <AuthConfirmationScreen onEnter={() => { setAuthConfirmationOpen(false); setAuthScreenOpen(true); setActiveTab('perfil'); }} />
+        <Modal visible={authConfirmationOpen} transparent={false} animationType="fade" onRequestClose={() => setAuthConfirmationOpen(false)}>
+          <MailConfirmedScreen
+            isError={Boolean(authConfirmationError)}
+            message={authConfirmationError || undefined}
+            onEnter={() => {
+              setAuthConfirmationOpen(false);
+              setAuthConfirmationError('');
+              setAuthScreenOpen(true);
+              setActiveTab('perfil');
+            }}
+          />
         </Modal>
         {touchPointer && touchPointerEnabled ? (
           <Animated.View

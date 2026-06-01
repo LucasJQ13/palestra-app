@@ -1,48 +1,87 @@
-# Confirmacion de mail sin localhost
+# Confirmacion de mail por deep link
 
-La app ya tiene pantalla interna y deep link:
+## Configuracion actual en la app
 
-```text
-palestra://auth/callback?preview=mail-confirmed
-```
+- Scheme configurado en `app.json`: `palestra`
+- Android package: `org.palestra.argentina`
+- Intent filter Android: `palestra://auth/callback`
+- Redirect usado por registro: `palestra://auth/callback`
+- Deep link visual de prueba: `palestra://auth/callback?preview=mail-confirmed`
 
-Preview en Android con la app instalada:
+La pantalla interna se llama `MailConfirmedScreen` y muestra:
+
+- logo de Palestra
+- `Mail confirmado`
+- `Tu correo fue confirmado correctamente. Ya podés ingresar a Palestra APP.`
+- boton `Ingresar`
+
+## Comando de prueba visual
+
+Con la app instalada en Android:
 
 ```bash
 npm run preview:mail-confirmed
+```
+
+Alternativa con `uri-scheme`:
+
+```bash
+npx uri-scheme open "palestra://auth/callback?preview=mail-confirmed" --android
+```
+
+Ese link solo prueba la pantalla visual. No procesa tokens ni intenta confirmar un mail real.
+
+## Callback real de Supabase
+
+La app procesa `palestra://auth/callback` en estos formatos:
+
+- `?code=...`: ejecuta `supabase.auth.exchangeCodeForSession(code)`.
+- `#access_token=...&refresh_token=...`: ejecuta `supabase.auth.setSession(...)`.
+- `?type=recovery` o `?flow=password-reset`: abre recuperacion de contraseña.
+- `error` o `error_description`: muestra un error amigable.
+
+El registro ya no usa `localhost` ni el preview visual. Usa:
+
+```ts
+emailRedirectTo: 'palestra://auth/callback'
+```
+
+La recuperacion de contraseña usa:
+
+```ts
+redirectTo: 'palestra://auth/callback?flow=password-reset'
 ```
 
 ## Supabase Dashboard
 
 En `Authentication > URL Configuration` configurar:
 
-- `Site URL`: `https://lqnwdoehandtzxfzeghc.supabase.co`
-- `Redirect URLs`:
-  - `palestra://auth/callback`
-  - `palestra://auth/callback?preview=mail-confirmed`
-  - `palestra://auth/callback?flow=password-reset`
+- `Site URL`: usar una URL web estable si existe una web publica. Para esta etapa no debe depender de `localhost`.
+- `Redirect URLs`: agregar exactamente:
 
-Si `Site URL` queda en `http://localhost:3000` o el deep link no esta en allowlist, Supabase confirma el mail pero redirige a localhost.
-La app procesa tanto callbacks con `code` como callbacks con `access_token`/`refresh_token` para que la pantalla `Mail confirmado` no sea solo visual: despues del callback vuelve a consultar Supabase Auth y refresca el perfil real.
-
-## Uso desde la app
-
-Registro usa:
-
-```ts
-emailRedirectTo: 'palestra://auth/callback?preview=mail-confirmed'
+```text
+palestra://auth/callback
+palestra://auth/callback?flow=password-reset
 ```
 
-Recuperacion de contrasena usa:
+Si Supabase no acepta un esquema custom en tu proyecto, usar como fallback una URL web intermedia HTTPS propia que redirija a `palestra://auth/callback`. Esta tarea no crea pagina web externa.
 
-```ts
-redirectTo: 'palestra://auth/callback?flow=password-reset'
-```
-
-Para prueba real:
+## Prueba real con mail
 
 1. Instalar una APK que incluya el scheme `palestra`.
-2. Registrar un usuario nuevo.
-3. Abrir el mail de confirmacion desde el telefono.
-4. El link debe abrir la app y mostrar `Mail confirmado`.
-5. Si abre localhost, revisar `Site URL` y `Redirect URLs` en Supabase.
+2. Registrar un usuario nuevo desde Palestra APP.
+3. Abrir el mail enviado por Supabase desde el celular.
+4. Tocar el link de confirmacion.
+5. Verificar que no abre `localhost`.
+6. Verificar que Android abre Palestra APP.
+7. Verificar que aparece `Mail confirmado`.
+8. En Supabase Auth, revisar que `email_confirmed_at` tenga fecha.
+9. Iniciar sesion desde el boton `Ingresar`.
+
+Si falla:
+
+- A: Supabase sigue mandando `localhost`: falta corregir `Site URL`, redirect allowlist o plantilla del Dashboard.
+- B: Supabase redirige a `palestra://...`, pero Android no abre la app: falta APK instalada con scheme/intent filter actualizado.
+- C: Android abre la app, pero no procesa callback: revisar `handleDeepLinkUrl`.
+- D: La app procesa callback, pero no actualiza estado visual: revisar session/profile.
+- E: El mail confirma, pero profile queda pendiente: revisar trigger/RPC de perfiles.

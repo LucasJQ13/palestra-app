@@ -22,7 +22,7 @@ import { RoleDropdown } from '../components/RoleDropdown';
 import { CredentialQrCode } from '../components/CredentialQrCode';
 import { styles } from '../theme/appStyles';
 import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from '../lib/runtimeConfig';
-import { appRuntimeOwner, appVersionLabel, authConfirmedPreviewUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos } from '../lib/constants';
+import { appRuntimeOwner, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos } from '../lib/constants';
 import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, protectedTabKeys } from '../lib/navigationConstants';
 import { AppAdminConfig, ContactBlock, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from '../lib/appConfig';
 import { normalizeExternalUrl } from '../lib/urls';
@@ -2040,7 +2040,7 @@ export function ProfileScreen({
       email: authEmail.trim(),
       password: authPassword,
       options: {
-        emailRedirectTo: authConfirmedPreviewUrl,
+        emailRedirectTo: authDeepLinkBaseUrl,
         data: {
           full_name: registerFullName.trim() || authEmail.trim(),
           phone: registerContact.trim(),

@@ -9,7 +9,7 @@ import { getMyProfileSession } from '../../lib/authProfile';
 import { supabase } from '../../lib/supabase';
 import { hasPlausibleEmailDomain, isValidEmail, safeAuthError, verifyEmailDomainExists } from '../../lib/appMessages';
 import { genderNarratives } from '../../lib/profileDisplay';
-import { authConfirmedPreviewUrl, authPasswordResetUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames } from '../../lib/constants';
+import { authDeepLinkBaseUrl, authPasswordResetUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames } from '../../lib/constants';
 import { Session } from '../../types/auth';
 import { AuthSelect, AuthTextInput, BirthDatePicker } from '../../components/AuthInputs';
 import { palette } from '../../theme/palette';
@@ -194,15 +194,15 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
   );
 }
 
-export function AuthConfirmationScreen({ onEnter }: { onEnter: () => void }) {
+export function MailConfirmedScreen({ onEnter, message, isError = false }: { onEnter: () => void; message?: string; isError?: boolean }) {
   return (
     <View style={styles.modalOverlay}>
       <View style={styles.authConfirmPanel}>
         <View style={styles.authConfirmLogo}>
           <Image source={palestraLogo} style={styles.brandLogoImage} />
         </View>
-        <Text style={styles.authConfirmTitle}>Mail confirmado</Text>
-        <Text style={styles.authConfirmText}>Tu correo fue confirmado correctamente. Ya podés ingresar a Palestra APP.</Text>
+        <Text style={styles.authConfirmTitle}>{isError ? 'No pudimos confirmar el mail' : 'Mail confirmado'}</Text>
+        <Text style={styles.authConfirmText}>{message ?? 'Tu correo fue confirmado correctamente. Ya podés ingresar a Palestra APP.'}</Text>
         <TouchableOpacity style={styles.primaryButton} onPress={onEnter} activeOpacity={0.86}>
           <Text style={styles.primaryButtonText}>Ingresar</Text>
         </TouchableOpacity>
@@ -210,6 +210,8 @@ export function AuthConfirmationScreen({ onEnter }: { onEnter: () => void }) {
     </View>
   );
 }
+
+export const AuthConfirmationScreen = MailConfirmedScreen;
 
 function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: { profile: PendingRegistrationProfile; message: string; onMessage: (message: string) => void; onBackToLogin: () => void }) {
   async function requestAdminHelp() {
@@ -368,7 +370,7 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
       email: draft.email.trim(),
       password: draft.password,
       options: {
-        emailRedirectTo: authConfirmedPreviewUrl,
+        emailRedirectTo: authDeepLinkBaseUrl,
         data: {
           full_name: fullName,
           first_name: draft.firstName.trim(),
