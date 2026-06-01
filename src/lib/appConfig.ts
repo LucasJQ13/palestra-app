@@ -19,6 +19,9 @@ export type AppAdminConfig = {
     heroImageUrl: string;
     primaryColor: string;
     secondaryColor: string;
+    textColor?: string;
+    buttonColor?: string;
+    greetingNameColor?: string;
   };
   home: {
     heroTitle: string;
@@ -44,6 +47,7 @@ export type AppAdminConfig = {
     globalMessage: string;
     futureForumEnabled: boolean;
     nearbyCommunitySearchEnabled: boolean;
+    secretariatsEnabled: boolean;
     hiddenFallbackContent: string[];
     roleAliases: RoleAliasConfig[];
   };
@@ -73,7 +77,10 @@ export const defaultAdminConfig: AppAdminConfig = {
     logoUrl: '',
     heroImageUrl: '',
     primaryColor: '#2d8dc8',
-    secondaryColor: '#5da7db'
+    secondaryColor: '#5da7db',
+    textColor: '#123245',
+    buttonColor: '#2d8dc8',
+    greetingNameColor: '#2fb66d'
   },
   home: {
     heroTitle: 'Una app para caminar juntos.',
@@ -105,6 +112,7 @@ export const defaultAdminConfig: AppAdminConfig = {
     globalMessage: '',
     futureForumEnabled: false,
     nearbyCommunitySearchEnabled: false,
+    secretariatsEnabled: true,
     hiddenFallbackContent: [],
     roleAliases: []
   },

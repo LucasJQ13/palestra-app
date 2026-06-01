@@ -32,6 +32,11 @@ function isRemoteNewsItem(item: HomeFeedItem): item is NewsFeedItem & { id: stri
   return Boolean((item as NewsFeedItem).id && (item as NewsFeedItem).source === 'news');
 }
 
+function validHexColor(value?: string | null, fallback = palette.red) {
+  const color = (value ?? '').trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
+}
+
 export function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void; adminConfig: AppAdminConfig }) {
   const isDark = useIsDarkTheme();
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
@@ -56,6 +61,8 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
   const instagramLabel = instagramUrl.includes('infopalestra.argentina') ? '@infopalestra.argentina' : adminConfig.contact.instagram;
   const greeting = homeGreeting(session, adminConfig.home);
   const greetingName = homeGreetingName(session);
+  const identityButtonColor = validHexColor(adminConfig.identity.buttonColor, adminConfig.identity.primaryColor || palette.red);
+  const greetingNameColor = validHexColor(adminConfig.identity.greetingNameColor, '#2fb66d');
   const enabledHomeModules = new Set(adminConfig.home.visibleModules?.length ? adminConfig.home.visibleModules : defaultAdminConfig.home.visibleModules);
   const homeModuleEnabled = (moduleKey: string) => enabledHomeModules.has(moduleKey);
   const quickLabel = (moduleKey: string, fallback: string) => adminConfig.home.quickAccessLabels?.[moduleKey]?.trim() || fallback;
@@ -210,7 +217,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
           {greeting && greetingName && greeting.includes(greetingName) ? (
             <>
               {greeting.split(greetingName)[0]}
-              <Text style={styles.heroGreetingName}>{greetingName}</Text>
+              <Text style={[styles.heroGreetingName, { color: greetingNameColor }]}>{greetingName}</Text>
               {greeting.split(greetingName).slice(1).join(greetingName)}
             </>
           ) : greeting || adminConfig.home.heroTitle}
@@ -245,7 +252,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
       </View> : null}
 
       {adminConfig.gospel.enabled ? (
-        <TouchableOpacity style={styles.gospelButton} activeOpacity={0.88} onPress={() => setGospelModalVisible(true)}>
+        <TouchableOpacity style={[styles.gospelButton, { backgroundColor: identityButtonColor, shadowColor: identityButtonColor }]} activeOpacity={0.88} onPress={() => setGospelModalVisible(true)}>
           <Ionicons name="book-outline" size={22} color={palette.white} />
           <View style={styles.instagramButtonText}>
             <Text style={styles.instagramButtonTitle}>Evangelio del Dia</Text>

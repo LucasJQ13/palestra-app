@@ -3,19 +3,23 @@ import { BackHandler, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pre
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { AppCommunity, fetchCommunities } from '../lib/remoteData';
-import { AppContentBlock, createCommunityContactMessage } from '../lib/profiles';
+import { AppContentBlock, SecretariatMemberRecord, createCommunityContactMessage, createSecretariatMessage, fetchSecretariatMembers } from '../lib/profiles';
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor, provinceDisplayNames, provinceLogos } from '../lib/constants';
 import { changeDone } from '../lib/appMessages';
 import { Coordinates, NearestCommunityResult, findNearestCommunityDetails } from '../lib/nearestCommunity';
-import { Session } from '../types/auth';
+import { Role, Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
+import { roleLabelForProvince } from '../lib/profileDisplay';
+import { subroleLabel } from '../lib/subroles';
 import { useIsDarkTheme } from '../theme/ThemeContext';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
 
-export function CommunitiesScreen({ session, title, content, refreshKey, nearbySearchEnabled, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; nearbySearchEnabled?: boolean; editor?: PageEditorProps }) {
+const nationalSecretariatLogo = require('../../assets/qr-logo.png');
+
+export function CommunitiesScreen({ session, title, content, refreshKey, nearbySearchEnabled, secretariatsEnabled = true, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; nearbySearchEnabled?: boolean; secretariatsEnabled?: boolean; editor?: PageEditorProps }) {
   const isDark = useIsDarkTheme();
   const [communityData, setCommunityData] = useState<AppCommunity[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
@@ -32,6 +36,12 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
   const [nearestUserLocation, setNearestUserLocation] = useState<Coordinates | null>(null);
   const [nearestUserAddress, setNearestUserAddress] = useState('');
   const [nearestModalVisible, setNearestModalVisible] = useState(false);
+  const [secretariatScope, setSecretariatScope] = useState<'nacional' | 'provincia' | null>(null);
+  const [secretariatMembers, setSecretariatMembers] = useState<SecretariatMemberRecord[]>([]);
+  const [secretariatLoading, setSecretariatLoading] = useState(false);
+  const [secretariatMessageTarget, setSecretariatMessageTarget] = useState<string | null>(null);
+  const [secretariatMessage, setSecretariatMessage] = useState('');
+  const [secretariatStatus, setSecretariatStatus] = useState('');
   const contactScrollRef = useRef<ScrollView | null>(null);
   const visibleCommunityData = communityData;
   const province = visibleCommunityData.find((item) => item.province === selectedProvince);
@@ -139,6 +149,82 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
     setContactStatus('');
   }
 
+  async function openSecretariat(scope: 'nacional' | 'provincia', provinceName?: string | null) {
+    setSecretariatScope(scope);
+    setSecretariatLoading(true);
+    setSecretariatStatus('');
+    setSecretariatMessageTarget(null);
+    setSecretariatMessage('');
+    const members = await fetchSecretariatMembers(scope, provinceName ?? selectedProvince);
+    setSecretariatMembers(members);
+    setSecretariatLoading(false);
+  }
+
+  async function sendSecretariatMessage(targetId: string) {
+    if (!session?.id || session.status !== 'aprobado') {
+      setSecretariatStatus('Necesitas iniciar sesion para enviar mensajes.');
+      return;
+    }
+    if (!secretariatMessage.trim()) {
+      setSecretariatStatus('Escribi un mensaje antes de enviarlo.');
+      return;
+    }
+    const { error } = await createSecretariatMessage({ targetUserId: targetId, message: secretariatMessage.trim() });
+    if (error) {
+      setSecretariatStatus(error.message);
+      return;
+    }
+    setSecretariatStatus(changeDone('Mensaje enviado al Secretariado.'));
+    setSecretariatMessage('');
+    setSecretariatMessageTarget(null);
+  }
+
+  function renderSecretariatMembers(scope: 'nacional' | 'provincia') {
+    return (
+      <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{scope === 'nacional' ? 'Secretariado Nacional' : 'Nuestro Secretariado'}</Text>
+        {secretariatLoading ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Cargando secretariado...</Text> : null}
+        {!secretariatLoading && secretariatMembers.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay integrantes cargados por ahora.</Text> : null}
+        {secretariatMembers.map((member) => {
+          const expanded = secretariatMessageTarget === member.id;
+          return (
+            <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? 'Palestrista'}</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, [], [], null)}</Text>
+              {member.subrole_key ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{subroleLabel(member.subrole_key)}</Text> : null}
+              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{member.community_name ?? 'Sin comunidad'} - {member.province ?? 'Sin provincia'}</Text>
+              {session?.id ? (
+                <TouchableOpacity style={styles.actionPill} onPress={() => setSecretariatMessageTarget(expanded ? null : member.id)}>
+                  <Ionicons name={expanded ? 'close-outline' : 'mail-outline'} size={16} color={palette.red} />
+                  <Text style={styles.actionPillText}>{expanded ? 'Cerrar mensaje' : 'Enviar mensaje'}</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Inicia sesion para enviar mensaje.</Text>
+              )}
+              {expanded ? (
+                <View style={styles.stackTight}>
+                  <TextInput
+                    style={[styles.input, styles.textArea, isDark && styles.inputDark]}
+                    value={secretariatMessage}
+                    onChangeText={(value) => setSecretariatMessage(value.slice(0, 500))}
+                    placeholder="Escribi tu consulta para el Secretariado"
+                    multiline
+                    placeholderTextColor={inputPlaceholderColor}
+                  />
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => sendSecretariatMessage(member.id)}>
+                    <Ionicons name="send-outline" size={17} color={palette.white} />
+                    <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+        {secretariatStatus ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{secretariatStatus}</Text> : null}
+      </View>
+    );
+  }
+
   function renderCommunityRow(location: AppCommunity['locations'][number], keyPrefix = 'community') {
     return (
       <View key={`${keyPrefix}-${location.name}`} style={[styles.card, styles.communityCard, isDark && styles.surfaceCardDark]}>
@@ -232,6 +318,19 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
             </View>
           </TouchableOpacity>
         </Modal>
+        {secretariatsEnabled ? (
+          <View style={styles.stackTight}>
+            <TouchableOpacity style={[styles.card, styles.provinceCard, isDark && styles.surfaceCardDark]} onPress={() => openSecretariat('provincia', province.province)} activeOpacity={0.86}>
+              <View style={styles.provinceBody}>
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Secretariados</Text>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Nuestro Secretariado</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Vocales y Coordinacion Diocesana vinculados a {province.province}.</Text>
+              </View>
+              <Ionicons name={secretariatScope === 'provincia' ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color={palette.red} />
+            </TouchableOpacity>
+            {secretariatScope === 'provincia' ? renderSecretariatMembers('provincia') : null}
+          </View>
+        ) : null}
         <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={closeCommunityModal} statusBarTranslucent>
           <View style={styles.modalOverlay} pointerEvents="box-none">
             <Pressable style={styles.modalBackdropTouch} onPress={closeCommunityModal} />
@@ -335,6 +434,22 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
     <View style={styles.stack}>
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
+      {secretariatsEnabled ? (
+        <View style={styles.stackTight}>
+          <TouchableOpacity style={[styles.card, styles.provinceCard, isDark && styles.surfaceCardDark]} onPress={() => openSecretariat('nacional')} activeOpacity={0.86}>
+            <TouchableOpacity style={styles.provinceIcon} onPress={() => openSecretariat('nacional')} activeOpacity={0.85}>
+              <Image source={nationalSecretariatLogo} style={styles.provinceLogoMiniImage} />
+            </TouchableOpacity>
+            <View style={styles.provinceBody}>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Secretariados</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Secretariado Nacional</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Referentes nacionales del movimiento.</Text>
+            </View>
+            <Ionicons name={secretariatScope === 'nacional' ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color={palette.red} />
+          </TouchableOpacity>
+          {secretariatScope === 'nacional' ? renderSecretariatMembers('nacional') : null}
+        </View>
+      ) : null}
       {nearbySearchEnabled ? (
         <View style={[styles.card, isDark && styles.surfaceCardDark]}>
           <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Buscar Comunidad mas cercana</Text>

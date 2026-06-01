@@ -116,6 +116,17 @@ export type PublicProfileRecord = {
   pm_motto?: string | null;
 };
 
+export type SecretariatMemberRecord = {
+  id: string;
+  full_name: string | null;
+  province: string | null;
+  community_name: string | null;
+  role: string;
+  subrole_key?: string | null;
+  display_role_label?: string | null;
+  avatar_url?: string | null;
+};
+
 export type MailboxMessageRecord = {
   id: string;
   community_id: string | null;
@@ -693,6 +704,32 @@ export async function createCommunityContactMessage(values: {
       p_community_id: values.communityId,
       p_sender_name: values.senderName,
       p_sender_contact: values.senderContact,
+      p_message: values.message
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchSecretariatMembers(scope: 'nacional' | 'provincia', province?: string | null): Promise<SecretariatMemberRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_secretariat_members', {
+      p_scope: scope,
+      p_province: province ?? null
+    });
+    if (error || !data) {
+      return [];
+    }
+    return data as SecretariatMemberRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function createSecretariatMessage(values: { targetUserId: string; message: string }) {
+  try {
+    return await supabase.rpc('create_secretariat_message', {
+      p_target_user_id: values.targetUserId,
       p_message: values.message
     });
   } catch (error) {

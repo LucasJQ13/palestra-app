@@ -5144,10 +5144,20 @@ export function ProfileScreen({
                     <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
                     <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
                   </View>
+                  <View style={styles.inlineActions}>
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#123245 textos" value={adminConfigDraft.identity.textColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { textColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#2d8dc8 botones" value={adminConfigDraft.identity.buttonColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { buttonColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  </View>
+                  <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#2fb66d nombre del saludo" value={adminConfigDraft.identity.greetingNameColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { greetingNameColor: value })}  placeholderTextColor={inputPlaceholderColor} />
                   <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark, { borderColor: adminConfigDraft.identity.primaryColor || palette.red }]}>
                     <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Previsualizacion</Text>
                     <Text style={[styles.cardTitle, isDark && styles.textDarkStrong, { color: adminConfigDraft.identity.primaryColor || palette.red }]}>{adminConfigDraft.identity.appName}</Text>
                     <Text style={[styles.cardText, isDark && styles.textDarkBody, { color: adminConfigDraft.identity.secondaryColor || palette.blueDeep }]}>{adminConfigDraft.identity.subtitle}</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody, { color: adminConfigDraft.identity.textColor || palette.ink }]}>Texto de ejemplo</Text>
+                    <Text style={[styles.cardTitle, { color: adminConfigDraft.identity.greetingNameColor || '#2fb66d' }]}>Lucas</Text>
+                    <View style={[styles.previewButtonSwatch, { backgroundColor: adminConfigDraft.identity.buttonColor || adminConfigDraft.identity.primaryColor || palette.red }]}>
+                      <Text style={styles.primaryButtonText}>Boton</Text>
+                    </View>
                   </View>
                   <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Identidad')}>
                     <Text style={styles.primaryButtonText}>Guardar identidad</Text>
@@ -5852,7 +5862,8 @@ export function ProfileScreen({
                   {[
                     { key: 'maintenanceMode', label: 'Modo mantenimiento' },
                     { key: 'futureForumEnabled', label: 'Preparar foro' },
-                    { key: 'nearbyCommunitySearchEnabled', label: 'Buscar comunidad cercana' }
+                    { key: 'nearbyCommunitySearchEnabled', label: 'Buscar comunidad cercana' },
+                    { key: 'secretariatsEnabled', label: 'Mostrar Secretariados' }
                   ].map((item) => {
                     const key = item.key as keyof AppAdminConfig['settings'];
                     const active = Boolean(adminConfigDraft.settings[key]);
@@ -6052,16 +6063,14 @@ export function ProfileScreen({
                       ...(session.role === 'administrador' ? [['crear', 'Crear Usuarios'] as const] : []),
                       ['listado', 'Lista de Usuarios'],
                       ['pendientes', 'Cargar usuarios pendientes de aprobacion'],
-                      ['diagnostico', 'Diagnostico y Liberacion de Login']
+                      ...(session.role === 'administrador' ? [['diagnostico', 'Diagnostico y Liberacion de Login'] as const] : [])
                     ] as const).map(([key, label]) => (
                       <TouchableOpacity key={key} style={[styles.filterChip, adminUsersTool === key && styles.filterChipActive]} onPress={() => setAdminUsersTool(key)}>
                         <Text style={[styles.filterChipText, adminUsersTool === key && styles.filterChipTextActive]}>{label}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
-                  {session.role !== 'administrador' ? (
-                    <Text style={styles.cardText}>Tu rango puede revisar y gestionar usuarios dentro de su alcance. Crear usuarios, confirmar mails y eliminar accesos queda reservado al Administrador.</Text>
-                  ) : adminUsersTool === 'crear' ? (
+                  {session.role === 'administrador' && adminUsersTool === 'crear' ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Crear usuario básico</Text>
                       <Text style={styles.cardText}>Crea una cuenta habilitada con mail y contraseña. Al ingresar, el usuario deberá completar provincia y comunidad.</Text>

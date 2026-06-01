@@ -3527,6 +3527,14 @@ export const styles = StyleSheet.create({
     padding: 14,
     gap: 6
   },
+  previewButtonSwatch: {
+    minHeight: 38,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    alignSelf: 'flex-start'
+  },
   permissionGrid: {
     gap: 8
   },

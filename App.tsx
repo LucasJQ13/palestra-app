@@ -131,14 +131,17 @@ export default function App() {
   const baseAppTheme = themePresets[themeName] ?? themePresets.default;
   const identityPrimaryColor = validHexColor(adminConfig.identity.primaryColor, palette.red);
   const identitySecondaryColor = validHexColor(adminConfig.identity.secondaryColor, palette.blueDeep);
+  const identityTextColor = validHexColor(adminConfig.identity.textColor, baseAppTheme.colors.text);
+  const identityButtonColor = validHexColor(adminConfig.identity.buttonColor, identityPrimaryColor);
   const appTheme = useMemo<AppTheme>(() => ({
     ...baseAppTheme,
     colors: {
       ...baseAppTheme.colors,
       primary: identityPrimaryColor,
-      secondary: identitySecondaryColor
+      secondary: identitySecondaryColor,
+      text: identityTextColor
     }
-  }), [baseAppTheme, identityPrimaryColor, identitySecondaryColor]);
+  }), [baseAppTheme, identityPrimaryColor, identitySecondaryColor, identityTextColor]);
   const isDarkTheme = appTheme.mode === 'dark';
   const { width: viewportWidth } = useWindowDimensions();
   const compactViewport = viewportWidth < 390;
@@ -908,7 +911,7 @@ export default function App() {
       return <LibrarySectionScreen session={session} title={tabLabel('himno')} section="himno" variant="song" content={appContent.find((item) => item.tab_key === 'himno')} editor={pageEditorProps('himno')} />;
     }
     if (activeTab === 'comunidades') {
-      return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} nearbySearchEnabled={adminConfig.settings.nearbyCommunitySearchEnabled} editor={pageEditorProps('comunidades')} />;
+      return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} nearbySearchEnabled={adminConfig.settings.nearbyCommunitySearchEnabled} secretariatsEnabled={adminConfig.settings.secretariatsEnabled !== false} editor={pageEditorProps('comunidades')} />;
     }
     if (activeTab === 'intenciones') {
       return <IntentionsScreen session={session} title={tabLabel('intenciones')} content={appContent.find((item) => item.tab_key === 'intenciones')} editor={pageEditorProps('intenciones')} prayerSeconds={adminConfig.intentions.prayerSeconds} />;
