@@ -7,7 +7,7 @@ export function statusLabel(status: UserStatus) {
   if (status === 'bloqueado') {
     return 'Bloqueado';
   }
-  return 'Pendiente de aprobaci??n';
+  return 'Pendiente de aprobación';
 }
 
 export function changeDone(detail: string) {
@@ -85,27 +85,27 @@ export async function verifyEmailDomainExists(value: string) {
 export function friendlyUploadError(message?: string | null) {
   const text = String(message ?? '');
   if (/row-level security|violates row-level|policy/i.test(text)) {
-    return 'No tenes permisos para subir este archivo. Revis?? tu rango, provincia o ejecut?? el patch de permisos de materiales.';
+    return 'No tenés permisos para subir este archivo. Revisá tu rango, provincia o ejecutá el patch de permisos de materiales.';
   }
   if (/storage|bucket|object/i.test(text)) {
-    return 'No se pudo guardar el archivo en Storage. Revis?? permisos de Supabase o intent?? nuevamente.';
+    return 'No se pudo guardar el archivo en Storage. Revisá permisos de Supabase o intentá nuevamente.';
   }
-  return text || 'No se pudo completar la operaci??n.';
+  return text || 'No se pudo completar la operación.';
 }
 
 export function safeAuthError(message?: string) {
   const text = (message ?? '').toLowerCase();
   if (text.includes('invalid login') || text.includes('invalid credentials')) {
-    return 'Mail o contrase??a incorrectos.';
+    return 'Mail o contraseña incorrectos.';
   }
   if (text.includes('email not confirmed')) {
-    return 'Tu correo todav??a no est?? confirmado.';
+    return 'Tu correo todavía no está confirmado.';
   }
   if (text.includes('already') || text.includes('existe')) {
     return 'Ya existe un usuario con ese correo.';
   }
   if (text.includes('password') || text.includes('contrasena')) {
-    return 'Revis?? la contrase??a indicada.';
+    return 'Revisá la contraseña indicada.';
   }
-  return 'No pudimos completar la acci??n. Revis?? los datos e intenta nuevamente.';
+  return 'No pudimos completar la acción. Revisá los datos e intentá nuevamente.';
 }

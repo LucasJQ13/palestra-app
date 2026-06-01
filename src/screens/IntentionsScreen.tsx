@@ -333,8 +333,8 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
               </View>
               <View style={styles.candleBase} />
             </View>
-            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{isPraying ? `Quedan ${remainingSeconds}s` : 'Oracion finalizada'}</Text>
-            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{isPraying ? 'Tienes 1 minuto para rezar por esta intencion' : 'Gracias por rezar'}</Text>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{isPraying ? `Quedan ${remainingSeconds}s` : 'Oración finalizada'}</Text>
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{isPraying ? 'Junto a vos rezamos todos' : 'Gracias por rezar'}</Text>
             {currentIntention ? (
               <>
                 <Text style={[styles.intentionText, isDark && styles.textDarkBody]}>{currentIntention.body}</Text>

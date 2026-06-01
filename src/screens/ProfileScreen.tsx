@@ -48,9 +48,9 @@ type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications
 
 function notificationPermissionLabel(session: Session | null) {
   if (!session || (!hasPermission(session, 'enviar_notificaciones') && !['animador_comunidad', 'coordinador_comunidad'].includes(session.role))) {
-    return 'La notificacion quedara disponible solo para roles con permiso de enviar notificaciones.';
+    return 'La notificación quedará disponible solo para roles con permiso de enviar notificaciones.';
   }
-  return 'Tambi??n se dejar?? preparada una notificaci??n push para los usuarios alcanzados.';
+  return 'También se dejará preparada una notificación push para los usuarios alcanzados.';
 }
 
 function canScanCredentialQr(session: Session | null) {
@@ -142,6 +142,7 @@ export function ProfileScreen({
   const [showCommunityManagement, setShowCommunityManagement] = useState(false);
   const [showCommunityMembersList, setShowCommunityMembersList] = useState(false);
   const [showLeadershipUsersSummary, setShowLeadershipUsersSummary] = useState(false);
+  const [showActiveCoordinations, setShowActiveCoordinations] = useState(false);
   const [showProfilePhoto, setShowProfilePhoto] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
   const [userRequestText, setUserRequestText] = useState('');
@@ -584,10 +585,13 @@ export function ProfileScreen({
   const leadershipSummaryUsers = (session?.role === 'administrador' || canSeeAllProvinces(session))
     ? scopedAdminUsers
     : editableProvinceUsers;
-  const activeNationalCoordinator = adminUsers.find((user) => user.role === 'coordinador_nacional' && user.status === 'aprobado');
-  const activeDiocesanCoordinator = selectedUsersProvince
-    ? adminUsersByProvince[selectedUsersProvince]?.find((user) => user.role === 'coordinador_diocesano' && user.status === 'aprobado')
-    : null;
+  const activeCoordinators = adminUsers
+    .filter((user) => ['coordinador_nacional', 'coordinador_diocesano'].includes(user.role) && user.status === 'aprobado')
+    .sort((a, b) => {
+      const rankA = a.role === 'coordinador_nacional' ? 0 : 1;
+      const rankB = b.role === 'coordinador_nacional' ? 0 : 1;
+      return rankA - rankB || (a.province ?? '').localeCompare(b.province ?? '') || (a.full_name ?? '').localeCompare(b.full_name ?? '');
+    });
   const motivadorYearOptions = Array.from(new Set(adminMotivadorPeriods.map((period) => String(new Date(`${period.starts_on}T00:00:00`).getFullYear()))))
     .filter((year) => year !== 'NaN')
     .sort((a, b) => Number(b) - Number(a));
@@ -5157,12 +5161,64 @@ export function ProfileScreen({
                   canAdministrateCommunities={canAdministrateCommunities}
                   canOpenCommunityAdmin={canOpenCommunityAdmin}
                   onToggleLeadershipUsers={() => setShowLeadershipUsersSummary((current) => !current)}
+                  onOpenCoordinations={() => setShowActiveCoordinations(true)}
                   onOpenPublicProfile={openPublicProfile}
                   onSetAdminModule={setAdminModule}
                   onSetCommunityPanel={() => setProfilePanel('comunidad')}
                   onViewAsSession={onViewAsSession}
                 />
               ) : null}
+
+              <Modal visible={showActiveCoordinations} transparent animationType="fade" onRequestClose={() => setShowActiveCoordinations(false)} statusBarTranslucent>
+                <View style={styles.modalOverlay}>
+                  <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]}>
+                    <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowActiveCoordinations(false)} activeOpacity={0.8}>
+                      <Ionicons name="close-outline" size={22} color={palette.red} />
+                    </TouchableOpacity>
+                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Coordinaciones Activas</Text>
+                    <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Coordinadores nacionales y diocesanos</Text>
+                    <ScrollView style={styles.leadershipUsersList} nestedScrollEnabled showsVerticalScrollIndicator>
+                      {activeCoordinators.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay coordinadores activos cargados.</Text> : null}
+                      {activeCoordinators.map((user) => {
+                        const role = (user.role || 'palestrista') as Role;
+                        return (
+                          <TouchableOpacity
+                            key={`coord-${user.id}`}
+                            style={[styles.leadershipUserRow, isDark && styles.surfaceRowDark]}
+                            activeOpacity={0.86}
+                            onPress={() => openPublicProfile({
+                              id: user.id,
+                              fullName: user.full_name ?? 'Usuario sin nombre',
+                              role,
+                              province: user.province,
+                              communityName: user.community_name,
+                              avatarUrl: user.avatar_url,
+                              contact: user.phone ?? '',
+                              displayRoleLabel: user.display_role_label ?? null,
+                              genderPreference: user.gender_preference ?? null,
+                              nickname: user.nickname ?? null,
+                              credentialNameMode: user.credential_name_mode ?? 'name',
+                              perseveranceStartYear: user.perseverance_start_year ?? null,
+                              personalPmType: user.personal_pm_type ?? null,
+                              personalPmNumber: user.personal_pm_number ?? null,
+                              personalPmProvince: user.personal_pm_province ?? null,
+                              personalPmMotto: user.personal_pm_motto ?? user.pm_motto ?? null,
+                              pmMotto: user.pm_motto ?? null
+                            })}
+                          >
+                            <View style={styles.adminUserHeaderText}>
+                              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{user.full_name ?? 'Usuario sin nombre'}</Text>
+                              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)}</Text>
+                              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{user.province ?? 'Nacional'} - {user.community_name ?? 'Sin comunidad'}</Text>
+                            </View>
+                            <Ionicons name="id-card-outline" size={18} color={palette.red} />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                </View>
+              </Modal>
 
               {adminModule === 'identidad' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
@@ -6196,11 +6252,6 @@ export function ProfileScreen({
                       ) : null}
                     </View>
                   ) : null}
-                  {adminUsersTool === 'listado' ? <View style={styles.profileCommunityPanel}>
-                    <Text style={styles.cardEyebrow}>Coordinaciones activas</Text>
-                    <Text style={styles.cardText}>Coordinador Nacional: {activeNationalCoordinator?.full_name ?? activeNationalCoordinator?.email ?? 'Sin coordinador activo cargado'}</Text>
-                    {selectedUsersProvince ? <Text style={styles.cardText}>Coordinador Diocesano en {selectedUsersProvince}: {activeDiocesanCoordinator?.full_name ?? activeDiocesanCoordinator?.email ?? 'Sin coordinador activo'}</Text> : null}
-                  </View> : null}
                   {adminUsersTool === 'listado' && adminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios cargados.</Text> : null}
                   {adminUsersTool === 'listado' && userProvinceOptions.length > 0 ? (
                     <>
@@ -6853,7 +6904,7 @@ export function ProfileScreen({
                                   </View>
                                   <View style={styles.profileCommunityPanel}>
                                     <Text style={styles.cardEyebrow}>Ubicacion</Text>
-                                    <Text style={styles.cardText}>Cargar coordenadas habilita "Buscar Comunidad Cercana". PodÃ©s copiarlas desde Google Maps.</Text>
+                                    <Text style={styles.cardText}>Cargar coordenadas habilita "Buscar Comunidad Cercana". Podés copiarlas desde Google Maps.</Text>
                                     <View style={styles.filterRow}>
                                       <TextInput style={[styles.input, styles.colorInput]} placeholder="Latitud. Ej: -31.4167" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
                                       <TextInput style={[styles.input, styles.colorInput]} placeholder="Longitud. Ej: -64.1833" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />

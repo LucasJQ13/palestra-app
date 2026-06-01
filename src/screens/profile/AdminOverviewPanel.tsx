@@ -25,6 +25,7 @@ export function AdminOverviewPanel({
   canAdministrateCommunities,
   canOpenCommunityAdmin,
   onToggleLeadershipUsers,
+  onOpenCoordinations,
   onOpenPublicProfile,
   onSetAdminModule,
   onSetCommunityPanel,
@@ -42,6 +43,7 @@ export function AdminOverviewPanel({
   canAdministrateCommunities: boolean;
   canOpenCommunityAdmin: boolean;
   onToggleLeadershipUsers: () => void;
+  onOpenCoordinations: () => void;
   onOpenPublicProfile: (profile: PublicProfilePreview) => void;
   onSetAdminModule: (module: AdminModule) => void;
   onSetCommunityPanel: () => void;
@@ -105,13 +107,14 @@ export function AdminOverviewPanel({
       <View style={styles.adminQuickGrid}>
         {[
           { label: isCommunityLeader ? 'Nuevo aviso comunitario' : 'Nueva noticia', module: isCommunityLeader ? 'muro_comunitario' : 'noticias', icon: 'add-circle-outline' },
+          { label: 'Coordinaciones Activas', module: 'coordinaciones_activas', icon: 'people-circle-outline' },
           { label: canAdministrateCommunities ? 'Crear comunidad' : 'Comunidades', module: 'comunidades', icon: 'location-outline' },
           { label: 'Revisar usuarios', module: 'usuarios', icon: 'people-outline' }
         ].filter((item) => (
           (item.module !== 'usuarios' || canManageUsers)
           && (item.module !== 'comunidades' || canOpenCommunityAdmin)
         )).map((item) => (
-          <TouchableOpacity key={item.label} style={[styles.adminQuickAction, isDark && styles.adminQuickActionDark]} onPress={() => item.module === 'muro_comunitario' ? onSetCommunityPanel() : onSetAdminModule(item.module as AdminModule)}>
+          <TouchableOpacity key={item.label} style={[styles.adminQuickAction, isDark && styles.adminQuickActionDark]} onPress={() => item.module === 'muro_comunitario' ? onSetCommunityPanel() : item.module === 'coordinaciones_activas' ? onOpenCoordinations() : onSetAdminModule(item.module as AdminModule)}>
             <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={20} color={palette.red} />
             <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.label}</Text>
           </TouchableOpacity>

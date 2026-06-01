@@ -137,9 +137,9 @@ export function GuestProfileAuthCard({
               ) : null}
             </>
           ) : null}
-          <Text style={styles.inputLabel}>A??o de inicio en el Movimiento</Text>
+          <Text style={styles.inputLabel}>Año de inicio en el Movimiento</Text>
           <TouchableOpacity style={styles.dropdownButton} onPress={() => setRegisterPerseveranceYearDropdownOpen(!registerPerseveranceYearDropdownOpen)}>
-            <Text style={styles.dropdownButtonText}>{registerPerseveranceStartYear || 'Seleccionar a??o'}</Text>
+            <Text style={styles.dropdownButtonText}>{registerPerseveranceStartYear || 'Seleccionar año'}</Text>
             <Ionicons name={registerPerseveranceYearDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
           </TouchableOpacity>
           {authErrors.perseverance ? <Text style={styles.formErrorText}>{authErrors.perseverance}</Text> : null}
@@ -157,9 +157,9 @@ export function GuestProfileAuthCard({
       <Text style={styles.inputLabel}>Mail</Text>
       <TextInput style={[styles.input, authFocusedField === 'email' && styles.inputFocused, authErrors.email && styles.inputError]} placeholder={authMode === 'register' ? '' : 'Ingresa tu correo electronico'} value={authEmail} onChangeText={(value) => { setAuthEmail(value); setAuthErrors((current) => ({ ...current, email: '' })); }} autoCapitalize="none" keyboardType="email-address" onFocus={() => setAuthFocusedField('email')} onBlur={() => setAuthFocusedField('')} placeholderTextColor={inputPlaceholderColor} />
       {authErrors.email ? <Text style={styles.formErrorText}>{authErrors.email}</Text> : null}
-      <Text style={styles.inputLabel}>Contrase??a</Text>
+      <Text style={styles.inputLabel}>Contraseña</Text>
       <View style={styles.passwordInputWrap}>
-        <TextInput style={[styles.input, styles.inputWithIcon, authFocusedField === 'password' && styles.inputFocused, authErrors.password && styles.inputError]} placeholder={authMode === 'register' ? 'M??nimo 6 caracteres' : 'Ingres?? tu contrase??a'} value={authPassword} onChangeText={(value) => { setAuthPassword(value); setAuthErrors((current) => ({ ...current, password: '', confirm: '' })); }} secureTextEntry={!authPasswordVisible} onFocus={() => setAuthFocusedField('password')} autoCapitalize="none" autoCorrect={false} returnKeyType="done" placeholderTextColor={inputPlaceholderColor} />
+        <TextInput style={[styles.input, styles.inputWithIcon, authFocusedField === 'password' && styles.inputFocused, authErrors.password && styles.inputError]} placeholder={authMode === 'register' ? 'Mínimo 6 caracteres' : 'Ingresá tu contraseña'} value={authPassword} onChangeText={(value) => { setAuthPassword(value); setAuthErrors((current) => ({ ...current, password: '', confirm: '' })); }} secureTextEntry={!authPasswordVisible} onFocus={() => setAuthFocusedField('password')} autoCapitalize="none" autoCorrect={false} returnKeyType="done" placeholderTextColor={inputPlaceholderColor} />
         <TouchableOpacity style={styles.passwordEyeButton} onPress={() => setAuthPasswordVisible(!authPasswordVisible)} activeOpacity={0.82}>
           <Ionicons name={authPasswordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
         </TouchableOpacity>
@@ -167,8 +167,8 @@ export function GuestProfileAuthCard({
       {authErrors.password ? <Text style={styles.formErrorText}>{authErrors.password}</Text> : null}
       {authMode === 'register' ? (
         <>
-          <Text style={styles.inputLabel}>Confirmar contrase??a</Text>
-          <TextInput style={[styles.input, authFocusedField === 'confirm' && styles.inputFocused, authErrors.confirm && styles.inputError]} placeholder="Repet?? tu contrase??a" value={authPasswordConfirm} onChangeText={(value) => { setAuthPasswordConfirm(value); setAuthErrors((current) => ({ ...current, confirm: '' })); }} secureTextEntry={!authPasswordVisible} onFocus={() => setAuthFocusedField('confirm')} onBlur={() => setAuthFocusedField('')} placeholderTextColor={inputPlaceholderColor} />
+          <Text style={styles.inputLabel}>Confirmar contraseña</Text>
+          <TextInput style={[styles.input, authFocusedField === 'confirm' && styles.inputFocused, authErrors.confirm && styles.inputError]} placeholder="Repetí tu contraseña" value={authPasswordConfirm} onChangeText={(value) => { setAuthPasswordConfirm(value); setAuthErrors((current) => ({ ...current, confirm: '' })); }} secureTextEntry={!authPasswordVisible} onFocus={() => setAuthFocusedField('confirm')} onBlur={() => setAuthFocusedField('')} placeholderTextColor={inputPlaceholderColor} />
           {authErrors.confirm ? <Text style={styles.formErrorText}>{authErrors.confirm}</Text> : null}
         </>
       ) : null}
