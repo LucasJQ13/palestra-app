@@ -230,6 +230,7 @@ export function ProfileScreen({
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedAdminUserId, setSelectedAdminUserId] = useState('');
   const [adminUsersTool, setAdminUsersTool] = useState<'crear' | 'editar' | 'listado' | 'pendientes' | 'diagnostico'>('listado');
+  const [adminUsersToolMenuOpen, setAdminUsersToolMenuOpen] = useState(false);
   const [adminUserSearch, setAdminUserSearch] = useState('');
   const [selectedUsersProvince, setSelectedUsersProvince] = useState('');
   const [adminUserFullName, setAdminUserFullName] = useState('');
@@ -6092,18 +6093,32 @@ export function ProfileScreen({
               {adminModule === 'usuarios' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Usuarios registrados</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                    {([
-                      ...(session.role === 'administrador' ? [['crear', 'Crear Usuarios'] as const] : []),
-                      ['listado', 'Lista de Usuarios'],
-                      ['pendientes', 'Cargar usuarios pendientes de aprobacion'],
-                      ...(session.role === 'administrador' ? [['diagnostico', 'Diagnostico y Liberacion de Login'] as const] : [])
-                    ] as const).map(([key, label]) => (
-                      <TouchableOpacity key={key} style={[styles.filterChip, adminUsersTool === key && styles.filterChipActive]} onPress={() => setAdminUsersTool(key)}>
-                        <Text style={[styles.filterChipText, adminUsersTool === key && styles.filterChipTextActive]}>{label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                  <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setAdminUsersToolMenuOpen((current) => !current)} activeOpacity={0.86}>
+                    <View style={styles.adminUserHeaderText}>
+                      <Text style={styles.cardEyebrow}>Herramienta</Text>
+                      <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>
+                        {adminUsersTool === 'crear' ? 'Crear usuario' : adminUsersTool === 'pendientes' ? 'Pendientes de aprobacion' : adminUsersTool === 'diagnostico' ? 'Diagnostico y liberacion' : 'Lista de usuarios'}
+                      </Text>
+                    </View>
+                    <Ionicons name={adminUsersToolMenuOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  </TouchableOpacity>
+                  {adminUsersToolMenuOpen ? (
+                    <View style={[styles.dropdownList, isDark && styles.dropdownListDark]}>
+                      {([
+                        ['listado', 'Lista de usuarios', 'Buscar, filtrar y editar desde cada fila'],
+                        ...(session.role === 'administrador' ? [['crear', 'Crear usuario', 'Alta basica con mail y clave'] as const] : []),
+                        ['pendientes', 'Pendientes', 'Aprobar registrados recientes'],
+                        ...(session.role === 'administrador' ? [['diagnostico', 'Diagnostico', 'Reparar o liberar un correo'] as const] : [])
+                      ] as const).map(([key, label, detail]) => (
+                        <TouchableOpacity key={key} style={[styles.dropdownItem, adminUsersTool === key && styles.communityChoiceActive]} onPress={() => { setAdminUsersTool(key); setAdminUsersToolMenuOpen(false); setSelectedAdminUserId(''); }}>
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={[styles.dropdownItemText, adminUsersTool === key && styles.filterChipTextActive]}>{label}</Text>
+                            <Text style={styles.feedMeta}>{detail}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : null}
                   {session.role === 'administrador' && adminUsersTool === 'crear' ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Crear usuario básico</Text>
@@ -6208,7 +6223,7 @@ export function ProfileScreen({
                         const canEditThisUser = canEditAdminUser(session, user);
                         return (
                           <View key={user.id}>
-                            <TouchableOpacity style={[styles.innerNewsCard, !canEditThisUser && styles.lockedCard]} onPress={() => canEditThisUser ? setSelectedAdminUserId(selected ? '' : user.id) : setAuthMessage('No podes editar administradores, usuarios superiores o usuarios fuera de tu alcance.')}>
+                            <View style={[styles.innerNewsCard, !canEditThisUser && styles.lockedCard]}>
                               <View style={styles.adminUserHeader}>
                                 <View style={styles.adminUserAvatar}>
                                   {user.avatar_url ? <Image source={{ uri: user.avatar_url }} style={styles.adminUserAvatarImage} /> : <Ionicons name="person-outline" size={20} color={palette.red} />}
@@ -6255,7 +6270,7 @@ export function ProfileScreen({
                                 <Text style={styles.actionPillText}>{selected ? 'Cerrar' : 'Editar'}</Text>
                               </TouchableOpacity>
                               {!canEditThisUser ? <Text style={styles.expandHint}>Edición bloqueada por jerarquía</Text> : null}
-                            </TouchableOpacity>
+                            </View>
                             {selected ? (
                               <View style={styles.adminInlineEditor}>
                                 <TextInput style={styles.input} placeholder="Nombre y apellido" value={adminUserFullName} onChangeText={setAdminUserFullName}  placeholderTextColor={inputPlaceholderColor} />
@@ -6438,9 +6453,11 @@ export function ProfileScreen({
                                 </TouchableOpacity>
                                 {session.role === 'administrador' ? (
                                   <>
-                                    <TouchableOpacity style={styles.secondaryButton} onPress={confirmSelectedUserEmail}>
-                                      <Text style={styles.secondaryButtonText}>Confirmar email</Text>
-                                    </TouchableOpacity>
+                                    {!selectedAdminUser?.email_confirmed_at ? (
+                                      <TouchableOpacity style={styles.secondaryButton} onPress={confirmSelectedUserEmail}>
+                                        <Text style={styles.secondaryButtonText}>Confirmar email</Text>
+                                      </TouchableOpacity>
+                                    ) : null}
                                     <TouchableOpacity style={styles.secondaryButton} onPress={deleteSelectedAdminUser}>
                                       <Ionicons name="trash-outline" size={17} color={palette.red} />
                                       <Text style={styles.secondaryButtonText}>Eliminar usuario</Text>
