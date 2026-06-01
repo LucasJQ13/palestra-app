@@ -336,7 +336,7 @@ as $$
     intentions.id,
     intentions.body,
     intentions.is_anonymous,
-    coalesce(author.full_name, author.email, 'Palestrista') as author_name,
+    coalesce(author.full_name, 'Usuario ' || left(author.id::text, 8), 'Palestrista') as author_name,
     intentions.prayer_count,
     intentions.created_at
   from public.prayer_intentions intentions
