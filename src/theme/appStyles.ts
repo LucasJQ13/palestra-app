@@ -4088,6 +4088,9 @@ export const styles = StyleSheet.create({
     gap: 16,
     backgroundColor: '#fffaf0'
   },
+  intentionsContentDark: {
+    backgroundColor: '#2b2520'
+  },
   intentionsHero: {
     minHeight: 210,
     alignItems: 'center',
@@ -4101,6 +4104,16 @@ export const styles = StyleSheet.create({
     paddingVertical: 22,
     paddingBottom: 86
   },
+  intentionsHeroDark: {
+    backgroundColor: '#332921',
+    borderWidth: 1,
+    borderColor: 'rgba(242, 138, 0, 0.24)',
+    shadowColor: '#ff8a00',
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4
+  },
   intentionsSpiritImage: {
     width: 94,
     height: 94,
@@ -4110,6 +4123,10 @@ export const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.82)',
     borderWidth: 1,
     borderColor: 'rgba(242, 138, 0, 0.18)'
+  },
+  intentionsSpiritImageDark: {
+    backgroundColor: 'rgba(255, 244, 223, 0.09)',
+    borderColor: 'rgba(242, 138, 0, 0.32)'
   },
   intentionsSpiritPhoto: {
     width: 82,
@@ -4136,6 +4153,9 @@ export const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     opacity: 0.24
   },
+  intentionsFlameCornerDark: {
+    opacity: 0.18
+  },
   intentionsFlameImage: {
     width: 104,
     height: 104,
@@ -4155,12 +4175,21 @@ export const styles = StyleSheet.create({
     gap: 7,
     backgroundColor: palette.white,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.14)',
+    borderColor: 'rgba(242, 138, 0, 0.22)',
     padding: 10
   },
+  intentionLargeButtonDark: {
+    backgroundColor: '#332d27',
+    borderColor: 'rgba(242, 138, 0, 0.32)',
+    shadowColor: '#ff8a00',
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3
+  },
   intentionLargeButtonActive: {
-    backgroundColor: palette.red,
-    borderColor: palette.red
+    backgroundColor: '#f28a00',
+    borderColor: '#f28a00'
   },
   intentionLargeButtonText: {
     color: palette.ink,
@@ -4177,11 +4206,20 @@ export const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: palette.white,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.14)',
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
+    borderColor: 'rgba(242, 138, 0, 0.2)',
+    shadowColor: '#ff8a00',
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
     elevation: 2
+  },
+  intentionInputCardDark: {
+    backgroundColor: '#332d27',
+    borderColor: 'rgba(242, 138, 0, 0.3)',
+    shadowColor: '#ff8a00',
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4
   },
   intentionsInputHeader: {
     flexDirection: 'row',
@@ -4192,6 +4230,16 @@ export const styles = StyleSheet.create({
   intentionPrayerModal: {
     alignItems: 'center',
     paddingTop: 34
+  },
+  intentionPrayerModalDark: {
+    backgroundColor: '#302924',
+    borderWidth: 1,
+    borderColor: 'rgba(242, 138, 0, 0.28)',
+    shadowColor: '#ff8a00',
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 5
   },
   intentionAmenButton: {
     minHeight: 52,
@@ -4210,7 +4258,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.82)',
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.14)'
+    borderColor: 'rgba(242, 138, 0, 0.2)'
   },
   candleStage: {
     width: 116,
@@ -4251,7 +4299,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(255,255,255,0.42)',
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)'
+    borderColor: 'rgba(242, 138, 0, 0.22)'
   },
   candleWax: {
     width: '100%',
@@ -4263,7 +4311,7 @@ export const styles = StyleSheet.create({
     width: 86,
     height: 12,
     borderRadius: 999,
-    backgroundColor: 'rgba(45, 141, 200, 0.18)'
+    backgroundColor: 'rgba(242, 138, 0, 0.2)'
   },
   intentionText: {
     color: palette.ink,
@@ -4271,5 +4319,38 @@ export const styles = StyleSheet.create({
     lineHeight: 25,
     textAlign: 'center',
     fontWeight: '700'
+  },
+  intentionsPanel: {
+    borderColor: 'rgba(242, 138, 0, 0.18)'
+  },
+  intentionsPanelDark: {
+    backgroundColor: '#332d27',
+    borderColor: 'rgba(242, 138, 0, 0.28)',
+    shadowColor: '#ff8a00',
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3
+  },
+  intentionsPrimaryButton: {
+    backgroundColor: '#f28a00'
+  },
+  intentionsOutlineButton: {
+    borderColor: 'rgba(242, 138, 0, 0.28)',
+    backgroundColor: '#fff8e9'
+  },
+  intentionsOutlineButtonDark: {
+    backgroundColor: '#332d27',
+    borderColor: 'rgba(242, 138, 0, 0.34)'
+  },
+  intentionsOutlineButtonText: {
+    color: '#f28a00'
+  },
+  intentionsSmallActionButton: {
+    borderColor: 'rgba(242, 138, 0, 0.3)',
+    backgroundColor: '#fff8e9'
+  },
+  intentionsSmallActionText: {
+    color: '#f28a00'
   }
 });
