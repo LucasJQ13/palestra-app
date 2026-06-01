@@ -23,6 +23,11 @@ type RemoteCommunityRow = {
   } | null;
 };
 
+type RemoteProvinceRow = {
+  name: string;
+  region: string | null;
+};
+
 export type AppCommunityLocation = (typeof fallbackCommunities)[number]['locations'][number] & {
   latitude?: number | null;
   longitude?: number | null;
@@ -59,6 +64,16 @@ export type PublicationComment = {
 export async function fetchCommunities(): Promise<AppCommunity[]> {
   let data: unknown[] | null = null;
   let error: { message?: string } | null = null;
+  let provinceRows: RemoteProvinceRow[] = [];
+  try {
+    const provinceResult = await supabase
+      .from('provinces')
+      .select('name, region')
+      .order('name');
+    provinceRows = (provinceResult.data ?? []) as RemoteProvinceRow[];
+  } catch {
+    provinceRows = [];
+  }
   try {
     const result = await supabase
       .from('communities')
@@ -85,13 +100,25 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
     }
   }
 
-  if (error || !data) {
+  if ((error || !data) && provinceRows.length === 0) {
     return [];
   }
 
   const grouped = new Map<string, AppCommunity>();
 
-  (data as unknown as RemoteCommunityRow[]).forEach((row) => {
+  provinceRows.forEach((row) => {
+    if (!row.name) {
+      return;
+    }
+    grouped.set(row.name, {
+      province: row.name,
+      region: row.region ?? 'Sin region',
+      description: 'Provincia cargada desde Supabase. Crea comunidades para activar su listado.',
+      locations: []
+    });
+  });
+
+  ((data ?? []) as unknown as RemoteCommunityRow[]).forEach((row) => {
     const province = row.provinces?.name ?? 'Sin provincia';
     const region = row.provinces?.region ?? 'Sin region';
     const current = grouped.get(province) ?? {

@@ -11,7 +11,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -356,6 +356,8 @@ export function ProfileScreen({
   const [adminCommunityImageUploading, setAdminCommunityImageUploading] = useState(false);
   const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
   const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
+  const [newProvinceName, setNewProvinceName] = useState('');
+  const [newProvinceRegion, setNewProvinceRegion] = useState('');
   const [showAdminCommunityCreate, setShowAdminCommunityCreate] = useState(false);
   const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; sectionType: AppTabSectionType; isVisible: boolean; visibleRoles: string[] | null }>>({});
   const [newTabLabel, setNewTabLabel] = useState('');
@@ -3377,6 +3379,34 @@ export function ProfileScreen({
     await onContentChanged();
   }
 
+  async function adminCreateProvince() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede crear provincias.');
+      return;
+    }
+    if (!newProvinceName.trim()) {
+      setAuthMessage('Escribi el nombre de la provincia.');
+      return;
+    }
+    setAuthMessage('Creando provincia...');
+    const { error } = await createProvince({
+      name: newProvinceName.trim(),
+      region: newProvinceRegion.trim() || 'Sin region'
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    const items = await fetchCommunities();
+    setRegistrationCommunities(items);
+    setAdminCommunityProvince(newProvinceName.trim());
+    setAdminCommunityId('');
+    setNewProvinceName('');
+    setNewProvinceRegion('');
+    setAuthMessage(changeDone('Provincia creada. Ya podes seleccionarla y cargar comunidades.'));
+    await onContentChanged();
+  }
+
   async function adminToggleCommunityStatus(id: string, isActive: boolean) {
     const { error } = await setCommunityStatus(id, isActive);
     if (error) {
@@ -5140,15 +5170,19 @@ export function ProfileScreen({
                   <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre de la app" value={adminConfigDraft.identity.appName} onChangeText={(value) => updateAdminConfigSection('identity', { appName: value })}  placeholderTextColor={inputPlaceholderColor} />
                   <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Subtitulo" value={adminConfigDraft.identity.subtitle} onChangeText={(value) => updateAdminConfigSection('identity', { subtitle: value })}  placeholderTextColor={inputPlaceholderColor} />
                   <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Descripcion institucional" value={adminConfigDraft.identity.description} onChangeText={(value) => updateAdminConfigSection('identity', { description: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Color principal {adminConfigDraft.identity.primaryColor || '#2d8dc8'}</Text>
                   <View style={styles.inlineActions}>
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Principal #2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Secundario #5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
                   </View>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Secundario {adminConfigDraft.identity.secondaryColor || '#5da7db'}: subtitulos y acentos suaves.</Text>
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Texto {adminConfigDraft.identity.textColor || '#123245'} / Boton {adminConfigDraft.identity.buttonColor || adminConfigDraft.identity.primaryColor || '#2d8dc8'}</Text>
                   <View style={styles.inlineActions}>
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#123245 textos" value={adminConfigDraft.identity.textColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { textColor: value })}  placeholderTextColor={inputPlaceholderColor} />
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#2d8dc8 botones" value={adminConfigDraft.identity.buttonColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { buttonColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Texto #123245" value={adminConfigDraft.identity.textColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { textColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Boton #2d8dc8" value={adminConfigDraft.identity.buttonColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { buttonColor: value })}  placeholderTextColor={inputPlaceholderColor} />
                   </View>
-                  <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="#2fb66d nombre del saludo" value={adminConfigDraft.identity.greetingNameColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { greetingNameColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nombre del saludo {adminConfigDraft.identity.greetingNameColor || '#2fb66d'}</Text>
+                  <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Nombre del saludo #2fb66d" value={adminConfigDraft.identity.greetingNameColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { greetingNameColor: value })}  placeholderTextColor={inputPlaceholderColor} />
                   <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark, { borderColor: adminConfigDraft.identity.primaryColor || palette.red }]}>
                     <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Previsualizacion</Text>
                     <Text style={[styles.cardTitle, isDark && styles.textDarkStrong, { color: adminConfigDraft.identity.primaryColor || palette.red }]}>{adminConfigDraft.identity.appName}</Text>
@@ -6659,6 +6693,43 @@ export function ProfileScreen({
                 <TouchableOpacity style={styles.primaryButton} onPress={adminCreateEvent}>
                   <Text style={styles.primaryButtonText}>Publicar evento</Text>
                 </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {adminModule === 'crear_provincia' && session.role === 'administrador' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Crear provincia</Text>
+                  <Text style={styles.cardText}>La provincia queda guardada en Supabase, aparece en registro, editar perfil y en Comunidades para cargar sus comunidades.</Text>
+                  <Text style={styles.inputLabel}>Nombre de provincia</Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    placeholder="Ej: Mendoza"
+                    value={newProvinceName}
+                    onChangeText={setNewProvinceName}
+                    placeholderTextColor={inputPlaceholderColor}
+                  />
+                  <Text style={styles.inputLabel}>Region</Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    placeholder="Ej: Cuyo"
+                    value={newProvinceRegion}
+                    onChangeText={setNewProvinceRegion}
+                    placeholderTextColor={inputPlaceholderColor}
+                  />
+                  <TouchableOpacity style={styles.primaryButton} onPress={adminCreateProvince}>
+                    <Ionicons name="map-outline" size={17} color={palette.white} />
+                    <Text style={styles.primaryButtonText}>Crear provincia</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.cardEyebrow}>Provincias actuales</Text>
+                  {registrationCommunities.map((item) => (
+                    <View key={`province-${item.province}`} style={styles.adminListRow}>
+                      <Ionicons name="location-outline" size={20} color={palette.red} />
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.adminQuickText}>{item.province}</Text>
+                        <Text style={styles.cardText}>{item.region} - {item.locations.length} comunidades</Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
               ) : null}
 

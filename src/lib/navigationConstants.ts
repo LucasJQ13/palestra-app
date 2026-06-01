@@ -12,6 +12,7 @@ export const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: 
   { key: 'descargas', label: 'Descargas', icon: 'document-attach-outline' },
   { key: 'contenido_publicado', label: 'Contenido', icon: 'albums-outline', systemOnly: true },
   { key: 'comunidades', label: 'Comunidades', icon: 'location-outline' },
+  { key: 'crear_provincia', label: 'Crear provincia', icon: 'map-outline', systemOnly: true },
   { key: 'listas_qr', label: 'Listas QR', icon: 'qr-code-outline' },
   { key: 'intenciones', label: 'Intenciones', icon: 'flame-outline', systemOnly: true },
   { key: 'evangelio_dia', label: 'Evangelio', icon: 'book-outline', systemOnly: true },

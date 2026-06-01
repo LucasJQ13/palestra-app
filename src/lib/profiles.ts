@@ -1804,6 +1804,17 @@ export async function createCommunity(values: {
   }
 }
 
+export async function createProvince(values: { name: string; region: string }) {
+  try {
+    return await supabase.rpc('admin_create_province', {
+      p_name: values.name,
+      p_region: values.region
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function setCommunityStatus(id: string, isActive: boolean) {
   try {
     return await supabase.rpc('admin_set_community_status', {

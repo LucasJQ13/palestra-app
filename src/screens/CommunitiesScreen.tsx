@@ -150,6 +150,14 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
   }
 
   async function openSecretariat(scope: 'nacional' | 'provincia', provinceName?: string | null) {
+    if (secretariatScope === scope) {
+      setSecretariatScope(null);
+      setSecretariatMembers([]);
+      setSecretariatStatus('');
+      setSecretariatMessageTarget(null);
+      setSecretariatMessage('');
+      return;
+    }
     setSecretariatScope(scope);
     setSecretariatLoading(true);
     setSecretariatStatus('');
