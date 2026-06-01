@@ -4633,7 +4633,7 @@ export function ProfileScreen({
             {credentialQrPayload ? (
               <View style={styles.credentialQrPanel}>
                 <TouchableOpacity style={styles.credentialQrImage} activeOpacity={0.86} onPress={() => setCredentialQrExpanded(true)}>
-                  <CredentialQrCode value={credentialQrPayload} size={104} />
+                  <CredentialQrCode value={credentialQrPayload} size={104} province={session.province} role={session.role} />
                 </TouchableOpacity>
                 <View style={styles.adminUserHeaderText}>
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>QR verificable</Text>
@@ -4669,7 +4669,7 @@ export function ProfileScreen({
                 <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>QR verificable</Text>
                 {credentialQrPayload ? (
                   <View style={styles.credentialQrExpandedImage}>
-                    <CredentialQrCode value={credentialQrPayload} size={260} />
+                    <CredentialQrCode value={credentialQrPayload} size={260} province={session.province} role={session.role} />
                   </View>
                 ) : null}
                 <TouchableOpacity style={styles.primaryButton} onPress={() => setCredentialQrExpanded(false)}>

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Image, Text, View } from 'react-native';
 import * as QRCode from 'qrcode';
+import { credentialQrLogoFor } from '../lib/credentialQrLogo';
+import { Role } from '../types/auth';
 
-const qrLogo = require('../../assets/qr-logo.png');
-
-export function CredentialQrCode({ value, size = 104 }: { value: string; size?: number }) {
+export function CredentialQrCode({ value, size = 104, province, role }: { value: string; size?: number; province?: string | null; role?: Role | null }) {
   const [uri, setUri] = useState('');
   const logoSize = Math.max(33, Math.round(size * 0.36));
+  const qrLogo = credentialQrLogoFor(province, role);
 
   useEffect(() => {
     let alive = true;
