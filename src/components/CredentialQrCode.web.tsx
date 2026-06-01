@@ -6,7 +6,7 @@ import { Role } from '../types/auth';
 
 export function CredentialQrCode({ value, size = 104, province, role }: { value: string; size?: number; province?: string | null; role?: Role | null }) {
   const [uri, setUri] = useState('');
-  const logoSize = Math.max(33, Math.round(size * 0.36));
+  const logoSize = Math.max(44, Math.round(size * 0.5));
   const qrLogo = credentialQrLogoFor(province, role);
 
   useEffect(() => {

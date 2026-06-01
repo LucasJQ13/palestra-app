@@ -4493,16 +4493,16 @@ export function ProfileScreen({
                         <Ionicons name={mailboxUserDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
                       </TouchableOpacity>
                       {mailboxUserDropdownOpen ? (
-                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                          {filteredMailboxUserOptions.length === 0 ? <Text style={styles.dropdownItemText}>Sin resultados</Text> : null}
+                        <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
+                          {filteredMailboxUserOptions.length === 0 ? <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>Sin resultados</Text> : null}
                           {filteredMailboxUserOptions.slice(0, 60).map((user) => {
                             const selectedUser = mailboxSelectedUserIds.includes(user.id);
                             return (
-                              <TouchableOpacity key={user.id} style={styles.dropdownItem} onPress={() => toggleMailboxUser(user.id)}>
+                              <TouchableOpacity key={user.id} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => toggleMailboxUser(user.id)}>
                                 <Ionicons name={selectedUser ? 'checkbox-outline' : 'square-outline'} size={18} color={selectedUser ? palette.red : palette.inkMuted} />
                                 <View style={styles.adminUserHeaderText}>
-                                  <Text style={styles.dropdownItemText}>{user.full_name ?? 'Usuario'}</Text>
-                                  <Text style={styles.feedMeta}>{roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.gender_preference ?? null)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{user.full_name ?? 'Usuario'}</Text>
+                                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.gender_preference ?? null)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
                                 </View>
                               </TouchableOpacity>
                             );

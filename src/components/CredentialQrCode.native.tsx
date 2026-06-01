@@ -6,6 +6,7 @@ import { Role } from '../types/auth';
 
 export function CredentialQrCode({ value, size = 104, province, role }: { value: string; size?: number; province?: string | null; role?: Role | null }) {
   const qrLogoSource = Image.resolveAssetSource(credentialQrLogoFor(province, role));
+  const logoSize = Math.max(44, Math.round(size * 0.5));
   return (
     <QRCode
       value={value}
@@ -13,7 +14,7 @@ export function CredentialQrCode({ value, size = 104, province, role }: { value:
       quietZone={4}
       ecl="H"
       logo={{ uri: qrLogoSource.uri }}
-      logoSize={Math.max(33, Math.round(size * 0.36))}
+      logoSize={logoSize}
       logoBackgroundColor="transparent"
       logoMargin={0}
       logoBorderRadius={6}

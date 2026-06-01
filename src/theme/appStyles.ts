@@ -4096,7 +4096,10 @@ export const styles = StyleSheet.create({
     position: 'relative',
     borderRadius: 24,
     backgroundColor: '#fff8e9',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    paddingBottom: 86
   },
   intentionsSpiritImage: {
     width: 94,
@@ -4118,22 +4121,24 @@ export const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 36,
     fontWeight: '900',
-    textAlign: 'center'
+    textAlign: 'center',
+    zIndex: 2
   },
   intentionsFlameCorner: {
     position: 'absolute',
-    right: 18,
-    bottom: 14,
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    right: -10,
+    bottom: -12,
+    width: 112,
+    height: 112,
+    borderRadius: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.7)'
+    backgroundColor: 'transparent',
+    opacity: 0.24
   },
   intentionsFlameImage: {
-    width: 50,
-    height: 50,
+    width: 104,
+    height: 104,
     resizeMode: 'contain'
   },
   intentionsMainActions: {

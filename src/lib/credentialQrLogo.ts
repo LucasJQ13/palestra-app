@@ -6,7 +6,7 @@ const jujuyQrLogo = require('../../assets/qr-jujuy.png');
 const saltaQrLogo = require('../../assets/qr-salta.png');
 const sanLuisQrLogo = require('../../assets/qr-san-luis.png');
 const tucumanQrLogo = require('../../assets/qr-tucuman.png');
-const catamarcaQrLogo = require('../../assets/logo-provincia-catamarca.png');
+const catamarcaQrLogo = require('../../assets/qr-catamarca.png');
 
 const nationalRoles: Role[] = ['vocal_nacional', 'coordinador_nacional', 'administrador'];
 
