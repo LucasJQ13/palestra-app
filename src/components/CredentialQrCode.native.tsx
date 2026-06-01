@@ -14,8 +14,8 @@ export function CredentialQrCode({ value, size = 104 }: { value: string; size?: 
       ecl="H"
       logo={{ uri: qrLogoSource.uri }}
       logoSize={Math.max(33, Math.round(size * 0.36))}
-      logoBackgroundColor="white"
-      logoMargin={2}
+      logoBackgroundColor="transparent"
+      logoMargin={0}
       logoBorderRadius={6}
     />
   );

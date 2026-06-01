@@ -159,6 +159,12 @@ export type PrayerIntentionResult = {
   notification_intent_id: string | null;
 };
 
+export type PrayerRemovalNoticeRecord = {
+  id: string;
+  message: string;
+  created_at: string;
+};
+
 export type RolePermissionRecord = {
   role: string;
   permission_key: string;
@@ -1076,6 +1082,28 @@ export async function archivePrayerIntention(intentionId: string) {
   try {
     return await supabase.rpc('admin_archive_prayer_intention', {
       p_intention_id: intentionId
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchMyPrayerRemovalNotices(): Promise<PrayerRemovalNoticeRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_my_prayer_removal_notices');
+    if (error || !data) {
+      return [];
+    }
+    return data as PrayerRemovalNoticeRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function markPrayerRemovalNoticesSeen(noticeIds: string[]) {
+  try {
+    return await supabase.rpc('mark_prayer_removal_notices_seen', {
+      p_notice_ids: noticeIds
     });
   } catch (error) {
     return networkError(error);

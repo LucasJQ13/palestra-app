@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Linking, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Modal, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { news } from '../data/content';
@@ -44,6 +44,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
   const [homeEditBody, setHomeEditBody] = useState('');
   const [homeEditImage, setHomeEditImage] = useState('');
   const [homeActionMessage, setHomeActionMessage] = useState('');
+  const [gospelModalVisible, setGospelModalVisible] = useState(false);
   const canManageHomeEntries = canManageNationalPublishedContent(session);
   const hiddenFallbackContent = adminConfig.settings.hiddenFallbackContent ?? [];
   const instagramUrl = adminConfig.contact.instagram?.startsWith('http') ? adminConfig.contact.instagram : `https://www.instagram.com/${adminConfig.contact.instagram.replace('@', '')}`;
@@ -214,6 +215,17 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
         ))}
       </View> : null}
 
+      {adminConfig.gospel.enabled ? (
+        <TouchableOpacity style={styles.gospelButton} activeOpacity={0.88} onPress={() => setGospelModalVisible(true)}>
+          <Ionicons name="book-outline" size={22} color={palette.white} />
+          <View style={styles.instagramButtonText}>
+            <Text style={styles.instagramButtonTitle}>Evangelio del Dia</Text>
+            <Text style={styles.instagramButtonMeta}>{adminConfig.gospel.title || 'Lectura diaria'}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={palette.white} />
+        </TouchableOpacity>
+      ) : null}
+
       <TouchableOpacity style={styles.instagramButton} activeOpacity={0.88} onPress={() => Linking.openURL(instagramUrl)}>
         <Ionicons name="logo-instagram" size={22} color={palette.white} />
         <View style={styles.instagramButtonText}>
@@ -222,6 +234,25 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
         </View>
         <Ionicons name="chevron-forward" size={18} color={palette.white} />
       </TouchableOpacity>
+
+      <Modal visible={gospelModalVisible} transparent animationType="fade" onRequestClose={() => setGospelModalVisible(false)} statusBarTranslucent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]}>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setGospelModalVisible(false)}>
+              <Ionicons name="close-outline" size={22} color={palette.red} />
+            </TouchableOpacity>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Evangelio del Dia</Text>
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{adminConfig.gospel.title || 'Evangelio del Dia'}</Text>
+            {adminConfig.gospel.body ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{adminConfig.gospel.body}</Text> : <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay evangelio cargado manualmente.</Text>}
+            {adminConfig.gospel.sourceUrl ? (
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(adminConfig.gospel.sourceUrl)}>
+                <Ionicons name="open-outline" size={17} color={palette.red} />
+                <Text style={styles.secondaryButtonText}>Abrir fuente</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
 
       {homeModuleEnabled('agenda') ? <SectionTitle title="Agenda comunitaria" /> : null}
       {homeModuleEnabled('agenda') ? <View style={[styles.featurePanel, isDark && styles.surfacePanelDark]}>

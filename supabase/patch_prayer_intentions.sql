@@ -18,6 +18,15 @@ create table if not exists public.prayer_intention_prayers (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.prayer_intention_removal_notices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  intention_id uuid references public.prayer_intentions(id) on delete cascade,
+  message text not null,
+  seen_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists prayer_intentions_active_idx
 on public.prayer_intentions (archived_at, created_at);
 
@@ -26,6 +35,7 @@ on public.prayer_intention_prayers (intention_id, created_at);
 
 alter table public.prayer_intentions enable row level security;
 alter table public.prayer_intention_prayers enable row level security;
+alter table public.prayer_intention_removal_notices enable row level security;
 
 drop policy if exists "Usuarios aprobados leen intenciones activas" on public.prayer_intentions;
 create policy "Usuarios aprobados leen intenciones activas"
@@ -56,6 +66,12 @@ with check (
 drop policy if exists "Usuarios leen sus oraciones registradas" on public.prayer_intention_prayers;
 create policy "Usuarios leen sus oraciones registradas"
 on public.prayer_intention_prayers for select
+to authenticated
+using (user_id = auth.uid());
+
+drop policy if exists "Usuarios leen sus avisos de intenciones removidas" on public.prayer_intention_removal_notices;
+create policy "Usuarios leen sus avisos de intenciones removidas"
+on public.prayer_intention_removal_notices for select
 to authenticated
 using (user_id = auth.uid());
 
@@ -389,6 +405,13 @@ begin
       updated_at = now()
   where id = target_intention.id;
 
+  insert into public.prayer_intention_removal_notices (user_id, intention_id, message)
+  values (
+    target_intention.author_id,
+    target_intention.id,
+    'Esta intencion fue removida por considerarse inadecuada'
+  );
+
   insert into public.notification_intents (
     created_by,
     notification_type,
@@ -421,3 +444,39 @@ end;
 $$;
 
 grant execute on function public.admin_archive_prayer_intention(uuid) to authenticated;
+
+create or replace function public.get_my_prayer_removal_notices()
+returns table (
+  id uuid,
+  message text,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select notices.id, notices.message, notices.created_at
+  from public.prayer_intention_removal_notices notices
+  where notices.user_id = auth.uid()
+    and notices.seen_at is null
+  order by notices.created_at asc;
+$$;
+
+grant execute on function public.get_my_prayer_removal_notices() to authenticated;
+
+create or replace function public.mark_prayer_removal_notices_seen(
+  p_notice_ids uuid[]
+)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.prayer_intention_removal_notices notices
+  set seen_at = now()
+  where notices.user_id = auth.uid()
+    and notices.id = any(coalesce(p_notice_ids, '{}'::uuid[]));
+$$;
+
+grant execute on function public.mark_prayer_removal_notices_seen(uuid[]) to authenticated;

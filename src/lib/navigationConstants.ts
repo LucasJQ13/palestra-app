@@ -14,6 +14,7 @@ export const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: 
   { key: 'comunidades', label: 'Comunidades', icon: 'location-outline' },
   { key: 'listas_qr', label: 'Listas QR', icon: 'qr-code-outline' },
   { key: 'intenciones', label: 'Intenciones', icon: 'flame-outline', systemOnly: true },
+  { key: 'evangelio_dia', label: 'Evangelio', icon: 'book-outline', systemOnly: true },
   { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
   { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
   { key: 'solicitudes', label: 'Solicitudes', icon: 'mail-unread-outline' },

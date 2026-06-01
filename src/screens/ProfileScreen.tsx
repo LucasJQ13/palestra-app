@@ -11,7 +11,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -167,6 +167,8 @@ export function ProfileScreen({
   const [showPushDiagnostics, setShowPushDiagnostics] = useState(false);
   const [myPrayerIntentions, setMyPrayerIntentions] = useState<PrayerIntentionRecord[]>([]);
   const [prayerIntentionsMessage, setPrayerIntentionsMessage] = useState('');
+  const [prayerRemovalNotices, setPrayerRemovalNotices] = useState<PrayerRemovalNoticeRecord[]>([]);
+  const [prayerRemovalNoticeVisible, setPrayerRemovalNoticeVisible] = useState(false);
   const [credentialQr, setCredentialQr] = useState<CredentialQrRecord | null>(null);
   const [credentialQrPayload, setCredentialQrPayload] = useState('');
   const [credentialQrMessage, setCredentialQrMessage] = useState('');
@@ -1637,7 +1639,19 @@ export function ProfileScreen({
       ? await fetchAdminPrayerIntentions()
       : await fetchMyPrayerIntentions();
     setMyPrayerIntentions(items);
+    const notices = await fetchMyPrayerRemovalNotices();
+    setPrayerRemovalNotices(notices);
+    setPrayerRemovalNoticeVisible(notices.length > 0);
     setPrayerIntentionsMessage(items.length === 0 ? 'No hay intenciones publicadas para mostrar.' : '');
+  }
+
+  async function closePrayerRemovalNotice() {
+    const ids = prayerRemovalNotices.map((notice) => notice.id);
+    setPrayerRemovalNoticeVisible(false);
+    setPrayerRemovalNotices([]);
+    if (ids.length > 0) {
+      await markPrayerRemovalNoticesSeen(ids);
+    }
   }
 
   async function deletePrayerIntentionFromAdmin(item: PrayerIntentionRecord) {
@@ -3955,6 +3969,19 @@ export function ProfileScreen({
           ) : null}
           {profilePanel === 'intenciones' ? (
             <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
+              <Modal visible={prayerRemovalNoticeVisible} transparent animationType="fade" onRequestClose={closePrayerRemovalNotice} statusBarTranslucent>
+                <View style={styles.modalOverlay}>
+                  <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]}>
+                    <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Intencion removida</Text>
+                    {prayerRemovalNotices.map((notice) => (
+                      <Text key={notice.id} style={[styles.cardText, isDark && styles.textDarkBody]}>{notice.message}</Text>
+                    ))}
+                    <TouchableOpacity style={styles.primaryButton} onPress={closePrayerRemovalNotice}>
+                      <Text style={styles.primaryButtonText}>Entendido</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </Modal>
               <View style={styles.settingRow}>
                 <View style={styles.settingRowText}>
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{session.role === 'administrador' ? 'Todas las intenciones' : 'Mis intenciones'}</Text>
@@ -5885,6 +5912,49 @@ export function ProfileScreen({
                 </View>
               ) : null}
 
+              {adminModule === 'evangelio_dia' && session?.role === 'administrador' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Evangelio del Dia</Text>
+                  <Text style={styles.cardText}>Configura el boton de Home y el contenido que se abre en ventana popup.</Text>
+                  <TouchableOpacity
+                    style={[styles.adminListRow, adminConfigDraft.gospel.enabled && styles.adminListRowActive]}
+                    onPress={() => updateAdminConfigSection('gospel', { enabled: !adminConfigDraft.gospel.enabled })}
+                  >
+                    <Ionicons name={adminConfigDraft.gospel.enabled ? 'toggle' : 'toggle-outline'} size={24} color={adminConfigDraft.gospel.enabled ? palette.red : palette.inkMuted} />
+                    <Text style={styles.adminQuickText}>{adminConfigDraft.gospel.enabled ? 'Evangelio activo' : 'Evangelio desactivado'}</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.inputLabel}>Titulo</Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    value={adminConfigDraft.gospel.title}
+                    onChangeText={(value) => updateAdminConfigSection('gospel', { title: value })}
+                    placeholder="Evangelio del Dia"
+                    placeholderTextColor={inputPlaceholderColor}
+                  />
+                  <Text style={styles.inputLabel}>Pagina o fuente externa</Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    value={adminConfigDraft.gospel.sourceUrl}
+                    onChangeText={(value) => updateAdminConfigSection('gospel', { sourceUrl: value })}
+                    placeholder="https://..."
+                    autoCapitalize="none"
+                    placeholderTextColor={inputPlaceholderColor}
+                  />
+                  <Text style={styles.inputLabel}>Evangelio cargado manualmente</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea, isDark && styles.inputDark]}
+                    value={adminConfigDraft.gospel.body}
+                    onChangeText={(value) => updateAdminConfigSection('gospel', { body: value })}
+                    multiline
+                    placeholder="Texto del evangelio..."
+                    placeholderTextColor={inputPlaceholderColor}
+                  />
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Evangelio del Dia')}>
+                    <Text style={styles.primaryButtonText}>Guardar Evangelio</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
                   {adminModule === 'configuracion' && session?.role === 'administrador' ? (
                     <View style={styles.inlineEditorPanel}>
                       <Text style={styles.cardEyebrow}>Noticias de la Iglesia</Text>
@@ -5964,8 +6034,7 @@ export function ProfileScreen({
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
                     {([
                       ...(session.role === 'administrador' ? [['crear', 'Crear Usuarios'] as const] : []),
-                      ['editar', 'Editar Usuarios'],
-                      ['listado', 'Listado de Usuarios'],
+                      ['listado', 'Lista de Usuarios'],
                       ['pendientes', 'Cargar usuarios pendientes de aprobacion'],
                       ['diagnostico', 'Diagnostico y Liberacion de Login']
                     ] as const).map(([key, label]) => (
@@ -6003,7 +6072,7 @@ export function ProfileScreen({
                       </TouchableOpacity>
                     </View>
                   ) : null}
-                  {['editar', 'listado'].includes(adminUsersTool) ? (
+                  {adminUsersTool === 'listado' ? (
                     <>
                       <TextInput style={styles.input} placeholder="Buscar por nombre, apellido o apodo" value={adminUserSearch} onChangeText={setAdminUserSearch}  placeholderTextColor={inputPlaceholderColor} />
                       <View style={styles.communityActionRow}>
@@ -6053,13 +6122,13 @@ export function ProfileScreen({
                       ) : null}
                     </View>
                   ) : null}
-                  {['editar', 'listado'].includes(adminUsersTool) ? <View style={styles.profileCommunityPanel}>
+                  {adminUsersTool === 'listado' ? <View style={styles.profileCommunityPanel}>
                     <Text style={styles.cardEyebrow}>Coordinaciones activas</Text>
                     <Text style={styles.cardText}>Coordinador Nacional: {activeNationalCoordinator?.full_name ?? activeNationalCoordinator?.email ?? 'Sin coordinador activo cargado'}</Text>
                     {selectedUsersProvince ? <Text style={styles.cardText}>Coordinador Diocesano en {selectedUsersProvince}: {activeDiocesanCoordinator?.full_name ?? activeDiocesanCoordinator?.email ?? 'Sin coordinador activo'}</Text> : null}
                   </View> : null}
-                  {['editar', 'listado'].includes(adminUsersTool) && adminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios cargados.</Text> : null}
-                  {['editar', 'listado'].includes(adminUsersTool) && userProvinceOptions.length > 0 ? (
+                  {adminUsersTool === 'listado' && adminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios cargados.</Text> : null}
+                  {adminUsersTool === 'listado' && userProvinceOptions.length > 0 ? (
                     <>
                       <Text style={styles.cardEyebrow}>Provincia</Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
@@ -6071,7 +6140,7 @@ export function ProfileScreen({
                       </ScrollView>
                     </>
                   ) : null}
-                  {selectedUsersProvince && ['editar', 'listado'].includes(adminUsersTool) ? (
+                  {selectedUsersProvince && adminUsersTool === 'listado' ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>{selectedUsersProvince}</Text>
                       {visibleAdminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios para esta provincia.</Text> : null}
@@ -6119,7 +6188,14 @@ export function ProfileScreen({
                                 <Ionicons name="person-circle-outline" size={16} color={palette.red} />
                                 <Text style={styles.actionPillText}>Ver perfil</Text>
                               </TouchableOpacity>
-                              <Text style={styles.expandHint}>{canEditThisUser ? (selected ? 'Cerrar edición' : 'Editar usuario') : 'Edición bloqueada por jerarquía'}</Text>
+                              <TouchableOpacity
+                                style={[styles.actionPill, !canEditThisUser && styles.lockedCard]}
+                                onPress={() => canEditThisUser ? setSelectedAdminUserId(selected ? '' : user.id) : setAuthMessage('No podes editar administradores, usuarios superiores o usuarios fuera de tu alcance.')}
+                              >
+                                <Ionicons name={selected ? 'close-outline' : 'create-outline'} size={16} color={palette.red} />
+                                <Text style={styles.actionPillText}>{selected ? 'Cerrar' : 'Editar'}</Text>
+                              </TouchableOpacity>
+                              {!canEditThisUser ? <Text style={styles.expandHint}>Edición bloqueada por jerarquía</Text> : null}
                             </TouchableOpacity>
                             {selected ? (
                               <View style={styles.adminInlineEditor}>
@@ -6318,7 +6394,7 @@ export function ProfileScreen({
                         );
                       })}
                     </View>
-                  ) : ['editar', 'listado'].includes(adminUsersTool) && adminUsers.length > 0 ? <Text style={styles.cardText}>Elegir una provincia para ver sus usuarios.</Text> : null}
+                  ) : adminUsersTool === 'listado' && adminUsers.length > 0 ? <Text style={styles.cardText}>Elegir una provincia para ver sus usuarios.</Text> : null}
                   {adminUsersTool === 'pendientes' ? <View style={styles.profileCommunityPanel}>
                     <Text style={styles.cardEyebrow}>Pendientes rapido</Text>
                     <TouchableOpacity style={styles.secondaryButton} onPress={loadPendingProfiles}>

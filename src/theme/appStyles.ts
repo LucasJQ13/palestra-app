@@ -1113,6 +1113,20 @@ export const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 3
   },
+  gospelButton: {
+    minHeight: 72,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#f28a00',
+    shadowColor: '#f28a00',
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 3
+  },
   instagramButtonText: {
     flex: 1
   },

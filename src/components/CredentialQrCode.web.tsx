@@ -42,12 +42,12 @@ export function CredentialQrCode({ value, size = 104 }: { value: string; size?: 
           width: logoSize,
           height: logoSize,
           borderRadius: 6,
-          backgroundColor: 'white',
+          backgroundColor: 'transparent',
           alignItems: 'center',
           justifyContent: 'center'
         }}
       >
-        <Image source={qrLogo} style={{ width: logoSize - 4, height: logoSize - 4, borderRadius: 4 }} />
+        <Image source={qrLogo} style={{ width: logoSize, height: logoSize, borderRadius: 4 }} />
       </View>
     </View>
   );

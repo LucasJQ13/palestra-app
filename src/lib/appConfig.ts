@@ -56,6 +56,12 @@ export type AppAdminConfig = {
   intentions: {
     prayerSeconds: number;
   };
+  gospel: {
+    enabled: boolean;
+    sourceUrl: string;
+    title: string;
+    body: string;
+  };
 };
 export const defaultAdminConfig: AppAdminConfig = {
   identity: {
@@ -108,6 +114,12 @@ export const defaultAdminConfig: AppAdminConfig = {
   },
   intentions: {
     prayerSeconds: 60
+  },
+  gospel: {
+    enabled: false,
+    sourceUrl: '',
+    title: 'Evangelio del Dia',
+    body: ''
   }
 };
 
@@ -127,7 +139,8 @@ export function normalizeAdminConfig(config?: Partial<AppAdminConfig> | null): A
     contact: { ...defaultAdminConfig.contact, ...(config?.contact ?? {}) },
     settings: { ...defaultAdminConfig.settings, ...(config?.settings ?? {}) },
     periodoMotivador: { ...defaultAdminConfig.periodoMotivador, ...(config?.periodoMotivador ?? {}) },
-    intentions: { ...defaultAdminConfig.intentions, ...(config?.intentions ?? {}) }
+    intentions: { ...defaultAdminConfig.intentions, ...(config?.intentions ?? {}) },
+    gospel: { ...defaultAdminConfig.gospel, ...(config?.gospel ?? {}) }
   };
 
   if (!merged.contact.instagram || merged.contact.instagram === contactInfo.instagram || merged.contact.instagram === '@palestra.argentina') {

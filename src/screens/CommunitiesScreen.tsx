@@ -106,7 +106,19 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
     const nativeUrl = Platform.OS === 'android'
       ? `geo:0,0?q=${query}(${label})`
       : `maps://?q=${label}&ll=${query}`;
-    const webUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${query} ${nearestResult.community.name}`)}`;
+    const webUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && typeof window.open === 'function') {
+        const opened = window.open(webUrl, '_blank', 'noopener,noreferrer');
+        if (opened) {
+          return;
+        }
+        window.location.href = webUrl;
+        return;
+      }
+      await Linking.openURL(webUrl);
+      return;
+    }
     try {
       await Linking.openURL(nativeUrl);
       return;
