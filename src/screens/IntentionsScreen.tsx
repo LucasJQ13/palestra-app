@@ -129,8 +129,7 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
           upsert: true
         });
       if (uploadError) {
-        setHeroImageDraft(asset.uri);
-        setHeroEditMessage(`No pude subir a Supabase (${uploadError.message}). Se usara la imagen local en esta edicion.`);
+        setHeroEditMessage(`No pude subir a Supabase: ${uploadError.message}. No se guardara una URL local.`);
         return;
       }
       const { data: publicUrl } = supabase.storage.from('content-images').getPublicUrl(path);
@@ -242,9 +241,9 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
           <Image source={heroImageUrl ? { uri: heroImageUrl } : defaultSpiritImage} style={styles.intentionsSpiritPhoto} />
         </View>
         <Text style={styles.intentionsHeroTitle}>{heroTitle}</Text>
-        <View style={styles.intentionsFlameCorner}>
-          <Image source={defaultFireImage} style={styles.intentionsFlameImage} />
-        </View>
+      </View>
+      <View pointerEvents="none" style={styles.intentionsBottomFlame}>
+        <Image source={defaultFireImage} style={styles.intentionsBottomFlameImage} />
       </View>
       {editor?.isAdmin ? (
         <View style={styles.stackTight}>
