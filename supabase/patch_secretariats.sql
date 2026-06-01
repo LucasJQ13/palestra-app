@@ -20,20 +20,21 @@ as $$
   select
     p.id,
     p.full_name,
-    p.province,
+    provinces.name as province,
     p.community_name,
-    p.role,
+    p.role::text,
     p.subrole_key,
     p.display_role_label,
     p.avatar_url
   from public.profiles p
+  left join public.provinces on provinces.id = p.province_id
   where p.status = 'aprobado'
     and (
       (p_scope = 'nacional' and p.role in ('vocal_nacional', 'coordinador_nacional'))
       or (
         p_scope = 'provincia'
         and p.role in ('vocal', 'coordinador_diocesano')
-        and p.province = p_province
+        and provinces.name = p_province
       )
     )
   order by
@@ -89,7 +90,7 @@ begin
   values (
     auth.uid(),
     coalesce(nullif(trim(actor.full_name), ''), 'Palestrista'),
-    actor.email,
+    actor.phone,
     left(trim(p_message), 500),
     'nuevo',
     'user',
