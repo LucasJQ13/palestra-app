@@ -53,6 +53,9 @@ export type AppAdminConfig = {
     body: string;
     imageUrl: string;
   };
+  intentions: {
+    prayerSeconds: number;
+  };
 };
 export const defaultAdminConfig: AppAdminConfig = {
   identity: {
@@ -102,6 +105,9 @@ export const defaultAdminConfig: AppAdminConfig = {
     title: 'PM',
     body: '',
     imageUrl: ''
+  },
+  intentions: {
+    prayerSeconds: 60
   }
 };
 
@@ -120,7 +126,8 @@ export function normalizeAdminConfig(config?: Partial<AppAdminConfig> | null): A
     },
     contact: { ...defaultAdminConfig.contact, ...(config?.contact ?? {}) },
     settings: { ...defaultAdminConfig.settings, ...(config?.settings ?? {}) },
-    periodoMotivador: { ...defaultAdminConfig.periodoMotivador, ...(config?.periodoMotivador ?? {}) }
+    periodoMotivador: { ...defaultAdminConfig.periodoMotivador, ...(config?.periodoMotivador ?? {}) },
+    intentions: { ...defaultAdminConfig.intentions, ...(config?.intentions ?? {}) }
   };
 
   if (!merged.contact.instagram || merged.contact.instagram === contactInfo.instagram || merged.contact.instagram === '@palestra.argentina') {

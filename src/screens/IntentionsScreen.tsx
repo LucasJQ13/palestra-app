@@ -1,33 +1,47 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Image, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { AppContentBlock, PrayerIntentionRecord, createPrayerIntention, deliverNotificationIntent, fetchRandomPrayerIntention, recordPrayerForIntention } from '../lib/profiles';
+import { AppContentBlock, ContentEditorBlock, PrayerIntentionRecord, createPrayerIntention, deliverNotificationIntent, fetchRandomPrayerIntention, recordPrayerForIntention, updateAppContent, updateAppTab } from '../lib/profiles';
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor } from '../lib/constants';
 import { changeDone } from '../lib/appMessages';
+import { normalizeContentCards, prepareContentCardsForSave } from '../lib/contentBlocks';
+import { supabase } from '../lib/supabase';
 import { Session } from '../types/auth';
-import { EditableIntro } from '../components/EditableIntro';
 import { useIsDarkTheme } from '../theme/ThemeContext';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
 
-const PRAYER_SECONDS = 60;
+const defaultSpiritImage = require('../../assets/espiritu-santo.png');
+const defaultFireImage = require('../../assets/fuego-intenciones.png');
 
-export function IntentionsScreen({ session, title, content, editor }: { session: Session | null; title: string; content?: AppContentBlock; editor?: PageEditorProps }) {
+export function IntentionsScreen({ session, title, content, editor, prayerSeconds = 60 }: { session: Session | null; title: string; content?: AppContentBlock; editor?: PageEditorProps; prayerSeconds?: number }) {
   const isDark = useIsDarkTheme();
+  const effectivePrayerSeconds = Math.max(10, Math.min(600, Number(prayerSeconds) || 60));
   const [showCreate, setShowCreate] = useState(false);
+  const [heroEditing, setHeroEditing] = useState(false);
+  const [heroTitleDraft, setHeroTitleDraft] = useState(content?.title || 'Deja tus intenciones\ny ora por otras personas');
+  const [heroImageDraft, setHeroImageDraft] = useState('');
+  const [heroEditMessage, setHeroEditMessage] = useState('');
   const [intentionText, setIntentionText] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [message, setMessage] = useState('');
   const [currentIntention, setCurrentIntention] = useState<PrayerIntentionRecord | null>(null);
   const [prayedIds, setPrayedIds] = useState<string[]>([]);
-  const [remainingSeconds, setRemainingSeconds] = useState(PRAYER_SECONDS);
+  const [remainingSeconds, setRemainingSeconds] = useState(effectivePrayerSeconds);
   const [isPraying, setIsPraying] = useState(false);
   const [completedPrayer, setCompletedPrayer] = useState(false);
   const [prayerAcknowledged, setPrayerAcknowledged] = useState(false);
   const [prayerModalVisible, setPrayerModalVisible] = useState(false);
   const [prayerCount, setPrayerCount] = useState(0);
   const flamePulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const cards = normalizeContentCards(content?.blocks, content?.title ?? '', content?.body ?? '');
+    setHeroTitleDraft(content?.title || 'Deja tus intenciones\ny ora por otras personas');
+    setHeroImageDraft(cards.find((block) => block.isVisible !== false && block.imageUrl?.trim())?.imageUrl?.trim() || '');
+  }, [content?.title, content?.blocks]);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -57,9 +71,12 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
     return () => clearInterval(timer);
   }, [isPraying, currentIntention?.id]);
 
-  const waxProgress = Math.max(0.18, remainingSeconds / PRAYER_SECONDS);
+  const waxProgress = Math.max(0.18, remainingSeconds / effectivePrayerSeconds);
   const flameScale = flamePulse.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.12] });
   const flameOpacity = flamePulse.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });
+  const heroTitle = content?.title || 'Deja tus intenciones\ny ora por otras personas';
+  const heroCards = normalizeContentCards(content?.blocks, content?.title ?? '', content?.body ?? '');
+  const heroImageUrl = heroCards.find((block) => block.isVisible !== false && block.imageUrl?.trim())?.imageUrl?.trim() || '';
 
   async function saveIntention() {
     if (!session?.id || session.status !== 'aprobado') {
@@ -79,6 +96,90 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
     setIsAnonymous(false);
     setShowCreate(false);
     setMessage(changeDone('Intencion creada. Otros usuarios ya pueden rezar por ella.'));
+  }
+
+  async function uploadHeroImage() {
+    if (!editor?.isAdmin) {
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setHeroEditMessage('Necesito permiso para acceder a tus fotos.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    try {
+      setHeroEditMessage('Subiendo imagen...');
+      const asset = result.assets[0];
+      const response = await fetch(asset.uri);
+      const bytes = await response.arrayBuffer();
+      const extension = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+      const path = `intenciones/hero-${Date.now()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('content-images')
+        .upload(path, bytes, {
+          contentType: asset.mimeType ?? 'image/jpeg',
+          upsert: true
+        });
+      if (uploadError) {
+        setHeroImageDraft(asset.uri);
+        setHeroEditMessage(`No pude subir a Supabase (${uploadError.message}). Se usara la imagen local en esta edicion.`);
+        return;
+      }
+      const { data: publicUrl } = supabase.storage.from('content-images').getPublicUrl(path);
+      setHeroImageDraft(publicUrl.publicUrl);
+      setHeroEditMessage('Imagen cargada.');
+    } catch (error) {
+      setHeroEditMessage(error instanceof Error ? error.message : 'No pude subir la imagen.');
+    }
+  }
+
+  async function saveHeroContent() {
+    if (!editor?.isAdmin) {
+      return;
+    }
+    const title = heroTitleDraft.trim() || 'Deja tus intenciones\ny ora por otras personas';
+    const blocks: ContentEditorBlock[] = prepareContentCardsForSave([{
+      id: 'intenciones-hero',
+      type: 'card',
+      title,
+      text: '',
+      imageUrl: heroImageDraft.trim(),
+      linkLabel: '',
+      linkUrl: '',
+      isVisible: true,
+      sortOrder: 1,
+      value: title
+    }]);
+    setHeroEditMessage('Guardando portada...');
+    const { error: tabError } = await updateAppTab(
+      editor.tabKey,
+      editor.title,
+      editor.tab?.visible ?? true,
+      editor.tab?.visibleRoles ?? null,
+      editor.tab?.icon,
+      editor.tab?.sectionType
+    );
+    if (tabError) {
+      setHeroEditMessage(tabError.message);
+      return;
+    }
+    const { error } = await updateAppContent(editor.tabKey, title, '', blocks);
+    if (error) {
+      setHeroEditMessage(error.message);
+      return;
+    }
+    await editor.onTabsChanged();
+    await editor.onContentChanged();
+    setHeroEditMessage(changeDone('Portada actualizada.'));
+    setHeroEditing(false);
   }
 
   async function startPrayer(resetSeen = false) {
@@ -106,7 +207,7 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
     }
     setCurrentIntention(data);
     setPrayedIds((current) => Array.from(new Set([...current, data.id])));
-    setRemainingSeconds(PRAYER_SECONDS);
+    setRemainingSeconds(effectivePrayerSeconds);
     setIsPraying(true);
     setPrayerModalVisible(true);
     setMessage('');
@@ -138,14 +239,39 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
     <ScrollView style={isDark ? styles.contentDark : undefined} contentContainerStyle={[styles.content, styles.intentionsContent]}>
       <View style={styles.intentionsHero}>
         <View style={styles.intentionsSpiritImage}>
-          <Ionicons name="paper-plane-outline" size={54} color={palette.red} />
+          <Image source={heroImageUrl ? { uri: heroImageUrl } : defaultSpiritImage} style={styles.intentionsSpiritPhoto} />
         </View>
-        <Text style={styles.intentionsHeroTitle}>Deja tus intenciones{'\n'}y ora por otras personas</Text>
+        <Text style={styles.intentionsHeroTitle}>{heroTitle}</Text>
         <View style={styles.intentionsFlameCorner}>
-          <Ionicons name="flame" size={42} color="#f28a00" />
+          <Image source={defaultFireImage} style={styles.intentionsFlameImage} />
         </View>
       </View>
-      <EditableIntro content={content} editor={editor} />
+      {editor?.isAdmin ? (
+        <View style={styles.stackTight}>
+          <TouchableOpacity style={styles.inlineEditButton} onPress={() => setHeroEditing((current) => !current)}>
+            <Ionicons name={heroEditing ? 'close-outline' : 'create-outline'} size={18} color={palette.red} />
+            <Text style={styles.inlineEditButtonText}>{heroEditing ? 'Cerrar editor' : 'Editar pagina'}</Text>
+          </TouchableOpacity>
+          {heroEditing ? (
+            <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
+              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Texto principal</Text>
+              <TextInput style={[styles.input, styles.textArea]} value={heroTitleDraft} onChangeText={setHeroTitleDraft} multiline placeholder="Deja tus intenciones..." placeholderTextColor={inputPlaceholderColor} />
+              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Imagen del Espiritu Santo</Text>
+              <View style={styles.inlineActions}>
+                <TouchableOpacity style={styles.smallActionButton} onPress={uploadHeroImage}>
+                  <Ionicons name="image-outline" size={16} color={palette.red} />
+                  <Text style={styles.smallActionText}>Subir</Text>
+                </TouchableOpacity>
+              </View>
+              <TextInput style={styles.input} value={heroImageDraft} onChangeText={setHeroImageDraft} placeholder="URL de imagen" placeholderTextColor={inputPlaceholderColor} />
+              <TouchableOpacity style={styles.primaryButton} onPress={saveHeroContent}>
+                <Text style={styles.primaryButtonText}>Guardar portada</Text>
+              </TouchableOpacity>
+              {heroEditMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{heroEditMessage}</Text> : null}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {!session?.id ? (
         <View style={[styles.card, isDark && styles.surfaceCardDark]}>
@@ -217,7 +343,7 @@ export function IntentionsScreen({ session, title, content, editor }: { session:
               </>
             ) : null}
             {completedPrayer && !prayerAcknowledged ? (
-              <TouchableOpacity style={styles.primaryButton} onPress={() => setPrayerAcknowledged(true)}>
+              <TouchableOpacity style={styles.intentionAmenButton} onPress={() => setPrayerAcknowledged(true)}>
                 <Text style={styles.primaryButtonText}>Amen</Text>
               </TouchableOpacity>
             ) : null}

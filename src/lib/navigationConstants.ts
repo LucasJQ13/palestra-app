@@ -13,6 +13,7 @@ export const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: 
   { key: 'contenido_publicado', label: 'Contenido', icon: 'albums-outline', systemOnly: true },
   { key: 'comunidades', label: 'Comunidades', icon: 'location-outline' },
   { key: 'listas_qr', label: 'Listas QR', icon: 'qr-code-outline' },
+  { key: 'intenciones', label: 'Intenciones', icon: 'flame-outline', systemOnly: true },
   { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
   { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
   { key: 'solicitudes', label: 'Solicitudes', icon: 'mail-unread-outline' },

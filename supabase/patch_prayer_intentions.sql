@@ -108,11 +108,25 @@ on conflict (key) do update set
 insert into public.app_content (tab_key, title, body, blocks)
 values (
   'intenciones',
-  'Intenciones',
-  'Crea una intencion o acompana en oracion una intencion de otro usuario.',
-  '[]'::jsonb
+  'Deja tus intenciones
+y ora por otras personas',
+  '',
+  jsonb_build_array(jsonb_build_object(
+    'id', 'intenciones-hero',
+    'type', 'card',
+    'title', 'Deja tus intenciones
+y ora por otras personas',
+    'text', '',
+    'imageUrl', '',
+    'linkLabel', '',
+    'linkUrl', '',
+    'isVisible', true,
+    'sortOrder', 1
+  ))
 )
-on conflict (tab_key) do nothing;
+on conflict (tab_key) do update set
+  title = case when public.app_content.title = 'Intenciones' then excluded.title else public.app_content.title end,
+  body = case when public.app_content.body = 'Crea una intencion o acompana en oracion una intencion de otro usuario.' then '' else public.app_content.body end;
 
 create or replace function public.create_prayer_intention(
   p_body text,
@@ -235,10 +249,10 @@ begin
   values (p_intention_id, auth.uid());
 
   update public.prayer_intentions
-  set prayer_count = prayer_count + 1,
+  set prayer_count = public.prayer_intentions.prayer_count + 1,
       updated_at = now()
   where id = p_intention_id
-  returning prayer_count into next_count;
+  returning public.prayer_intentions.prayer_count into next_count;
 
   insert into public.notification_intents (
     created_by,

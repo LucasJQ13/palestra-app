@@ -891,7 +891,7 @@ export default function App() {
       return <CommunitiesScreen session={session} title={tabLabel('comunidades')} content={appContent.find((item) => item.tab_key === 'comunidades')} refreshKey={contentVersion} nearbySearchEnabled={adminConfig.settings.nearbyCommunitySearchEnabled} editor={pageEditorProps('comunidades')} />;
     }
     if (activeTab === 'intenciones') {
-      return <IntentionsScreen session={session} title={tabLabel('intenciones')} content={appContent.find((item) => item.tab_key === 'intenciones')} editor={pageEditorProps('intenciones')} />;
+      return <IntentionsScreen session={session} title={tabLabel('intenciones')} content={appContent.find((item) => item.tab_key === 'intenciones')} editor={pageEditorProps('intenciones')} prayerSeconds={adminConfig.intentions.prayerSeconds} />;
     }
     if (activeTab === 'historia') {
       return <HistoryScreen title={tabLabel('historia')} content={appContent.find((item) => item.tab_key === 'historia')} editor={pageEditorProps('historia')} />;

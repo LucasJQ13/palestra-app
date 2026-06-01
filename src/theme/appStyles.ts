@@ -4091,6 +4091,11 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(242, 138, 0, 0.18)'
   },
+  intentionsSpiritPhoto: {
+    width: 82,
+    height: 82,
+    borderRadius: 41
+  },
   intentionsHeroTitle: {
     color: '#f28a00',
     fontSize: 28,
@@ -4108,6 +4113,11 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)'
+  },
+  intentionsFlameImage: {
+    width: 50,
+    height: 50,
+    resizeMode: 'contain'
   },
   intentionsMainActions: {
     flexDirection: 'row',
@@ -4160,6 +4170,16 @@ export const styles = StyleSheet.create({
   intentionPrayerModal: {
     alignItems: 'center',
     paddingTop: 34
+  },
+  intentionAmenButton: {
+    minHeight: 52,
+    borderRadius: 18,
+    paddingHorizontal: 22,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f28a00'
   },
   intentionPrayerCard: {
     borderRadius: 20,

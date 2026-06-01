@@ -5808,6 +5808,43 @@ export function ProfileScreen({
                 </View>
               ) : null}
 
+              {adminModule === 'intenciones' && session?.role === 'administrador' ? (
+                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
+                  <Text style={styles.cardTitle}>Intenciones</Text>
+                  <Text style={styles.cardText}>Configura el tiempo de rezo y audita las intenciones publicadas.</Text>
+                  <Text style={styles.inputLabel}>Tiempo de rezo en segundos</Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    value={String(adminConfigDraft.intentions.prayerSeconds)}
+                    onChangeText={(value) => {
+                      const seconds = Number(value.replace(/[^0-9]/g, ''));
+                      updateAdminConfigSection('intentions', { prayerSeconds: Number.isFinite(seconds) ? seconds : 60 });
+                    }}
+                    keyboardType="number-pad"
+                    placeholder="60"
+                    placeholderTextColor={inputPlaceholderColor}
+                  />
+                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Intenciones')}>
+                    <Text style={styles.primaryButtonText}>Guardar configuracion</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={loadPrayerIntentionsPanel}>
+                    <Ionicons name="list-outline" size={17} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>Intenciones cargadas</Text>
+                  </TouchableOpacity>
+                  {prayerIntentionsMessage ? <Text style={styles.cardText}>{prayerIntentionsMessage}</Text> : null}
+                  {myPrayerIntentions.map((item) => (
+                    <View key={item.id} style={styles.adminListRow}>
+                      <Ionicons name="flame-outline" size={20} color={palette.red} />
+                      <View style={styles.adminUserHeaderText}>
+                        <Text style={styles.adminQuickText}>{item.author_name || 'Palestrista'}</Text>
+                        <Text style={styles.cardText}>{item.body}</Text>
+                        <Text style={styles.feedMeta}>{item.prayer_count} oraciones - {item.is_anonymous ? 'Subida como anonima' : 'Publica'}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
                   {adminModule === 'configuracion' && session?.role === 'administrador' ? (
                     <View style={styles.inlineEditorPanel}>
                       <Text style={styles.cardEyebrow}>Noticias de la Iglesia</Text>
