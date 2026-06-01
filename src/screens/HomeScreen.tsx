@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Linking, Modal, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { news } from '../data/content';
@@ -12,6 +12,7 @@ import { canAccessPrivate, canManageNationalPublishedContent } from '../lib/sess
 import { fallbackContentKey } from '../lib/contentBlocks';
 import { changeDone } from '../lib/appMessages';
 import { inputPlaceholderColor } from '../lib/constants';
+import { DailyGospelRecord, fetchDailyGospel } from '../lib/dailyGospel';
 import { homeGreeting, homeGreetingName, roleLabel } from '../lib/profileDisplay';
 import { uploadPickedImageToPublicUrl } from '../lib/uploads';
 import { Session } from '../types/auth';
@@ -45,6 +46,10 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
   const [homeEditImage, setHomeEditImage] = useState('');
   const [homeActionMessage, setHomeActionMessage] = useState('');
   const [gospelModalVisible, setGospelModalVisible] = useState(false);
+  const [dailyGospel, setDailyGospel] = useState<DailyGospelRecord | null>(null);
+  const [dailyGospelLoading, setDailyGospelLoading] = useState(false);
+  const [dailyGospelMessage, setDailyGospelMessage] = useState('');
+  const [gospelReflectionOpen, setGospelReflectionOpen] = useState(false);
   const canManageHomeEntries = canManageNationalPublishedContent(session);
   const hiddenFallbackContent = adminConfig.settings.hiddenFallbackContent ?? [];
   const instagramUrl = adminConfig.contact.instagram?.startsWith('http') ? adminConfig.contact.instagram : `https://www.instagram.com/${adminConfig.contact.instagram.replace('@', '')}`;
@@ -82,6 +87,30 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
       alive = false;
     };
   }, [refreshKey, homeRefreshKey, session?.province, session?.role]);
+
+  useEffect(() => {
+    if (gospelModalVisible && adminConfig.gospel.autoUpdate !== false) {
+      loadDailyGospel(false);
+    }
+  }, [gospelModalVisible, adminConfig.gospel.sourceUrl, adminConfig.gospel.reflectionSourceUrl]);
+
+  async function loadDailyGospel(forceRefresh: boolean) {
+    setDailyGospelLoading(true);
+    setDailyGospelMessage(forceRefresh ? 'Actualizando Evangelio del dia...' : 'Cargando Evangelio del dia...');
+    const { data, error } = await fetchDailyGospel({
+      sourceUrl: adminConfig.gospel.sourceUrl || 'https://donbosco.org.ar/home/evangelio',
+      reflectionSourceUrl: adminConfig.gospel.reflectionSourceUrl || adminConfig.gospel.sourceUrl,
+      forceRefresh
+    });
+    if (error || !data) {
+      setDailyGospelMessage(error?.message ?? 'No pude cargar el Evangelio automatico.');
+      setDailyGospelLoading(false);
+      return;
+    }
+    setDailyGospel(data);
+    setDailyGospelMessage('');
+    setDailyGospelLoading(false);
+  }
 
   function startHomeNewsEdit(item: HomeFeedItem) {
     if (!isRemoteNewsItem(item)) {
@@ -241,15 +270,46 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
             <TouchableOpacity style={styles.modalCloseButton} onPress={() => setGospelModalVisible(false)}>
               <Ionicons name="close-outline" size={22} color={palette.red} />
             </TouchableOpacity>
-            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Evangelio del Dia</Text>
-            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{adminConfig.gospel.title || 'Evangelio del Dia'}</Text>
-            {adminConfig.gospel.body ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{adminConfig.gospel.body}</Text> : <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay evangelio cargado manualmente.</Text>}
-            {adminConfig.gospel.sourceUrl ? (
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(adminConfig.gospel.sourceUrl)}>
-                <Ionicons name="open-outline" size={17} color={palette.red} />
-                <Text style={styles.secondaryButtonText}>Abrir fuente</Text>
-              </TouchableOpacity>
-            ) : null}
+            <ScrollView style={styles.gospelModalScroll} contentContainerStyle={styles.gospelModalContent} nestedScrollEnabled>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Evangelio del Dia</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{dailyGospel?.title || adminConfig.gospel.title || 'Evangelio del Dia'}</Text>
+              {dailyGospel?.citation ? <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{dailyGospel.citation}</Text> : null}
+              {dailyGospel?.gospel_text ? (
+                <LinkedSelectableText text={dailyGospel.gospel_text} style={[styles.cardText, styles.gospelText, isDark && styles.textDarkBody]} linkStyle={styles.linkText} />
+              ) : adminConfig.gospel.body ? (
+                <LinkedSelectableText text={adminConfig.gospel.body} style={[styles.cardText, styles.gospelText, isDark && styles.textDarkBody]} linkStyle={styles.linkText} />
+              ) : (
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{dailyGospelLoading ? 'Cargando Evangelio automatico...' : 'No hay evangelio cargado todavia.'}</Text>
+              )}
+              {dailyGospelMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{dailyGospelMessage}</Text> : null}
+              {dailyGospel?.reflection_text ? (
+                <>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => setGospelReflectionOpen((current) => !current)}>
+                    <Ionicons name={gospelReflectionOpen ? 'chevron-up-outline' : 'sparkles-outline'} size={17} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>{gospelReflectionOpen ? 'Ocultar reflexion' : 'Reflexion'}</Text>
+                  </TouchableOpacity>
+                  {gospelReflectionOpen ? (
+                    <View style={[styles.notice, isDark && styles.surfaceRowDark]}>
+                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{dailyGospel.reflection_title || 'Reflexion'}</Text>
+                      <LinkedSelectableText text={dailyGospel.reflection_text} style={[styles.cardText, isDark && styles.textDarkBody]} linkStyle={styles.linkText} />
+                    </View>
+                  ) : null}
+                </>
+              ) : null}
+              <View style={styles.compactToolRow}>
+                <TouchableOpacity style={styles.secondaryButton} onPress={() => loadDailyGospel(true)} disabled={dailyGospelLoading}>
+                  <Ionicons name="refresh-outline" size={17} color={palette.red} />
+                  <Text style={styles.secondaryButtonText}>{dailyGospelLoading ? 'Actualizando' : 'Actualizar'}</Text>
+                </TouchableOpacity>
+                {(dailyGospel?.source_url || adminConfig.gospel.sourceUrl) ? (
+                  <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(dailyGospel?.source_url || adminConfig.gospel.sourceUrl)}>
+                    <Ionicons name="open-outline" size={17} color={palette.red} />
+                    <Text style={styles.secondaryButtonText}>Fuente</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Fuente: {dailyGospel?.source_name || 'Don Bosco Argentina'}</Text>
+            </ScrollView>
           </View>
         </View>
       </Modal>

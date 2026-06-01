@@ -1127,6 +1127,18 @@ export const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 3
   },
+  gospelModalScroll: {
+    maxHeight: 520,
+    width: '100%'
+  },
+  gospelModalContent: {
+    gap: 12,
+    paddingBottom: 8
+  },
+  gospelText: {
+    fontSize: 16,
+    lineHeight: 25
+  },
   instagramButtonText: {
     flex: 1
   },

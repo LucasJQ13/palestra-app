@@ -5915,13 +5915,20 @@ export function ProfileScreen({
               {adminModule === 'evangelio_dia' && session?.role === 'administrador' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Evangelio del Dia</Text>
-                  <Text style={styles.cardText}>Configura el boton de Home y el contenido que se abre en ventana popup.</Text>
+                  <Text style={styles.cardText}>Configura el Evangelio diario automatico. Don Bosco queda como fuente inicial y puedes cambiar la fuente de reflexion si hace falta.</Text>
                   <TouchableOpacity
                     style={[styles.adminListRow, adminConfigDraft.gospel.enabled && styles.adminListRowActive]}
                     onPress={() => updateAdminConfigSection('gospel', { enabled: !adminConfigDraft.gospel.enabled })}
                   >
                     <Ionicons name={adminConfigDraft.gospel.enabled ? 'toggle' : 'toggle-outline'} size={24} color={adminConfigDraft.gospel.enabled ? palette.red : palette.inkMuted} />
                     <Text style={styles.adminQuickText}>{adminConfigDraft.gospel.enabled ? 'Evangelio activo' : 'Evangelio desactivado'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.adminListRow, adminConfigDraft.gospel.autoUpdate !== false && styles.adminListRowActive]}
+                    onPress={() => updateAdminConfigSection('gospel', { autoUpdate: adminConfigDraft.gospel.autoUpdate === false })}
+                  >
+                    <Ionicons name={adminConfigDraft.gospel.autoUpdate !== false ? 'toggle' : 'toggle-outline'} size={24} color={adminConfigDraft.gospel.autoUpdate !== false ? palette.red : palette.inkMuted} />
+                    <Text style={styles.adminQuickText}>{adminConfigDraft.gospel.autoUpdate !== false ? 'Actualizacion automatica activa' : 'Actualizacion automatica desactivada'}</Text>
                   </TouchableOpacity>
                   <Text style={styles.inputLabel}>Titulo</Text>
                   <TextInput
@@ -5931,12 +5938,21 @@ export function ProfileScreen({
                     placeholder="Evangelio del Dia"
                     placeholderTextColor={inputPlaceholderColor}
                   />
-                  <Text style={styles.inputLabel}>Pagina o fuente externa</Text>
+                  <Text style={styles.inputLabel}>Fuente del Evangelio</Text>
                   <TextInput
                     style={[styles.input, isDark && styles.inputDark]}
                     value={adminConfigDraft.gospel.sourceUrl}
                     onChangeText={(value) => updateAdminConfigSection('gospel', { sourceUrl: value })}
                     placeholder="https://..."
+                    autoCapitalize="none"
+                    placeholderTextColor={inputPlaceholderColor}
+                  />
+                  <Text style={styles.inputLabel}>Fuente de reflexion</Text>
+                  <TextInput
+                    style={[styles.input, isDark && styles.inputDark]}
+                    value={adminConfigDraft.gospel.reflectionSourceUrl ?? ''}
+                    onChangeText={(value) => updateAdminConfigSection('gospel', { reflectionSourceUrl: value })}
+                    placeholder="https://... puede ser la misma u otra pagina"
                     autoCapitalize="none"
                     placeholderTextColor={inputPlaceholderColor}
                   />

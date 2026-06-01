@@ -59,6 +59,8 @@ export type AppAdminConfig = {
   gospel: {
     enabled: boolean;
     sourceUrl: string;
+    reflectionSourceUrl?: string;
+    autoUpdate?: boolean;
     title: string;
     body: string;
   };
@@ -116,8 +118,10 @@ export const defaultAdminConfig: AppAdminConfig = {
     prayerSeconds: 60
   },
   gospel: {
-    enabled: false,
-    sourceUrl: '',
+    enabled: true,
+    sourceUrl: 'https://donbosco.org.ar/home/evangelio',
+    reflectionSourceUrl: 'https://donbosco.org.ar/home/evangelio',
+    autoUpdate: true,
     title: 'Evangelio del Dia',
     body: ''
   }
