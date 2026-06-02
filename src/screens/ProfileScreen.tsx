@@ -48,6 +48,8 @@ import { ProvinceCreateDropdown } from './profile/ProvinceAdminPanel';
 import { AdminUsersToolMenu } from './profile/AdminUsersToolMenu';
 import { IdentityAdminPanel } from './profile/IdentityAdminPanel';
 import { GeneralSettingsAdminPanel } from './profile/GeneralSettingsAdminPanel';
+import { IntentionsAdminPanel } from './profile/IntentionsAdminPanel';
+import { DailyGospelAdminPanel } from './profile/DailyGospelAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -6017,103 +6019,25 @@ export function ProfileScreen({
               ) : null}
 
               {adminModule === 'intenciones' && session?.role === 'administrador' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={styles.cardTitle}>Intenciones</Text>
-                  <Text style={styles.cardText}>Configura el tiempo de rezo y audita las intenciones publicadas.</Text>
-                  <Text style={styles.inputLabel}>Tiempo de rezo en segundos</Text>
-                  <TextInput
-                    style={[styles.input, isDark && styles.inputDark]}
-                    value={String(adminConfigDraft.intentions.prayerSeconds)}
-                    onChangeText={(value) => {
-                      const seconds = Number(value.replace(/[^0-9]/g, ''));
-                      updateAdminConfigSection('intentions', { prayerSeconds: Number.isFinite(seconds) ? seconds : 60 });
-                    }}
-                    keyboardType="number-pad"
-                    placeholder="60"
-                    placeholderTextColor={inputPlaceholderColor}
-                  />
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Intenciones')}>
-                    <Text style={styles.primaryButtonText}>Guardar configuracion</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={loadPrayerIntentionsPanel}>
-                    <Ionicons name="list-outline" size={17} color={palette.red} />
-                    <Text style={styles.secondaryButtonText}>Intenciones cargadas</Text>
-                  </TouchableOpacity>
-                  {prayerIntentionsMessage ? <Text style={styles.cardText}>{prayerIntentionsMessage}</Text> : null}
-                  {myPrayerIntentions.map((item) => (
-                    <View key={item.id} style={styles.adminListRow}>
-                      <Ionicons name="flame-outline" size={20} color={palette.red} />
-                      <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.adminQuickText}>{item.author_name || 'Palestrista'}</Text>
-                        <Text style={styles.cardText}>{item.body}</Text>
-                        <Text style={styles.feedMeta}>{item.prayer_count} oraciones - {item.is_anonymous ? 'Subida como anonima' : 'Publica'}</Text>
-                      </View>
-                      <TouchableOpacity style={styles.actionPill} onPress={() => deletePrayerIntentionFromAdmin(item)}>
-                        <Ionicons name="trash-outline" size={16} color={palette.red} />
-                        <Text style={styles.actionPillText}>Eliminar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
+                <IntentionsAdminPanel
+                  config={adminConfigDraft}
+                  isDark={isDark}
+                  intentions={myPrayerIntentions}
+                  message={prayerIntentionsMessage}
+                  onPatch={(patch) => updateAdminConfigSection('intentions', patch)}
+                  onSave={() => saveAdminConfigDraft('Intenciones')}
+                  onLoad={loadPrayerIntentionsPanel}
+                  onDelete={deletePrayerIntentionFromAdmin}
+                />
               ) : null}
 
               {adminModule === 'evangelio_dia' && session?.role === 'administrador' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={styles.cardTitle}>Evangelio del Dia</Text>
-                  <Text style={styles.cardText}>Configura el Evangelio diario automatico. Don Bosco queda como fuente inicial y puedes cambiar la fuente de reflexion si hace falta.</Text>
-                  <TouchableOpacity
-                    style={[styles.adminListRow, adminConfigDraft.gospel.enabled && styles.adminListRowActive]}
-                    onPress={() => updateAdminConfigSection('gospel', { enabled: !adminConfigDraft.gospel.enabled })}
-                  >
-                    <Ionicons name={adminConfigDraft.gospel.enabled ? 'toggle' : 'toggle-outline'} size={24} color={adminConfigDraft.gospel.enabled ? palette.red : palette.inkMuted} />
-                    <Text style={styles.adminQuickText}>{adminConfigDraft.gospel.enabled ? 'Evangelio activo' : 'Evangelio desactivado'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.adminListRow, adminConfigDraft.gospel.autoUpdate !== false && styles.adminListRowActive]}
-                    onPress={() => updateAdminConfigSection('gospel', { autoUpdate: adminConfigDraft.gospel.autoUpdate === false })}
-                  >
-                    <Ionicons name={adminConfigDraft.gospel.autoUpdate !== false ? 'toggle' : 'toggle-outline'} size={24} color={adminConfigDraft.gospel.autoUpdate !== false ? palette.red : palette.inkMuted} />
-                    <Text style={styles.adminQuickText}>{adminConfigDraft.gospel.autoUpdate !== false ? 'Actualizacion automatica activa' : 'Actualizacion automatica desactivada'}</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.inputLabel}>Titulo</Text>
-                  <TextInput
-                    style={[styles.input, isDark && styles.inputDark]}
-                    value={adminConfigDraft.gospel.title}
-                    onChangeText={(value) => updateAdminConfigSection('gospel', { title: value })}
-                    placeholder="Evangelio del Dia"
-                    placeholderTextColor={inputPlaceholderColor}
-                  />
-                  <Text style={styles.inputLabel}>Fuente del Evangelio</Text>
-                  <TextInput
-                    style={[styles.input, isDark && styles.inputDark]}
-                    value={adminConfigDraft.gospel.sourceUrl}
-                    onChangeText={(value) => updateAdminConfigSection('gospel', { sourceUrl: value })}
-                    placeholder="https://..."
-                    autoCapitalize="none"
-                    placeholderTextColor={inputPlaceholderColor}
-                  />
-                  <Text style={styles.inputLabel}>Fuente de reflexion</Text>
-                  <TextInput
-                    style={[styles.input, isDark && styles.inputDark]}
-                    value={adminConfigDraft.gospel.reflectionSourceUrl ?? ''}
-                    onChangeText={(value) => updateAdminConfigSection('gospel', { reflectionSourceUrl: value })}
-                    placeholder="https://... puede ser la misma u otra pagina"
-                    autoCapitalize="none"
-                    placeholderTextColor={inputPlaceholderColor}
-                  />
-                  <Text style={styles.inputLabel}>Evangelio cargado manualmente</Text>
-                  <TextInput
-                    style={[styles.input, styles.textArea, isDark && styles.inputDark]}
-                    value={adminConfigDraft.gospel.body}
-                    onChangeText={(value) => updateAdminConfigSection('gospel', { body: value })}
-                    multiline
-                    placeholder="Texto del evangelio..."
-                    placeholderTextColor={inputPlaceholderColor}
-                  />
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Evangelio del Dia')}>
-                    <Text style={styles.primaryButtonText}>Guardar Evangelio</Text>
-                  </TouchableOpacity>
-                </View>
+                <DailyGospelAdminPanel
+                  config={adminConfigDraft}
+                  isDark={isDark}
+                  onPatch={(patch) => updateAdminConfigSection('gospel', patch)}
+                  onSave={() => saveAdminConfigDraft('Evangelio del Dia')}
+                />
               ) : null}
 
                   {adminModule === 'configuracion' && session?.role === 'administrador' ? (
