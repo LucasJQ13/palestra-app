@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Linking, Modal, Platform, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 import { BarcodeScanningResult, Camera, CameraView } from 'expo-camera';
@@ -12,7 +11,7 @@ import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
 import { CommunityGroupType, communityGroupLabel, communitySectionOptions, resolveCommunitySectionVisibility } from '../lib/communitySections';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -57,6 +56,7 @@ import { PublishedContentAdminPanel } from './profile/PublishedContentAdminPanel
 import { ProfileSettingsPanel } from './profile/ProfileSettingsPanel';
 import { HistoryAdminPanel } from './profile/HistoryAdminPanel';
 import { MailboxPanel } from './profile/MailboxPanel';
+import { useMailboxController } from './profile/useMailboxController';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -409,21 +409,6 @@ export function ProfileScreen({
   const [editingCommunityPublicationTitle, setEditingCommunityPublicationTitle] = useState('');
   const [editingCommunityPublicationBody, setEditingCommunityPublicationBody] = useState('');
   const [myCommunityPublications, setMyCommunityPublications] = useState<CommunityPublication[]>([]);
-  const [mailboxMessages, setMailboxMessages] = useState<MailboxMessageRecord[]>([]);
-  const [mailboxResponses, setMailboxResponses] = useState<Record<string, string>>({});
-  const [mailboxFilter, setMailboxFilter] = useState<'recibidos' | 'leidos'>('recibidos');
-  const [showMailboxComposer, setShowMailboxComposer] = useState(false);
-  const [mailboxDraft, setMailboxDraft] = useState('');
-  const [mailboxTargetMode, setMailboxTargetMode] = useState<MailboxTargetMode>('my_community');
-  const [mailboxTargetCommunityId, setMailboxTargetCommunityId] = useState('');
-  const [mailboxTargetProvince, setMailboxTargetProvince] = useState('');
-  const [mailboxTargetRole, setMailboxTargetRole] = useState<Role>('palestrista');
-  const [mailboxTargetUserId, setMailboxTargetUserId] = useState('');
-  const [mailboxRecipientSearch, setMailboxRecipientSearch] = useState('');
-  const [mailboxSelectedUserIds, setMailboxSelectedUserIds] = useState<string[]>([]);
-  const [mailboxUserDropdownOpen, setMailboxUserDropdownOpen] = useState(false);
-  const [mailboxProvinceDropdownOpen, setMailboxProvinceDropdownOpen] = useState(false);
-  const [mailboxRoleDropdownOpen, setMailboxRoleDropdownOpen] = useState(false);
   const [localPollVotes, setLocalPollVotes] = useState<Record<string, string>>({});
   const [forumComments, setForumComments] = useState<Record<string, PublicationComment[]>>({});
   const [forumCommentDrafts, setForumCommentDrafts] = useState<Record<string, string>>({});
@@ -638,83 +623,6 @@ export function ProfileScreen({
     }
     return true;
   });
-  const visibleMailboxMessages = mailboxMessages.filter((message) => {
-    if (mailboxFilter === 'recibidos') {
-      return message.can_respond && message.status === 'nuevo';
-    }
-    return message.can_respond && message.status !== 'nuevo';
-  });
-  const mailboxCommunityOptions = registrationCommunities
-    .flatMap((province) => province.locations.map((community) => ({ ...community, province: province.province })))
-    .filter((community) => {
-      if (!session) {
-        return false;
-      }
-      if (session.role === 'administrador' || ['vocal_nacional', 'coordinador_nacional'].includes(session.role)) {
-        return true;
-      }
-      if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
-        return community.province === session.province;
-      }
-      return community.name === session.communityOfOrigin;
-    });
-  const mailboxProvinceOptions = Array.from(new Set(registrationCommunities.map((item) => item.province))).sort((a, b) => a.localeCompare(b));
-  const mailboxUserOptions = adminUsers.filter((user) => {
-    if (!session || user.role === 'administrador' || user.id === session.id) {
-      return false;
-    }
-    if (session.role === 'administrador') {
-      return true;
-    }
-    if (['vocal_nacional', 'coordinador_nacional'].includes(session.role)) {
-      return roleRank(user.role as Role) < roleRank(session.role);
-    }
-    if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
-      return user.province === session.province && roleRank(user.role as Role) < roleRank(session.role);
-    }
-    return user.province === session.province && user.community_name === session.communityOfOrigin && roleRank(user.role as Role) < roleRank(session.role);
-  });
-  const mailboxRecipientQuery = mailboxRecipientSearch.trim().toLowerCase();
-  const filteredMailboxUserOptions = mailboxUserOptions.filter((user) => {
-    if (!mailboxRecipientQuery) {
-      return true;
-    }
-    return [user.full_name, user.email, user.province, user.community_name, user.role]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(mailboxRecipientQuery));
-  });
-  const selectedMailboxUsers = mailboxUserOptions.filter((user) => mailboxSelectedUserIds.includes(user.id));
-  const estimatedMailboxRecipients = (() => {
-    if (mailboxTargetMode === 'user') {
-      return mailboxSelectedUserIds.length;
-    }
-    if (mailboxTargetMode === 'all') {
-      return mailboxUserOptions.length;
-    }
-    if (mailboxTargetMode === 'role') {
-      return mailboxUserOptions.filter((user) => user.role === mailboxTargetRole).length;
-    }
-    if (mailboxTargetMode === 'province') {
-      const province = mailboxTargetProvince || session?.province;
-      return mailboxUserOptions.filter((user) => user.province === province).length;
-    }
-    if (mailboxTargetMode === 'role_province') {
-      const province = mailboxTargetProvince || session?.province;
-      return mailboxUserOptions.filter((user) => user.role === mailboxTargetRole && user.province === province).length;
-    }
-    if (mailboxTargetMode === 'diocesan_leadership') {
-      const province = mailboxTargetProvince || '';
-      return mailboxUserOptions.filter((user) => ['vocal', 'coordinador_diocesano'].includes(user.role) && (!province || user.province === province)).length;
-    }
-    if (mailboxTargetMode === 'province_communities') {
-      return mailboxUserOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.province === session?.province).length;
-    }
-    if (['community', 'my_community'].includes(mailboxTargetMode)) {
-      const communityName = mailboxCommunityOptions.find((community) => community.id === (mailboxTargetCommunityId || mailboxCommunityOptions[0]?.id))?.name ?? session?.communityOfOrigin;
-      return mailboxUserOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.community_name === communityName).length;
-    }
-    return 0;
-  })();
   const enabledAdminModules = adminModuleCatalog.filter((item) => {
     if (item.key === 'navegacion') {
       return session?.role === 'administrador';
@@ -753,7 +661,15 @@ export function ProfileScreen({
     { label: 'Solicitudes', value: String(pendingAdminRequests.length), icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap },
     { label: 'Comunidades', value: String(manageableCommunities.reduce((total, item) => total + item.locations.length, 0)), icon: 'location-outline' as keyof typeof Ionicons.glyphMap }
   ];
-
+  const mailboxController = useMailboxController({
+    session,
+    registrationCommunities,
+    adminUsers,
+    provinceRoleLabels,
+    roleAliases: adminConfig.settings.roleAliases,
+    setAuthMessage,
+    onEnsureAdminUsers: loadAdminUsers
+  });
   useEffect(() => {
     setEditFullName(session?.fullName ?? '');
     setEditContact(session?.contact ?? '');
@@ -1647,14 +1563,6 @@ export function ProfileScreen({
     setForumComments(await fetchPublicationComments(ids));
   }
 
-  async function refreshMailbox() {
-    if (!session || session.role === 'invitado') {
-      setMailboxMessages([]);
-      return;
-    }
-    setMailboxMessages(await fetchMailboxMessages());
-  }
-
   async function loadPrayerIntentionsPanel() {
     if (!session || session.role === 'invitado') {
       setMyPrayerIntentions([]);
@@ -1710,164 +1618,6 @@ export function ProfileScreen({
     await loadPrayerIntentionsPanel();
   }
 
-  function defaultMailboxTargetMode(): MailboxTargetMode {
-    if (!session) {
-      return 'my_community';
-    }
-    if (session.role === 'administrador') {
-      return 'user';
-    }
-    if (['vocal_nacional', 'coordinador_nacional'].includes(session.role)) {
-      return 'diocesan_leadership';
-    }
-    if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
-      return 'community';
-    }
-    return 'my_community';
-  }
-
-  async function confirmMailboxSend(total: number) {
-    if (total <= 10) {
-      return true;
-    }
-    const message = `Vas a enviar este mensaje a ${total} destinatarios. Confirmas el envio?`;
-    if (Platform.OS === 'web') {
-      return typeof window === 'undefined' ? true : window.confirm(message);
-    }
-    return new Promise<boolean>((resolve) => {
-      Alert.alert('Confirmar envio', message, [
-        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Enviar', onPress: () => resolve(true) }
-      ]);
-    });
-  }
-
-  function toggleMailboxUser(userId: string) {
-    setMailboxSelectedUserIds((current) => current.includes(userId)
-      ? current.filter((id) => id !== userId)
-      : [...current, userId]);
-  }
-
-  async function submitNewMailboxMessage() {
-    if (!session || session.role === 'invitado') {
-      setAuthMessage('Iniciá sesión para enviar mensajes.');
-      return;
-    }
-    if (!mailboxDraft.trim()) {
-      setAuthMessage('Escribe un mensaje antes de enviar.');
-      return;
-    }
-
-    const mode = mailboxTargetMode || defaultMailboxTargetMode();
-    const fallbackCommunity = mailboxCommunityOptions[0];
-    const communityId = mode === 'my_community' ? fallbackCommunity?.id : mailboxTargetCommunityId || fallbackCommunity?.id;
-    const province = mailboxTargetProvince || session.province;
-
-    if (['my_community', 'community'].includes(mode) && !communityId) {
-      setAuthMessage('No hay responsables asignados para tu comunidad actualmente.');
-      return;
-    }
-    if (mode === 'user' && mailboxSelectedUserIds.length === 0) {
-      setAuthMessage('Selecciona al menos un usuario destinatario.');
-      return;
-    }
-    if (estimatedMailboxRecipients === 0) {
-      setAuthMessage('No hay destinatarios para el criterio seleccionado.');
-      return;
-    }
-
-    const confirmed = await confirmMailboxSend(estimatedMailboxRecipients);
-    if (!confirmed) {
-      return;
-    }
-
-    const errors: string[] = [];
-    if (mode === 'user') {
-      for (const userId of mailboxSelectedUserIds) {
-        const { error } = await createMailboxMessage({
-          targetMode: mode,
-          message: mailboxDraft.trim(),
-          userId
-        });
-        if (error) {
-          errors.push(error.message);
-        }
-      }
-    } else {
-      const { error } = await createMailboxMessage({
-        targetMode: mode,
-        message: mailboxDraft.trim(),
-        communityId,
-        province,
-        role: mailboxTargetRole,
-        userId: mailboxTargetUserId || null
-      });
-      if (error) {
-        errors.push(error.message);
-      }
-    }
-
-    if (errors.length > 0) {
-      setAuthMessage(errors[0]);
-      return;
-    }
-
-    setMailboxDraft('');
-    setMailboxRecipientSearch('');
-    setMailboxSelectedUserIds([]);
-    setShowMailboxComposer(false);
-    await AsyncStorage.removeItem(`palestra.mailboxDraft.${session.id}`);
-    setAuthMessage(changeDone('Mensaje enviado.'));
-    await refreshMailbox();
-  }
-
-  async function saveMailboxDraft() {
-    if (!session || session.role === 'invitado') {
-      setAuthMessage('Inicia sesion para guardar borradores.');
-      return;
-    }
-    if (!mailboxDraft.trim()) {
-      setAuthMessage('Escribe un mensaje antes de guardar el borrador.');
-      return;
-    }
-    await AsyncStorage.setItem(`palestra.mailboxDraft.${session.id}`, JSON.stringify({
-      message: mailboxDraft.slice(0, 500),
-      targetMode: mailboxTargetMode,
-      targetCommunityId: mailboxTargetCommunityId,
-      targetProvince: mailboxTargetProvince,
-      targetRole: mailboxTargetRole,
-      selectedUserIds: mailboxSelectedUserIds,
-      savedAt: new Date().toISOString()
-    }));
-    setAuthMessage(changeDone('Borrador guardado en este dispositivo.'));
-  }
-
-  async function submitMailboxResponse(messageId: string) {
-    const response = (mailboxResponses[messageId] ?? '').trim();
-    if (!response) {
-      setAuthMessage('Escribi una respuesta antes de enviarla.');
-      return;
-    }
-    const { error } = await respondMailboxMessage(messageId, response);
-    if (error) {
-      setAuthMessage(error.message);
-      return;
-    }
-    setMailboxResponses((current) => ({ ...current, [messageId]: '' }));
-    setAuthMessage(changeDone('Respuesta enviada.'));
-    await refreshMailbox();
-  }
-
-  async function updateMailboxStatus(messageId: string, status: MailboxMessageRecord['status']) {
-    const { error } = await setMailboxMessageStatus(messageId, status);
-    if (error) {
-      setAuthMessage(error.message);
-      return;
-    }
-    setAuthMessage(changeDone(`Mensaje marcado como ${status}.`));
-    await refreshMailbox();
-  }
-
   useEffect(() => {
     if (session) {
       loadMyRequests();
@@ -1889,38 +1639,6 @@ export function ProfileScreen({
       refreshCommunityForum();
       if (session && communityMembers.length === 0) {
         fetchMyCommunityMembers().then(setCommunityMembers);
-      }
-    }
-    if (profilePanel === 'buzon') {
-      setMailboxTargetMode(defaultMailboxTargetMode());
-      refreshMailbox();
-      if (session?.id) {
-        AsyncStorage.getItem(`palestra.mailboxDraft.${session.id}`).then((rawDraft) => {
-          if (!rawDraft || mailboxDraft.trim()) {
-            return;
-          }
-          const savedDraft = JSON.parse(rawDraft) as {
-            message?: string;
-            targetMode?: MailboxTargetMode;
-            targetCommunityId?: string;
-            targetProvince?: string;
-            targetRole?: Role;
-            selectedUserIds?: string[];
-          };
-          setMailboxDraft(savedDraft.message ?? '');
-          if (savedDraft.targetMode) {
-            setMailboxTargetMode(savedDraft.targetMode);
-          }
-          setMailboxTargetCommunityId(savedDraft.targetCommunityId ?? '');
-          setMailboxTargetProvince(savedDraft.targetProvince ?? '');
-          if (savedDraft.targetRole) {
-            setMailboxTargetRole(savedDraft.targetRole);
-          }
-          setMailboxSelectedUserIds(savedDraft.selectedUserIds ?? []);
-        }).catch(() => undefined);
-      }
-      if (session?.role === 'administrador' && adminUsers.length === 0) {
-        loadAdminUsers();
       }
     }
     if (adminModule === 'listas_qr') {
@@ -4117,7 +3835,7 @@ export function ProfileScreen({
                 { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); setShowCommunity(false); setShowCommunityManagement(false); refreshCommunityForum(); setShowAccountMenu(false); } },
                 ...(session.role === 'palestrista' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
                 { icon: 'flame-outline', label: 'Ver intenciones', action: () => { setProfilePanel('intenciones'); setShowCommunity(false); setShowCommunityManagement(false); loadPrayerIntentionsPanel(); setShowAccountMenu(false); } },
-                { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowCommunity(false); setShowCommunityManagement(false); refreshMailbox(); setShowAccountMenu(false); } },
+                { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } },
                 { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } }
               ]}
               onSignOut={signOutReal}
@@ -4483,47 +4201,8 @@ export function ProfileScreen({
           ) : null}
           {profilePanel === 'buzon' ? (
             <MailboxPanel
-              session={session}
               isDark={isDark}
-              showComposer={showMailboxComposer}
-              targetMode={mailboxTargetMode}
-              communityOptions={mailboxCommunityOptions}
-              targetCommunityId={mailboxTargetCommunityId}
-              targetProvince={mailboxTargetProvince}
-              provinceDropdownOpen={mailboxProvinceDropdownOpen}
-              provinceOptions={mailboxProvinceOptions}
-              targetRole={mailboxTargetRole}
-              roleDropdownOpen={mailboxRoleDropdownOpen}
-              recipientSearch={mailboxRecipientSearch}
-              userDropdownOpen={mailboxUserDropdownOpen}
-              selectedUserIds={mailboxSelectedUserIds}
-              filteredUserOptions={filteredMailboxUserOptions}
-              selectedUsers={selectedMailboxUsers}
-              provinceRoleLabels={provinceRoleLabels}
-              roleAliases={adminConfig.settings.roleAliases}
-              estimatedRecipients={estimatedMailboxRecipients}
-              draft={mailboxDraft}
-              filter={mailboxFilter}
-              messages={visibleMailboxMessages}
-              responses={mailboxResponses}
-              onToggleComposer={() => setShowMailboxComposer(!showMailboxComposer)}
-              onRefresh={refreshMailbox}
-              onTargetModeChange={setMailboxTargetMode}
-              onTargetCommunityChange={setMailboxTargetCommunityId}
-              onTargetProvinceChange={setMailboxTargetProvince}
-              onProvinceDropdownChange={setMailboxProvinceDropdownOpen}
-              onTargetRoleChange={setMailboxTargetRole}
-              onRoleDropdownChange={setMailboxRoleDropdownOpen}
-              onRecipientSearchChange={setMailboxRecipientSearch}
-              onUserDropdownChange={setMailboxUserDropdownOpen}
-              onToggleUser={toggleMailboxUser}
-              onDraftChange={setMailboxDraft}
-              onSubmitNewMessage={submitNewMailboxMessage}
-              onSaveDraft={saveMailboxDraft}
-              onFilterChange={setMailboxFilter}
-              onResponseChange={(messageId, value) => setMailboxResponses((current) => ({ ...current, [messageId]: value }))}
-              onSubmitResponse={submitMailboxResponse}
-              onUpdateStatus={updateMailboxStatus}
+              {...mailboxController}
             />
           ) : null}
           {profilePanel === 'vista' ? (
