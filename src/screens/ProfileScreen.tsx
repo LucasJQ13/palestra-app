@@ -46,6 +46,7 @@ import { GuestProfileAuthCard } from './profile/GuestProfileAuthCard';
 import { AdminOverviewPanel } from './profile/AdminOverviewPanel';
 import { ProvinceCreateDropdown } from './profile/ProvinceAdminPanel';
 import { AdminUsersToolMenu } from './profile/AdminUsersToolMenu';
+import { IdentityAdminPanel } from './profile/IdentityAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -5308,46 +5309,12 @@ export function ProfileScreen({
               </Modal>
 
               {adminModule === 'identidad' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Identidad de la app</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Base editable para nombre, subtitulo y colores principales de la app.</Text>
-                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre de la app" value={adminConfigDraft.identity.appName} onChangeText={(value) => updateAdminConfigSection('identity', { appName: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Subtitulo" value={adminConfigDraft.identity.subtitle} onChangeText={(value) => updateAdminConfigSection('identity', { subtitle: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Descripcion institucional" value={adminConfigDraft.identity.description} onChangeText={(value) => updateAdminConfigSection('identity', { description: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Color principal {adminConfigDraft.identity.primaryColor || '#2d8dc8'}</Text>
-                  <View style={styles.inlineActions}>
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Principal #2d8dc8" value={adminConfigDraft.identity.primaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { primaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Secundario #5da7db" value={adminConfigDraft.identity.secondaryColor} onChangeText={(value) => updateAdminConfigSection('identity', { secondaryColor: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  </View>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Secundario {adminConfigDraft.identity.secondaryColor || '#5da7db'}: subtitulos y acentos suaves.</Text>
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Texto {adminConfigDraft.identity.textColor || '#123245'} / Boton {adminConfigDraft.identity.buttonColor || adminConfigDraft.identity.primaryColor || '#2d8dc8'}</Text>
-                  <View style={styles.inlineActions}>
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Texto #123245" value={adminConfigDraft.identity.textColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { textColor: value })}  placeholderTextColor={inputPlaceholderColor} />
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Boton #2d8dc8" value={adminConfigDraft.identity.buttonColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { buttonColor: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  </View>
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nombre del saludo {adminConfigDraft.identity.greetingNameColor || '#2fb66d'}</Text>
-                  <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Nombre del saludo #2fb66d" value={adminConfigDraft.identity.greetingNameColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { greetingNameColor: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Leyenda de version</Text>
-                  <View style={styles.inlineActions}>
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Texto. Ej: BETA" value={adminConfigDraft.identity.releaseLabel ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { releaseLabel: value })} autoCapitalize="characters" placeholderTextColor={inputPlaceholderColor} />
-                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Numero. Ej: 0.1.38" value={adminConfigDraft.identity.releaseVersion ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { releaseVersion: value })} placeholderTextColor={inputPlaceholderColor} />
-                  </View>
-                  <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark, { borderColor: adminConfigDraft.identity.primaryColor || palette.red }]}>
-                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Previsualizacion</Text>
-                    <Text style={[styles.cardTitle, isDark && styles.textDarkStrong, { color: adminConfigDraft.identity.primaryColor || palette.red }]}>{adminConfigDraft.identity.appName}</Text>
-                    <Text style={[styles.cardText, isDark && styles.textDarkBody, { color: adminConfigDraft.identity.secondaryColor || palette.blueDeep }]}>{adminConfigDraft.identity.subtitle}</Text>
-                    <Text style={styles.versionBadge}>{`${adminConfigDraft.identity.releaseLabel || 'BETA'} ${adminConfigDraft.identity.releaseVersion || '0.1.38'}`}</Text>
-                    <Text style={[styles.cardText, isDark && styles.textDarkBody, { color: adminConfigDraft.identity.textColor || palette.ink }]}>Texto de ejemplo</Text>
-                    <Text style={[styles.cardTitle, { color: adminConfigDraft.identity.greetingNameColor || '#2fb66d' }]}>Lucas</Text>
-                    <View style={[styles.previewButtonSwatch, { backgroundColor: adminConfigDraft.identity.buttonColor || adminConfigDraft.identity.primaryColor || palette.red }]}>
-                      <Text style={styles.primaryButtonText}>Boton</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Identidad')}>
-                    <Text style={styles.primaryButtonText}>Guardar identidad</Text>
-                  </TouchableOpacity>
-                  <View style={styles.keyboardSafeSpacer} />
-                </View>
+                <IdentityAdminPanel
+                  config={adminConfigDraft}
+                  isDark={isDark}
+                  onPatch={(patch) => updateAdminConfigSection('identity', patch)}
+                  onSave={() => saveAdminConfigDraft('Identidad')}
+                />
               ) : null}
 
               {adminModule === 'home' ? (
