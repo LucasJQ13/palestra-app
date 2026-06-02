@@ -3602,6 +3602,9 @@ export const styles = StyleSheet.create({
     flex: 1,
     minWidth: 130
   },
+  keyboardSafeSpacer: {
+    height: 130
+  },
   adminListRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -42,7 +42,7 @@ import { CommunitiesScreen } from './src/screens/CommunitiesScreen';
 import { IntentionsScreen } from './src/screens/IntentionsScreen';
 import { DynamicNavigationSectionScreen } from './src/screens/DynamicNavigationSectionScreen';
 import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
-import { appRuntimeOwner, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey, themePreferenceKey, touchPointerPreferenceKey } from './src/lib/constants';
+import { appBetaVersion, appRuntimeOwner, appStageLabel, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey, themePreferenceKey, touchPointerPreferenceKey } from './src/lib/constants';
 import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, PageEditorProps, protectedTabKeys } from './src/lib/navigationConstants';
 import { AppAdminConfig, ContactBlock, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from './src/lib/appConfig';
 import { normalizeExternalUrl } from './src/lib/urls';
@@ -133,6 +133,7 @@ export default function App() {
   const identitySecondaryColor = validHexColor(adminConfig.identity.secondaryColor, palette.blueDeep);
   const identityTextColor = validHexColor(adminConfig.identity.textColor, baseAppTheme.colors.text);
   const identityButtonColor = validHexColor(adminConfig.identity.buttonColor, identityPrimaryColor);
+  const visibleAppVersionLabel = `${adminConfig.identity.releaseLabel?.trim() || appStageLabel} ${adminConfig.identity.releaseVersion?.trim() || appBetaVersion}`.trim();
   const appTheme = useMemo<AppTheme>(() => ({
     ...baseAppTheme,
     colors: {
@@ -823,7 +824,7 @@ export default function App() {
       setAuthConfirmationOpen(true);
       setActiveTab('perfil');
       setAuthScreenOpen(false);
-      setAppMessage('Mail confirmado correctamente.');
+      showToastSuccess('Mail confirmado correctamente.');
     } catch (error) {
       setAuthConfirmationError('No pudimos procesar el link de confirmación. Abrí Palestra APP e intentá iniciar sesión.');
       setAuthConfirmationOpen(true);
@@ -1016,7 +1017,7 @@ export default function App() {
             <View style={styles.brandTextBlock}>
               <Text numberOfLines={1} style={[styles.brand, isDarkTheme && styles.brandDark]}>{adminConfig.identity.appName}</Text>
               <Text numberOfLines={1} style={[styles.subtitle, isDarkTheme && styles.subtitleDark]}>{adminConfig.identity.subtitle}</Text>
-              <Text numberOfLines={1} style={styles.versionBadge}>{appVersionLabel}</Text>
+              <Text numberOfLines={1} style={styles.versionBadge}>{visibleAppVersionLabel}</Text>
             </View>
           </TouchableOpacity>
           <View style={styles.headerActions}>
@@ -1117,7 +1118,7 @@ export default function App() {
           <View pointerEvents="none" style={styles.successToastOverlay}>
             <View style={styles.successToastCard}>
               <Ionicons name="checkmark-circle" size={22} color={palette.white} />
-              <Text style={styles.successToastText}>Cambios guardados</Text>
+              <Text style={styles.successToastText}>{appMessage || 'Cambios guardados'}</Text>
             </View>
           </View>
         ) : null}

@@ -5327,10 +5327,16 @@ export function ProfileScreen({
                   </View>
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nombre del saludo {adminConfigDraft.identity.greetingNameColor || '#2fb66d'}</Text>
                   <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Nombre del saludo #2fb66d" value={adminConfigDraft.identity.greetingNameColor ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { greetingNameColor: value })}  placeholderTextColor={inputPlaceholderColor} />
+                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Leyenda de version</Text>
+                  <View style={styles.inlineActions}>
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Texto. Ej: BETA" value={adminConfigDraft.identity.releaseLabel ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { releaseLabel: value })} autoCapitalize="characters" placeholderTextColor={inputPlaceholderColor} />
+                    <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Numero. Ej: 0.1.38" value={adminConfigDraft.identity.releaseVersion ?? ''} onChangeText={(value) => updateAdminConfigSection('identity', { releaseVersion: value })} placeholderTextColor={inputPlaceholderColor} />
+                  </View>
                   <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark, { borderColor: adminConfigDraft.identity.primaryColor || palette.red }]}>
                     <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Previsualizacion</Text>
                     <Text style={[styles.cardTitle, isDark && styles.textDarkStrong, { color: adminConfigDraft.identity.primaryColor || palette.red }]}>{adminConfigDraft.identity.appName}</Text>
                     <Text style={[styles.cardText, isDark && styles.textDarkBody, { color: adminConfigDraft.identity.secondaryColor || palette.blueDeep }]}>{adminConfigDraft.identity.subtitle}</Text>
+                    <Text style={styles.versionBadge}>{`${adminConfigDraft.identity.releaseLabel || 'BETA'} ${adminConfigDraft.identity.releaseVersion || '0.1.38'}`}</Text>
                     <Text style={[styles.cardText, isDark && styles.textDarkBody, { color: adminConfigDraft.identity.textColor || palette.ink }]}>Texto de ejemplo</Text>
                     <Text style={[styles.cardTitle, { color: adminConfigDraft.identity.greetingNameColor || '#2fb66d' }]}>Lucas</Text>
                     <View style={[styles.previewButtonSwatch, { backgroundColor: adminConfigDraft.identity.buttonColor || adminConfigDraft.identity.primaryColor || palette.red }]}>
@@ -5340,6 +5346,7 @@ export function ProfileScreen({
                   <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Identidad')}>
                     <Text style={styles.primaryButtonText}>Guardar identidad</Text>
                   </TouchableOpacity>
+                  <View style={styles.keyboardSafeSpacer} />
                 </View>
               ) : null}
 

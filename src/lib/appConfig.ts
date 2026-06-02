@@ -22,6 +22,8 @@ export type AppAdminConfig = {
     textColor?: string;
     buttonColor?: string;
     greetingNameColor?: string;
+    releaseLabel?: string;
+    releaseVersion?: string;
   };
   home: {
     heroTitle: string;
@@ -80,7 +82,9 @@ export const defaultAdminConfig: AppAdminConfig = {
     secondaryColor: '#5da7db',
     textColor: '#123245',
     buttonColor: '#2d8dc8',
-    greetingNameColor: '#2fb66d'
+    greetingNameColor: '#2fb66d',
+    releaseLabel: 'BETA',
+    releaseVersion: '0.1.38'
   },
   home: {
     heroTitle: 'Una app para caminar juntos.',
