@@ -7,7 +7,7 @@ import { BarcodeScanningResult, Camera, CameraView } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../theme/palette';
 import { AppTheme, ThemeName, themePresets } from '../theme/themes';
-import { auditLog, calendarActivities, communities, contactInfo, communityNews, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from '../data/content';
+import { auditLog, calendarActivities, communities, contactInfo, communityNews, internalMessages, materials, news, notilestra, pendingUsers, roleDefinitions } from '../data/content';
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
@@ -54,6 +54,7 @@ import { HomeAdminPanel } from './profile/HomeAdminPanel';
 import { ContactAdminPanel } from './profile/ContactAdminPanel';
 import { PublishedContentAdminPanel } from './profile/PublishedContentAdminPanel';
 import { ProfileSettingsPanel } from './profile/ProfileSettingsPanel';
+import { HistoryAdminPanel } from './profile/HistoryAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -5412,27 +5413,13 @@ export function ProfileScreen({
               ) : null}
 
               {adminModule === 'historia_admin' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={styles.cardTitle}>Nuestra Historia</Text>
-                  <Text style={styles.cardText}>Gestión de capítulos, preguntas frecuentes y textos institucionales desde el editor centralizado.</Text>
-                  <View style={styles.adminListRow}>
-                    <Ionicons name="book-outline" size={19} color={palette.red} />
-                    <View style={styles.adminUserHeaderText}>
-                      <Text style={styles.cardTitle}>{movementHistory.length} capitulos actuales</Text>
-                      <Text style={styles.cardText}>Migracion progresiva al editor de bloques.</Text>
-                    </View>
-                  </View>
-                  <View style={styles.adminListRow}>
-                    <Ionicons name="help-circle-outline" size={19} color={palette.red} />
-                    <View style={styles.adminUserHeaderText}>
-                      <Text style={styles.cardTitle}>{faqItems.length} preguntas frecuentes</Text>
-                      <Text style={styles.cardText}>Editable desde Contenido General por ahora.</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => { setSelectedContentTab('historia'); setAdminModule('contenido_general'); }}>
-                    <Text style={styles.primaryButtonText}>Abrir editor de Historia</Text>
-                  </TouchableOpacity>
-                </View>
+                <HistoryAdminPanel
+                  isDark={isDark}
+                  onOpenEditor={() => {
+                    setSelectedContentTab('historia');
+                    setAdminModule('contenido_general');
+                  }}
+                />
               ) : null}
 
               {adminModule === 'contacto_admin' ? (
