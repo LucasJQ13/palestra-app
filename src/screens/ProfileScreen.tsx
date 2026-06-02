@@ -50,6 +50,7 @@ import { IdentityAdminPanel } from './profile/IdentityAdminPanel';
 import { GeneralSettingsAdminPanel } from './profile/GeneralSettingsAdminPanel';
 import { IntentionsAdminPanel } from './profile/IntentionsAdminPanel';
 import { DailyGospelAdminPanel } from './profile/DailyGospelAdminPanel';
+import { HomeAdminPanel } from './profile/HomeAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -5321,54 +5322,23 @@ export function ProfileScreen({
               ) : null}
 
               {adminModule === 'home' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Home</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Control visual del panel inicial, accesos rápidos y secciones visibles.</Text>
-                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo principal" value={adminConfigDraft.home.heroTitle} onChangeText={(value) => updateAdminConfigSection('home', { heroTitle: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Texto principal" value={adminConfigDraft.home.heroText} onChangeText={(value) => updateAdminConfigSection('home', { heroText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Banner destacado" value={adminConfigDraft.home.featuredBanner} onChangeText={(value) => updateAdminConfigSection('home', { featuredBanner: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Saludo editable</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Variables disponibles: {'{nombre}'}, {'{tratamiento}'}, {'{genero_bienvenida}'}, {'{rango}'}.</Text>
-                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Saludo masculino" value={adminConfigDraft.home.greetingTemplateMale ?? defaultAdminConfig.home.greetingTemplateMale} onChangeText={(value) => updateAdminConfigSection('home', { greetingTemplateMale: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Saludo femenino" value={adminConfigDraft.home.greetingTemplateFemale ?? defaultAdminConfig.home.greetingTemplateFemale} onChangeText={(value) => updateAdminConfigSection('home', { greetingTemplateFemale: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Saludo sin narrativa configurada" value={adminConfigDraft.home.greetingTemplateNeutral ?? defaultAdminConfig.home.greetingTemplateNeutral} onChangeText={(value) => updateAdminConfigSection('home', { greetingTemplateNeutral: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark]}>
-                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Preview</Text>
-                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{renderGreetingTemplate(adminConfigDraft.home.greetingTemplateMale, { nombre: 'Lucas', tratamiento: 'hno.', genero_bienvenida: 'Bienvenido', rango: 'Palestrista' }, 'Bienvenido hno. en Cristo Lucas, Oh Bella Ciao!')}</Text>
-                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{renderGreetingTemplate(adminConfigDraft.home.greetingTemplateFemale, { nombre: 'Maria', tratamiento: 'hna.', genero_bienvenida: 'Bienvenida', rango: 'Palestrista' }, 'Bienvenida hna. en Cristo Maria, Oh Bella Ciao!')}</Text>
-                  </View>
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Modulos visibles</Text>
-                  <View style={styles.filterRow}>
-                    {['noticias', 'comunidades', 'materiales', 'foro', 'perfil', 'agenda', 'actividad'].map((item, index) => (
-                      <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipActive]} onPress={() => toggleAdminConfigList('home', item)}>
-                        <Text style={[styles.filterChipText, adminConfigDraft.home.visibleModules.includes(item) && styles.filterChipTextActive]}>{item}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nombres de accesos rápidos</Text>
-                  {(['noticias', 'comunidades', 'materiales', 'foro', 'perfil'] as const).map((item) => (
-                    <TextInput
-                      key={`quick-${item}`}
-                      style={styles.input}
-                      placeholder={`Acceso ${item}`}
-                      value={adminConfigDraft.home.quickAccessLabels?.[item] ?? ''}
-                      onChangeText={(value) => setAdminConfigDraft((current) => ({
-                        ...current,
-                        home: {
-                          ...current.home,
-                          quickAccessLabels: {
-                            ...(current.home.quickAccessLabels ?? {}),
-                            [item]: value
-                          }
-                        }
-                      }))}
-                      placeholderTextColor={inputPlaceholderColor}
-                    />
-                  ))}
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Home')}>
-                    <Text style={styles.primaryButtonText}>Guardar Home</Text>
-                  </TouchableOpacity>
-                </View>
+                <HomeAdminPanel
+                  config={adminConfigDraft}
+                  isDark={isDark}
+                  onPatch={(patch) => updateAdminConfigSection('home', patch)}
+                  onToggleModule={(moduleKey) => toggleAdminConfigList('home', moduleKey)}
+                  onQuickLabelChange={(moduleKey, label) => setAdminConfigDraft((current) => ({
+                    ...current,
+                    home: {
+                      ...current.home,
+                      quickAccessLabels: {
+                        ...(current.home.quickAccessLabels ?? {}),
+                        [moduleKey]: label
+                      }
+                    }
+                  }))}
+                  onSave={() => saveAdminConfigDraft('Home')}
+                />
               ) : null}
 
               {adminModule === 'contenido_publicado' ? (
