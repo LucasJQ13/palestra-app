@@ -55,6 +55,7 @@ import { ContactAdminPanel } from './profile/ContactAdminPanel';
 import { PublishedContentAdminPanel } from './profile/PublishedContentAdminPanel';
 import { ProfileSettingsPanel } from './profile/ProfileSettingsPanel';
 import { HistoryAdminPanel } from './profile/HistoryAdminPanel';
+import { MailboxPanel } from './profile/MailboxPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -4454,233 +4455,49 @@ export function ProfileScreen({
             </View>
           ) : null}
           {profilePanel === 'buzon' ? (
-            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-              <SectionTitle title="Buzon de mensajes" />
-              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Consultas enviadas y mensajes recibidos por tu comunidad o jurisdiccion.</Text>
-              <View style={styles.compactToolRow}>
-                <TouchableOpacity style={[styles.compactSquareButton, showMailboxComposer && styles.compactSquareButtonActive]} onPress={() => setShowMailboxComposer(!showMailboxComposer)}>
-                  <Ionicons name="create-outline" size={17} color={showMailboxComposer ? palette.white : palette.red} />
-                  <Text style={[styles.compactSquareButtonText, showMailboxComposer && styles.compactSquareButtonTextActive]}>Nuevo</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.compactSquareButton} onPress={refreshMailbox}>
-                  <Ionicons name="refresh-outline" size={17} color={palette.red} />
-                  <Text style={styles.compactSquareButtonText}>Actualizar</Text>
-                </TouchableOpacity>
-              </View>
-              {showMailboxComposer ? (
-                <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
-                  <Text style={styles.cardEyebrow}>Nuevo mensaje</Text>
-                  <Text style={styles.inputLabel}>Destino</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                    {session.role === 'administrador' ? ([
-                      ['user', 'Usuario'],
-                      ['role', 'Rango'],
-                      ['province', 'Provincia'],
-                      ['role_province', 'Rango + provincia'],
-                      ['all', 'Todos']
-                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
-                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
-                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
-                      </TouchableOpacity>
-                    )) : ['vocal_nacional', 'coordinador_nacional'].includes(session.role) ? ([
-                      ['user', 'Usuario'],
-                      ['role', 'Rango'],
-                      ['diocesan_leadership', 'Dirigencia diocesana']
-                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
-                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
-                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
-                      </TouchableOpacity>
-                    )) : ['vocal', 'coordinador_diocesano'].includes(session.role) ? ([
-                      ['user', 'Usuario'],
-                      ['role', 'Rango'],
-                      ['community', 'Comunidad'],
-                      ['province_communities', 'Todas de mi provincia']
-                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
-                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
-                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
-                      </TouchableOpacity>
-                    )) : ([
-                      ['user', 'Usuario'],
-                      ['my_community', 'Responsables']
-                    ] as [MailboxTargetMode, string][]).map(([mode, label]) => (
-                      <TouchableOpacity key={mode} style={[styles.filterChip, mailboxTargetMode === mode && styles.filterChipActive]} onPress={() => setMailboxTargetMode(mode)}>
-                        <Text style={[styles.filterChipText, mailboxTargetMode === mode && styles.filterChipTextActive]}>{label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                  {['community', 'my_community'].includes(mailboxTargetMode) ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                      {mailboxCommunityOptions.map((community) => (
-                        <TouchableOpacity key={community.id} style={[styles.filterChip, (mailboxTargetCommunityId || mailboxCommunityOptions[0]?.id) === community.id && styles.filterChipActive]} onPress={() => setMailboxTargetCommunityId(community.id ?? '')}>
-                          <Text style={[styles.filterChipText, (mailboxTargetCommunityId || mailboxCommunityOptions[0]?.id) === community.id && styles.filterChipTextActive]}>{community.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  ) : null}
-                  {['province', 'role_province', 'diocesan_leadership'].includes(mailboxTargetMode) && (session.role === 'administrador' || ['vocal_nacional', 'coordinador_nacional'].includes(session.role)) ? (
-                    <>
-                      <Text style={styles.inputLabel}>Provincia</Text>
-                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxProvinceDropdownOpen(!mailboxProvinceDropdownOpen)}>
-                        <Text style={styles.dropdownButtonText}>{mailboxTargetProvince || 'Todas / seleccionar provincia'}</Text>
-                        <Ionicons name={mailboxProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
-                      </TouchableOpacity>
-                      {mailboxProvinceDropdownOpen ? (
-                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                          {mailboxTargetMode === 'diocesan_leadership' ? (
-                            <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMailboxTargetProvince(''); setMailboxProvinceDropdownOpen(false); }}>
-                              <Text style={styles.dropdownItemText}>Todas las provincias</Text>
-                            </TouchableOpacity>
-                          ) : null}
-                          {mailboxProvinceOptions.map((province) => (
-                            <TouchableOpacity key={province} style={styles.dropdownItem} onPress={() => { setMailboxTargetProvince(province); setMailboxProvinceDropdownOpen(false); }}>
-                              <Text style={styles.dropdownItemText}>{province}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {['role', 'role_province'].includes(mailboxTargetMode) ? (
-                    <>
-                      <Text style={styles.inputLabel}>Rango</Text>
-                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxRoleDropdownOpen(!mailboxRoleDropdownOpen)}>
-                        <Text style={styles.dropdownButtonText}>{roleLabel(mailboxTargetRole)}</Text>
-                        <Ionicons name={mailboxRoleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
-                      </TouchableOpacity>
-                      {mailboxRoleDropdownOpen ? (
-                        <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                          {visibleHierarchyFor(session).filter((item) => !['invitado', 'administrador'].includes(item.role) && roleRank(item.role as Role) < roleRank(session.role)).map((item) => (
-                            <TouchableOpacity key={item.role} style={styles.dropdownItem} onPress={() => { setMailboxTargetRole(item.role); setMailboxRoleDropdownOpen(false); }}>
-                              <Text style={styles.dropdownItemText}>{item.label}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {mailboxTargetMode === 'user' ? (
-                    <View style={styles.profileCommunityPanel}>
-                      <Text style={styles.inputLabel}>Buscar usuario</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Buscar por nombre, provincia, comunidad o rango"
-                        value={mailboxRecipientSearch}
-                        onChangeText={setMailboxRecipientSearch}
-                       placeholderTextColor={inputPlaceholderColor} />
-                      <TouchableOpacity style={styles.dropdownButton} onPress={() => setMailboxUserDropdownOpen(!mailboxUserDropdownOpen)}>
-                        <Text style={styles.dropdownButtonText}>{mailboxSelectedUserIds.length} usuario/s seleccionado/s</Text>
-                        <Ionicons name={mailboxUserDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
-                      </TouchableOpacity>
-                      {mailboxUserDropdownOpen ? (
-                        <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
-                          {filteredMailboxUserOptions.length === 0 ? <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>Sin resultados</Text> : null}
-                          {filteredMailboxUserOptions.slice(0, 60).map((user) => {
-                            const selectedUser = mailboxSelectedUserIds.includes(user.id);
-                            return (
-                              <TouchableOpacity key={user.id} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => toggleMailboxUser(user.id)}>
-                                <Ionicons name={selectedUser ? 'checkbox-outline' : 'square-outline'} size={18} color={selectedUser ? palette.red : palette.inkMuted} />
-                                <View style={styles.adminUserHeaderText}>
-                                  <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{user.full_name ?? 'Usuario'}</Text>
-                                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.gender_preference ?? null)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
-                                </View>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </ScrollView>
-                      ) : null}
-                      {selectedMailboxUsers.length > 0 ? (
-                        <View style={styles.chipRow}>
-                          {selectedMailboxUsers.slice(0, 8).map((user) => (
-                            <TouchableOpacity key={user.id} style={[styles.filterChip, styles.filterChipActive]} onPress={() => toggleMailboxUser(user.id)}>
-                              <Text style={[styles.filterChipText, styles.filterChipTextActive]}>{user.full_name ?? 'Usuario'}</Text>
-                            </TouchableOpacity>
-                          ))}
-                          {selectedMailboxUsers.length > 8 ? <Text style={styles.cardText}>+{selectedMailboxUsers.length - 8} mas</Text> : null}
-                        </View>
-                      ) : null}
-                    </View>
-                  ) : null}
-                  <View style={styles.notice}>
-                    <Ionicons name="people-outline" size={18} color={palette.red} />
-                    <Text style={styles.noticeText}>Destinatarios estimados: {estimatedMailboxRecipients}</Text>
-                  </View>
-                  <Text style={styles.inputLabel}>Mensaje</Text>
-                  <TextInput
-                    style={[styles.input, styles.textArea]}
-                    placeholder="Escribe el mensaje para el buzon"
-                    value={mailboxDraft}
-                    onChangeText={(value) => setMailboxDraft(value.slice(0, 500))}
-                    multiline
-                   placeholderTextColor={inputPlaceholderColor} />
-                  <View style={styles.compactToolRow}>
-                    <TouchableOpacity style={[styles.compactSquareButton, styles.compactSquareButtonActive]} onPress={submitNewMailboxMessage}>
-                      <Ionicons name="send-outline" size={17} color={palette.white} />
-                      <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>Enviar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.compactSquareButton} onPress={saveMailboxDraft}>
-                      <Ionicons name="save-outline" size={17} color={palette.red} />
-                      <Text style={styles.compactSquareButtonText}>Borrador</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : null}
-              <View style={styles.compactTabs}>
-                {(['recibidos', 'leidos'] as const).map((filter) => (
-                  <TouchableOpacity key={filter} style={[styles.filterChip, mailboxFilter === filter && styles.filterChipActive]} onPress={() => setMailboxFilter(filter)}>
-                    <Text style={[styles.filterChipText, mailboxFilter === filter && styles.filterChipTextActive]}>{filter}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {visibleMailboxMessages.length === 0 ? (
-                <View style={[styles.card, isDark && styles.surfaceRowDark]}>
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>No tienes mensajes actualmente</Text>
-                </View>
-              ) : null}
-              {visibleMailboxMessages.map((message) => (
-                <View key={message.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{message.sender_name ?? 'Consulta externa'}</Text>
-                  {message.sender_contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {message.sender_contact}</Text> : null}
-                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{message.message}</Text>
-                  {message.response ? (
-                    <View style={styles.notice}>
-                      <Ionicons name="return-up-forward-outline" size={18} color={palette.red} />
-                      <Text style={styles.noticeText}>{message.response}</Text>
-                    </View>
-                  ) : null}
-                  {message.can_respond && message.status !== 'cerrado' && message.status !== 'archivado' ? (
-                    <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
-                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Respuesta</Text>
-                      <TextInput
-                        style={[styles.input, styles.textArea, isDark && styles.inputDark]}
-                        placeholder="Escribe una respuesta clara"
-                        value={mailboxResponses[message.id] ?? ''}
-                        onChangeText={(value) => setMailboxResponses((current) => ({ ...current, [message.id]: value.slice(0, 1000) }))}
-                        multiline
-                       placeholderTextColor={inputPlaceholderColor} />
-                      <TouchableOpacity style={styles.primaryButton} onPress={() => submitMailboxResponse(message.id)}>
-                        <Text style={styles.primaryButtonText}>Responder</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-                  <View style={styles.inlineActions}>
-                    <TouchableOpacity style={styles.actionPill} onPress={() => updateMailboxStatus(message.id, 'leido')}>
-                      <Ionicons name="mail-open-outline" size={16} color={palette.red} />
-                      <Text style={styles.actionPillText}>Leido</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionPill} onPress={() => updateMailboxStatus(message.id, 'nuevo')}>
-                      <Ionicons name="mail-unread-outline" size={16} color={palette.red} />
-                      <Text style={styles.actionPillText}>No leido</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionPill} onPress={() => updateMailboxStatus(message.id, 'cerrado')}>
-                      <Ionicons name="checkmark-done-outline" size={16} color={palette.red} />
-                      <Text style={styles.actionPillText}>Cerrar</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
+            <MailboxPanel
+              session={session}
+              isDark={isDark}
+              showComposer={showMailboxComposer}
+              targetMode={mailboxTargetMode}
+              communityOptions={mailboxCommunityOptions}
+              targetCommunityId={mailboxTargetCommunityId}
+              targetProvince={mailboxTargetProvince}
+              provinceDropdownOpen={mailboxProvinceDropdownOpen}
+              provinceOptions={mailboxProvinceOptions}
+              targetRole={mailboxTargetRole}
+              roleDropdownOpen={mailboxRoleDropdownOpen}
+              recipientSearch={mailboxRecipientSearch}
+              userDropdownOpen={mailboxUserDropdownOpen}
+              selectedUserIds={mailboxSelectedUserIds}
+              filteredUserOptions={filteredMailboxUserOptions}
+              selectedUsers={selectedMailboxUsers}
+              provinceRoleLabels={provinceRoleLabels}
+              roleAliases={adminConfig.settings.roleAliases}
+              estimatedRecipients={estimatedMailboxRecipients}
+              draft={mailboxDraft}
+              filter={mailboxFilter}
+              messages={visibleMailboxMessages}
+              responses={mailboxResponses}
+              onToggleComposer={() => setShowMailboxComposer(!showMailboxComposer)}
+              onRefresh={refreshMailbox}
+              onTargetModeChange={setMailboxTargetMode}
+              onTargetCommunityChange={setMailboxTargetCommunityId}
+              onTargetProvinceChange={setMailboxTargetProvince}
+              onProvinceDropdownChange={setMailboxProvinceDropdownOpen}
+              onTargetRoleChange={setMailboxTargetRole}
+              onRoleDropdownChange={setMailboxRoleDropdownOpen}
+              onRecipientSearchChange={setMailboxRecipientSearch}
+              onUserDropdownChange={setMailboxUserDropdownOpen}
+              onToggleUser={toggleMailboxUser}
+              onDraftChange={setMailboxDraft}
+              onSubmitNewMessage={submitNewMailboxMessage}
+              onSaveDraft={saveMailboxDraft}
+              onFilterChange={setMailboxFilter}
+              onResponseChange={(messageId, value) => setMailboxResponses((current) => ({ ...current, [messageId]: value }))}
+              onSubmitResponse={submitMailboxResponse}
+              onUpdateStatus={updateMailboxStatus}
+            />
           ) : null}
           {profilePanel === 'vista' ? (
             <>
