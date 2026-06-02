@@ -44,6 +44,7 @@ import { ProfileSummary } from './profile/ProfileSummary';
 import { PendingEmailProfile } from './profile/PendingEmailProfile';
 import { GuestProfileAuthCard } from './profile/GuestProfileAuthCard';
 import { AdminOverviewPanel } from './profile/AdminOverviewPanel';
+import { ProvinceCreateDropdown } from './profile/ProvinceAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -360,6 +361,7 @@ export function ProfileScreen({
   const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
   const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
   const [newProvinceName, setNewProvinceName] = useState('');
+  const [provinceCreateDropdownOpen, setProvinceCreateDropdownOpen] = useState(false);
   const [provinceLogoDrafts, setProvinceLogoDrafts] = useState<Record<string, string>>({});
   const [provinceLogoUploading, setProvinceLogoUploading] = useState('');
   const [showAdminCommunityCreate, setShowAdminCommunityCreate] = useState(false);
@@ -6854,17 +6856,15 @@ export function ProfileScreen({
                   <Text style={styles.cardText}>Seleccioná una provincia argentina faltante. El nombre y la región vienen predefinidos; solo se administra el logo y el estado.</Text>
                   {missingArgentinaProvinces.length > 0 ? (
                     <>
-                      <Text style={styles.cardEyebrow}>Provincias disponibles</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                        {missingArgentinaProvinces.map((item) => {
-                          const selected = (newProvinceName || selectedNewProvinceDefinition?.name) === item.name;
-                          return (
-                            <TouchableOpacity key={item.name} style={[styles.filterChip, selected && styles.filterChipActive]} onPress={() => setNewProvinceName(item.name)}>
-                              <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{item.name}</Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </ScrollView>
+                      <Text style={styles.cardEyebrow}>Provincia faltante</Text>
+                      <ProvinceCreateDropdown
+                        isDark={isDark}
+                        provinces={missingArgentinaProvinces}
+                        selectedProvince={selectedNewProvinceDefinition}
+                        open={provinceCreateDropdownOpen}
+                        onToggle={() => setProvinceCreateDropdownOpen((current) => !current)}
+                        onSelect={(provinceName) => { setNewProvinceName(provinceName); setProvinceCreateDropdownOpen(false); }}
+                      />
                       {selectedNewProvinceDefinition ? (
                         <View style={styles.profileCommunityPanel}>
                           <Text style={styles.cardEyebrow}>{selectedNewProvinceDefinition.region}</Text>
