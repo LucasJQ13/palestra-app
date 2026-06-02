@@ -1,6 +1,8 @@
 -- Secretariados publicos y contacto interno.
 -- Ejecutar en Supabase SQL Editor.
 
+drop function if exists public.get_secretariat_members(text, text);
+
 create or replace function public.get_secretariat_members(p_scope text default 'nacional', p_province text default null)
 returns table (
   id uuid,
@@ -10,6 +12,7 @@ returns table (
   role text,
   subrole_key text,
   display_role_label text,
+  gender_preference text,
   avatar_url text
 )
 language sql
@@ -25,6 +28,7 @@ as $$
     p.role::text,
     p.subrole_key,
     p.display_role_label,
+    p.gender_preference::text,
     p.avatar_url
   from public.profiles p
   left join public.provinces on provinces.id = p.province_id

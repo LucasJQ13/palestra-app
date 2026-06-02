@@ -13,6 +13,7 @@ export function CredentialQrCode({ value, size = 104, province, role }: { value:
       size={size}
       quietZone={4}
       ecl="H"
+      backgroundColor="transparent"
       logo={{ uri: qrLogoSource.uri }}
       logoSize={logoSize}
       logoBackgroundColor="transparent"

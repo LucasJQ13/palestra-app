@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Role } from '../../types/auth';
 import { AdminUsersTool } from '../../types/appUi';
@@ -51,16 +51,16 @@ export function AdminUsersToolMenu({
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
       </TouchableOpacity>
       {open ? (
-        <View style={[styles.dropdownList, isDark && styles.dropdownListDark]}>
+        <ScrollView style={[styles.dropdownList, styles.adminUsersToolList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
           {options.map((item) => (
-            <TouchableOpacity key={item.key} style={[styles.dropdownItem, tool === item.key && styles.communityChoiceActive]} onPress={() => onSelect(item.key)}>
+            <TouchableOpacity key={item.key} style={[styles.dropdownItem, styles.adminUsersToolItem, isDark && styles.dropdownItemDark, tool === item.key && styles.adminUsersToolItemActive]} onPress={() => onSelect(item.key)}>
               <View style={styles.adminUserHeaderText}>
-                <Text style={[styles.dropdownItemText, tool === item.key && styles.filterChipTextActive]}>{item.label}</Text>
-                <Text style={styles.feedMeta}>{item.detail}</Text>
+                <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark, tool === item.key && styles.adminUsersToolItemTextActive]}>{item.label}</Text>
+                <Text style={[styles.feedMeta, isDark && styles.textDarkMuted, tool === item.key && styles.adminUsersToolItemMetaActive]}>{item.detail}</Text>
               </View>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       ) : null}
     </>
   );

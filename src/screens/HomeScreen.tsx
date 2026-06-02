@@ -296,7 +296,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
                     <Text style={styles.secondaryButtonText}>{gospelReflectionOpen ? 'Ocultar reflexion' : 'Reflexion'}</Text>
                   </TouchableOpacity>
                   {gospelReflectionOpen ? (
-                    <View style={[styles.notice, isDark && styles.surfaceRowDark]}>
+                    <View style={[styles.gospelReflectionPanel, isDark && styles.surfaceRowDark]}>
                       <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{dailyGospel.reflection_title || 'Reflexion'}</Text>
                       <LinkedSelectableText text={dailyGospel.reflection_text} style={[styles.cardText, isDark && styles.textDarkBody]} linkStyle={styles.linkText} />
                     </View>

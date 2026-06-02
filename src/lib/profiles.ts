@@ -124,6 +124,7 @@ export type SecretariatMemberRecord = {
   role: string;
   subrole_key?: string | null;
   display_role_label?: string | null;
+  gender_preference?: 'male' | 'female' | null;
   avatar_url?: string | null;
 };
 

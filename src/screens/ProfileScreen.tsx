@@ -6875,13 +6875,15 @@ export function ProfileScreen({
                     const active = item.isActive !== false;
                     const logoUrl = provinceLogoDrafts[item.province] ?? item.logoUrl ?? null;
                     return (
-                      <View key={`province-${item.province}`} style={[styles.adminListRow, !active && styles.lockedCard]}>
-                        {logoUrl ? <Image source={{ uri: logoUrl }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="location-outline" size={20} color={palette.red} /></View>}
-                        <View style={styles.adminUserHeaderText}>
-                          <Text style={styles.adminQuickText}>{item.province}</Text>
-                          <Text style={styles.cardText}>{item.region} - {item.locations.length} comunidades - {active ? 'habilitada' : 'deshabilitada'}</Text>
+                      <View key={`province-${item.province}`} style={[styles.adminListRow, styles.provinceAdminRow, !active && styles.lockedCard]}>
+                        <View style={styles.provinceAdminInfo}>
+                          {logoUrl ? <Image source={{ uri: logoUrl }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="location-outline" size={20} color={palette.red} /></View>}
+                          <View style={styles.adminUserHeaderText}>
+                            <Text style={styles.adminQuickText}>{item.province}</Text>
+                            <Text style={styles.cardText}>{item.region} - {item.locations.length} comunidades - {active ? 'habilitada' : 'deshabilitada'}</Text>
+                          </View>
                         </View>
-                        <View style={styles.inlineActions}>
+                        <View style={styles.provinceAdminActions}>
                           <TouchableOpacity style={styles.secondaryButton} onPress={() => pickProvinceLogo(item.province)} disabled={provinceLogoUploading === item.province}>
                             <Text style={styles.secondaryButtonText}>{provinceLogoUploading === item.province ? 'Subiendo...' : 'Logo'}</Text>
                           </TouchableOpacity>

@@ -11,7 +11,7 @@ export function CredentialQrCode({ value, size = 104, province, role }: { value:
 
   useEffect(() => {
     let alive = true;
-    QRCode.toDataURL(value, { errorCorrectionLevel: 'H', margin: 1, width: size })
+    QRCode.toDataURL(value, { errorCorrectionLevel: 'H', margin: 1, width: size, color: { dark: '#000000ff', light: '#00000000' } })
       .then((nextUri) => {
         if (alive) {
           setUri(nextUri);

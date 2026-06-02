@@ -1128,16 +1128,25 @@ export const styles = StyleSheet.create({
     elevation: 3
   },
   gospelModalScroll: {
-    maxHeight: 520,
+    maxHeight: '82%',
     width: '100%'
   },
   gospelModalContent: {
     gap: 12,
-    paddingBottom: 8
+    paddingBottom: 26
   },
   gospelText: {
     fontSize: 16,
     lineHeight: 25
+  },
+  gospelReflectionPanel: {
+    width: '100%',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.14)',
+    backgroundColor: palette.white,
+    padding: 14,
+    gap: 8
   },
   instagramButtonText: {
     flex: 1
@@ -2903,7 +2912,8 @@ export const styles = StyleSheet.create({
     gap: 10
   },
   adminUserHeaderText: {
-    flex: 1
+    flex: 1,
+    minWidth: 0
   },
   adminUserAvatar: {
     width: 42,
@@ -3313,6 +3323,9 @@ export const styles = StyleSheet.create({
     maxHeight: 220,
     overflow: 'hidden'
   },
+  adminUsersToolList: {
+    maxHeight: 280
+  },
   dropdownListDark: {
     backgroundColor: '#33383B',
     borderColor: 'rgba(139, 201, 234, 0.28)'
@@ -3324,6 +3337,20 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(45, 141, 200, 0.1)',
     justifyContent: 'center'
+  },
+  adminUsersToolItem: {
+    minHeight: 62,
+    paddingVertical: 12,
+    alignItems: 'stretch'
+  },
+  adminUsersToolItemActive: {
+    backgroundColor: palette.red
+  },
+  adminUsersToolItemTextActive: {
+    color: palette.white
+  },
+  adminUsersToolItemMetaActive: {
+    color: 'rgba(255,255,255,0.82)'
   },
   dropdownItemDark: {
     borderBottomColor: 'rgba(139, 201, 234, 0.16)'
@@ -3582,6 +3609,24 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(45, 141, 200, 0.11)',
     paddingVertical: 12
+  },
+  provinceAdminRow: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 12,
+    paddingVertical: 14
+  },
+  provinceAdminInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 0
+  },
+  provinceAdminActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10
   },
   adminListRowActive: {
     backgroundColor: 'rgba(45, 141, 200, 0.08)',

@@ -208,7 +208,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
           return (
             <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
               <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? 'Palestrista'}</Text>
-              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, [], [], null)}</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, [], [], member.gender_preference ?? null)}</Text>
               {member.subrole_key ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{subroleLabel(member.subrole_key)}</Text> : null}
               <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{member.community_name ?? 'Sin comunidad'} - {member.province ?? 'Sin provincia'}</Text>
               {session?.id ? (

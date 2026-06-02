@@ -8,7 +8,7 @@ const sanLuisQrLogo = require('../../assets/qr-san-luis.png');
 const tucumanQrLogo = require('../../assets/qr-tucuman.png');
 const catamarcaQrLogo = require('../../assets/qr-catamarca.png');
 
-const nationalRoles: Role[] = ['vocal_nacional', 'coordinador_nacional', 'administrador'];
+const nationalRoles: Role[] = ['vocal_nacional', 'coordinador_nacional'];
 
 function normalizeProvince(value?: string | null) {
   return (value ?? '')
