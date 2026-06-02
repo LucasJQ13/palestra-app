@@ -30,7 +30,7 @@ import { uploadPickedImageToPublicUrl } from '../lib/uploads';
 import { argentinaProvinceDefinitions, provinceDefinitionFor } from '../lib/argentinaProvinces';
 import { credentialDisplayName, displayRoleLabel, firstNameOf, GenderPreference, genderNarratives, homeGreetingName, perseveranceLabel, personalPmSummary, personalPmTypeLabel, renderGreetingTemplate, roleLabel, roleLabelForProvince, roleShortLabel } from '../lib/profileDisplay';
 import { changeDone, communityDowngradesRole, friendlyUploadError, hasPlausibleEmailDomain, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError, verifyEmailDomainExists } from '../lib/appMessages';
-import { buildInitialBlocksForSection, fallbackContentKey, tabLabelFromKey } from '../lib/contentBlocks';
+import { buildInitialBlocksForSection, tabLabelFromKey } from '../lib/contentBlocks';
 import { canCreateOrAdministrateCommunities, canEditAdminUser, canEditStaticInstitutionalPage, canManageGlobalInstagram, canManageMotivadorPanel, canManageNewsContent, canManagePublishedContent, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from '../lib/sessionAccess';
 import { AdminModule, AdminRequest, AdminUsersTool, ProfilePanel, PublicProfilePreview, TabKey } from '../types/appUi';
 import { internalTestSessions } from '../lib/internalTestSessions';
@@ -52,6 +52,7 @@ import { IntentionsAdminPanel } from './profile/IntentionsAdminPanel';
 import { DailyGospelAdminPanel } from './profile/DailyGospelAdminPanel';
 import { HomeAdminPanel } from './profile/HomeAdminPanel';
 import { ContactAdminPanel } from './profile/ContactAdminPanel';
+import { PublishedContentAdminPanel } from './profile/PublishedContentAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -5343,44 +5344,16 @@ export function ProfileScreen({
               ) : null}
 
               {adminModule === 'contenido_publicado' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={styles.cardTitle}>Contenido Publicado</Text>
-                  <Text style={styles.cardText}>Inventario central para distinguir contenido real de Supabase y contenido base/fallback usado para que la app no quede vacía.</Text>
-                  <Text style={styles.cardEyebrow}>Páginas editables en Supabase</Text>
-                  {appContent.length === 0 ? <Text style={styles.cardText}>No hay páginas publicadas cargadas desde Supabase.</Text> : null}
-                  {appContent.map((item) => (
-                    <View key={item.tab_key} style={styles.adminListRow}>
-                      <Ionicons name="document-text-outline" size={20} color={palette.red} />
-                      <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.adminQuickText}>{item.title || item.tab_key}</Text>
-                        <Text style={styles.cardText}>Origen: Supabase - pestaña {item.tab_key}</Text>
-                      </View>
-                      <TouchableOpacity style={styles.actionPill} onPress={() => { setSelectedContentTab(item.tab_key); setAdminModule('contenido_general'); }}>
-                        <Text style={styles.actionPillText}>Editar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                  <Text style={styles.cardEyebrow}>Contenido base / fallback</Text>
-                  {[
-                    ...news.map((item) => ({ key: fallbackContentKey('home', item.title), section: 'Home', title: item.title, origin: 'Fallback local' })),
-                    ...notilestra.map((item) => ({ key: fallbackContentKey('notilestra', item.title, item.date), section: 'Noticias/Agenda', title: item.title, origin: `Fallback local - ${item.date}` })),
-                    ...calendarActivities.map((item) => ({ key: fallbackContentKey('calendario', item.title, item.date), section: 'Calendario', title: item.title, origin: `Fallback local - ${item.date}` }))
-                  ].map((item) => {
-                    const hidden = (adminConfigDraft.settings.hiddenFallbackContent ?? []).includes(item.key);
-                    return (
-                      <View key={item.key} style={[styles.adminListRow, hidden && styles.lockedCard]}>
-                        <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
-                        <View style={styles.adminUserHeaderText}>
-                          <Text style={styles.adminQuickText}>{item.title}</Text>
-                          <Text style={styles.cardText}>{item.section} - {item.origin} - {hidden ? 'oculto' : 'visible'}</Text>
-                        </View>
-                        <TouchableOpacity style={styles.actionPill} onPress={() => setFallbackContentHidden(item.key, !hidden)}>
-                          <Text style={styles.actionPillText}>{hidden ? 'Mostrar' : 'Ocultar'}</Text>
-                        </TouchableOpacity>
-                      </View>
-                    );
-                  })}
-                </View>
+                <PublishedContentAdminPanel
+                  appContent={appContent}
+                  hiddenFallbackContent={adminConfigDraft.settings.hiddenFallbackContent ?? []}
+                  isDark={isDark}
+                  onEditContent={(tabKey) => {
+                    setSelectedContentTab(tabKey);
+                    setAdminModule('contenido_general');
+                  }}
+                  onToggleFallback={setFallbackContentHidden}
+                />
               ) : null}
 
               {adminModule === 'descargas' ? (
