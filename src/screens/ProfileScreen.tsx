@@ -24,7 +24,7 @@ import { styles } from '../theme/appStyles';
 import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from '../lib/runtimeConfig';
 import { appRuntimeOwner, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos } from '../lib/constants';
 import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, protectedTabKeys } from '../lib/navigationConstants';
-import { AppAdminConfig, ContactBlock, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from '../lib/appConfig';
+import { AppAdminConfig, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from '../lib/appConfig';
 import { normalizeExternalUrl } from '../lib/urls';
 import { uploadPickedImageToPublicUrl } from '../lib/uploads';
 import { argentinaProvinceDefinitions, provinceDefinitionFor } from '../lib/argentinaProvinces';
@@ -51,6 +51,7 @@ import { GeneralSettingsAdminPanel } from './profile/GeneralSettingsAdminPanel';
 import { IntentionsAdminPanel } from './profile/IntentionsAdminPanel';
 import { DailyGospelAdminPanel } from './profile/DailyGospelAdminPanel';
 import { HomeAdminPanel } from './profile/HomeAdminPanel';
+import { ContactAdminPanel } from './profile/ContactAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -5510,89 +5511,14 @@ export function ProfileScreen({
               ) : null}
 
               {adminModule === 'contacto_admin' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={styles.cardTitle}>Contacto modular</Text>
-                  <Text style={styles.cardText}>Configura canales nacionales, Instagram por provincia y bloques dinamicos visibles en Contacto.</Text>
-                  {session?.role === 'administrador' ? (
-                    <>
-                      <TextInput style={styles.input} placeholder="Correo electronico oficial. Ej: contacto@palestra.org.ar" value={adminConfigDraft.contact.email} onChangeText={(value) => updateAdminConfigSection('contact', { email: value })}  placeholderTextColor={inputPlaceholderColor} />
-                      <TextInput style={styles.input} placeholder="Numero telefonico oficial. Ej: +54 351 000-0000" value={adminConfigDraft.contact.phone} onChangeText={(value) => updateAdminConfigSection('contact', { phone: value })}  placeholderTextColor={inputPlaceholderColor} />
-                    </>
-                  ) : null}
-                  <Text style={styles.cardEyebrow}>Instagram nacional</Text>
-                  <TextInput style={styles.input} placeholder="URL o usuario de Instagram nacional" value={adminConfigDraft.contact.instagram} onChangeText={(value) => updateAdminConfigSection('contact', { instagram: value })}  placeholderTextColor={inputPlaceholderColor} />
-                  <TouchableOpacity style={styles.primaryButton} onPress={saveInstagramConfigDraft}>
-                    <Text style={styles.primaryButtonText}>Guardar Instagram</Text>
-                  </TouchableOpacity>
-                  {session?.role === 'administrador' ? (
-                    <>
-                      <Text style={styles.cardEyebrow}>Instagram por provincia</Text>
-                      {Object.keys(defaultAdminConfig.contact.provinceInstagram).map((province) => (
-                        <TextInput
-                          key={province}
-                          style={styles.input}
-                          placeholder={`Instagram de ${province}`}
-                          value={adminConfigDraft.contact.provinceInstagram?.[province] ?? ''}
-                          onChangeText={(value) => updateAdminConfigSection('contact', {
-                            provinceInstagram: { ...(adminConfigDraft.contact.provinceInstagram ?? {}), [province]: value }
-                          })}
-                          autoCapitalize="none"
-                         placeholderTextColor={inputPlaceholderColor} />
-                      ))}
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto de ayuda para orientar a quien visita Contacto" value={adminConfigDraft.contact.helpText} onChangeText={(value) => updateAdminConfigSection('contact', { helpText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Texto opcional de donaciones o colaboracion" value={adminConfigDraft.contact.donationText} onChangeText={(value) => updateAdminConfigSection('contact', { donationText: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={styles.cardEyebrow}>Bloques dinamicos</Text>
-                      {(adminConfigDraft.contact.blocks ?? []).map((block, index) => (
-                        <View key={block.id} style={styles.innerNewsCard}>
-                          <TextInput
-                            style={styles.input}
-                            placeholder="Titulo o etiqueta del bloque"
-                            value={block.label}
-                            onChangeText={(value) => {
-                              const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
-                              blocks[index] = { ...block, label: value };
-                              updateAdminConfigSection('contact', { blocks });
-                            }}
-                           placeholderTextColor={inputPlaceholderColor} />
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                            {(['texto', 'telefono', 'email', 'imagen', 'direccion', 'enlace', 'boton', 'red_social'] as ContactBlock['type'][]).map((type) => (
-                              <TouchableOpacity key={type} style={[styles.filterChip, block.type === type && styles.filterChipActive]} onPress={() => {
-                                const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
-                                blocks[index] = { ...block, type };
-                                updateAdminConfigSection('contact', { blocks });
-                              }}>
-                                <Text style={[styles.filterChipText, block.type === type && styles.filterChipTextActive]}>{type}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                          <TextInput
-                            style={[styles.input, styles.textArea]}
-                            placeholder="Contenido, URL, teléfono, email o dirección"
-                            value={block.value}
-                            onChangeText={(value) => {
-                              const blocks = [...(adminConfigDraft.contact.blocks ?? [])];
-                              blocks[index] = { ...block, value };
-                              updateAdminConfigSection('contact', { blocks });
-                            }}
-                            multiline
-                           placeholderTextColor={inputPlaceholderColor} />
-                          <TouchableOpacity style={styles.secondaryButton} onPress={() => updateAdminConfigSection('contact', { blocks: (adminConfigDraft.contact.blocks ?? []).filter((item) => item.id !== block.id) })}>
-                            <Text style={styles.secondaryButtonText}>Eliminar bloque</Text>
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                      <TouchableOpacity style={styles.secondaryButton} onPress={() => updateAdminConfigSection('contact', {
-                        blocks: [...(adminConfigDraft.contact.blocks ?? []), { id: `contact-${Date.now()}`, type: 'texto', label: '', value: '' }]
-                      })}>
-                        <Ionicons name="add-circle-outline" size={17} color={palette.red} />
-                        <Text style={styles.secondaryButtonText}>Agregar bloque</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Contacto')}>
-                        <Text style={styles.primaryButtonText}>Guardar contacto completo</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : null}
-                </View>
+                <ContactAdminPanel
+                  config={adminConfigDraft}
+                  session={session}
+                  isDark={isDark}
+                  onPatch={(patch) => updateAdminConfigSection('contact', patch)}
+                  onSaveInstagram={saveInstagramConfigDraft}
+                  onSaveFullContact={() => saveAdminConfigDraft('Contacto')}
+                />
               ) : null}
 
               {adminModule === 'periodo_motivador' ? (
