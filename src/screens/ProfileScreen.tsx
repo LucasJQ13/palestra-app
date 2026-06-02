@@ -10,7 +10,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
-import { CommunityGroupType, communityGroupLabel, communitySectionOptions, resolveCommunitySectionVisibility } from '../lib/communitySections';
+import { CommunityGroupType } from '../lib/communitySections';
 import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
@@ -57,6 +57,7 @@ import { ProfileSettingsPanel } from './profile/ProfileSettingsPanel';
 import { HistoryAdminPanel } from './profile/HistoryAdminPanel';
 import { MailboxPanel } from './profile/MailboxPanel';
 import { useMailboxController } from './profile/useMailboxController';
+import { CommunityAdminPanel } from './profile/CommunityAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -6112,180 +6113,58 @@ export function ProfileScreen({
               ) : null}
 
               {adminModule === 'comunidades' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={styles.cardTitle}>Gestionar comunidades</Text>
-                  <Text style={styles.cardText}>Crear, editar, habilitar, deshabilitar o archivar comunidades segun tu jurisdiccion.</Text>
-                  <Text style={styles.cardEyebrow}>Provincia</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                    {manageableCommunities.map((item) => (
-                      <TouchableOpacity
-                        key={item.province}
-                        style={[styles.filterChip, adminCommunityProvince === item.province && styles.filterChipActive]}
-                        onPress={() => {
-                          setAdminCommunityProvince(item.province);
-                          setAdminCommunityId('');
-                        }}
-                      >
-                        <Text style={[styles.filterChipText, adminCommunityProvince === item.province && styles.filterChipTextActive]}>{item.province}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                  {manageableCommunities.length === 0 ? <Text style={styles.cardText}>Tu rango no tiene comunidades editables.</Text> : null}
-                  {session.role === 'administrador' && selectedAdminProvince ? (
-                    <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Subsecciones visibles</Text>
-                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Activar o desactivar secciones para {selectedAdminProvince.province}.</Text>
-                      {communitySectionOptions.map((item) => {
-                        const visibility = resolveCommunitySectionVisibility(selectedAdminProvince.province, selectedAdminProvince.sectionVisibility);
-                        return (
-                          <View key={item.key} style={styles.adminListRow}>
-                            <View style={styles.adminUserHeaderText}>
-                              <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.label}</Text>
-                              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{visibility[item.key] ? 'Visible en Comunidades' : 'Oculta para usuarios'}</Text>
-                            </View>
-                            <Switch
-                              value={visibility[item.key]}
-                              onValueChange={(value) => adminSetCommunitySectionEnabled(item.key, value)}
-                              trackColor={{ false: palette.line, true: palette.red }}
-                              thumbColor={visibility[item.key] ? palette.red : palette.white}
-                            />
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ) : null}
-                  {canAdministrateCommunities && selectedAdminProvince ? (
-                    <TouchableOpacity style={styles.primaryButton} onPress={() => {
-                      setShowAdminCommunityCreate((current) => !current);
-                      setAdminCommunityId('');
-                      setAdminCommunityImageAsset(null);
-                      setAdminCommunityImageUrl('');
-                      setAdminCommunityImagePreview('');
-                    }}>
-                      <Ionicons name={showAdminCommunityCreate ? 'chevron-up-outline' : 'add-circle-outline'} size={17} color={palette.white} />
-                      <Text style={styles.primaryButtonText}>Crear Comunidad</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  {canAdministrateCommunities && selectedAdminProvince && showAdminCommunityCreate ? (
-                    <View style={styles.profileCommunityPanel}>
-                      <Text style={styles.cardEyebrow}>Crear comunidad</Text>
-                      <TextInput style={styles.input} placeholder="Nombre de comunidad" value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityName(value); }}  placeholderTextColor={inputPlaceholderColor} />
-                      <View style={styles.filterRow}>
-                        {communitySectionOptions.map((item) => (
-                          <TouchableOpacity key={item.key} style={[styles.filterChip, adminCommunityGroupType === item.key && styles.filterChipActive]} onPress={() => setAdminCommunityGroupType(item.key)}>
-                            <Text style={[styles.filterChipText, adminCommunityGroupType === item.key && styles.filterChipTextActive]}>{item.label}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                      <View style={styles.filterRow}>
-                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Direccion" value={adminCommunityId ? '' : adminCommunityAddress} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityAddress(value); }}  placeholderTextColor={inputPlaceholderColor} />
-                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Contacto" value={adminCommunityId ? '' : adminCommunityPhone} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityPhone(value); }}  placeholderTextColor={inputPlaceholderColor} />
-                      </View>
-                      <View style={styles.filterRow}>
-                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Dia de reunion" value={adminCommunityId ? '' : adminCommunityDay} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDay(value); }}  placeholderTextColor={inputPlaceholderColor} />
-                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Horario" value={adminCommunityId ? '' : adminCommunityTime} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityTime(value); }}  placeholderTextColor={inputPlaceholderColor} />
-                      </View>
-                      <View style={styles.filterRow}>
-                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Latitud" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
-                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Longitud" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
-                      </View>
-                      <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={adminCommunityId ? '' : adminCommunityDescription} onChangeText={(value) => { setAdminCommunityId(''); setAdminCommunityDescription(value); }} multiline  placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={styles.cardEyebrow}>Imagen</Text>
-                      <Text style={styles.cardText}>Opcional. Podés guardar la comunidad sin imagen.</Text>
-                      {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
-                      <TouchableOpacity style={styles.secondaryButton} onPress={pickAdminCommunityImage}>
-                        <Ionicons name="image-outline" size={17} color={palette.red} />
-                        <Text style={styles.secondaryButtonText}>{adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.filterChip, adminCommunityIsActive && styles.filterChipActive]} onPress={() => setAdminCommunityIsActive(!adminCommunityIsActive)}>
-                        <Text style={[styles.filterChipText, adminCommunityIsActive && styles.filterChipTextActive]}>{adminCommunityIsActive ? 'Activa' : 'Inactiva'}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.primaryButton} onPress={adminCreateCommunity} disabled={adminCommunityImageUploading}>
-                        <Text style={styles.primaryButtonText}>{adminCommunityImageUploading ? 'Subiendo imagen...' : 'Crear comunidad'}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-                  {selectedAdminProvince ? (
-                    <>
-                      <Text style={styles.cardEyebrow}>Comunidades existentes</Text>
-                      <ScrollView style={styles.dropdownList} nestedScrollEnabled>
-                        {selectedAdminProvince.locations.map((item) => {
-                          const itemKey = item.id ?? item.name;
-                          const selected = adminCommunityId === itemKey;
-                          const isActive = !('isActive' in item) || Boolean(item.isActive);
-                          return (
-                            <View key={itemKey}>
-                              <TouchableOpacity
-                                style={[styles.dropdownItem, selected && styles.communityChoiceActive]}
-                                onPress={() => setAdminCommunityId(selected ? '' : itemKey)}
-                              >
-                                <Text style={[styles.dropdownItemText, selected && styles.filterChipTextActive]}>{item.name}</Text>
-                              </TouchableOpacity>
-                              {selected ? (
-                                <View style={styles.adminInlineEditor}>
-                                  <TextInput style={styles.input} placeholder="Nombre" value={adminCommunityName} onChangeText={setAdminCommunityName}  placeholderTextColor={inputPlaceholderColor} />
-                                  <Text style={styles.cardEyebrow}>Subseccion</Text>
-                                  <View style={styles.filterRow}>
-                                    {communitySectionOptions.map((groupOption) => (
-                                      <TouchableOpacity key={groupOption.key} style={[styles.filterChip, adminCommunityGroupType === groupOption.key && styles.filterChipActive]} onPress={() => setAdminCommunityGroupType(groupOption.key)}>
-                                        <Text style={[styles.filterChipText, adminCommunityGroupType === groupOption.key && styles.filterChipTextActive]}>{groupOption.label}</Text>
-                                      </TouchableOpacity>
-                                    ))}
-                                  </View>
-                                  <Text style={styles.cardText}>Actual: {communityGroupLabel(item.group)}</Text>
-                                  <View style={styles.filterRow}>
-                                    <TextInput style={[styles.input, styles.colorInput]} placeholder="Direccion" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
-                                    <TextInput style={[styles.input, styles.colorInput]} placeholder="Contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone}  placeholderTextColor={inputPlaceholderColor} />
-                                  </View>
-                                  <View style={styles.filterRow}>
-                                    <TextInput style={[styles.input, styles.colorInput]} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
-                                    <TextInput style={[styles.input, styles.colorInput]} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
-                                  </View>
-                                  <View style={styles.profileCommunityPanel}>
-                                    <Text style={styles.cardEyebrow}>Ubicacion</Text>
-                                    <Text style={styles.cardText}>Cargar coordenadas habilita "Buscar Comunidad Cercana". Podés copiarlas desde Google Maps.</Text>
-                                    <View style={styles.filterRow}>
-                                      <TextInput style={[styles.input, styles.colorInput]} placeholder="Latitud. Ej: -31.4167" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
-                                      <TextInput style={[styles.input, styles.colorInput]} placeholder="Longitud. Ej: -64.1833" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
-                                    </View>
-                                    <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityAddress}, ${adminCommunityProvince}, Argentina`)}`)}>
-                                      <Ionicons name="map-outline" size={17} color={palette.red} />
-                                      <Text style={styles.secondaryButtonText}>Ver direccion en Maps</Text>
-                                    </TouchableOpacity>
-                                  </View>
-                                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
-                                  <Text style={styles.cardEyebrow}>Imagen de comunidad</Text>
-                                  <Text style={styles.cardText}>Imagen recomendada: 1200x600 px. La app abre recorte 2:1 para encuadrar antes de guardar.</Text>
-                                  {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
-                                  <TouchableOpacity style={styles.secondaryButton} onPress={pickAdminCommunityImage}>
-                                    <Ionicons name="image-outline" size={17} color={palette.red} />
-                                    <Text style={styles.secondaryButtonText}>{adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'}</Text>
-                                  </TouchableOpacity>
-                                  {adminCommunityImageAsset ? <Text style={styles.cardText}>Vista previa lista. Tocá Guardar comunidad para subirla y asociarla.</Text> : null}
-                                  <View style={styles.filterRow}>
-                                    {canAdministrateCommunities ? (
-                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => adminToggleCommunityStatus(itemKey, !isActive)}>
-                                        <Text style={styles.secondaryButtonText}>{isActive ? 'Deshabilitar' : 'Habilitar'}</Text>
-                                      </TouchableOpacity>
-                                    ) : null}
-                                    {canAdministrateCommunities ? (
-                                      <TouchableOpacity style={styles.secondaryButton} onPress={() => adminArchiveCommunity(itemKey)}>
-                                        <Text style={styles.secondaryButtonText}>Eliminar</Text>
-                                      </TouchableOpacity>
-                                    ) : null}
-                                  </View>
-                                  <TouchableOpacity style={styles.primaryButton} onPress={adminSaveCommunity} disabled={adminCommunityImageUploading}>
-                                    <Text style={styles.primaryButtonText}>{adminCommunityImageUploading ? 'Subiendo imagen...' : 'Guardar comunidad'}</Text>
-                                  </TouchableOpacity>
-                                </View>
-                              ) : null}
-                            </View>
-                          );
-                        })}
-                      </ScrollView>
-                    </>
-                  ) : null}
-                </View>
+                <CommunityAdminPanel
+                  isDark={isDark}
+                  sessionRole={session?.role ?? null}
+                  manageableCommunities={manageableCommunities}
+                  selectedAdminProvince={selectedAdminProvince}
+                  adminCommunityProvince={adminCommunityProvince}
+                  adminCommunityId={adminCommunityId}
+                  adminCommunityName={adminCommunityName}
+                  adminCommunityAddress={adminCommunityAddress}
+                  adminCommunityPhone={adminCommunityPhone}
+                  adminCommunityDay={adminCommunityDay}
+                  adminCommunityTime={adminCommunityTime}
+                  adminCommunityDescription={adminCommunityDescription}
+                  adminCommunityLatitude={adminCommunityLatitude}
+                  adminCommunityLongitude={adminCommunityLongitude}
+                  adminCommunityImagePreview={adminCommunityImagePreview}
+                  adminCommunityImageAsset={adminCommunityImageAsset}
+                  adminCommunityImageUploading={adminCommunityImageUploading}
+                  adminCommunityGroupType={adminCommunityGroupType}
+                  adminCommunityIsActive={adminCommunityIsActive}
+                  canAdministrateCommunities={canAdministrateCommunities}
+                  showAdminCommunityCreate={showAdminCommunityCreate}
+                  onSelectProvince={(province) => {
+                    setAdminCommunityProvince(province);
+                    setAdminCommunityId('');
+                  }}
+                  onSelectCommunity={setAdminCommunityId}
+                  onResetSelectedCommunity={() => setAdminCommunityId('')}
+                  onToggleCreateCommunity={() => {
+                    setShowAdminCommunityCreate((current) => !current);
+                    setAdminCommunityId('');
+                    setAdminCommunityImageAsset(null);
+                    setAdminCommunityImageUrl('');
+                    setAdminCommunityImagePreview('');
+                  }}
+                  setAdminCommunityName={setAdminCommunityName}
+                  setAdminCommunityAddress={setAdminCommunityAddress}
+                  setAdminCommunityPhone={setAdminCommunityPhone}
+                  setAdminCommunityDay={setAdminCommunityDay}
+                  setAdminCommunityTime={setAdminCommunityTime}
+                  setAdminCommunityDescription={setAdminCommunityDescription}
+                  setAdminCommunityLatitude={setAdminCommunityLatitude}
+                  setAdminCommunityLongitude={setAdminCommunityLongitude}
+                  setAdminCommunityGroupType={setAdminCommunityGroupType}
+                  setAdminCommunityIsActive={setAdminCommunityIsActive}
+                  onPickImage={pickAdminCommunityImage}
+                  onCreateCommunity={adminCreateCommunity}
+                  onSetSectionEnabled={adminSetCommunitySectionEnabled}
+                  onToggleCommunityStatus={adminToggleCommunityStatus}
+                  onArchiveCommunity={adminArchiveCommunity}
+                  onSaveCommunity={adminSaveCommunity}
+                />
               ) : null}
 
               {adminModule === 'listas_qr' ? (
