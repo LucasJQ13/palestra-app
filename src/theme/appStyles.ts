@@ -1127,13 +1127,18 @@ export const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 3
   },
+  gospelModalPanel: {
+    maxHeight: '88%',
+    overflow: 'hidden'
+  },
   gospelModalScroll: {
-    maxHeight: '82%',
-    width: '100%'
+    width: '100%',
+    flexShrink: 1
   },
   gospelModalContent: {
     gap: 12,
-    paddingBottom: 26
+    paddingBottom: 32,
+    paddingRight: 2
   },
   gospelText: {
     fontSize: 16,

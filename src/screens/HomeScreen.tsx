@@ -273,7 +273,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
 
       <Modal visible={gospelModalVisible} transparent animationType="fade" onRequestClose={() => setGospelModalVisible(false)} statusBarTranslucent>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]}>
+          <View style={[styles.modalPanel, styles.gospelModalPanel, isDark && styles.surfacePanelDark]}>
             <TouchableOpacity style={styles.modalCloseButton} onPress={() => setGospelModalVisible(false)}>
               <Ionicons name="close-outline" size={22} color={palette.red} />
             </TouchableOpacity>
