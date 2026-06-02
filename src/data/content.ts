@@ -1,3 +1,5 @@
+import { CommunityGroupType } from '../lib/communitySections';
+
 export const news = [
   {
     scope: 'Nacional',
@@ -129,7 +131,7 @@ type CommunityLocation = {
   meetingTime: string;
   description: string;
   imageUrl: string;
-  group?: 'jovenes' | 'adultos';
+  group?: CommunityGroupType;
   isActive?: boolean;
 };
 

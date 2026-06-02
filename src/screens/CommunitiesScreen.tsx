@@ -7,6 +7,7 @@ import { AppContentBlock, SecretariatMemberRecord, createCommunityContactMessage
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor, provinceDisplayNames, provinceLogos } from '../lib/constants';
 import { changeDone } from '../lib/appMessages';
+import { communitySectionOptions, normalizeCommunityGroup, resolveCommunitySectionVisibility } from '../lib/communitySections';
 import { Coordinates, NearestCommunityResult, findNearestCommunityDetails } from '../lib/nearestCommunity';
 import { Role, Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
@@ -56,6 +57,9 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
   const visibleCommunityData = communityData.filter((item) => item.isActive !== false && !item.archivedAt);
   const province = visibleCommunityData.find((item) => item.province === selectedProvince);
   const community = province?.locations.find((item) => item.name === selectedCommunity);
+  const activeProvinceSections = province
+    ? communitySectionOptions.filter((item) => resolveCommunitySectionVisibility(province.province, province.sectionVisibility)[item.key])
+    : [];
 
   function openCommunityLocation(location: AppCommunity['locations'][number]) {
     const query = location.latitude != null && location.longitude != null
@@ -434,16 +438,18 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
             </KeyboardAvoidingView>
           </View>
         </Modal>
-        {(province.province === 'Tucuman' || province.province === 'Catamarca') ? (
-          <>
-            <SectionTitle title="Comunidades de jovenes" />
-            {province.locations.filter((location) => location.group !== 'adultos').map((location) => renderCommunityRow(location, 'young'))}
-            <SectionTitle title="Comunidades de adultos" />
-            {province.locations.filter((location) => location.group === 'adultos').map((location) => renderCommunityRow(location, 'adult'))}
-          </>
-        ) : province.locations.map((location) => (
-          renderCommunityRow(location)
-        ))}
+        {activeProvinceSections.map((section) => {
+          const sectionCommunities = province.locations.filter((location) => normalizeCommunityGroup(location.group) === section.key);
+          return (
+            <View key={section.key} style={styles.stackTight}>
+              <SectionTitle title={section.label} />
+              {sectionCommunities.map((location) => renderCommunityRow(location, section.key))}
+            </View>
+          );
+        })}
+        {activeProvinceSections.length === 0 ? (
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay subsecciones habilitadas para esta provincia por ahora.</Text>
+        ) : null}
       </View>
     );
   }

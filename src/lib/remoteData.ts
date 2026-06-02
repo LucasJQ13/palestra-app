@@ -1,12 +1,13 @@
 import { communities as fallbackCommunities } from '../data/content';
 import { Session } from '../types/auth';
+import { CommunityGroupType, CommunitySectionVisibility, defaultCommunitySectionVisibility, normalizeCommunityGroup } from './communitySections';
 import { canAccessProvince, roleRank } from './roles';
 import { supabase } from './supabase';
 
 type RemoteCommunityRow = {
   id: string;
   name: string;
-  group_type: 'jovenes' | 'adultos';
+  group_type: CommunityGroupType;
   address: string;
   phone: string | null;
   meeting_day: string | null;
@@ -35,6 +36,14 @@ type RemoteProvinceRow = {
   archived_at?: string | null;
 };
 
+type RemoteCommunitySectionRow = {
+  group_type: CommunityGroupType;
+  is_enabled: boolean | null;
+  provinces: {
+    name: string;
+  } | { name: string }[] | null;
+};
+
 export type AppCommunityLocation = (typeof fallbackCommunities)[number]['locations'][number] & {
   latitude?: number | null;
   longitude?: number | null;
@@ -44,6 +53,7 @@ export type AppCommunity = Omit<(typeof fallbackCommunities)[number], 'locations
   logoUrl?: string | null;
   isActive?: boolean;
   archivedAt?: string | null;
+  sectionVisibility?: Partial<CommunitySectionVisibility>;
   locations: AppCommunityLocation[];
 };
 export type RemoteAgendaItem = {
@@ -76,6 +86,25 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
   let data: unknown[] | null = null;
   let error: { message?: string } | null = null;
   let provinceRows: RemoteProvinceRow[] = [];
+  const sectionVisibilityByProvince = new Map<string, Partial<CommunitySectionVisibility>>();
+  try {
+    const sectionResult = await supabase
+      .from('province_community_sections')
+      .select('group_type, is_enabled, provinces(name)');
+    ((sectionResult.data ?? []) as unknown as RemoteCommunitySectionRow[]).forEach((row) => {
+      const provinceRelation = Array.isArray(row.provinces) ? row.provinces[0] : row.provinces;
+      const provinceName = provinceRelation?.name;
+      if (!provinceName) {
+        return;
+      }
+      const current = sectionVisibilityByProvince.get(provinceName) ?? {};
+      current[normalizeCommunityGroup(row.group_type)] = Boolean(row.is_enabled);
+      sectionVisibilityByProvince.set(provinceName, current);
+    });
+  } catch {
+    sectionVisibilityByProvince.clear();
+  }
+
   try {
     const provinceResult = await supabase
       .from('provinces')
@@ -136,6 +165,7 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
       logoUrl: row.logo_url ?? null,
       isActive: row.is_active ?? true,
       archivedAt: row.archived_at ?? null,
+      sectionVisibility: sectionVisibilityByProvince.get(row.name) ?? defaultCommunitySectionVisibility(row.name),
       description: 'Provincia cargada desde Supabase. Crea comunidades para activar su listado.',
       locations: []
     });
@@ -150,6 +180,7 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
       logoUrl: row.provinces?.logo_url ?? null,
       isActive: row.provinces?.is_active ?? true,
       archivedAt: row.provinces?.archived_at ?? null,
+      sectionVisibility: sectionVisibilityByProvince.get(province) ?? defaultCommunitySectionVisibility(province),
       description: 'Comunidades cargadas desde Supabase.',
       locations: []
     };
@@ -163,7 +194,7 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
       meetingTime: row.meeting_time ?? 'A confirmar',
       description: row.description ?? 'Descripcion pendiente.',
       imageUrl: row.image_url ?? 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png',
-      group: row.group_type,
+      group: normalizeCommunityGroup(row.group_type),
       latitude: row.latitude ?? null,
       longitude: row.longitude ?? null,
       isActive: row.is_active ?? true

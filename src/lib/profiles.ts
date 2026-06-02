@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { CommunityGroupType } from './communitySections';
 
 function networkError(error: unknown) {
   return {
@@ -1754,9 +1755,10 @@ export async function updateCommunity(id: string, values: {
   image_url?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  group_type?: CommunityGroupType | null;
 }) {
   try {
-    return await supabase.rpc('admin_update_community', {
+    const payload = {
       p_community_id: id,
       p_name: values.name ?? null,
       p_address: values.address ?? null,
@@ -1766,8 +1768,15 @@ export async function updateCommunity(id: string, values: {
       p_description: values.description ?? null,
       p_image_url: values.image_url ?? null,
       p_latitude: values.latitude ?? null,
-      p_longitude: values.longitude ?? null
-    });
+      p_longitude: values.longitude ?? null,
+      p_group_type: values.group_type ?? null
+    };
+    const result = await supabase.rpc('admin_update_community', payload);
+    if (result.error && /p_group_type|Could not find|function .* does not exist/i.test(result.error.message ?? '')) {
+      const { p_group_type: _ignored, ...legacyPayload } = payload;
+      return await supabase.rpc('admin_update_community', legacyPayload);
+    }
+    return result;
   } catch (error) {
     return networkError(error);
   }
@@ -1776,7 +1785,7 @@ export async function updateCommunity(id: string, values: {
 export async function createCommunity(values: {
   province: string;
   name: string;
-  groupType: 'jovenes' | 'adultos';
+  groupType: CommunityGroupType;
   address: string;
   phone: string;
   meetingDay: string;
@@ -1799,6 +1808,22 @@ export async function createCommunity(values: {
       p_latitude: values.latitude ?? null,
       p_longitude: values.longitude ?? null,
       p_is_active: values.isActive
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function setProvinceCommunitySectionVisibility(values: {
+  province: string;
+  groupType: CommunityGroupType;
+  isEnabled: boolean;
+}) {
+  try {
+    return await supabase.rpc('admin_set_province_community_section', {
+      p_province: values.province,
+      p_group_type: values.groupType,
+      p_is_enabled: values.isEnabled
     });
   } catch (error) {
     return networkError(error);
