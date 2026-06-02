@@ -11,7 +11,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setProvinceStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -27,6 +27,7 @@ import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoni
 import { AppAdminConfig, ContactBlock, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from '../lib/appConfig';
 import { normalizeExternalUrl } from '../lib/urls';
 import { uploadPickedImageToPublicUrl } from '../lib/uploads';
+import { argentinaProvinceDefinitions, provinceDefinitionFor } from '../lib/argentinaProvinces';
 import { credentialDisplayName, displayRoleLabel, firstNameOf, GenderPreference, genderNarratives, homeGreetingName, perseveranceLabel, personalPmSummary, personalPmTypeLabel, renderGreetingTemplate, roleLabel, roleLabelForProvince, roleShortLabel } from '../lib/profileDisplay';
 import { changeDone, communityDowngradesRole, friendlyUploadError, hasPlausibleEmailDomain, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError, verifyEmailDomainExists } from '../lib/appMessages';
 import { buildInitialBlocksForSection, fallbackContentKey, tabLabelFromKey } from '../lib/contentBlocks';
@@ -359,7 +360,8 @@ export function ProfileScreen({
   const [adminCommunityGroupType, setAdminCommunityGroupType] = useState<'jovenes' | 'adultos'>('jovenes');
   const [adminCommunityIsActive, setAdminCommunityIsActive] = useState(true);
   const [newProvinceName, setNewProvinceName] = useState('');
-  const [newProvinceRegion, setNewProvinceRegion] = useState('');
+  const [provinceLogoDrafts, setProvinceLogoDrafts] = useState<Record<string, string>>({});
+  const [provinceLogoUploading, setProvinceLogoUploading] = useState('');
   const [showAdminCommunityCreate, setShowAdminCommunityCreate] = useState(false);
   const [editingTabs, setEditingTabs] = useState<Record<string, { label: string; iconName: string; sectionType: AppTabSectionType; isVisible: boolean; visibleRoles: string[] | null }>>({});
   const [newTabLabel, setNewTabLabel] = useState('');
@@ -437,7 +439,7 @@ export function ProfileScreen({
   ]);
   const selectedRegistrationProvince = registrationCommunities.find((item) => item.province === registerProvince);
   const selectedEditProvince = registrationCommunities.find((item) => item.province === editProvince);
-  const visibleRegistrationCommunities = useMemo(() => registrationCommunities.filter((item) => canAccessProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
+  const visibleRegistrationCommunities = useMemo(() => registrationCommunities.filter((item) => item.isActive !== false && !item.archivedAt && canAccessProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
   const manageableCommunities = useMemo(() => registrationCommunities
     .map((province) => ({
       ...province,
@@ -592,6 +594,9 @@ export function ProfileScreen({
       const rankB = b.role === 'coordinador_nacional' ? 0 : 1;
       return rankA - rankB || (a.province ?? '').localeCompare(b.province ?? '') || (a.full_name ?? '').localeCompare(b.full_name ?? '');
     });
+  const existingProvinceNames = new Set(registrationCommunities.filter((item) => !item.archivedAt).map((item) => item.province));
+  const missingArgentinaProvinces = argentinaProvinceDefinitions.filter((item) => !existingProvinceNames.has(item.name));
+  const selectedNewProvinceDefinition = provinceDefinitionFor(newProvinceName) ?? missingArgentinaProvinces[0] ?? null;
   const motivadorYearOptions = Array.from(new Set(adminMotivadorPeriods.map((period) => String(new Date(`${period.starts_on}T00:00:00`).getFullYear()))))
     .filter((year) => year !== 'NaN')
     .sort((a, b) => Number(b) - Number(a));
@@ -3233,6 +3238,49 @@ export function ProfileScreen({
     setAuthMessage('Imagen seleccionada. Revisá la vista previa y guardá la comunidad.');
   }
 
+  async function pickProvinceLogo(provinceName: string) {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede cambiar logos de provincias.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage('Necesitamos permiso para elegir una imagen.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    setProvinceLogoUploading(provinceName);
+    try {
+      const folder = `province-logos/${provinceName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`;
+      const publicUrl = await uploadPickedImageToPublicUrl(result.assets[0], folder);
+      setProvinceLogoDrafts((current) => ({ ...current, [provinceName]: publicUrl }));
+      if (existingProvinceNames.has(provinceName)) {
+        const { error } = await updateProvinceLogo({ name: provinceName, logoUrl: publicUrl });
+        if (error) {
+          setAuthMessage(error.message);
+          return;
+        }
+        setRegistrationCommunities(await fetchCommunities());
+        await onContentChanged();
+        setAuthMessage(changeDone('Logo de provincia actualizado.'));
+        return;
+      }
+      setAuthMessage('Logo seleccionado. Creá la provincia para guardarlo.');
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No pude subir el logo de la provincia.');
+    } finally {
+      setProvinceLogoUploading('');
+    }
+  }
+
   async function uploadAdminCommunityImage(communityId = selectedAdminCommunity?.id, fallbackUrl = adminCommunityImageUrl) {
     if (!adminCommunityImageAsset || !communityId) {
       return fallbackUrl;
@@ -3389,14 +3437,16 @@ export function ProfileScreen({
       setAuthMessage('Solo Administrador puede crear provincias.');
       return;
     }
-    if (!newProvinceName.trim()) {
-      setAuthMessage('Escribi el nombre de la provincia.');
+    const definition = provinceDefinitionFor(newProvinceName) ?? selectedNewProvinceDefinition;
+    if (!definition) {
+      setAuthMessage('Seleccioná una provincia disponible.');
       return;
     }
     setAuthMessage('Creando provincia...');
     const { error } = await createProvince({
-      name: newProvinceName.trim(),
-      region: newProvinceRegion.trim() || 'Sin region'
+      name: definition.name,
+      region: definition.region,
+      logoUrl: provinceLogoDrafts[definition.name] ?? null
     });
     if (error) {
       setAuthMessage(error.message);
@@ -3404,11 +3454,42 @@ export function ProfileScreen({
     }
     const items = await fetchCommunities();
     setRegistrationCommunities(items);
-    setAdminCommunityProvince(newProvinceName.trim());
+    setAdminCommunityProvince(definition.name);
     setAdminCommunityId('');
     setNewProvinceName('');
-    setNewProvinceRegion('');
-    setAuthMessage(changeDone('Provincia creada. Ya podes seleccionarla y cargar comunidades.'));
+    setAuthMessage(changeDone('Provincia creada. Ya podés seleccionarla y cargar comunidades.'));
+    await onContentChanged();
+  }
+
+  async function adminSetProvinceActive(name: string, isActive: boolean) {
+    const { error } = await setProvinceStatus(name, isActive);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setRegistrationCommunities(await fetchCommunities());
+    setAuthMessage(changeDone(isActive ? 'Provincia habilitada.' : 'Provincia deshabilitada.'));
+    await onContentChanged();
+  }
+
+  async function adminArchiveProvince(name: string) {
+    const message = `¿Seguro que querés eliminar ${name}? Las comunidades y usuarios vinculados pueden dejar de aparecer como seleccionables.`;
+    const confirmed = Platform.OS === 'web' ? (typeof window === 'undefined' ? true : window.confirm(message)) : await new Promise<boolean>((resolve) => {
+      Alert.alert('Eliminar provincia', message, [
+        { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
+      ]);
+    });
+    if (!confirmed) {
+      return;
+    }
+    const { error } = await archiveProvince(name);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setRegistrationCommunities(await fetchCommunities());
+    setAuthMessage(changeDone('Provincia eliminada.'));
     await onContentChanged();
   }
 
@@ -5186,25 +5267,28 @@ export function ProfileScreen({
                             key={`coord-${user.id}`}
                             style={[styles.leadershipUserRow, isDark && styles.surfaceRowDark]}
                             activeOpacity={0.86}
-                            onPress={() => openPublicProfile({
-                              id: user.id,
-                              fullName: user.full_name ?? 'Usuario sin nombre',
-                              role,
-                              province: user.province,
-                              communityName: user.community_name,
-                              avatarUrl: user.avatar_url,
-                              contact: user.phone ?? '',
-                              displayRoleLabel: user.display_role_label ?? null,
-                              genderPreference: user.gender_preference ?? null,
-                              nickname: user.nickname ?? null,
-                              credentialNameMode: user.credential_name_mode ?? 'name',
-                              perseveranceStartYear: user.perseverance_start_year ?? null,
-                              personalPmType: user.personal_pm_type ?? null,
-                              personalPmNumber: user.personal_pm_number ?? null,
-                              personalPmProvince: user.personal_pm_province ?? null,
-                              personalPmMotto: user.personal_pm_motto ?? user.pm_motto ?? null,
-                              pmMotto: user.pm_motto ?? null
-                            })}
+                            onPress={() => {
+                              setShowActiveCoordinations(false);
+                              openPublicProfile({
+                                id: user.id,
+                                fullName: user.full_name ?? 'Usuario sin nombre',
+                                role,
+                                province: user.province,
+                                communityName: user.community_name,
+                                avatarUrl: user.avatar_url,
+                                contact: user.phone ?? '',
+                                displayRoleLabel: user.display_role_label ?? null,
+                                genderPreference: user.gender_preference ?? null,
+                                nickname: user.nickname ?? null,
+                                credentialNameMode: user.credential_name_mode ?? 'name',
+                                perseveranceStartYear: user.perseverance_start_year ?? null,
+                                personalPmType: user.personal_pm_type ?? null,
+                                personalPmNumber: user.personal_pm_number ?? null,
+                                personalPmProvince: user.personal_pm_province ?? null,
+                                personalPmMotto: user.personal_pm_motto ?? user.pm_motto ?? null,
+                                pmMotto: user.pm_motto ?? null
+                              });
+                            }}
                           >
                             <View style={styles.adminUserHeaderText}>
                               <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{user.full_name ?? 'Usuario sin nombre'}</Text>
@@ -6767,37 +6851,67 @@ export function ProfileScreen({
               {adminModule === 'crear_provincia' && session.role === 'administrador' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Crear provincia</Text>
-                  <Text style={styles.cardText}>La provincia queda guardada en Supabase, aparece en registro, editar perfil y en Comunidades para cargar sus comunidades.</Text>
-                  <Text style={styles.inputLabel}>Nombre de provincia</Text>
-                  <TextInput
-                    style={[styles.input, isDark && styles.inputDark]}
-                    placeholder="Ej: Mendoza"
-                    value={newProvinceName}
-                    onChangeText={setNewProvinceName}
-                    placeholderTextColor={inputPlaceholderColor}
-                  />
-                  <Text style={styles.inputLabel}>Region</Text>
-                  <TextInput
-                    style={[styles.input, isDark && styles.inputDark]}
-                    placeholder="Ej: Cuyo"
-                    value={newProvinceRegion}
-                    onChangeText={setNewProvinceRegion}
-                    placeholderTextColor={inputPlaceholderColor}
-                  />
-                  <TouchableOpacity style={styles.primaryButton} onPress={adminCreateProvince}>
-                    <Ionicons name="map-outline" size={17} color={palette.white} />
-                    <Text style={styles.primaryButtonText}>Crear provincia</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.cardEyebrow}>Provincias actuales</Text>
-                  {registrationCommunities.map((item) => (
-                    <View key={`province-${item.province}`} style={styles.adminListRow}>
-                      <Ionicons name="location-outline" size={20} color={palette.red} />
-                      <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.adminQuickText}>{item.province}</Text>
-                        <Text style={styles.cardText}>{item.region} - {item.locations.length} comunidades</Text>
+                  <Text style={styles.cardText}>Seleccioná una provincia argentina faltante. El nombre y la región vienen predefinidos; solo se administra el logo y el estado.</Text>
+                  {missingArgentinaProvinces.length > 0 ? (
+                    <>
+                      <Text style={styles.cardEyebrow}>Provincias disponibles</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                        {missingArgentinaProvinces.map((item) => {
+                          const selected = (newProvinceName || selectedNewProvinceDefinition?.name) === item.name;
+                          return (
+                            <TouchableOpacity key={item.name} style={[styles.filterChip, selected && styles.filterChipActive]} onPress={() => setNewProvinceName(item.name)}>
+                              <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{item.name}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                      {selectedNewProvinceDefinition ? (
+                        <View style={styles.profileCommunityPanel}>
+                          <Text style={styles.cardEyebrow}>{selectedNewProvinceDefinition.region}</Text>
+                          <Text style={styles.cardTitle}>{selectedNewProvinceDefinition.name}</Text>
+                          <Text style={styles.cardText}>La región se asigna automáticamente y no es editable.</Text>
+                          {provinceLogoDrafts[selectedNewProvinceDefinition.name] ? <Image source={{ uri: provinceLogoDrafts[selectedNewProvinceDefinition.name] }} style={styles.adminDocumentThumb} /> : null}
+                          <View style={styles.inlineActions}>
+                            <TouchableOpacity style={styles.secondaryButton} onPress={() => pickProvinceLogo(selectedNewProvinceDefinition.name)} disabled={provinceLogoUploading === selectedNewProvinceDefinition.name}>
+                              <Ionicons name="image-outline" size={17} color={palette.red} />
+                              <Text style={styles.secondaryButtonText}>{provinceLogoUploading === selectedNewProvinceDefinition.name ? 'Subiendo...' : 'Cargar logo'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.primaryButton} onPress={adminCreateProvince}>
+                              <Ionicons name="map-outline" size={17} color={palette.white} />
+                              <Text style={styles.primaryButtonText}>Crear provincia</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : null}
+                    </>
+                  ) : (
+                    <Text style={styles.cardText}>Todas las provincias argentinas ya están cargadas.</Text>
+                  )}
+                  <Text style={styles.cardEyebrow}>Provincias cargadas</Text>
+                  {registrationCommunities.filter((item) => !item.archivedAt).map((item) => {
+                    const active = item.isActive !== false;
+                    const logoUrl = provinceLogoDrafts[item.province] ?? item.logoUrl ?? null;
+                    return (
+                      <View key={`province-${item.province}`} style={[styles.adminListRow, !active && styles.lockedCard]}>
+                        {logoUrl ? <Image source={{ uri: logoUrl }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="location-outline" size={20} color={palette.red} /></View>}
+                        <View style={styles.adminUserHeaderText}>
+                          <Text style={styles.adminQuickText}>{item.province}</Text>
+                          <Text style={styles.cardText}>{item.region} - {item.locations.length} comunidades - {active ? 'habilitada' : 'deshabilitada'}</Text>
+                        </View>
+                        <View style={styles.inlineActions}>
+                          <TouchableOpacity style={styles.secondaryButton} onPress={() => pickProvinceLogo(item.province)} disabled={provinceLogoUploading === item.province}>
+                            <Text style={styles.secondaryButtonText}>{provinceLogoUploading === item.province ? 'Subiendo...' : 'Logo'}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.secondaryButton} onPress={() => adminSetProvinceActive(item.province, !active)}>
+                            <Text style={styles.secondaryButtonText}>{active ? 'Deshabilitar' : 'Habilitar'}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={styles.secondaryButton} onPress={() => adminArchiveProvince(item.province)}>
+                            <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               ) : null}
 

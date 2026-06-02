@@ -1804,11 +1804,54 @@ export async function createCommunity(values: {
   }
 }
 
-export async function createProvince(values: { name: string; region: string }) {
+export async function createProvince(values: { name: string; region: string; logoUrl?: string | null }) {
   try {
+    const result = await supabase.rpc('admin_create_province', {
+      p_name: values.name,
+      p_region: values.region,
+      p_logo_url: values.logoUrl ?? null
+    });
+    if (!result.error) {
+      return result;
+    }
+    if (!/p_logo_url|function .* does not exist|Could not find/i.test(result.error.message ?? '')) {
+      return result;
+    }
     return await supabase.rpc('admin_create_province', {
       p_name: values.name,
       p_region: values.region
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function updateProvinceLogo(values: { name: string; logoUrl?: string | null }) {
+  try {
+    return await supabase.rpc('admin_update_province_logo', {
+      p_name: values.name,
+      p_logo_url: values.logoUrl ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function setProvinceStatus(name: string, isActive: boolean) {
+  try {
+    return await supabase.rpc('admin_set_province_status', {
+      p_name: name,
+      p_is_active: isActive
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function archiveProvince(name: string) {
+  try {
+    return await supabase.rpc('admin_archive_province', {
+      p_name: name
     });
   } catch (error) {
     return networkError(error);

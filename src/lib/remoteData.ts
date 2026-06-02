@@ -20,12 +20,19 @@ type RemoteCommunityRow = {
   provinces: {
     name: string;
     region: string;
+    logo_url?: string | null;
+    is_active?: boolean | null;
+    archived_at?: string | null;
   } | null;
 };
 
 type RemoteProvinceRow = {
+  id?: string;
   name: string;
   region: string | null;
+  logo_url?: string | null;
+  is_active?: boolean | null;
+  archived_at?: string | null;
 };
 
 export type AppCommunityLocation = (typeof fallbackCommunities)[number]['locations'][number] & {
@@ -33,6 +40,10 @@ export type AppCommunityLocation = (typeof fallbackCommunities)[number]['locatio
   longitude?: number | null;
 };
 export type AppCommunity = Omit<(typeof fallbackCommunities)[number], 'locations'> & {
+  id?: string;
+  logoUrl?: string | null;
+  isActive?: boolean;
+  archivedAt?: string | null;
   locations: AppCommunityLocation[];
 };
 export type RemoteAgendaItem = {
@@ -68,16 +79,24 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
   try {
     const provinceResult = await supabase
       .from('provinces')
-      .select('name, region')
+      .select('id, name, region, logo_url, is_active, archived_at')
       .order('name');
     provinceRows = (provinceResult.data ?? []) as RemoteProvinceRow[];
   } catch {
-    provinceRows = [];
+    try {
+      const provinceResult = await supabase
+        .from('provinces')
+        .select('id, name, region')
+        .order('name');
+      provinceRows = (provinceResult.data ?? []) as RemoteProvinceRow[];
+    } catch {
+      provinceRows = [];
+    }
   }
   try {
     const result = await supabase
       .from('communities')
-      .select('id, name, group_type, address, phone, meeting_day, meeting_time, description, image_url, latitude, longitude, is_active, archived_at, provinces(name, region)')
+      .select('id, name, group_type, address, phone, meeting_day, meeting_time, description, image_url, latitude, longitude, is_active, archived_at, provinces(name, region, logo_url, is_active, archived_at)')
       .is('archived_at', null)
       .order('name');
     data = result.data as unknown[] | null;
@@ -111,8 +130,12 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
       return;
     }
     grouped.set(row.name, {
+      id: row.id,
       province: row.name,
       region: row.region ?? 'Sin region',
+      logoUrl: row.logo_url ?? null,
+      isActive: row.is_active ?? true,
+      archivedAt: row.archived_at ?? null,
       description: 'Provincia cargada desde Supabase. Crea comunidades para activar su listado.',
       locations: []
     });
@@ -124,6 +147,9 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
     const current = grouped.get(province) ?? {
       province,
       region,
+      logoUrl: row.provinces?.logo_url ?? null,
+      isActive: row.provinces?.is_active ?? true,
+      archivedAt: row.provinces?.archived_at ?? null,
       description: 'Comunidades cargadas desde Supabase.',
       locations: []
     };

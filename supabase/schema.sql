@@ -17,6 +17,9 @@ create table public.provinces (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
   region text not null,
+  logo_url text,
+  is_active boolean not null default true,
+  archived_at timestamptz,
   created_at timestamptz not null default now()
 );
 

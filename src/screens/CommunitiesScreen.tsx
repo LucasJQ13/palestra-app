@@ -19,6 +19,16 @@ import { styles } from '../theme/appStyles';
 
 const nationalSecretariatLogo = require('../../assets/qr-logo.png');
 
+function provinceLogoSource(province?: AppCommunity | null) {
+  if (!province) {
+    return null;
+  }
+  if (province.logoUrl) {
+    return { uri: province.logoUrl };
+  }
+  return provinceLogos[province.province] ?? null;
+}
+
 export function CommunitiesScreen({ session, title, content, refreshKey, nearbySearchEnabled, secretariatsEnabled = true, editor }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; nearbySearchEnabled?: boolean; secretariatsEnabled?: boolean; editor?: PageEditorProps }) {
   const isDark = useIsDarkTheme();
   const [communityData, setCommunityData] = useState<AppCommunity[]>([]);
@@ -43,7 +53,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
   const [secretariatMessage, setSecretariatMessage] = useState('');
   const [secretariatStatus, setSecretariatStatus] = useState('');
   const contactScrollRef = useRef<ScrollView | null>(null);
-  const visibleCommunityData = communityData;
+  const visibleCommunityData = communityData.filter((item) => item.isActive !== false && !item.archivedAt);
   const province = visibleCommunityData.find((item) => item.province === selectedProvince);
   const community = province?.locations.find((item) => item.name === selectedCommunity);
 
@@ -306,7 +316,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
 
   if (province) {
     const provinceInitials = province.province.slice(0, 2).toUpperCase();
-    const provinceLogo = provinceLogos[province.province];
+    const provinceLogo = provinceLogoSource(province);
     return (
       <View style={styles.stack}>
         <TouchableOpacity style={styles.backButton} onPress={() => { setSelectedCommunity(null); setSelectedProvince(null); }} activeOpacity={0.8}>
@@ -321,7 +331,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
         <Modal visible={Boolean(selectedProvinceLogo)} transparent animationType="fade" onRequestClose={() => setSelectedProvinceLogo(null)}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedProvinceLogo(null)}>
             <View style={[styles.provinceLogoModal, isDark && styles.surfacePanelDark]}>
-              {selectedProvinceLogo && provinceLogos[selectedProvinceLogo.province] ? <Image source={provinceLogos[selectedProvinceLogo.province]} style={styles.provinceLogoModalImage} /> : <Text style={styles.provinceLogoModalText}>{selectedProvinceLogo?.province.slice(0, 2).toUpperCase()}</Text>}
+              {provinceLogoSource(selectedProvinceLogo) ? <Image source={provinceLogoSource(selectedProvinceLogo)!} style={styles.provinceLogoModalImage} /> : <Text style={styles.provinceLogoModalText}>{selectedProvinceLogo?.province.slice(0, 2).toUpperCase()}</Text>}
               <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedProvinceLogo?.province}</Text>
             </View>
           </TouchableOpacity>
@@ -470,7 +480,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
       {visibleCommunityData.map((community) => (
         <TouchableOpacity key={community.province} style={[styles.card, styles.provinceCard, isDark && styles.surfaceCardDark]} onPress={() => setSelectedProvince(community.province)} activeOpacity={0.85}>
           <TouchableOpacity style={styles.provinceIcon} onPress={() => setSelectedProvinceLogo(community)} activeOpacity={0.85}>
-            {provinceLogos[community.province] ? <Image source={provinceLogos[community.province]} style={styles.provinceLogoMiniImage} /> : <Text style={styles.provinceLogoMiniText}>{community.province.slice(0, 2).toUpperCase()}</Text>}
+            {provinceLogoSource(community) ? <Image source={provinceLogoSource(community)!} style={styles.provinceLogoMiniImage} /> : <Text style={styles.provinceLogoMiniText}>{community.province.slice(0, 2).toUpperCase()}</Text>}
           </TouchableOpacity>
           <View style={styles.provinceBody}>
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{community.region}</Text>
@@ -483,7 +493,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
       <Modal visible={Boolean(selectedProvinceLogo)} transparent animationType="fade" onRequestClose={() => setSelectedProvinceLogo(null)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSelectedProvinceLogo(null)}>
           <View style={[styles.provinceLogoModal, isDark && styles.surfacePanelDark]}>
-            {selectedProvinceLogo && provinceLogos[selectedProvinceLogo.province] ? <Image source={provinceLogos[selectedProvinceLogo.province]} style={styles.provinceLogoModalImage} /> : <Text style={styles.provinceLogoModalText}>{selectedProvinceLogo?.province.slice(0, 2).toUpperCase()}</Text>}
+            {provinceLogoSource(selectedProvinceLogo) ? <Image source={provinceLogoSource(selectedProvinceLogo)!} style={styles.provinceLogoModalImage} /> : <Text style={styles.provinceLogoModalText}>{selectedProvinceLogo?.province.slice(0, 2).toUpperCase()}</Text>}
             <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedProvinceLogo?.province}</Text>
           </View>
         </TouchableOpacity>

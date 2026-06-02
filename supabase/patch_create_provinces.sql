@@ -11,7 +11,7 @@ security definer
 set search_path = public
 as $$
 declare
-  normalized_name text := initcap(trim(coalesce(p_name, '')));
+  normalized_name text := trim(coalesce(p_name, ''));
   normalized_region text := nullif(trim(coalesce(p_region, '')), '');
   created_id uuid;
 begin
