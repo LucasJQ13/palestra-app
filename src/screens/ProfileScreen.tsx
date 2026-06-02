@@ -32,7 +32,7 @@ import { credentialDisplayName, displayRoleLabel, firstNameOf, GenderPreference,
 import { changeDone, communityDowngradesRole, friendlyUploadError, hasPlausibleEmailDomain, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError, verifyEmailDomainExists } from '../lib/appMessages';
 import { buildInitialBlocksForSection, fallbackContentKey, tabLabelFromKey } from '../lib/contentBlocks';
 import { canCreateOrAdministrateCommunities, canEditAdminUser, canEditStaticInstitutionalPage, canManageGlobalInstagram, canManageMotivadorPanel, canManageNewsContent, canManagePublishedContent, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from '../lib/sessionAccess';
-import { AdminModule, AdminRequest, ProfilePanel, PublicProfilePreview, TabKey } from '../types/appUi';
+import { AdminModule, AdminRequest, AdminUsersTool, ProfilePanel, PublicProfilePreview, TabKey } from '../types/appUi';
 import { internalTestSessions } from '../lib/internalTestSessions';
 import { permissionOptions } from '../lib/permissionLabels';
 import { subroleLabel, subrolesForRole } from '../lib/subroles';
@@ -45,6 +45,7 @@ import { PendingEmailProfile } from './profile/PendingEmailProfile';
 import { GuestProfileAuthCard } from './profile/GuestProfileAuthCard';
 import { AdminOverviewPanel } from './profile/AdminOverviewPanel';
 import { ProvinceCreateDropdown } from './profile/ProvinceAdminPanel';
+import { AdminUsersToolMenu } from './profile/AdminUsersToolMenu';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -232,7 +233,7 @@ export function ProfileScreen({
   const [realPendingProfiles, setRealPendingProfiles] = useState<PendingProfile[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedAdminUserId, setSelectedAdminUserId] = useState('');
-  const [adminUsersTool, setAdminUsersTool] = useState<'crear' | 'editar' | 'listado' | 'pendientes' | 'diagnostico'>('listado');
+  const [adminUsersTool, setAdminUsersTool] = useState<AdminUsersTool>('listado');
   const [adminUsersToolMenuOpen, setAdminUsersToolMenuOpen] = useState(false);
   const [adminUserSearch, setAdminUserSearch] = useState('');
   const [selectedUsersProvince, setSelectedUsersProvince] = useState('');
@@ -6235,32 +6236,14 @@ export function ProfileScreen({
               {adminModule === 'usuarios' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Usuarios registrados</Text>
-                  <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setAdminUsersToolMenuOpen((current) => !current)} activeOpacity={0.86}>
-                    <View style={styles.adminUserHeaderText}>
-                      <Text style={styles.cardEyebrow}>Herramienta</Text>
-                      <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>
-                        {adminUsersTool === 'crear' ? 'Crear usuario' : adminUsersTool === 'pendientes' ? 'Pendientes de aprobacion' : adminUsersTool === 'diagnostico' ? 'Diagnostico y liberacion' : 'Lista de usuarios'}
-                      </Text>
-                    </View>
-                    <Ionicons name={adminUsersToolMenuOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
-                  </TouchableOpacity>
-                  {adminUsersToolMenuOpen ? (
-                    <View style={[styles.dropdownList, isDark && styles.dropdownListDark]}>
-                      {([
-                        ['listado', 'Lista de usuarios', 'Buscar, filtrar y editar desde cada fila'],
-                        ...(session.role === 'administrador' ? [['crear', 'Crear usuario', 'Alta basica con mail y clave'] as const] : []),
-                        ['pendientes', 'Pendientes', 'Aprobar registrados recientes'],
-                        ...(session.role === 'administrador' ? [['diagnostico', 'Diagnostico', 'Reparar o liberar un correo'] as const] : [])
-                      ] as const).map(([key, label, detail]) => (
-                        <TouchableOpacity key={key} style={[styles.dropdownItem, adminUsersTool === key && styles.communityChoiceActive]} onPress={() => { setAdminUsersTool(key); setAdminUsersToolMenuOpen(false); setSelectedAdminUserId(''); }}>
-                          <View style={styles.adminUserHeaderText}>
-                            <Text style={[styles.dropdownItemText, adminUsersTool === key && styles.filterChipTextActive]}>{label}</Text>
-                            <Text style={styles.feedMeta}>{detail}</Text>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  ) : null}
+                  <AdminUsersToolMenu
+                    role={session.role}
+                    tool={adminUsersTool}
+                    open={adminUsersToolMenuOpen}
+                    isDark={isDark}
+                    onToggle={() => setAdminUsersToolMenuOpen((current) => !current)}
+                    onSelect={(tool) => { setAdminUsersTool(tool); setAdminUsersToolMenuOpen(false); setSelectedAdminUserId(''); }}
+                  />
                   {session.role === 'administrador' && adminUsersTool === 'crear' ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Crear usuario básico</Text>
