@@ -58,6 +58,7 @@ import { HistoryAdminPanel } from './profile/HistoryAdminPanel';
 import { MailboxPanel } from './profile/MailboxPanel';
 import { useMailboxController } from './profile/useMailboxController';
 import { CommunityAdminPanel } from './profile/CommunityAdminPanel';
+import { DownloadsAdminPanel } from './profile/DownloadsAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -4834,106 +4835,47 @@ export function ProfileScreen({
               ) : null}
 
               {adminModule === 'descargas' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={styles.cardTitle}>Descargas y materiales</Text>
-                  <Text style={styles.cardText}>Biblioteca editable persistida en Supabase. Se puede guardar URL o ruta de archivo y definir visibilidad por rol.</Text>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={loadAdminMaterials}>
-                    <Text style={styles.secondaryButtonText}>Cargar materiales</Text>
-                  </TouchableOpacity>
-                  {session?.role === 'administrador' ? (
-                    <View style={styles.inlineEditorPanel}>
-                      <Text style={styles.cardEyebrow}>Documentos de la Iglesia</Text>
-                      <Text style={styles.cardText}>Botones externos visibles primero en Descargas. Maximo 6.</Text>
-                      <View style={styles.adminQuickGrid}>
-                        {adminChurchDocuments.map((document) => (
-                          <View key={document.id} style={[styles.adminListRow, !document.enabled && styles.lockedCard]}>
-                            {document.logo_url ? <Image source={{ uri: document.logo_url }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="key-outline" size={18} color={palette.red} /></View>}
-                            <View style={styles.adminUserHeaderText}>
-                              <Text style={styles.adminQuickText}>{document.title}</Text>
-                              <Text style={styles.cardText}>Orden {document.sort_order} - {document.enabled ? 'activo' : 'inactivo'}</Text>
-                            </View>
-                            <View style={styles.inlineActions}>
-                              <TouchableOpacity style={styles.actionPill} onPress={() => editChurchDocument(document)}><Text style={styles.actionPillText}>Editar</Text></TouchableOpacity>
-                              <TouchableOpacity style={styles.actionPill} onPress={() => moveChurchDocument(document, -1)}><Ionicons name="arrow-up-outline" size={14} color={palette.red} /></TouchableOpacity>
-                              <TouchableOpacity style={styles.actionPill} onPress={() => moveChurchDocument(document, 1)}><Ionicons name="arrow-down-outline" size={14} color={palette.red} /></TouchableOpacity>
-                              <TouchableOpacity style={styles.actionPill} onPress={() => duplicateChurchDocument(document)}><Text style={styles.actionPillText}>Duplicar</Text></TouchableOpacity>
-                              <TouchableOpacity style={styles.actionPill} onPress={() => toggleChurchDocument(document)}><Text style={styles.actionPillText}>{document.enabled ? 'Ocultar' : 'Activar'}</Text></TouchableOpacity>
-                              <TouchableOpacity style={styles.actionPill} onPress={() => deleteChurchDocument(document.id)}><Text style={styles.actionPillText}>Borrar</Text></TouchableOpacity>
-                            </View>
-                          </View>
-                        ))}
-                        {adminChurchDocuments.length === 0 ? <Text style={styles.cardText}>Carga el listado para ver botones existentes.</Text> : null}
-                      </View>
-                      <Text style={styles.cardEyebrow}>{churchDocumentEditingId ? 'Editar boton' : 'Agregar boton'}</Text>
-                      <TextInput style={styles.input} placeholder="Titulo visible" value={churchDocumentTitle} onChangeText={setChurchDocumentTitle} placeholderTextColor={inputPlaceholderColor} />
-                      <TextInput style={styles.input} placeholder="Link destino https://..." value={churchDocumentTargetUrl} onChangeText={setChurchDocumentTargetUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
-                      <TextInput style={styles.input} placeholder="Logo URL o subir imagen" value={churchDocumentLogoUrl} onChangeText={setChurchDocumentLogoUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
-                      <TouchableOpacity style={styles.secondaryButton} onPress={uploadChurchDocumentLogo}>
-                        <Ionicons name="image-outline" size={17} color={palette.red} />
-                        <Text style={styles.secondaryButtonText}>Subir logo/imagen</Text>
-                      </TouchableOpacity>
-                      <View style={styles.inlineActions}>
-                        <TextInput style={[styles.input, styles.colorInput]} placeholder="Orden" value={churchDocumentSortOrder} onChangeText={setChurchDocumentSortOrder} keyboardType="numeric" placeholderTextColor={inputPlaceholderColor} />
-                        <TouchableOpacity style={[styles.actionPill, churchDocumentEnabled && styles.actionPillActive]} onPress={() => setChurchDocumentEnabled((current) => !current)}>
-                          <Text style={[styles.actionPillText, churchDocumentEnabled && styles.actionPillTextActive]}>{churchDocumentEnabled ? 'Habilitado' : 'Deshabilitado'}</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <View style={styles.inlineActions}>
-                        <TouchableOpacity style={styles.primaryButton} onPress={saveChurchDocumentDraft}>
-                          <Text style={styles.primaryButtonText}>{churchDocumentEditingId ? 'Guardar boton' : 'Agregar boton'}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.secondaryButton} onPress={resetChurchDocumentForm}>
-                          <Text style={styles.secondaryButtonText}>Limpiar</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ) : null}
-                  <Text style={styles.cardEyebrow}>Materiales actuales</Text>
-                  {(adminMaterials.length > 0 ? adminMaterials : materials.map((material, index) => ({
-                    id: `fallback-${index}`,
-                    title: material.title,
-                    description: material.description,
-                    category: material.type,
-                    visibility: material.permission ? 'interno' : 'publico',
-                    required_permission: material.permission,
-                    file_url: null,
-                    file_path: null,
-                    sort_order: index,
-                    archived_at: null,
-                    created_at: null,
-                    created_by: null,
-                    province_id: null
-                  } as AppMaterialRecord))).map((material) => (
-                    <View key={material.id} style={styles.adminListRow}>
-                      <Ionicons name="document-text-outline" size={19} color={palette.red} />
-                      <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.cardTitle}>{material.title}</Text>
-                        <Text style={styles.cardText}>{material.category ?? 'General'} - {material.visibility ?? 'interno'}{material.required_permission ? ` - ${material.required_permission}` : ''}</Text>
-                      </View>
-                      {!material.id.startsWith('fallback-') ? (
-                        <TouchableOpacity onPress={() => adminArchiveMaterial(material.id)}>
-                          <Text style={styles.adminStateDraft}>Archivar</Text>
-                        </TouchableOpacity>
-                      ) : <Text style={styles.adminStateDraft}>Base</Text>}
-                    </View>
-                  ))}
-                  <Text style={styles.cardEyebrow}>Nuevo material</Text>
-                  <TextInput style={styles.input} placeholder="Nombre del archivo" value={materialTitle} onChangeText={setMaterialTitle}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={styles.input} placeholder="Categoria" value={materialCategory} onChangeText={setMaterialCategory}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={styles.input} placeholder="URL del archivo o PDF" value={materialFileUrl} onChangeText={setMaterialFileUrl}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialDescription} onChangeText={setMaterialDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
-                  <View style={styles.filterRow}>
-                    {['publico', 'interno', 'reservado', 'administrador'].map((item, index) => (
-                      <TouchableOpacity key={`${item}-${index}`} style={[styles.filterChip, materialVisibility === item && styles.filterChipActive]} onPress={() => setMaterialVisibility(item)}>
-                        <Text style={[styles.filterChipText, materialVisibility === item && styles.filterChipTextActive]}>{item}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <TextInput style={styles.input} placeholder="Permiso requerido opcional. Ej: ver_materiales_internos" value={materialPermission} onChangeText={setMaterialPermission}  placeholderTextColor={inputPlaceholderColor} />
-                  <TouchableOpacity style={styles.primaryButton} onPress={adminSaveMaterial}>
-                    <Text style={styles.primaryButtonText}>Guardar material</Text>
-                  </TouchableOpacity>
-                </View>
+                <DownloadsAdminPanel
+                  isDark={isDark}
+                  sessionRole={session?.role ?? null}
+                  adminChurchDocuments={adminChurchDocuments}
+                  adminMaterials={adminMaterials}
+                  fallbackMaterials={materials}
+                  churchDocumentEditingId={churchDocumentEditingId}
+                  churchDocumentTitle={churchDocumentTitle}
+                  churchDocumentTargetUrl={churchDocumentTargetUrl}
+                  churchDocumentLogoUrl={churchDocumentLogoUrl}
+                  churchDocumentSortOrder={churchDocumentSortOrder}
+                  churchDocumentEnabled={churchDocumentEnabled}
+                  materialTitle={materialTitle}
+                  materialCategory={materialCategory}
+                  materialFileUrl={materialFileUrl}
+                  materialDescription={materialDescription}
+                  materialVisibility={materialVisibility}
+                  materialPermission={materialPermission}
+                  onLoadMaterials={loadAdminMaterials}
+                  onEditChurchDocument={editChurchDocument}
+                  onMoveChurchDocument={moveChurchDocument}
+                  onDuplicateChurchDocument={duplicateChurchDocument}
+                  onToggleChurchDocument={toggleChurchDocument}
+                  onDeleteChurchDocument={deleteChurchDocument}
+                  onUploadChurchDocumentLogo={uploadChurchDocumentLogo}
+                  onSaveChurchDocumentDraft={saveChurchDocumentDraft}
+                  onResetChurchDocumentForm={resetChurchDocumentForm}
+                  setChurchDocumentTitle={setChurchDocumentTitle}
+                  setChurchDocumentTargetUrl={setChurchDocumentTargetUrl}
+                  setChurchDocumentLogoUrl={setChurchDocumentLogoUrl}
+                  setChurchDocumentSortOrder={setChurchDocumentSortOrder}
+                  setChurchDocumentEnabled={setChurchDocumentEnabled}
+                  setMaterialTitle={setMaterialTitle}
+                  setMaterialCategory={setMaterialCategory}
+                  setMaterialFileUrl={setMaterialFileUrl}
+                  setMaterialDescription={setMaterialDescription}
+                  setMaterialVisibility={setMaterialVisibility}
+                  setMaterialPermission={setMaterialPermission}
+                  onArchiveMaterial={adminArchiveMaterial}
+                  onSaveMaterial={adminSaveMaterial}
+                />
               ) : null}
 
               {adminModule === 'historia_admin' ? (
