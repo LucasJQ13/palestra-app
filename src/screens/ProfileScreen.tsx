@@ -47,6 +47,7 @@ import { AdminOverviewPanel } from './profile/AdminOverviewPanel';
 import { ProvinceCreateDropdown } from './profile/ProvinceAdminPanel';
 import { AdminUsersToolMenu } from './profile/AdminUsersToolMenu';
 import { IdentityAdminPanel } from './profile/IdentityAdminPanel';
+import { GeneralSettingsAdminPanel } from './profile/GeneralSettingsAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -6007,31 +6008,12 @@ export function ProfileScreen({
               ) : null}
 
               {adminModule === 'configuracion' ? (
-                <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-                  <Text style={styles.cardTitle}>Configuración general</Text>
-                  <Text style={styles.cardText}>Base para mantenimiento, aviso global, permisos, módulos activos, foro y chat.</Text>
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Mensaje visible durante mantenimiento" value={adminConfigDraft.settings.globalMessage} onChangeText={(value) => updateAdminConfigSection('settings', { globalMessage: value })} multiline  placeholderTextColor={inputPlaceholderColor} />
-                  {[
-                    { key: 'maintenanceMode', label: 'Modo mantenimiento' },
-                    { key: 'futureForumEnabled', label: 'Preparar foro' },
-                    { key: 'nearbyCommunitySearchEnabled', label: 'Buscar comunidad cercana' },
-                    { key: 'secretariatsEnabled', label: 'Mostrar Secretariados' }
-                  ].map((item) => {
-                    const key = item.key as keyof AppAdminConfig['settings'];
-                    const active = Boolean(adminConfigDraft.settings[key]);
-                    return (
-                      <TouchableOpacity key={item.key} style={[styles.adminListRow, active && styles.adminListRowActive]} onPress={() => updateAdminConfigSection('settings', { [key]: !active } as Partial<AppAdminConfig['settings']>)}>
-                        <Ionicons name={active ? 'toggle' : 'toggle-outline'} size={24} color={active ? palette.red : palette.inkMuted} />
-                        <Text style={styles.adminQuickText}>{item.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                  <Text style={styles.cardEyebrow}>Orden de navegación</Text>
-                  <Text style={styles.cardText}>El orden y visibilidad se administran desde Contenido.</Text>
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => saveAdminConfigDraft('Configuración general')}>
-                    <Text style={styles.primaryButtonText}>Guardar configuración</Text>
-                  </TouchableOpacity>
-                </View>
+                <GeneralSettingsAdminPanel
+                  config={adminConfigDraft}
+                  isDark={isDark}
+                  onPatch={(patch) => updateAdminConfigSection('settings', patch)}
+                  onSave={() => saveAdminConfigDraft('Configuraci?n general')}
+                />
               ) : null}
 
               {adminModule === 'intenciones' && session?.role === 'administrador' ? (
