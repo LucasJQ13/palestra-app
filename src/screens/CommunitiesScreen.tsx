@@ -61,6 +61,19 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
     ? communitySectionOptions.filter((item) => resolveCommunitySectionVisibility(province.province, province.sectionVisibility)[item.key])
     : [];
 
+  function closeSecretariat() {
+    setSecretariatScope(null);
+    setSecretariatMembers([]);
+    setSecretariatLoading(false);
+    setSecretariatStatus('');
+    setSecretariatMessageTarget(null);
+    setSecretariatMessage('');
+  }
+
+  useEffect(() => {
+    closeSecretariat();
+  }, [selectedProvince]);
+
   function openCommunityLocation(location: AppCommunity['locations'][number]) {
     const query = location.latitude != null && location.longitude != null
       ? `${location.latitude},${location.longitude}`
@@ -165,11 +178,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
 
   async function openSecretariat(scope: 'nacional' | 'provincia', provinceName?: string | null) {
     if (secretariatScope === scope) {
-      setSecretariatScope(null);
-      setSecretariatMembers([]);
-      setSecretariatStatus('');
-      setSecretariatMessageTarget(null);
-      setSecretariatMessage('');
+      closeSecretariat();
       return;
     }
     setSecretariatScope(scope);
