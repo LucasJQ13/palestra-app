@@ -8,7 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
-import { AppTheme, ThemeName, themePresets } from './src/theme/themes';
+import { AppTheme, themePresets } from './src/theme/themes';
 import { AppThemeContext, useIsDarkTheme } from './src/theme/ThemeContext';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
 import { Permission, PersonalPmType, Role, Session } from './src/types/auth';
@@ -42,7 +42,7 @@ import { CommunitiesScreen } from './src/screens/CommunitiesScreen';
 import { IntentionsScreen } from './src/screens/IntentionsScreen';
 import { DynamicNavigationSectionScreen } from './src/screens/DynamicNavigationSectionScreen';
 import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
-import { appBetaVersion, appRuntimeOwner, appStageLabel, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey, themePreferenceKey, touchPointerPreferenceKey } from './src/lib/constants';
+import { appBetaVersion, appRuntimeOwner, appStageLabel, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey, touchPointerPreferenceKey } from './src/lib/constants';
 import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, PageEditorProps, protectedTabKeys } from './src/lib/navigationConstants';
 import { AppAdminConfig, ContactBlock, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from './src/lib/appConfig';
 import { normalizeExternalUrl } from './src/lib/urls';
@@ -56,6 +56,7 @@ import { internalTestSessions } from './src/lib/internalTestSessions';
 import { permissionOptions } from './src/lib/permissionLabels';
 import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, requestAndRegisterPushToken, showFeedbackMessage } from './src/lib/notificationHelpers';
 import { AgendaItem, agendaPreferenceKey, cancelLocalReminderNotification, groupMotivadorFeedItems, readReminderNotificationMap, scheduleLocalReminderNotification, splitAgendaPreferences } from './src/lib/agendaHelpers';
+import { useAppThemePreference } from './src/hooks/useAppThemePreference';
 
 
 Notifications.setNotificationHandler({
@@ -102,7 +103,6 @@ export default function App() {
   const [profileInitialPanel, setProfileInitialPanel] = useState<ProfilePanel>('vista');
   const [touchPointer, setTouchPointer] = useState<{ x: number; y: number } | null>(null);
   const [touchPointerEnabled, setTouchPointerEnabled] = useState(false);
-  const [themeName, setThemeName] = useState<ThemeName>('default');
   const [tabSettings, setTabSettings] = useState<AppTabSetting[]>([]);
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
   const [contentLoaded, setContentLoaded] = useState(false);
@@ -120,14 +120,23 @@ export default function App() {
   const [globalSearchProfile, setGlobalSearchProfile] = useState<PublicProfilePreview | null>(null);
   const [appMessage, setAppMessage] = useState('');
   const [successToastVisible, setSuccessToastVisible] = useState(false);
-  const [themeTransitionVisible, setThemeTransitionVisible] = useState(false);
-  const [themeTransitionColor, setThemeTransitionColor] = useState('#2B2B2B');
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
   const lastBackPressRef = useRef(0);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const touchPointerOpacity = useRef(new Animated.Value(0)).current;
-  const themeTransitionProgress = useRef(new Animated.Value(0)).current;
+  const {
+    themeName,
+    themeTransitionColor,
+    themeTransitionProgress,
+    themeTransitionVisible,
+    updateThemePreference
+  } = useAppThemePreference({
+    onError: (message) => {
+      setAppMessage(message);
+      setTimeout(() => setAppMessage(''), 1800);
+    }
+  });
   const baseAppTheme = themePresets[themeName] ?? themePresets.default;
   const identityPrimaryColor = validHexColor(adminConfig.identity.primaryColor, palette.red);
   const identitySecondaryColor = validHexColor(adminConfig.identity.secondaryColor, palette.blueDeep);
@@ -189,43 +198,6 @@ export default function App() {
       .then((value) => setTouchPointerEnabled(value === 'true'))
       .catch((error) => console.error('touch pointer preference', error));
   }, []);
-
-  useEffect(() => {
-    AsyncStorage.getItem(themePreferenceKey)
-      .then((value) => {
-        if (value && value in themePresets) {
-          setThemeName(value as ThemeName);
-        }
-      })
-      .catch((error) => console.error('theme preference', error));
-  }, []);
-
-  async function updateThemePreference(nextTheme: ThemeName) {
-    setThemeTransitionColor(nextTheme === 'dark' ? themePresets.dark.colors.background : '#E6F3F5');
-    setThemeTransitionVisible(true);
-    themeTransitionProgress.setValue(0);
-    Animated.timing(themeTransitionProgress, {
-      toValue: 1,
-      duration: 380,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true
-    }).start(() => {
-      setThemeName(nextTheme);
-      Animated.timing(themeTransitionProgress, {
-        toValue: 0,
-        duration: 260,
-        easing: Easing.inOut(Easing.cubic),
-        useNativeDriver: true
-      }).start(() => setThemeTransitionVisible(false));
-    });
-    try {
-      await AsyncStorage.setItem(themePreferenceKey, nextTheme);
-    } catch (error) {
-      console.error('save theme preference', error);
-      setAppMessage('No pude guardar el tema visual.');
-      setTimeout(() => setAppMessage(''), 1800);
-    }
-  }
 
   async function updateTouchPointerPreference(value: boolean) {
     setTouchPointerEnabled(value);
