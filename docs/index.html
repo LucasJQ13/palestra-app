@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palestra App - Plataforma Oficial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
+        
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 96px;
+        }
+
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        .app-frame {
+            position: relative;
+            width: 280px;
+            height: 580px;
+            background: #111827;
+            border: 12px solid #1e293b;
+            border-radius: 40px;
+            box-shadow: 0 50px 100px -20px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 25px;
+            background: #1e293b;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            z-index: 10;
+        }
+
+        .screen-content {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+            background-color: #4f46e5;
+        }
+
+
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .redirect-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(10px);
+        }
+
+        .redirect-overlay.active {
+            display: flex;
+        }
+
+        .redirect-card {
+            width: min(92vw, 420px);
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+            padding: 32px;
+            text-align: center;
+        }
+
+        .redirect-logo {
+            width: 86px;
+            height: 86px;
+            object-fit: contain;
+            margin: 0 auto 18px;
+            animation: palestraSpin 1.1s linear infinite;
+        }
+
+        @keyframes palestraSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+        }
+
+        .role-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .role-card.active {
+            border-color: #4f46e5;
+            background-color: #f5f3ff;
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="bg-white text-slate-900">
+
+    <!-- OVERLAY DE REDIRECCIÓN EXTERNA -->
+    <div id="redirectOverlay" class="redirect-overlay" role="status" aria-live="polite" aria-hidden="true">
+        <div class="redirect-card">
+            <img id="redirectLogo" src="https://i.ibb.co/qMFHJh9b/notification-icon.png" alt="Logo Palestra" class="redirect-logo">
+            <p class="text-lg font-black text-slate-900">Te estamos redirigiendo fuera de la web</p>
+            <p class="mt-2 text-sm text-slate-500">Aguardá un instante...</p>
+        </div>
+    </div>
+
+
+    <!-- NAVBAR -->
+    <nav class="fixed w-full z-50 glass-nav">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <div class="flex items-center space-x-3">
+                    <a id="mainLogoContainer" href="index.html" class="flex items-center space-x-3 group" aria-label="Ir al inicio">
+                        <img id="headerLogo" src="https://i.ibb.co/qMFHJh9b/notification-icon.png" alt="Logo Palestra" class="w-14 h-14 rounded-xl object-contain bg-white shadow-sm p-1 group-hover:scale-105 transition">
+                        <span class="text-xl font-extrabold tracking-tight text-slate-900 uppercase group-hover:text-indigo-600 transition">Movimiento Palestra Argentina</span>
+                    </a>
+                </div>
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="#proposito" class="text-sm font-semibold hover:text-indigo-600 transition">Propósito</a>
+                    <a href="#roles" class="text-sm font-semibold hover:text-indigo-600 transition">Roles</a>
+                    <a href="#modulos" class="text-sm font-semibold hover:text-indigo-600 transition">Módulos</a>
+                    <a href="#descargar" class="bg-slate-900 text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-indigo-600 transition">Obtener APK</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="relative pt-32 pb-20 overflow-hidden bg-slate-50">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="text-center lg:text-left">
+                    <span class="inline-block px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-widest mb-6">Plataforma Digital 2026</span>
+                    <h1 class="text-5xl lg:text-7xl font-black text-slate-900 leading-tight mb-6">
+                        Nuestra historia e identidad <span class="text-indigo-600">en un solo lugar.</span>
+                    </h1>
+                    <p class="text-lg text-slate-600 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                        Centralizá la formación, comunicación y gestión de tu comunidad. Una herramienta diseñada para fortalecer los vínculos y nuestro sentido de pertenencia con el movimiento.
+                    </p>
+                    <div class="flex flex-row flex-wrap lg:flex-nowrap justify-center lg:justify-start gap-4">
+                        <a href="https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ" target="_blank" rel="noopener noreferrer" data-external-link="true" class="inline-flex items-center justify-center space-x-3 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition shadow-xl shadow-indigo-100">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                            <span>Descargar APK v1.52</span>
+                        </a>
+                        <a href="#proposito" class="inline-flex items-center justify-center space-x-2 bg-white text-slate-700 border border-slate-200 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-slate-50 transition">
+                            <span>Saber más</span>
+                        </a>
+                    </div>
+                    <p class="mt-4 text-xs text-slate-400 font-medium">Compatible con Android 7.0+ | Basado en Expo & Supabase</p>
+                </div>
+
+                <!-- MOCKUP SOLICITADO -->
+                <div class="flex justify-center relative">
+                    <div class="absolute -z-10 w-96 h-96 bg-indigo-200 rounded-full blur-[100px] opacity-40 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+                    <div class="app-frame">
+                        <div class="notch"></div>
+                        <!-- Imagen de la APK Real -->
+                        <img id="screenshotImg" src="https://i.ibb.co/JWsMkhVd/Whats-App-Image-2026-06-04-at-12-23-47.jpg" alt="Captura App Palestra" class="screen-content" loading="eager">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROPOSITO -->
+    <section id="proposito" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-black text-slate-900 sm:text-4xl">Memoria viva y operativa</h2>
+                <p class="mt-4 text-slate-600 max-w-2xl mx-auto italic">"Su función es acompañar, ordenar y potenciar lo que Palestra ya vive en sus comunidades."</p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="p-8 bg-slate-50 rounded-3xl border border-slate-100">
+                    <div class="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="shield-check" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-extrabold mb-3">Seguridad y Orden</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">Gestión centralizada de roles y permisos que asegura que cada miembro acceda a lo que le corresponde según su jerarquía pastoral.</p>
+                </div>
+                <div class="p-8 bg-slate-50 rounded-3xl border border-slate-100">
+                    <div class="w-12 h-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="library" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-extrabold mb-3">Material Descargable</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">Acceso instantáneo a materiales de formación, subsidios, cancioneros y el himno oficial sin depender de archivos dispersos.</p>
+                </div>
+                <div class="p-8 bg-slate-50 rounded-3xl border border-slate-100">
+                    <div class="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center mb-6">
+                        <i data-lucide="map-pin" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-extrabold mb-3">Presencia Nacional</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">Mapa detallado de provincias y comunidades activas, facilitando la conexión entre palestristas de todo el país.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ROLES INTERACTIVOS (SECC 7 INFORME) -->
+    <section id="roles" class="py-24 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="lg:flex gap-16 items-start">
+                <div class="lg:w-1/2 mb-12 lg:mb-0">
+                    <h2 class="text-3xl font-black text-slate-900 mb-6">Un sistema de roles que refleja la metodologia real.</h2>
+                    <p class="text-slate-600 mb-8 leading-relaxed">La fortaleza de Palestra App radica en su capacidad de replicar la estructura real del movimiento. Seleccioná un perfil para ver sus capacidades:</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="rolesGrid">
+                        <!-- Cargado vía JS -->
+                    </div>
+                </div>
+                <div class="lg:w-1/2 bg-white p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+                    <div id="roleDetail">
+                        <div class="flex items-center space-x-4 mb-6">
+                            <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center">
+                                <i data-lucide="user-plus" class="w-8 h-8"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-2xl font-black text-slate-900" id="roleTitle">Palestrista</h4>
+                                <p class="text-indigo-600 font-bold text-sm uppercase">Perfil de Usuario</p>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 mb-6 leading-relaxed" id="roleDesc">Miembro activo del movimiento con acceso a contenidos básicos, materiales y vida comunitaria.</p>
+                        <h5 class="text-sm font-black text-slate-900 uppercase tracking-widest mb-4">Permisos Clave:</h5>
+                        <ul class="space-y-3" id="rolePerms">
+                            <!-- JS list -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MODULOS (SECC 5 INFORME) -->
+    <section id="modulos" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-16">
+                <div>
+                    <h2 class="text-3xl font-black text-slate-900">Ecosistema de Módulos</h2>
+                    <p class="text-slate-500 mt-2">Secciones diseñadas con lógica pastoral y operativa.</p>
+                </div>
+                <div class="mt-4 md:mt-0 chart-container">
+                    <canvas id="balanceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="group p-6 rounded-3xl bg-slate-50 hover:bg-indigo-600 hover:text-white transition-all duration-500">
+                    <h4 class="font-black text-lg mb-2">Noticias</h4>
+                    <p class="text-sm opacity-70 mb-4">Agenda, noticias y avisos nacionales o provinciales en tiempo real.</p>
+                    <span class="text-xs font-bold uppercase py-1 px-3 rounded-full bg-white/20">Dinámico</span>
+                </div>
+                <div class="group p-6 rounded-3xl bg-slate-50 hover:bg-emerald-600 hover:text-white transition-all duration-500">
+                    <h4 class="font-black text-lg mb-2">Intenciones</h4>
+                    <p class="text-sm opacity-70 mb-4">Módulo de oración comunitaria para fortalecer la comunión espiritual.</p>
+                    <span class="text-xs font-bold uppercase py-1 px-3 rounded-full bg-white/20">Espiritual</span>
+                </div>
+                <div class="group p-6 rounded-3xl bg-slate-50 hover:bg-amber-500 hover:text-white transition-all duration-500">
+                    <h4 class="font-black text-lg mb-2">QR & Credencial</h4>
+                    <p class="text-sm opacity-70 mb-4">Identificación y control de asistencia para encuentros y PMs.</p>
+                    <span class="text-xs font-bold uppercase py-1 px-3 rounded-full bg-white/20">Gestión</span>
+                </div>
+                <div class="group p-6 rounded-3xl bg-slate-50 hover:bg-slate-900 hover:text-white transition-all duration-500">
+                    <h4 class="font-black text-lg mb-2">Sección PM</h4>
+                    <p class="text-sm opacity-70 mb-4">Contenido específico para el Período Motivador según rol.</p>
+                    <span class="text-xs font-bold uppercase py-1 px-3 rounded-full bg-white/20">Formación</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA FINAL -->
+    <footer id="descargar" class="bg-slate-900 pt-24 pb-12 text-white">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-6xl font-black mb-6">Impulsá tu comunidad hoy.</h2>
+                <p class="text-slate-400 text-lg mb-10 max-w-2xl mx-auto">Unite a la beta estable y empezá a centralizar la vida de Palestra en tu provincia.</p>
+                <a href="https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ" target="_blank" rel="noopener noreferrer" data-external-link="true" class="group relative inline-flex items-center space-x-4 bg-indigo-600 px-12 py-6 rounded-3xl font-black text-2xl hover:bg-indigo-500 transition overflow-hidden">
+                    <span>Instalar APK v1.52</span>
+                    <i data-lucide="arrow-right" class="w-6 h-6 group-hover:translate-x-2 transition"></i>
+                </a>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12 border-t border-slate-800 pt-12 text-sm text-slate-500">
+                <div class="space-y-4">
+                    <p class="font-bold text-white uppercase tracking-widest">Movimiento Palestra Argentina</p>
+                    <p>Una herramienta al servicio de la evangelización y la organización pastoral.</p>
+                    <div class="flex space-x-6">
+                        <a href="privacidad.html" class="hover:text-white transition">Privacidad</a>
+                        <a href="soporte.html" class="hover:text-white transition">Soporte</a>
+                        <a href="terminos.html" class="hover:text-white transition">Términos</a>
+                    </div>
+                </div>
+                <div class="md:text-right space-y-2">
+                    <p>Estado técnico: <span class="text-emerald-400">Apto para Beta Interna</span></p>
+                    <p>Build: EAS_2026_MAR_15</p>
+                    <p>© 2026 Reservados todos los derechos.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // CONFIGURACIÓN CENTRALIZADA
+        const CONFIG = {
+            logoUrl: "https://i.ibb.co/qMFHJh9b/notification-icon.png", // URL del logo del movimiento
+            apkUrl: "https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ", // URL real de descarga directa de la APK
+            screenshotUrl: "https://i.ibb.co/JWsMkhVd/Whats-App-Image-2026-06-04-at-12-23-47.jpg",
+            roles: [
+                {
+                    id: "palestrista",
+                    title: "Palestrista",
+                    desc: "Miembro registrado con acceso a comunidad, materiales y oración.",
+                    perms: ["Ver secciones públicas", "Ver materiales internos", "Editar perfil", "Participar en Intenciones"],
+                    icon: "eye"
+                },
+                {
+                    id: "dirigente",
+                    title: "Dirigente",
+                    desc: "Encargados de comunidades capaces de gestionar a sus miembros.",
+                    perms: ["Gestionar comunidad", "Modificar comunidad", "Enviar avisos", "Revisar mensajes internos"],
+                    icon: "users"
+                },
+                {
+                    id: "nacional",
+                    title: "Equipo Nacional",
+                    desc: "Secretariado Nacional.",
+                    perms: ["Administrar sistema", "Gestionar contenidos nacionales", "Configurar secciones", "Enviar notificaciones Push"],
+                    icon: "shield"
+                },
+                {
+                    id: "diocesano",
+                    title: "Diocesano",
+                    desc: "Secretariados Diocesanos",
+                    perms: ["Administracion de su provincia", "Gestionar contenido provincial", "Creacion de avisos y actividades"],
+                    icon: "shield"
+                }
+            ]
+        };
+
+        // Inicializar Iconos
+        lucide.createIcons();
+
+        // Aplicar imagen de mockup, logo de header y logo del overlay
+        if (CONFIG.screenshotUrl) {
+            document.getElementById('screenshotImg').src = CONFIG.screenshotUrl;
+        }
+
+        if (CONFIG.logoUrl) {
+            document.getElementById('headerLogo').src = CONFIG.logoUrl;
+            document.getElementById('redirectLogo').src = CONFIG.logoUrl;
+        }
+
+        // Navegación suave para enlaces internos y loader para enlaces externos
+        const redirectOverlay = document.getElementById('redirectOverlay');
+
+        function showRedirectOverlay() {
+            redirectOverlay.classList.add('active');
+            redirectOverlay.setAttribute('aria-hidden', 'false');
+        }
+
+        function hideRedirectOverlay() {
+            redirectOverlay.classList.remove('active');
+            redirectOverlay.setAttribute('aria-hidden', 'true');
+        }
+
+        function isExternalUrl(url) {
+            return url.origin !== window.location.origin;
+        }
+
+        document.querySelectorAll('a[href]').forEach(link => {
+            link.addEventListener('click', function(event) {
+                const href = this.getAttribute('href');
+
+                if (!href || href === '#') {
+                    event.preventDefault();
+                    return;
+                }
+
+                if (href.startsWith('#')) {
+                    const target = document.querySelector(href);
+                    if (target) {
+                        event.preventDefault();
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+
+                        history.pushState(null, '', href);
+                    }
+                    return;
+                }
+
+                const destination = new URL(href, window.location.href);
+
+                if (this.dataset.externalLink === 'true' || isExternalUrl(destination)) {
+                    event.preventDefault();
+                    showRedirectOverlay();
+
+                    setTimeout(() => {
+                        if (this.target === '_blank') {
+                            window.open(destination.href, '_blank');
+                            setTimeout(hideRedirectOverlay, 900);
+                        } else {
+                            window.location.href = destination.href;
+                        }
+                    }, 650);
+                }
+            });
+        });
+
+        window.addEventListener('pageshow', hideRedirectOverlay);
+
+        // Renderizar Grid de Roles
+        const rolesGrid = document.getElementById('rolesGrid');
+        CONFIG.roles.forEach((role, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `role-card flex items-center p-4 rounded-2xl border-2 border-slate-200 text-left hover:border-indigo-300 transition ${idx === 0 ? 'active' : ''}`;
+            btn.onclick = () => selectRole(role.id, btn);
+            btn.innerHTML = `
+                <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center mr-4 text-slate-600">
+                    <i data-lucide="${role.icon}" class="w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-slate-800">${role.title}</span>
+            `;
+            rolesGrid.appendChild(btn);
+        });
+        lucide.createIcons(); // Re-iniciar para iconos dinámicos
+
+        function selectRole(id, element) {
+            // UI Update
+            document.querySelectorAll('.role-card').forEach(c => c.classList.remove('active'));
+            element.classList.add('active');
+
+            const role = CONFIG.roles.find(r => r.id === id);
+            document.getElementById('roleTitle').innerText = role.title;
+            document.getElementById('roleDesc').innerText = role.desc;
+            
+            const permsList = document.getElementById('rolePerms');
+            permsList.innerHTML = '';
+            role.perms.forEach(p => {
+                const li = document.createElement('li');
+                li.className = "flex items-center text-sm text-slate-600 font-medium";
+                li.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500 mr-3"></i> ${p}`;
+                permsList.appendChild(li);
+            });
+            lucide.createIcons();
+        }
+
+        // Gráfico de Balance (Chart.js)
+        const ctx = document.getElementById('balanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Espiritual', 'Comunidad', 'Gestión', 'Formación', 'Noticias'],
+                datasets: [{
+                    label: 'Enfoque de la App',
+                    data: [90, 85, 75, 80, 70],
+                    backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                    borderColor: '#4f46e5',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#4f46e5'
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // Initialize first role
+        selectRole('palestrista', rolesGrid.children[0]);
+    </script>
+</body>
+</html>
