@@ -10,7 +10,12 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
         
-        body { font-family: 'Plus Jakarta Sans', sans-serif; scroll-behavior: smooth; }
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 96px;
+        }
+
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
         
         .app-frame {
             position: relative;
@@ -37,16 +42,57 @@
         }
 
         .screen-content {
+            display: block;
             width: 100%;
             height: 100%;
             object-fit: cover;
+            object-position: center top;
             background-color: #4f46e5;
         }
+
 
         .glass-nav {
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .redirect-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(10px);
+        }
+
+        .redirect-overlay.active {
+            display: flex;
+        }
+
+        .redirect-card {
+            width: min(92vw, 420px);
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+            padding: 32px;
+            text-align: center;
+        }
+
+        .redirect-logo {
+            width: 86px;
+            height: 86px;
+            object-fit: contain;
+            margin: 0 auto 18px;
+            animation: palestraSpin 1.1s linear infinite;
+        }
+
+        @keyframes palestraSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         .chart-container {
@@ -71,16 +117,25 @@
 </head>
 <body class="bg-white text-slate-900">
 
+    <!-- OVERLAY DE REDIRECCIÓN EXTERNA -->
+    <div id="redirectOverlay" class="redirect-overlay" role="status" aria-live="polite" aria-hidden="true">
+        <div class="redirect-card">
+            <img id="redirectLogo" src="https://i.ibb.co/qMFHJh9b/notification-icon.png" alt="Logo Palestra" class="redirect-logo">
+            <p class="text-lg font-black text-slate-900">Te estamos redirigiendo fuera de la web</p>
+            <p class="mt-2 text-sm text-slate-500">Aguardá un instante...</p>
+        </div>
+    </div>
+
+
     <!-- NAVBAR -->
     <nav class="fixed w-full z-50 glass-nav">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
             <div class="flex justify-between h-20 items-center">
                 <div class="flex items-center space-x-3">
-                    <div id="mainLogoContainer" class="flex items-center space-x-2">
-                        <!-- Logo dinámico cargado vía JS -->
-                        <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-black">P</div>
-                        <span class="text-xl font-extrabold tracking-tight text-slate-900 uppercase">Movimiento Palestra Argentina</span>
-                    </div>
+                    <a id="mainLogoContainer" href="index.html" class="flex items-center space-x-3 group" aria-label="Ir al inicio">
+                        <img id="headerLogo" src="https://i.ibb.co/qMFHJh9b/notification-icon.png" alt="Logo Palestra" class="w-14 h-14 rounded-xl object-contain bg-white shadow-sm p-1 group-hover:scale-105 transition">
+                        <span class="text-xl font-extrabold tracking-tight text-slate-900 uppercase group-hover:text-indigo-600 transition">Movimiento Palestra Argentina</span>
+                    </a>
                 </div>
                 <div class="hidden md:flex items-center space-x-6">
                     <a href="#proposito" class="text-sm font-semibold hover:text-indigo-600 transition">Propósito</a>
@@ -104,12 +159,12 @@
                     <p class="text-lg text-slate-600 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
                         Centralizá la formación, comunicación y gestión de tu comunidad. Una herramienta diseñada para fortalecer los vínculos y nuestro sentido de pertenencia con el movimiento.
                     </p>
-                    <div class="flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
-                        <button onclick="window.location.href=CONFIG.apkUrl" class="flex items-center justify-center space-x-3 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition shadow-xl shadow-indigo-100">
+                    <div class="flex flex-row flex-wrap lg:flex-nowrap justify-center lg:justify-start gap-4">
+                        <a href="https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ" target="_blank" rel="noopener noreferrer" data-external-link="true" class="inline-flex items-center justify-center space-x-3 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition shadow-xl shadow-indigo-100">
                             <i data-lucide="download" class="w-5 h-5"></i>
                             <span>Descargar APK v1.52</span>
-                        </button>
-                        <a href="#proposito" class="flex items-center justify-center space-x-2 bg-white text-slate-700 border border-slate-200 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-slate-50 transition">
+                        </a>
+                        <a href="#proposito" class="inline-flex items-center justify-center space-x-2 bg-white text-slate-700 border border-slate-200 px-8 py-4 rounded-2xl font-bold text-lg hover:bg-slate-50 transition">
                             <span>Saber más</span>
                         </a>
                     </div>
@@ -122,7 +177,7 @@
                     <div class="app-frame">
                         <div class="notch"></div>
                         <!-- Imagen de la APK Real -->
-                        <img id="screenshotImg" src="<a href="https://ibb.co/XfCvJw14"><img src="https://i.ibb.co/JWsMkhVd/Whats-App-Image-2026-06-04-at-12-23-47.jpg" alt="Whats-App-Image-2026-06-04-at-12-23-47" border="0"></a>" alt="Captura App Palestra" class="screen-content">
+                        <img id="screenshotImg" src="https://i.ibb.co/JWsMkhVd/Whats-App-Image-2026-06-04-at-12-23-47.jpg" alt="Captura App Palestra" class="screen-content" loading="eager">
                     </div>
                 </div>
             </div>
@@ -241,10 +296,10 @@
             <div class="text-center mb-16">
                 <h2 class="text-4xl md:text-6xl font-black mb-6">Impulsá tu comunidad hoy.</h2>
                 <p class="text-slate-400 text-lg mb-10 max-w-2xl mx-auto">Unite a la beta estable y empezá a centralizar la vida de Palestra en tu provincia.</p>
-                <button onclick="window.location.href=CONFIG.apkUrl" class="group relative inline-flex items-center space-x-4 bg-indigo-600 px-12 py-6 rounded-3xl font-black text-2xl hover:bg-indigo-500 transition overflow-hidden">
-                    <span>Instalar APK v1.2</span>
+                <a href="https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ" target="_blank" rel="noopener noreferrer" data-external-link="true" class="group relative inline-flex items-center space-x-4 bg-indigo-600 px-12 py-6 rounded-3xl font-black text-2xl hover:bg-indigo-500 transition overflow-hidden">
+                    <span>Instalar APK v1.52</span>
                     <i data-lucide="arrow-right" class="w-6 h-6 group-hover:translate-x-2 transition"></i>
-                </button>
+                </a>
             </div>
 
             <div class="grid md:grid-cols-2 gap-12 border-t border-slate-800 pt-12 text-sm text-slate-500">
@@ -252,9 +307,9 @@
                     <p class="font-bold text-white uppercase tracking-widest">Movimiento Palestra Argentina</p>
                     <p>Una herramienta al servicio de la evangelización y la organización pastoral.</p>
                     <div class="flex space-x-6">
-                        <a href="#" class="hover:text-white transition">Privacidad</a>
-                        <a href="#" class="hover:text-white transition">Soporte</a>
-                        <a href="#" class="hover:text-white transition">Términos</a>
+                        <a href="privacidad.html" class="hover:text-white transition">Privacidad</a>
+                        <a href="soporte.html" class="hover:text-white transition">Soporte</a>
+                        <a href="terminos.html" class="hover:text-white transition">Términos</a>
                     </div>
                 </div>
                 <div class="md:text-right space-y-2">
@@ -269,9 +324,9 @@
     <script>
         // CONFIGURACIÓN CENTRALIZADA
         const CONFIG = {
-            logoUrl: "https://ibb.co/QFjWDhns"><img src="https://i.ibb.co/qMFHJh9b/notification-icon.png", // URL del logo del movimiento (si existe)
-            apkUrl: "https://drive.google.com/file/d/1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ/view?usp=sharing", // URL REAL de descarga de la APK
-            screenshotUrl: "https://images.unsplash.com/photo-1616077168712-fc6c788bd4af?w=600&auto=format&fit=crop&q=80",
+            logoUrl: "https://i.ibb.co/qMFHJh9b/notification-icon.png", // URL del logo del movimiento
+            apkUrl: "https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ", // URL real de descarga directa de la APK
+            screenshotUrl: "https://i.ibb.co/JWsMkhVd/Whats-App-Image-2026-06-04-at-12-23-47.jpg",
             roles: [
                 {
                     id: "palestrista",
@@ -307,10 +362,75 @@
         // Inicializar Iconos
         lucide.createIcons();
 
-        // Aplicar Imagen de Mockup
+        // Aplicar imagen de mockup, logo de header y logo del overlay
         if (CONFIG.screenshotUrl) {
             document.getElementById('screenshotImg').src = CONFIG.screenshotUrl;
         }
+
+        if (CONFIG.logoUrl) {
+            document.getElementById('headerLogo').src = CONFIG.logoUrl;
+            document.getElementById('redirectLogo').src = CONFIG.logoUrl;
+        }
+
+        // Navegación suave para enlaces internos y loader para enlaces externos
+        const redirectOverlay = document.getElementById('redirectOverlay');
+
+        function showRedirectOverlay() {
+            redirectOverlay.classList.add('active');
+            redirectOverlay.setAttribute('aria-hidden', 'false');
+        }
+
+        function hideRedirectOverlay() {
+            redirectOverlay.classList.remove('active');
+            redirectOverlay.setAttribute('aria-hidden', 'true');
+        }
+
+        function isExternalUrl(url) {
+            return url.origin !== window.location.origin;
+        }
+
+        document.querySelectorAll('a[href]').forEach(link => {
+            link.addEventListener('click', function(event) {
+                const href = this.getAttribute('href');
+
+                if (!href || href === '#') {
+                    event.preventDefault();
+                    return;
+                }
+
+                if (href.startsWith('#')) {
+                    const target = document.querySelector(href);
+                    if (target) {
+                        event.preventDefault();
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+
+                        history.pushState(null, '', href);
+                    }
+                    return;
+                }
+
+                const destination = new URL(href, window.location.href);
+
+                if (this.dataset.externalLink === 'true' || isExternalUrl(destination)) {
+                    event.preventDefault();
+                    showRedirectOverlay();
+
+                    setTimeout(() => {
+                        if (this.target === '_blank') {
+                            window.open(destination.href, '_blank');
+                            setTimeout(hideRedirectOverlay, 900);
+                        } else {
+                            window.location.href = destination.href;
+                        }
+                    }, 650);
+                }
+            });
+        });
+
+        window.addEventListener('pageshow', hideRedirectOverlay);
 
         // Renderizar Grid de Roles
         const rolesGrid = document.getElementById('rolesGrid');
