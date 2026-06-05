@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, BackHandler, Easing, Image, Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, BackHandler, Easing, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -15,7 +15,6 @@ import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
 import { AdminUser, AdminUserLoginDiagnostic, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
-import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
 import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermission, fetchLibraryItems, saveLibraryItem } from './src/lib/library';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
@@ -41,7 +40,7 @@ import { CommunitiesScreen } from './src/screens/CommunitiesScreen';
 import { IntentionsScreen } from './src/screens/IntentionsScreen';
 import { DynamicNavigationSectionScreen } from './src/screens/DynamicNavigationSectionScreen';
 import { CatholicNewsSourceKey, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
-import { appBetaVersion, appRuntimeOwner, appStageLabel, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey } from './src/lib/constants';
+import { appBetaVersion, appRuntimeOwner, appStageLabel, appVersionLabel, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey } from './src/lib/constants';
 import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, PageEditorProps, protectedTabKeys } from './src/lib/navigationConstants';
 import { normalizeExternalUrl } from './src/lib/urls';
 import { uploadPickedImageToPublicUrl } from './src/lib/uploads';
@@ -57,6 +56,7 @@ import { AgendaItem, agendaPreferenceKey, cancelLocalReminderNotification, group
 import { useAppThemePreference } from './src/hooks/useAppThemePreference';
 import { useTouchPointer } from './src/hooks/useTouchPointer';
 import { useAppBootstrapData } from './src/hooks/useAppBootstrapData';
+import { useAppSessionLinks } from './src/hooks/useAppSessionLinks';
 
 
 Notifications.setNotificationHandler({
@@ -114,6 +114,7 @@ export default function App() {
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
   const lastBackPressRef = useRef(0);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydrateSessionRef = useRef<(() => Promise<void>) | null>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const {
     hideTouchPointer,
@@ -158,7 +159,9 @@ export default function App() {
     setRuntimeConfig,
     tabSettings
   } = useAppBootstrapData({
-    hydrateSession: hydrateRealSession,
+    hydrateSession: async () => {
+      await hydrateSessionRef.current?.();
+    },
     onError: (message) => setAppMessage(message)
   });
   const baseAppTheme = themePresets[themeName] ?? themePresets.default;
@@ -200,6 +203,22 @@ export default function App() {
     }
     setTimeout(() => setAppMessage(''), 1800);
   }, []);
+
+  const { hydrateRealSession } = useAppSessionLinks({
+    setActiveTab,
+    setAdminSessionBeforeViewAs,
+    setAppMessage,
+    setAuthConfirmationError,
+    setAuthConfirmationOpen,
+    setAuthScreenOpen,
+    setSession,
+    onMailConfirmed: () => showToastSuccess('Mail confirmado correctamente.'),
+    reloadAdminConfig,
+    reloadAppContent,
+    reloadRuntimeConfig,
+    reloadTabSettings
+  });
+  hydrateSessionRef.current = hydrateRealSession;
 
   const currentDateTimeLabel = useMemo(() => {
     const date = currentDateTime.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -348,19 +367,6 @@ export default function App() {
     onContentChanged: refreshPublishedContent,
     onTabsChanged: reloadTabSettings
   });
-
-  async function hydrateRealSession() {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) {
-      return;
-    }
-
-    const result = await getMyProfileSession(data.user.email ?? 'Usuario');
-    if (result.session) {
-      setSession(result.session);
-      setAdminSessionBeforeViewAs(null);
-    }
-  }
 
   function startAdminViewAs(nextSession: Session) {
     if (session?.role !== 'administrador') {
@@ -639,93 +645,6 @@ export default function App() {
     setAppMessage(message);
     setTimeout(() => setAppMessage(''), 1800);
     return true;
-  }
-
-  useEffect(() => {
-    hydrateRealSession();
-    reloadTabSettings();
-    reloadAppContent();
-    reloadAdminConfig();
-    reloadRuntimeConfig();
-
-    async function handleInitialUrl() {
-      const url = await Linking.getInitialURL();
-      if (url) {
-        handleDeepLinkUrl(url);
-      }
-    }
-
-    handleInitialUrl();
-    const urlSubscription = Linking.addEventListener('url', ({ url }) => handleDeepLinkUrl(url));
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, authSession) => {
-      if (!authSession?.user) {
-        setSession(null);
-        setAdminSessionBeforeViewAs(null);
-      }
-      if (authSession?.user) {
-        hydrateRealSession();
-      }
-    });
-
-    return () => {
-      listener.subscription.unsubscribe();
-      urlSubscription.remove();
-    };
-  }, []);
-
-  async function handleDeepLinkUrl(url: string) {
-    if (!url.startsWith(authDeepLinkBaseUrl)) {
-      return;
-    }
-    try {
-      const parsed = new URL(url);
-      const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
-      const preview = parsed.searchParams.get('preview') ?? hashParams.get('preview');
-      if (preview === 'mail-confirmed') {
-        setAuthConfirmationError('');
-        setAuthConfirmationOpen(true);
-        setAuthScreenOpen(false);
-        return;
-      }
-      const callbackError = parsed.searchParams.get('error_description')
-        ?? hashParams.get('error_description')
-        ?? parsed.searchParams.get('error')
-        ?? hashParams.get('error');
-      if (callbackError) {
-        setAuthConfirmationError('No pudimos confirmar tu correo. Pedí un nuevo mail de confirmación e intentá nuevamente.');
-        setAuthConfirmationOpen(true);
-        setAuthScreenOpen(false);
-        return;
-      }
-      const flow = parsed.searchParams.get('flow') ?? parsed.searchParams.get('type') ?? hashParams.get('type');
-      if (flow === 'password-reset' || flow === 'recovery') {
-        setAuthConfirmationOpen(false);
-        setActiveTab('perfil');
-        setAuthScreenOpen(true);
-        setAppMessage('Link de recuperacion recibido. Inicia sesion o actualiza tu contrasena desde Mi Perfil.');
-        return;
-      }
-      const code = parsed.searchParams.get('code');
-      if (code) {
-        await supabase.auth.exchangeCodeForSession(code);
-      }
-      const accessToken = parsed.searchParams.get('access_token') ?? hashParams.get('access_token');
-      const refreshToken = parsed.searchParams.get('refresh_token') ?? hashParams.get('refresh_token');
-      if (accessToken && refreshToken) {
-        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-      }
-      await hydrateRealSession();
-      setAuthConfirmationError('');
-      setAuthConfirmationOpen(true);
-      setActiveTab('perfil');
-      setAuthScreenOpen(false);
-      showToastSuccess('Mail confirmado correctamente.');
-    } catch (error) {
-      setAuthConfirmationError('No pudimos procesar el link de confirmación. Abrí Palestra APP e intentá iniciar sesión.');
-      setAuthConfirmationOpen(true);
-      console.error('auth callback link', error);
-    }
   }
 
   useEffect(() => {
