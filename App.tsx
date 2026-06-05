@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Alert, Animated, BackHandler, Easing, Image, Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -42,7 +41,7 @@ import { CommunitiesScreen } from './src/screens/CommunitiesScreen';
 import { IntentionsScreen } from './src/screens/IntentionsScreen';
 import { DynamicNavigationSectionScreen } from './src/screens/DynamicNavigationSectionScreen';
 import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
-import { appBetaVersion, appRuntimeOwner, appStageLabel, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey, touchPointerPreferenceKey } from './src/lib/constants';
+import { appBetaVersion, appRuntimeOwner, appStageLabel, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey } from './src/lib/constants';
 import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, PageEditorProps, protectedTabKeys } from './src/lib/navigationConstants';
 import { AppAdminConfig, ContactBlock, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from './src/lib/appConfig';
 import { normalizeExternalUrl } from './src/lib/urls';
@@ -57,6 +56,7 @@ import { permissionOptions } from './src/lib/permissionLabels';
 import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, requestAndRegisterPushToken, showFeedbackMessage } from './src/lib/notificationHelpers';
 import { AgendaItem, agendaPreferenceKey, cancelLocalReminderNotification, groupMotivadorFeedItems, readReminderNotificationMap, scheduleLocalReminderNotification, splitAgendaPreferences } from './src/lib/agendaHelpers';
 import { useAppThemePreference } from './src/hooks/useAppThemePreference';
+import { useTouchPointer } from './src/hooks/useTouchPointer';
 
 
 Notifications.setNotificationHandler({
@@ -101,8 +101,6 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [authScreenOpen, setAuthScreenOpen] = useState(false);
   const [profileInitialPanel, setProfileInitialPanel] = useState<ProfilePanel>('vista');
-  const [touchPointer, setTouchPointer] = useState<{ x: number; y: number } | null>(null);
-  const [touchPointerEnabled, setTouchPointerEnabled] = useState(false);
   const [tabSettings, setTabSettings] = useState<AppTabSetting[]>([]);
   const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
   const [contentLoaded, setContentLoaded] = useState(false);
@@ -124,7 +122,20 @@ export default function App() {
   const lastBackPressRef = useRef(0);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
-  const touchPointerOpacity = useRef(new Animated.Value(0)).current;
+  const {
+    hideTouchPointer,
+    moveTouchPointer,
+    showTouchPointer,
+    touchPointer,
+    touchPointerEnabled,
+    touchPointerOpacity,
+    updateTouchPointerPreference
+  } = useTouchPointer({
+    onError: (message) => {
+      setAppMessage(message);
+      setTimeout(() => setAppMessage(''), 1800);
+    }
+  });
   const {
     themeName,
     themeTransitionColor,
@@ -192,62 +203,6 @@ export default function App() {
     const timer = setInterval(() => setCurrentDateTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    AsyncStorage.getItem(touchPointerPreferenceKey)
-      .then((value) => setTouchPointerEnabled(value === 'true'))
-      .catch((error) => console.error('touch pointer preference', error));
-  }, []);
-
-  async function updateTouchPointerPreference(value: boolean) {
-    setTouchPointerEnabled(value);
-    try {
-      await AsyncStorage.setItem(touchPointerPreferenceKey, value ? 'true' : 'false');
-    } catch (error) {
-      console.error('save touch pointer preference', error);
-      setAppMessage('No pude guardar la preferencia del puntero.');
-      setTimeout(() => setAppMessage(''), 1800);
-    }
-  }
-
-  function showTouchPointer(x: number, y: number) {
-    if (!touchPointerEnabled) {
-      return;
-    }
-
-    setTouchPointer({ x, y });
-    Animated.timing(touchPointerOpacity, {
-      toValue: 1,
-      duration: 90,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true
-    }).start();
-  }
-
-  function moveTouchPointer(x: number, y: number) {
-    if (!touchPointerEnabled) {
-      return;
-    }
-
-    setTouchPointer({ x, y });
-  }
-
-  function hideTouchPointer() {
-    if (!touchPointerEnabled) {
-      return;
-    }
-
-    Animated.timing(touchPointerOpacity, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true
-    }).start(({ finished }) => {
-      if (finished) {
-        setTouchPointer(null);
-      }
-    });
-  }
 
   const resolvedTabs = useMemo<AppTabDisplay[]>(() => {
     const settingsByKey = new Map(tabSettings.map((item) => [item.key, item]));
