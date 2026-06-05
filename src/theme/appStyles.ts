@@ -1589,12 +1589,14 @@ export const styles = StyleSheet.create({
     color: palette.ink,
     fontSize: 18,
     fontWeight: '800',
-    marginBottom: 6
+    marginBottom: 6,
+    flexShrink: 1
   },
   cardText: {
     color: palette.inkMuted,
     fontSize: 15,
-    lineHeight: 21
+    lineHeight: 21,
+    flexShrink: 1
   },
   cardImage: {
     width: '100%',
@@ -1629,7 +1631,7 @@ export const styles = StyleSheet.create({
     borderColor: 'rgba(45, 141, 200, 0.18)',
     borderWidth: 1,
     borderRadius: 24,
-    padding: 18,
+    padding: 16,
     gap: 10,
     shadowColor: palette.blueDeep,
     shadowOpacity: 0.18,
@@ -1641,7 +1643,8 @@ export const styles = StyleSheet.create({
     backgroundColor: 'rgba(12, 25, 38, 0.46)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 18
+    paddingHorizontal: 12,
+    paddingVertical: 14
   },
   authConfirmPanel: {
     width: '100%',
@@ -1689,11 +1692,11 @@ export const styles = StyleSheet.create({
   modalKeyboardAvoider: {
     width: '100%',
     maxWidth: 520,
-    maxHeight: '90%',
+    maxHeight: '88%',
     zIndex: 2
   },
   globalSearchPanel: {
-    maxHeight: '88%',
+    maxHeight: '86%',
     paddingTop: 22
   },
   globalSearchRow: {
@@ -1703,7 +1706,8 @@ export const styles = StyleSheet.create({
   },
   globalSearchInput: {
     flex: 1,
-    marginTop: 0
+    marginTop: 0,
+    minWidth: 0
   },
   globalSearchButton: {
     width: 48,
@@ -1716,6 +1720,10 @@ export const styles = StyleSheet.create({
   globalSearchResults: {
     gap: 10,
     paddingBottom: 18
+  },
+  globalSearchResultsScroll: {
+    width: '100%',
+    flexGrow: 0
   },
   externalNewsCard: {
     borderRadius: 22,
@@ -1814,7 +1822,7 @@ export const styles = StyleSheet.create({
   },
   communityModalPanel: {
     width: '100%',
-    maxHeight: '86%',
+    maxHeight: '84%',
     borderRadius: 30,
     paddingBottom: 12,
     overflow: 'hidden'
@@ -1840,6 +1848,7 @@ export const styles = StyleSheet.create({
   communityModalMetaItem: {
     flex: 1,
     minWidth: '46%',
+    maxWidth: '100%',
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1851,6 +1860,7 @@ export const styles = StyleSheet.create({
   },
   communityModalMetaText: {
     flex: 1,
+    minWidth: 0,
     color: palette.ink,
     fontSize: 12,
     fontWeight: '800'
@@ -2906,6 +2916,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 18,
     padding: 14,
+    minWidth: 0,
     shadowColor: palette.blueDeep,
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -3325,11 +3336,11 @@ export const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: palette.white,
     marginTop: 8,
-    maxHeight: 220,
+    maxHeight: 200,
     overflow: 'hidden'
   },
   adminUsersToolList: {
-    maxHeight: 280
+    maxHeight: 250
   },
   dropdownListDark: {
     backgroundColor: '#33383B',

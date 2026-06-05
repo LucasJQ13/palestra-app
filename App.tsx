@@ -1070,7 +1070,12 @@ export default function App() {
                   </TouchableOpacity>
                 </View>
                 {globalSearchMessage ? <Text style={[styles.cardText, isDarkTheme && styles.textDarkBody]}>{globalSearchMessage}</Text> : null}
-                <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.globalSearchResults}>
+                <ScrollView
+                  style={styles.globalSearchResultsScroll}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                  contentContainerStyle={styles.globalSearchResults}
+                >
                   {globalSearchResults.map((result) => (
                     <TouchableOpacity key={result.id} style={[styles.innerNewsCard, isDarkTheme && styles.surfaceRowDark]} onPress={() => openGlobalSearchResult(result)} activeOpacity={0.86}>
                       <Text style={[styles.cardEyebrow, isDarkTheme && styles.textDarkAccent]}>{result.type}</Text>
@@ -1173,7 +1178,7 @@ export default function App() {
         ) : null}
         <KeyboardAvoidingView
           style={styles.contentKeyboardAvoider}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 12}
         >
           <ScrollView
