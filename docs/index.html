@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Palestra App - Plataforma  de Descarga Oficial</title>
+    <title>Palestra App - Plataforma de Descarga Oficial</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
@@ -120,7 +119,7 @@
     <!-- OVERLAY DE REDIRECCIÓN EXTERNA -->
     <div id="redirectOverlay" class="redirect-overlay" role="status" aria-live="polite" aria-hidden="true">
         <div class="redirect-card">
-            <img id="redirectLogo" src="https://i.ibb.co/qMFHJh9b/notification-icon.png" alt="Logo Palestra" class="redirect-logo">
+            <img id="redirectLogo" src="docs/assets/logo-palestra.png" alt="Logo Palestra" class="redirect-logo">
             <p class="text-lg font-black text-slate-900">Te estamos redirigiendo fuera de la web</p>
             <p class="mt-2 text-sm text-slate-500">Aguardá un instante...</p>
         </div>
@@ -157,7 +156,7 @@
                         Nuestra historia e identidad <span class="text-indigo-600">en un solo lugar.</span>
                     </h1>
                     <p class="text-lg text-slate-600 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed">
-                        Palestra App busca conectarnos mas como hermanos en Cristo. Es una herramienta diseñada para fortalecer los vínculos y nuestro sentido de pertenencia con el movimiento.
+                        Palestra App busca conectarnos más como hermanos en Cristo. Es una herramienta diseñada para fortalecer los vínculos y nuestro sentido de pertenencia con el movimiento.
                     </p>
                     <div class="flex flex-row flex-wrap lg:flex-nowrap justify-center lg:justify-start gap-4">
                         <a href="https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ" target="_blank" rel="noopener noreferrer" data-external-link="true" class="inline-flex items-center justify-center space-x-3 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition shadow-xl shadow-indigo-100">
@@ -252,17 +251,64 @@
         </div>
     </section>
 
-    <!-- MODULOS (SECC 5 INFORME) -->
+    <!-- MODULOS -->
     <section id="modulos" class="py-24 bg-white">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
-            <div class="flex flex-col md:flex-row justify-between items-end mb-16">
+            <div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-12 items-center mb-16">
                 <div>
-                    <h2 class="text-3xl font-black text-slate-900">Módulos</h2>
-                    <p class="text-slate-500 mt-2">Secciones diseñadas e inspiradas en la esencia de nuestro Movimiento.</p>
+                    <span class="inline-block px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-widest mb-5">Ecosistema pastoral</span>
+                    <h2 class="text-4xl md:text-5xl font-black text-slate-900 leading-tight">De esfuerzos aislados a vida organizada.</h2>
+                    <p class="text-slate-500 mt-5 text-lg leading-relaxed max-w-xl">
+                        Las tarjetas muestran qué secciones existen. Este bloque muestra el cambio real que busca la app: pasar de esfuerzos aislados y comunicación fragmentada a una organización común, cuidada y disponible.
+                    </p>
                 </div>
-                <div class="mt-4 md:mt-0 chart-container">
-                    <canvas id="balanceChart"></canvas>
+
+                <div class="relative rounded-[2rem] bg-slate-950 p-8 md:p-10 text-white overflow-hidden shadow-2xl">
+                    <div class="absolute -right-12 -top-12 w-44 h-44 bg-indigo-900 rounded-full blur-3xl opacity-35"></div>
+
+                    <div class="relative">
+                        <p class="text-xs font-black uppercase tracking-widest text-indigo-200 mb-6">Cambio que propone la app</p>
+
+                        <div class="grid md:grid-cols-2 gap-5">
+                            <div class="rounded-3xl border border-white/10 bg-white/5 p-6">
+                                <div class="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center mb-5">
+                                    <i data-lucide="message-circle-warning" class="w-6 h-6"></i>
+                                </div>
+                                <h3 class="font-black text-xl mb-4">Antes</h3>
+                                <ul class="space-y-3 text-sm text-slate-300 leading-relaxed">
+                                    <li class="flex gap-3"><span class="text-indigo-200 font-black">—</span><span>Información repartida entre chats, grupos y conversaciones.</span></li>
+                                    <li class="flex gap-3"><span class="text-indigo-200 font-black">—</span><span>Avisos importantes que se pierden entre conversaciones.</span></li>
+                                    <li class="flex gap-3"><span class="text-indigo-200 font-black">—</span><span>Dependencia de que alguien recuerde dónde está cada cosa.</span></li>
+                                </ul>
+                            </div>
+
+                            <div class="rounded-3xl border border-white/10 bg-white/10 p-6">
+                                <div class="w-11 h-11 rounded-2xl bg-indigo-600/30 border border-indigo-300/20 flex items-center justify-center mb-5">
+                                    <i data-lucide="sparkles" class="w-6 h-6"></i>
+                                </div>
+                                <h3 class="font-black text-xl mb-4">Con Palestra App</h3>
+                                <ul class="space-y-3 text-sm text-slate-300 leading-relaxed">
+                                    <li class="flex gap-3"><span class="text-indigo-200 font-black">+</span><span>Un punto de referencia claro para la vida comunitaria.</span></li>
+                                    <li class="flex gap-3"><span class="text-indigo-200 font-black">+</span><span>Roles definidos para cuidar qué ve y gestiona cada usuario.</span></li>
+                                    <li class="flex gap-3"><span class="text-indigo-200 font-black">+</span><span>Continuidad entre equipos, generaciones y provincias.</span></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 rounded-3xl bg-white/5 border border-white/10 p-5">
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                El valor no está sólo en digitalizar funciones, sino en construir una memoria común que ayude a que cada comunidad trabaje con más orden, menos improvisación y más sentido de pertenencia.
+                            </p>
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <div class="mb-10">
+                <h2 class="text-4xl md:text-5xl font-black text-slate-900 leading-tight">Módulos</h2>
+                <p class="text-slate-500 mt-3 text-lg leading-relaxed">
+                    Secciones diseñadas e inspiradas en la esencia de nuestro Movimiento.
+                </p>
             </div>
 
             <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -293,13 +339,21 @@
     <!-- CTA FINAL -->
     <footer id="descargar" class="bg-slate-900 pt-24 pb-12 text-white">
         <div class="max-w-7xl mx-auto px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-6xl font-black mb-6">Acompañanos en este nuevo camino.</h2>
-                <p class="text-slate-400 text-lg mb-10 max-w-2xl mx-auto">Te invitamos a ser parte de esta etapa inicial, para seguir construyendo juntos una Palestra más organizada, cercana y al servicio de cada comunidad.</p>
-                <a href="https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ" target="_blank" rel="noopener noreferrer" data-external-link="true" class="group relative inline-flex items-center space-x-4 bg-indigo-600 px-12 py-6 rounded-3xl font-black text-2xl hover:bg-indigo-500 transition overflow-hidden">
-                    <span>Descargar APK v1.52</span>
-                    <i data-lucide="arrow-right" class="w-6 h-6 group-hover:translate-x-2 transition"></i>
-                </a>
+            <div class="grid lg:grid-cols-[1.15fr_0.85fr] gap-12 items-center mb-16">
+                <div class="text-center lg:text-left">
+                    <h2 class="text-4xl md:text-6xl font-black mb-6">Acompañanos en este nuevo camino.</h2>
+                    <p class="text-slate-400 text-lg mb-10 max-w-2xl mx-auto lg:mx-0">Te invitamos a ser parte de esta etapa inicial, para seguir construyendo juntos una Palestra más organizada, cercana y al servicio de cada comunidad.</p>
+                    <a href="https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ" target="_blank" rel="noopener noreferrer" data-external-link="true" class="group relative inline-flex items-center space-x-4 bg-indigo-600 px-12 py-6 rounded-3xl font-black text-2xl hover:bg-indigo-500 transition overflow-hidden">
+                        <span>Descargar APK v1.52</span>
+                        <i data-lucide="arrow-right" class="w-6 h-6 group-hover:translate-x-2 transition"></i>
+                    </a>
+                </div>
+
+                <div class="flex justify-center lg:justify-end">
+                    <div class="w-64 md:w-80 lg:w-[22rem] h-auto select-none pointer-events-none" aria-hidden="true">
+                        <img src="docs/assets/espada-antorcha.png" alt="Espada y antorcha de Palestra" class="w-full h-auto object-contain drop-shadow-[0_20px_50px_rgba(79,70,229,0.28)] select-none pointer-events-none">
+                    </div>
+                </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-12 border-t border-slate-800 pt-12 text-sm text-slate-500">
@@ -314,17 +368,18 @@
                 </div>
                 <div class="md:text-right space-y-2">
                     <p>Estado técnico: <span class="text-emerald-400">Beta Apta para el Publico</span></p>
-                     <p>
-        Una aplicación diseñada por 
-        <a 
-            href="https://tupagina.com" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            class="text-orange-400 hover:text-orange-300 transition-colors"
-        >
-            A-TEC Soluciones Integrales
-        </a>.
-    </p>
+                    <p>
+                        Una aplicación diseñada por 
+                        <a 
+                            href="https://www.instagram.com/ampertech.ar?igsh=MW5oZGRqZWZzaHBzNw==" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            data-external-link="true"
+                            class="text-orange-400 hover:text-orange-300 transition-colors font-semibold"
+                        >
+                            A-TEC Soluciones Integrales
+                        </a>.
+                    </p>
                     <p>Movimiento Palestra © 2026 Todos los derechos reservados.</p>
                 </div>
             </div>
@@ -334,9 +389,9 @@
     <script>
         // CONFIGURACIÓN CENTRALIZADA
         const CONFIG = {
-            logoUrl: "https://i.ibb.co/qMFHJh9b/notification-icon.png", // URL del logo del movimiento
+            logoUrl: "docs/assets/logo-palestra.png", // URL del logo del movimiento
             apkUrl: "https://drive.google.com/uc?export=download&id=1ir0dL2JHw94aSPAzWWoVRIerLz9xwuTJ", // URL real de descarga directa de la APK
-            screenshotUrl: "https://i.ibb.co/JWsMkhVd/Whats-App-Image-2026-06-04-at-12-23-47.jpg",
+            screenshotUrl: "docs/assets/pantalla-aplicacion.jpeg",
             roles: [
                 {
                     id: "palestrista",
@@ -477,36 +532,6 @@
             });
             lucide.createIcons();
         }
-
-        // Gráfico de Balance (Chart.js)
-        const ctx = document.getElementById('balanceChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'radar',
-            data: {
-                labels: ['Espiritual', 'Comunidad', 'Gestión', 'Formación', 'Noticias'],
-                datasets: [{
-                    label: 'Enfoque de la App',
-                    data: [90, 85, 75, 80, 70],
-                    backgroundColor: 'rgba(79, 70, 229, 0.2)',
-                    borderColor: '#4f46e5',
-                    borderWidth: 2,
-                    pointBackgroundColor: '#4f46e5'
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                scales: {
-                    r: {
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: { display: false }
-                    }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
 
         // Initialize first role
         selectRole('palestrista', rolesGrid.children[0]);
