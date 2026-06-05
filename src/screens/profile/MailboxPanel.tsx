@@ -241,12 +241,18 @@ export function MailboxPanel({
                   {filteredUserOptions.length === 0 ? <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>Sin resultados</Text> : null}
                   {filteredUserOptions.slice(0, 60).map((user) => {
                     const selectedUser = selectedUserIds.includes(user.id);
+                    const userName = user.full_name?.trim() || user.nickname?.trim() || user.email?.trim() || 'Usuario sin nombre';
+                    const userMeta = [
+                      roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, roleAliases, user.gender_preference ?? null),
+                      user.community_name || 'Sin comunidad',
+                      user.province || 'Sin provincia'
+                    ].filter(Boolean).join(' - ');
                     return (
-                      <TouchableOpacity key={user.id} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => onToggleUser(user.id)}>
-                        <Ionicons name={selectedUser ? 'checkbox-outline' : 'square-outline'} size={18} color={selectedUser ? palette.red : palette.inkMuted} />
+                      <TouchableOpacity key={user.id} style={[styles.mailboxRecipientItem, selectedUser && styles.mailboxRecipientItemSelected, isDark && styles.mailboxRecipientItemDark]} onPress={() => onToggleUser(user.id)}>
+                        <Ionicons name={selectedUser ? 'checkbox-outline' : 'square-outline'} size={20} color={selectedUser ? palette.red : isDark ? '#E5F0F4' : palette.inkMuted} />
                         <View style={styles.adminUserHeaderText}>
-                          <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{user.full_name ?? 'Usuario'}</Text>
-                          <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, roleAliases, user.gender_preference ?? null)} - {user.province ?? 'Sin provincia'} - {user.community_name ?? 'Sin comunidad'}</Text>
+                          <Text numberOfLines={1} style={[styles.mailboxRecipientName, isDark && styles.mailboxRecipientNameDark]}>{userName}</Text>
+                          <Text numberOfLines={2} style={[styles.mailboxRecipientMeta, isDark && styles.mailboxRecipientMetaDark]}>{userMeta}</Text>
                         </View>
                       </TouchableOpacity>
                     );

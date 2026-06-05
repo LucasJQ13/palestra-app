@@ -2931,6 +2931,42 @@ export const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0
   },
+  mailboxRecipientItem: {
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(45, 141, 200, 0.1)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: palette.white
+  },
+  mailboxRecipientItemSelected: {
+    backgroundColor: 'rgba(45, 141, 200, 0.1)'
+  },
+  mailboxRecipientItemDark: {
+    backgroundColor: '#33383B',
+    borderBottomColor: 'rgba(139, 201, 234, 0.16)'
+  },
+  mailboxRecipientName: {
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: '900'
+  },
+  mailboxRecipientNameDark: {
+    color: themePresets.dark.colors.text
+  },
+  mailboxRecipientMeta: {
+    color: palette.inkMuted,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
+    marginTop: 2
+  },
+  mailboxRecipientMetaDark: {
+    color: themePresets.dark.colors.muted
+  },
   adminUserAvatar: {
     width: 42,
     height: 42,
