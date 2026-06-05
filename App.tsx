@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, BackHandler, Easing, Image, Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
@@ -479,6 +479,7 @@ export default function App() {
       return;
     }
 
+    Keyboard.dismiss();
     setGlobalSearchLoading(true);
     setGlobalSearchMessage('');
     try {
@@ -637,8 +638,13 @@ export default function App() {
     }
   }
 
-  function openGlobalSearchResult(result: GlobalSearchResult) {
+  function closeGlobalSearch() {
+    Keyboard.dismiss();
     setGlobalSearchOpen(false);
+  }
+
+  function openGlobalSearchResult(result: GlobalSearchResult) {
+    closeGlobalSearch();
     if (result.publicProfile) {
       setGlobalSearchProfile(result.publicProfile);
       navigateToTab('perfil');
@@ -1040,11 +1046,11 @@ export default function App() {
             </SafeAreaView>
           </View>
         </Modal>
-        <Modal visible={globalSearchOpen} transparent animationType="fade" onRequestClose={() => setGlobalSearchOpen(false)} statusBarTranslucent>
+        <Modal visible={globalSearchOpen} transparent animationType="fade" onRequestClose={closeGlobalSearch} statusBarTranslucent>
           <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalKeyboardAvoider}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKeyboardAvoider}>
               <View style={[styles.modalPanel, styles.globalSearchPanel, isDarkTheme && styles.surfacePanelDark]}>
-                <TouchableOpacity style={styles.modalCloseButton} onPress={() => setGlobalSearchOpen(false)} activeOpacity={0.8}>
+                <TouchableOpacity style={styles.modalCloseButton} onPress={closeGlobalSearch} activeOpacity={0.8}>
                   <Ionicons name="close" size={22} color={palette.red} />
                 </TouchableOpacity>
                 <Text style={[styles.cardEyebrow, isDarkTheme && styles.textDarkAccent]}>Búsqueda global</Text>
