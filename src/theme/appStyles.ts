@@ -450,6 +450,28 @@ export const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: palette.red
   },
+  designerCreditLoading: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 26,
+    color: palette.inkMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center'
+  },
+  designerCreditHome: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 10,
+    paddingBottom: 4
+  },
+  designerCreditHomeText: {
+    color: palette.inkMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center'
+  },
   tapCircle: {
     position: 'absolute',
     zIndex: 120,

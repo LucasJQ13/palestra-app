@@ -11,10 +11,11 @@ import { AppAdminConfig, defaultAdminConfig } from '../lib/appConfig';
 import { canAccessPrivate, canManageNationalPublishedContent } from '../lib/sessionAccess';
 import { fallbackContentKey } from '../lib/contentBlocks';
 import { changeDone } from '../lib/appMessages';
-import { inputPlaceholderColor } from '../lib/constants';
+import { defaultDesignerCreditUrl, inputPlaceholderColor } from '../lib/constants';
 import { DailyGospelRecord, fetchDailyGospel } from '../lib/dailyGospel';
 import { homeGreeting, homeGreetingName, roleLabel } from '../lib/profileDisplay';
 import { uploadPickedImageToPublicUrl } from '../lib/uploads';
+import { normalizeExternalUrl } from '../lib/urls';
 import { Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
 import { ExternalNewsCarousel } from '../components/ExternalNewsCarousel';
@@ -63,6 +64,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
   const greetingName = homeGreetingName(session);
   const identityButtonColor = validHexColor(adminConfig.identity.buttonColor, adminConfig.identity.primaryColor || palette.red);
   const greetingNameColor = validHexColor(adminConfig.identity.greetingNameColor, '#2fb66d');
+  const designerCreditUrl = normalizeExternalUrl(adminConfig.identity.designerCreditUrl || defaultDesignerCreditUrl);
   const enabledHomeModules = new Set(adminConfig.home.visibleModules?.length ? adminConfig.home.visibleModules : defaultAdminConfig.home.visibleModules);
   const homeModuleEnabled = (moduleKey: string) => enabledHomeModules.has(moduleKey);
   const quickLabel = (moduleKey: string, fallback: string) => adminConfig.home.quickAccessLabels?.[moduleKey]?.trim() || fallback;
@@ -206,6 +208,17 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
     }
     setHomeActionMessage(changeDone('Cambios realizados'));
     setHomeRefreshKey((current) => current + 1);
+  }
+
+  async function openDesignerCredit() {
+    try {
+      const supported = await Linking.canOpenURL(designerCreditUrl);
+      if (supported) {
+        await Linking.openURL(designerCreditUrl);
+      }
+    } catch (error) {
+      console.error('designer credit link', error);
+    }
   }
 
   return (
@@ -423,6 +436,9 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
           <Text style={styles.noticeText}>Algunas secciones requieren registro y aprobación de un coordinador.</Text>
         </View>
       ) : null}
+      <TouchableOpacity style={styles.designerCreditHome} activeOpacity={0.72} onPress={openDesignerCredit}>
+        <Text style={[styles.designerCreditHomeText, isDark && styles.textDarkMuted]}>Diseñado por A-Tec Soluciones Integrales</Text>
+      </TouchableOpacity>
     </View>
   );
 }

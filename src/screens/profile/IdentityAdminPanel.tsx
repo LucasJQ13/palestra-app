@@ -41,6 +41,8 @@ export function IdentityAdminPanel({
         <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Texto. Ej: BETA" value={config.identity.releaseLabel ?? ''} onChangeText={(value) => onPatch({ releaseLabel: value })} autoCapitalize="characters" placeholderTextColor={inputPlaceholderColor} />
         <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Numero. Ej: 0.1.38" value={config.identity.releaseVersion ?? ''} onChangeText={(value) => onPatch({ releaseVersion: value })} placeholderTextColor={inputPlaceholderColor} />
       </View>
+      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Link A-Tec</Text>
+      <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Instagram o web de A-Tec" value={config.identity.designerCreditUrl ?? ''} onChangeText={(value) => onPatch({ designerCreditUrl: value })} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
       <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark, { borderColor: config.identity.primaryColor || palette.red }]}>
         <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Previsualizacion</Text>
         <Text style={[styles.cardTitle, isDark && styles.textDarkStrong, { color: config.identity.primaryColor || palette.red }]}>{config.identity.appName}</Text>
@@ -48,6 +50,7 @@ export function IdentityAdminPanel({
         <Text style={styles.versionBadge}>{`${config.identity.releaseLabel || 'BETA'} ${config.identity.releaseVersion || '0.1.38'}`}</Text>
         <Text style={[styles.cardText, isDark && styles.textDarkBody, { color: config.identity.textColor || palette.ink }]}>Texto de ejemplo</Text>
         <Text style={[styles.cardTitle, { color: config.identity.greetingNameColor || '#2fb66d' }]}>Lucas</Text>
+        <Text style={[styles.designerCreditHomeText, isDark && styles.textDarkMuted]}>Diseñado por A-Tec Soluciones Integrales</Text>
         <View style={[styles.previewButtonSwatch, { backgroundColor: config.identity.buttonColor || config.identity.primaryColor || palette.red }]}>
           <Text style={styles.primaryButtonText}>Boton</Text>
         </View>

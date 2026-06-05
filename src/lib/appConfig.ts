@@ -1,6 +1,6 @@
 import { Role } from '../types/auth';
 import { contactInfo } from '../data/content';
-import { defaultProvinceInstagram, officialInstagramUrl } from './constants';
+import { defaultDesignerCreditUrl, defaultProvinceInstagram, officialInstagramUrl } from './constants';
 
 export type ContactBlock = { id: string; type: 'texto' | 'telefono' | 'email' | 'imagen' | 'direccion' | 'enlace' | 'boton' | 'red_social'; label: string; value: string };
 export type RoleAliasConfig = {
@@ -24,6 +24,7 @@ export type AppAdminConfig = {
     greetingNameColor?: string;
     releaseLabel?: string;
     releaseVersion?: string;
+    designerCreditUrl?: string;
   };
   home: {
     heroTitle: string;
@@ -84,7 +85,8 @@ export const defaultAdminConfig: AppAdminConfig = {
     buttonColor: '#2d8dc8',
     greetingNameColor: '#2fb66d',
     releaseLabel: 'BETA',
-    releaseVersion: '0.1.38'
+    releaseVersion: '0.1.38',
+    designerCreditUrl: defaultDesignerCreditUrl
   },
   home: {
     heroTitle: 'Una app para caminar juntos.',
@@ -161,6 +163,9 @@ export function normalizeAdminConfig(config?: Partial<AppAdminConfig> | null): A
 
   if (!merged.contact.instagram || merged.contact.instagram === contactInfo.instagram || merged.contact.instagram === '@palestra.argentina') {
     merged.contact.instagram = officialInstagramUrl;
+  }
+  if (!merged.identity.designerCreditUrl?.trim()) {
+    merged.identity.designerCreditUrl = defaultDesignerCreditUrl;
   }
   merged.contact.provinceInstagram = { ...defaultProvinceInstagram, ...(config?.contact?.provinceInstagram ?? {}) };
   merged.contact.blocks = Array.isArray(config?.contact?.blocks) ? config.contact.blocks : [];

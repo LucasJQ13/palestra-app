@@ -69,6 +69,7 @@ export function AppLoadingScreen() {
       <View style={styles.loadingBarTrack}>
         <Animated.View style={[styles.loadingBarPulse, { transform: [{ translateX }] }]} />
       </View>
+      <Text style={styles.designerCreditLoading}>Diseñado por A-Tec Soluciones Integrales</Text>
     </View>
   );
 }
