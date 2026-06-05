@@ -13,7 +13,7 @@ import { auditLog, calendarActivities, communities, contactInfo, communityNews, 
 import { Permission, PersonalPmType, Role, Session } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, AppTabSetting, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from './src/lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { getMyProfileSession } from './src/lib/authProfile';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
@@ -40,10 +40,9 @@ import { MaterialsScreen } from './src/screens/MaterialsScreen';
 import { CommunitiesScreen } from './src/screens/CommunitiesScreen';
 import { IntentionsScreen } from './src/screens/IntentionsScreen';
 import { DynamicNavigationSectionScreen } from './src/screens/DynamicNavigationSectionScreen';
-import { AppRuntimeConfig, CatholicNewsSourceKey, defaultRuntimeConfig, fetchAppRuntimeConfig, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
+import { CatholicNewsSourceKey, saveAppRuntimeConfig } from './src/lib/runtimeConfig';
 import { appBetaVersion, appRuntimeOwner, appStageLabel, appVersionLabel, authDeepLinkBaseUrl, currentYear, defaultProvinceInstagram, easProjectId, inputPlaceholderColor, localReminderNotificationKey, officialInstagramUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames, provinceLogos, pushDeviceIdKey } from './src/lib/constants';
 import { adminModuleCatalog, AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, PageEditorProps, protectedTabKeys } from './src/lib/navigationConstants';
-import { AppAdminConfig, ContactBlock, defaultAdminConfig, normalizeAdminConfig, RoleAliasConfig } from './src/lib/appConfig';
 import { normalizeExternalUrl } from './src/lib/urls';
 import { uploadPickedImageToPublicUrl } from './src/lib/uploads';
 import { credentialDisplayName, displayRoleLabel, firstNameOf, GenderPreference, genderNarratives, homeGreeting, homeGreetingName, perseveranceLabel, personalPmSummary, personalPmTypeLabel, renderGreetingTemplate, roleLabel, roleLabelForProvince, roleShortLabel } from './src/lib/profileDisplay';
@@ -57,6 +56,7 @@ import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, req
 import { AgendaItem, agendaPreferenceKey, cancelLocalReminderNotification, groupMotivadorFeedItems, readReminderNotificationMap, scheduleLocalReminderNotification, splitAgendaPreferences } from './src/lib/agendaHelpers';
 import { useAppThemePreference } from './src/hooks/useAppThemePreference';
 import { useTouchPointer } from './src/hooks/useTouchPointer';
+import { useAppBootstrapData } from './src/hooks/useAppBootstrapData';
 
 
 Notifications.setNotificationHandler({
@@ -101,15 +101,8 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [authScreenOpen, setAuthScreenOpen] = useState(false);
   const [profileInitialPanel, setProfileInitialPanel] = useState<ProfilePanel>('vista');
-  const [tabSettings, setTabSettings] = useState<AppTabSetting[]>([]);
-  const [appContent, setAppContent] = useState<AppContentBlock[]>([]);
-  const [contentLoaded, setContentLoaded] = useState(false);
-  const [adminConfig, setAdminConfig] = useState<AppAdminConfig>(defaultAdminConfig);
-  const [runtimeConfig, setRuntimeConfig] = useState<AppRuntimeConfig>(defaultRuntimeConfig);
   const [authConfirmationOpen, setAuthConfirmationOpen] = useState(false);
   const [authConfirmationError, setAuthConfirmationError] = useState('');
-  const [contentVersion, setContentVersion] = useState(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
@@ -147,6 +140,26 @@ export default function App() {
       setAppMessage(message);
       setTimeout(() => setAppMessage(''), 1800);
     }
+  });
+  const {
+    adminConfig,
+    appContent,
+    contentLoaded,
+    contentVersion,
+    isRefreshing,
+    refreshAppContent,
+    refreshPublishedContent,
+    reloadAdminConfig,
+    reloadAppContent,
+    reloadRuntimeConfig,
+    reloadTabSettings,
+    runtimeConfig,
+    setAdminConfig,
+    setRuntimeConfig,
+    tabSettings
+  } = useAppBootstrapData({
+    hydrateSession: hydrateRealSession,
+    onError: (message) => setAppMessage(message)
   });
   const baseAppTheme = themePresets[themeName] ?? themePresets.default;
   const identityPrimaryColor = validHexColor(adminConfig.identity.primaryColor, palette.red);
@@ -336,33 +349,6 @@ export default function App() {
     onTabsChanged: reloadTabSettings
   });
 
-  async function reloadTabSettings() {
-    const items = await fetchAppTabs();
-    setTabSettings(items);
-  }
-
-  async function reloadAppContent() {
-    const items = await fetchAppContent();
-    setAppContent(items);
-    setContentLoaded(true);
-  }
-
-  async function reloadAdminConfig() {
-    const config = await fetchAdminConfig();
-    if (config) {
-      setAdminConfig(normalizeAdminConfig(config as Partial<AppAdminConfig>));
-    }
-  }
-
-  async function reloadRuntimeConfig() {
-    setRuntimeConfig(await fetchAppRuntimeConfig());
-  }
-
-  async function refreshPublishedContent() {
-    await reloadAppContent();
-    setContentVersion((current) => current + 1);
-  }
-
   async function hydrateRealSession() {
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
@@ -401,29 +387,6 @@ export default function App() {
     setActiveTab('perfil');
     setTabHistory(['perfil']);
     showToastSuccess('Volviste a Administrador');
-  }
-
-  async function refreshAppContent(source = 'manual') {
-    if (isRefreshing) {
-      return;
-    }
-
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        reloadTabSettings(),
-        reloadAppContent(),
-        reloadAdminConfig(),
-        reloadRuntimeConfig(),
-        hydrateRealSession()
-      ]);
-      setContentVersion((current) => current + 1);
-    } catch (error) {
-      console.error('refreshAppContent', error);
-      setAppMessage(error instanceof Error ? error.message : 'No pude actualizar. Revisa la conexion.');
-    } finally {
-      setIsRefreshing(false);
-    }
   }
 
   async function runGlobalSearch() {
