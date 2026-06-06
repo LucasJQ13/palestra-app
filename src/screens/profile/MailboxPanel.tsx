@@ -78,6 +78,7 @@ export function MailboxPanel({
   draft,
   filter,
   messages,
+  expandedMessageIds,
   responses,
   onToggleComposer,
   onRefresh,
@@ -96,7 +97,10 @@ export function MailboxPanel({
   onFilterChange,
   onResponseChange,
   onSubmitResponse,
-  onUpdateStatus
+  onUpdateStatus,
+  onOpenMessage,
+  onDeleteForMe,
+  onRestoreForMe
 }: {
   session: Session;
   isDark: boolean;
@@ -118,8 +122,9 @@ export function MailboxPanel({
   roleAliases: RoleAliasConfig[];
   estimatedRecipients: number;
   draft: string;
-  filter: 'recibidos' | 'leidos';
+  filter: 'entrada' | 'enviados' | 'eliminados';
   messages: MailboxMessageRecord[];
+  expandedMessageIds: string[];
   responses: Record<string, string>;
   onToggleComposer: () => void;
   onRefresh: () => void;
@@ -135,17 +140,20 @@ export function MailboxPanel({
   onDraftChange: (value: string) => void;
   onSubmitNewMessage: () => void;
   onSaveDraft: () => void;
-  onFilterChange: (filter: 'recibidos' | 'leidos') => void;
+  onFilterChange: (filter: 'entrada' | 'enviados' | 'eliminados') => void;
   onResponseChange: (messageId: string, value: string) => void;
   onSubmitResponse: (messageId: string) => void;
   onUpdateStatus: (messageId: string, status: MailboxMessageRecord['status']) => void;
+  onOpenMessage: (message: MailboxMessageRecord) => void;
+  onDeleteForMe: (message: MailboxMessageRecord) => void;
+  onRestoreForMe: (message: MailboxMessageRecord) => void;
 }) {
   const selectedCommunityId = targetCommunityId || communityOptions[0]?.id;
 
   return (
     <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
       <SectionTitle title="Buzon de mensajes" />
-      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Consultas enviadas y mensajes recibidos por tu comunidad o jurisdiccion.</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Mensajes directos entre usuarios registrados y consultas de tu comunidad.</Text>
       <View style={styles.compactToolRow}>
         <TouchableOpacity style={[styles.compactSquareButton, showComposer && styles.compactSquareButtonActive]} onPress={onToggleComposer}>
           <Ionicons name="create-outline" size={17} color={showComposer ? palette.white : palette.red} />
@@ -299,7 +307,7 @@ export function MailboxPanel({
       ) : null}
 
       <View style={styles.compactTabs}>
-        {(['recibidos', 'leidos'] as const).map((item) => (
+        {(['entrada', 'enviados', 'eliminados'] as const).map((item) => (
           <TouchableOpacity key={item} style={[styles.filterChip, filter === item && styles.filterChipActive]} onPress={() => onFilterChange(item)}>
             <Text style={[styles.filterChipText, filter === item && styles.filterChipTextActive]}>{item}</Text>
           </TouchableOpacity>
@@ -312,13 +320,21 @@ export function MailboxPanel({
         </View>
       ) : null}
 
-      {messages.map((message) => (
+      {messages.map((message) => {
+        const folder = message.mailbox_folder ?? 'entrada';
+        const expanded = expandedMessageIds.includes(message.id);
+        const isOwnSentMessage = message.sender_id === session.id;
+        const counterpartLabel = folder === 'enviados' || (folder === 'eliminados' && isOwnSentMessage)
+          ? `Para: ${message.recipient_names || message.recipient_name || 'Destinatario'}`
+          : `De: ${message.sender_name ?? 'Palestrista'}`;
+        const preview = message.message.length > 150 ? `${message.message.slice(0, 150)}...` : message.message;
+        return (
         <View key={message.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
           <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{message.sender_name ?? 'Consulta externa'}</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{counterpartLabel}</Text>
           {message.sender_contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {message.sender_contact}</Text> : null}
           <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{message.message}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{expanded ? message.message : preview}</Text>
           {message.response ? (
             <View style={styles.notice}>
               <Ionicons name="return-up-forward-outline" size={18} color={palette.red} />
@@ -342,21 +358,31 @@ export function MailboxPanel({
             </View>
           ) : null}
           <View style={styles.inlineActions}>
-            <TouchableOpacity style={styles.actionPill} onPress={() => onUpdateStatus(message.id, 'leido')}>
-              <Ionicons name="mail-open-outline" size={16} color={palette.red} />
-              <Text style={styles.actionPillText}>Leido</Text>
+            <TouchableOpacity style={styles.actionPill} onPress={() => onOpenMessage(message)}>
+              <Ionicons name={expanded ? 'chevron-up-outline' : 'open-outline'} size={16} color={palette.red} />
+              <Text style={styles.actionPillText}>{expanded ? 'Cerrar' : 'Abrir'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionPill} onPress={() => onUpdateStatus(message.id, 'nuevo')}>
-              <Ionicons name="mail-unread-outline" size={16} color={palette.red} />
-              <Text style={styles.actionPillText}>No leido</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionPill} onPress={() => onUpdateStatus(message.id, 'cerrado')}>
-              <Ionicons name="checkmark-done-outline" size={16} color={palette.red} />
-              <Text style={styles.actionPillText}>Cerrar</Text>
-            </TouchableOpacity>
+            {folder === 'entrada' && message.status !== 'leido' ? (
+              <TouchableOpacity style={styles.actionPill} onPress={() => onUpdateStatus(message.id, 'leido')}>
+                <Ionicons name="mail-open-outline" size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>Leido</Text>
+              </TouchableOpacity>
+            ) : null}
+            {folder === 'eliminados' ? (
+              <TouchableOpacity style={styles.actionPill} onPress={() => onRestoreForMe(message)}>
+                <Ionicons name="refresh-outline" size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>Restaurar</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.actionPill} onPress={() => onDeleteForMe(message)}>
+                <Ionicons name="trash-outline" size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>Eliminar</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
-      ))}
+        );
+      })}
     </View>
   );
 }

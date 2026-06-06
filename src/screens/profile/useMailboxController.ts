@@ -12,8 +12,12 @@ import {
   ProvinceRoleLabelRecord,
   PublicUserDirectoryRecord,
   createMailboxMessage,
+  deleteMailboxMessageForMe,
   fetchMailboxMessages,
+  markMailboxMessageAsRead,
   respondMailboxMessage,
+  restoreMailboxMessageForMe,
+  sendDirectMailboxMessage,
   setMailboxMessageStatus
 } from '../../lib/profiles';
 import { roleRank } from '../../lib/roles';
@@ -40,14 +44,8 @@ const guestMailboxSession: Session = {
 };
 
 function defaultTargetModeForSession(session: Session): MailboxTargetMode {
-  if (session.role === 'administrador') {
+  if (session.role !== 'invitado') {
     return 'user';
-  }
-  if (['vocal_nacional', 'coordinador_nacional'].includes(session.role)) {
-    return 'diocesan_leadership';
-  }
-  if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
-    return 'community';
   }
   return 'my_community';
 }
@@ -80,7 +78,8 @@ export function useMailboxController({
   const activeSession = session ?? guestMailboxSession;
   const [messages, setMessages] = useState<MailboxMessageRecord[]>([]);
   const [responses, setResponses] = useState<Record<string, string>>({});
-  const [filter, setFilter] = useState<'recibidos' | 'leidos'>('recibidos');
+  const [filter, setFilter] = useState<'entrada' | 'enviados' | 'eliminados'>('entrada');
+  const [expandedMessageIds, setExpandedMessageIds] = useState<string[]>([]);
   const [showComposer, setShowComposer] = useState(false);
   const [draft, setDraft] = useState('');
   const [targetMode, setTargetMode] = useState<MailboxTargetMode>(defaultTargetModeForSession(activeSession));
@@ -177,12 +176,7 @@ export function useMailboxController({
     return 0;
   }, [communityOptions, selectedUserIds.length, activeSession.communityOfOrigin, activeSession.province, targetCommunityId, targetMode, targetProvince, targetRole, scopedUserOptions]);
 
-  const visibleMessages = useMemo(() => messages.filter((message) => {
-    if (filter === 'recibidos') {
-      return message.can_respond && message.status === 'nuevo';
-    }
-    return message.can_respond && message.status !== 'nuevo';
-  }), [filter, messages]);
+  const visibleMessages = useMemo(() => messages.filter((message) => (message.mailbox_folder ?? 'entrada') === filter), [filter, messages]);
 
   async function refresh() {
     if (activeSession.role === 'invitado') {
@@ -233,15 +227,12 @@ export function useMailboxController({
 
     const errors: string[] = [];
     if (mode === 'user') {
-      for (const userId of selectedUserIds) {
-        const { error } = await createMailboxMessage({
-          targetMode: mode,
-          message: draft.trim(),
-          userId
-        });
-        if (error) {
-          errors.push(error.message);
-        }
+      const { error } = await sendDirectMailboxMessage({
+        recipientIds: selectedUserIds,
+        message: draft.trim()
+      });
+      if (error) {
+        errors.push(error.message);
       }
     } else {
       const { error } = await createMailboxMessage({
@@ -309,12 +300,55 @@ export function useMailboxController({
   }
 
   async function updateStatus(messageId: string, status: MailboxMessageRecord['status']) {
+    const message = messages.find((item) => item.id === messageId);
+    if (message?.source === 'direct' && status === 'leido') {
+      const { error } = await markMailboxMessageAsRead(message.id, message.source);
+      if (error) {
+        setAuthMessage(error.message);
+        return;
+      }
+      setAuthMessage(changeDone('Mensaje marcado como leido.'));
+      await refresh();
+      return;
+    }
     const { error } = await setMailboxMessageStatus(messageId, status);
     if (error) {
       setAuthMessage(error.message);
       return;
     }
     setAuthMessage(changeDone(`Mensaje marcado como ${status}.`));
+    await refresh();
+  }
+
+  async function openMessage(message: MailboxMessageRecord) {
+    setExpandedMessageIds((current) => current.includes(message.id) ? current.filter((id) => id !== message.id) : [...current, message.id]);
+    if ((message.mailbox_folder ?? 'entrada') === 'entrada' && message.status === 'nuevo') {
+      const { error } = await markMailboxMessageAsRead(message.id, message.source);
+      if (error) {
+        setAuthMessage(error.message);
+        return;
+      }
+      await refresh();
+    }
+  }
+
+  async function deleteForMe(message: MailboxMessageRecord) {
+    const { error } = await deleteMailboxMessageForMe(message.id, message.source);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Mensaje eliminado de tu vista.'));
+    await refresh();
+  }
+
+  async function restoreForMe(message: MailboxMessageRecord) {
+    const { error } = await restoreMailboxMessageForMe(message.id, message.source);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setAuthMessage(changeDone('Mensaje restaurado.'));
     await refresh();
   }
 
@@ -373,6 +407,7 @@ export function useMailboxController({
     draft,
     filter,
     messages: visibleMessages,
+    expandedMessageIds,
     responses,
     onToggleComposer: () => setShowComposer((current) => !current),
     onRefresh: refresh,
@@ -391,6 +426,9 @@ export function useMailboxController({
     onFilterChange: setFilter,
     onResponseChange: (messageId: string, value: string) => setResponses((current) => ({ ...current, [messageId]: value })),
     onSubmitResponse: submitResponse,
-    onUpdateStatus: updateStatus
+    onUpdateStatus: updateStatus,
+    onOpenMessage: openMessage,
+    onDeleteForMe: deleteForMe,
+    onRestoreForMe: restoreForMe
   };
 }

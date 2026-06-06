@@ -138,19 +138,26 @@ export type SecretariatMemberRecord = {
 
 export type MailboxMessageRecord = {
   id: string;
+  source?: 'direct' | 'community';
+  mailbox_folder?: 'entrada' | 'enviados' | 'eliminados';
   community_id: string | null;
   community_name: string;
   province: string | null;
   sender_id: string | null;
   sender_name: string | null;
   sender_contact: string | null;
+  recipient_id?: string | null;
+  recipient_name?: string | null;
+  recipient_names?: string | null;
+  subject?: string | null;
   message: string;
   response: string | null;
-  status: 'nuevo' | 'leido' | 'respondido' | 'cerrado' | 'archivado';
+  status: 'nuevo' | 'leido' | 'respondido' | 'cerrado' | 'archivado' | 'enviado';
   created_at: string;
   responded_at: string | null;
   read_at: string | null;
   closed_at: string | null;
+  deleted_at?: string | null;
   can_respond: boolean;
 };
 
@@ -782,6 +789,22 @@ export async function createMailboxMessage(values: {
   }
 }
 
+export async function sendDirectMailboxMessage(values: {
+  recipientIds: string[];
+  message: string;
+  subject?: string | null;
+}) {
+  try {
+    return await supabase.rpc('send_direct_message', {
+      p_recipient_ids: values.recipientIds,
+      p_body: values.message,
+      p_subject: values.subject ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function fetchMailboxMessages(): Promise<MailboxMessageRecord[]> {
   try {
     const { data, error } = await supabase.rpc('get_my_mailbox_messages');
@@ -791,6 +814,39 @@ export async function fetchMailboxMessages(): Promise<MailboxMessageRecord[]> {
     return data as MailboxMessageRecord[];
   } catch {
     return [];
+  }
+}
+
+export async function markMailboxMessageAsRead(messageId: string, source?: MailboxMessageRecord['source']) {
+  try {
+    return await supabase.rpc('mark_message_as_read', {
+      p_message_id: messageId,
+      p_source: source ?? 'direct'
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function deleteMailboxMessageForMe(messageId: string, source?: MailboxMessageRecord['source']) {
+  try {
+    return await supabase.rpc('delete_message_for_me', {
+      p_message_id: messageId,
+      p_source: source ?? 'direct'
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function restoreMailboxMessageForMe(messageId: string, source?: MailboxMessageRecord['source']) {
+  try {
+    return await supabase.rpc('restore_message_for_me', {
+      p_message_id: messageId,
+      p_source: source ?? 'direct'
+    });
+  } catch (error) {
+    return networkError(error);
   }
 }
 
