@@ -54,6 +54,7 @@ import { HomeAdminPanel } from './profile/HomeAdminPanel';
 import { ContactAdminPanel } from './profile/ContactAdminPanel';
 import { PublishedContentAdminPanel } from './profile/PublishedContentAdminPanel';
 import { ProfileSettingsPanel } from './profile/ProfileSettingsPanel';
+import { ProfileIntentionsPanel } from './profile/ProfileIntentionsPanel';
 import { HistoryAdminPanel } from './profile/HistoryAdminPanel';
 import { MailboxPanel } from './profile/MailboxPanel';
 import { useMailboxController } from './profile/useMailboxController';
@@ -4035,49 +4036,17 @@ export function ProfileScreen({
             />
           ) : null}
           {profilePanel === 'intenciones' ? (
-            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-              <Modal visible={prayerRemovalNoticeVisible} transparent animationType="fade" onRequestClose={closePrayerRemovalNotice} statusBarTranslucent>
-                <View style={styles.modalOverlay}>
-                  <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]}>
-                    <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Intencion removida</Text>
-                    {prayerRemovalNotices.map((notice) => (
-                      <Text key={notice.id} style={[styles.cardText, isDark && styles.textDarkBody]}>{notice.message}</Text>
-                    ))}
-                    <TouchableOpacity style={styles.primaryButton} onPress={closePrayerRemovalNotice}>
-                      <Text style={styles.primaryButtonText}>Entendido</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </Modal>
-              <View style={styles.settingRow}>
-                <View style={styles.settingRowText}>
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{session.role === 'administrador' ? 'Todas las intenciones' : 'Mis intenciones'}</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.role === 'administrador' ? 'Auditoria completa, incluyendo autores de intenciones anonimas.' : 'Revisa cuantas personas rezaron por cada intencion publicada.'}</Text>
-                </View>
-                <TouchableOpacity style={styles.actionPill} onPress={loadPrayerIntentionsPanel}>
-                  <Ionicons name="refresh-outline" size={16} color={palette.red} />
-                  <Text style={styles.actionPillText}>Actualizar</Text>
-                </TouchableOpacity>
-              </View>
-              {prayerIntentionsMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{prayerIntentionsMessage}</Text> : null}
-                  {myPrayerIntentions.map((item) => (
-                    <View key={item.id} style={[styles.card, isDark && styles.surfaceCardDark]}>
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>
-                    {item.created_at ? new Date(item.created_at).toLocaleDateString('es-AR') : 'Intencion'}
-                    {item.is_anonymous ? ' - marcada como anonima' : ''}
-                  </Text>
-                  {session.role === 'administrador' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Autor real: {item.author_name || 'Palestrista'}</Text> : null}
-                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.body}</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.prayer_count} personas rezaron por esta intencion</Text>
-                  {session.role === 'administrador' ? (
-                    <TouchableOpacity style={styles.actionPill} onPress={() => deletePrayerIntentionFromAdmin(item)}>
-                      <Ionicons name="trash-outline" size={16} color={palette.red} />
-                      <Text style={styles.actionPillText}>Eliminar</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              ))}
-            </View>
+            <ProfileIntentionsPanel
+              isAdmin={session.role === 'administrador'}
+              isDark={isDark}
+              intentions={myPrayerIntentions}
+              message={prayerIntentionsMessage}
+              notices={prayerRemovalNotices}
+              noticeVisible={prayerRemovalNoticeVisible}
+              onCloseNotice={closePrayerRemovalNotice}
+              onDeleteIntention={deletePrayerIntentionFromAdmin}
+              onRefresh={loadPrayerIntentionsPanel}
+            />
           ) : null}
           {profilePanel === 'vista' && !session.perseveranceStartYear ? (
             <TouchableOpacity style={styles.completionNotice} onPress={() => setProfilePanel('editar')} activeOpacity={0.86}>
