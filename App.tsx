@@ -22,6 +22,7 @@ import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity
 import { ExternalCatholicNewsItem, fetchExternalCatholicNews } from './src/lib/externalNews';
 import { ExternalNewsCarousel } from './src/components/ExternalNewsCarousel';
 import { AppDrawer, AppDrawerItem } from './src/components/AppDrawer';
+import { GlobalSearchModal } from './src/components/GlobalSearchModal';
 import { ActionButton } from './src/components/ActionButton';
 import { SectionTitle } from './src/components/SectionTitle';
 import { LinkedSelectableText } from './src/components/LinkedSelectableText';
@@ -686,48 +687,19 @@ export default function App() {
           roleLabel={session ? displayRoleLabel(session.role, session.province, [], [], null, session.genderPreference) : 'Invitado'}
           visible={drawerOpen}
         />
-        <Modal visible={globalSearchOpen} transparent animationType="fade" onRequestClose={closeGlobalSearch} statusBarTranslucent>
-          <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKeyboardAvoider}>
-              <View style={[styles.modalPanel, styles.globalSearchPanel, isDarkTheme && styles.surfacePanelDark]}>
-                <TouchableOpacity style={styles.modalCloseButton} onPress={closeGlobalSearch} activeOpacity={0.8}>
-                  <Ionicons name="close" size={22} color={palette.red} />
-                </TouchableOpacity>
-                <Text style={[styles.cardEyebrow, isDarkTheme && styles.textDarkAccent]}>Búsqueda global</Text>
-                <View style={styles.globalSearchRow}>
-                  <TextInput
-                    style={[styles.input, styles.globalSearchInput, isDarkTheme && styles.inputDark]}
-                    placeholder="Usuarios, comunidades, PMs, noticias..."
-                    value={globalSearchQuery}
-                    onChangeText={setGlobalSearchQuery}
-                    onSubmitEditing={runGlobalSearch}
-                    returnKeyType="search"
-                    autoCapitalize="none"
-                    placeholderTextColor={inputPlaceholderColor}
-                  />
-                  <TouchableOpacity style={[styles.globalSearchButton, { backgroundColor: identityPrimaryColor }]} onPress={runGlobalSearch} disabled={globalSearchLoading} activeOpacity={0.84}>
-                    <Ionicons name={globalSearchLoading ? 'hourglass-outline' : 'search-outline'} size={20} color={palette.white} />
-                  </TouchableOpacity>
-                </View>
-                {globalSearchMessage ? <Text style={[styles.cardText, isDarkTheme && styles.textDarkBody]}>{globalSearchMessage}</Text> : null}
-                <ScrollView
-                  style={styles.globalSearchResultsScroll}
-                  keyboardShouldPersistTaps="handled"
-                  keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-                  contentContainerStyle={styles.globalSearchResults}
-                >
-                  {globalSearchResults.map((result) => (
-                    <TouchableOpacity key={result.id} style={[styles.innerNewsCard, isDarkTheme && styles.surfaceRowDark]} onPress={() => openGlobalSearchResult(result)} activeOpacity={0.86}>
-                      <Text style={[styles.cardEyebrow, isDarkTheme && styles.textDarkAccent]}>{result.type}</Text>
-                      <Text style={[styles.cardTitle, isDarkTheme && styles.textDarkStrong]}>{result.title}</Text>
-                      <Text style={[styles.cardText, isDarkTheme && styles.textDarkBody]}>{result.subtitle}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </KeyboardAvoidingView>
-          </View>
-        </Modal>
+        <GlobalSearchModal
+          identityPrimaryColor={identityPrimaryColor}
+          isDarkTheme={isDarkTheme}
+          loading={globalSearchLoading}
+          message={globalSearchMessage}
+          onClose={closeGlobalSearch}
+          onOpenResult={openGlobalSearchResult}
+          onQueryChange={setGlobalSearchQuery}
+          onRunSearch={runGlobalSearch}
+          query={globalSearchQuery}
+          results={globalSearchResults}
+          visible={globalSearchOpen}
+        />
         {adminSessionBeforeViewAs ? (
           <View style={styles.viewAsBanner}>
             <Ionicons name="eye-outline" size={17} color={palette.white} />
