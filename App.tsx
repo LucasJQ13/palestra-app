@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Easing, Image, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -57,6 +57,7 @@ import { AgendaItem, agendaPreferenceKey, cancelLocalReminderNotification, group
 import { useAppThemePreference } from './src/hooks/useAppThemePreference';
 import { useTouchPointer } from './src/hooks/useTouchPointer';
 import { useAppBootstrapData } from './src/hooks/useAppBootstrapData';
+import { useAppNavigationState } from './src/hooks/useAppNavigationState';
 import { useAppSessionLinks } from './src/hooks/useAppSessionLinks';
 import { useGlobalSearch } from './src/hooks/useGlobalSearch';
 
@@ -102,8 +103,6 @@ function newestUnreadMailboxMessage(messages: MailboxMessageRecord[]) {
 
 export default function App() {
   const [isBooting, setIsBooting] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabKey>('inicio');
-  const [tabHistory, setTabHistory] = useState<TabKey[]>(['inicio']);
   const [session, setSession] = useState<Session | null>(null);
   const [adminSessionBeforeViewAs, setAdminSessionBeforeViewAs] = useState<Session | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -116,7 +115,6 @@ export default function App() {
   const [appMessage, setAppMessage] = useState('');
   const [successToastVisible, setSuccessToastVisible] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
-  const lastBackPressRef = useRef(0);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydrateSessionRef = useRef<(() => Promise<void>) | null>(null);
   const screenOpacity = useRef(new Animated.Value(1)).current;
@@ -145,6 +143,19 @@ export default function App() {
       setAppMessage(message);
       setTimeout(() => setAppMessage(''), 1800);
     }
+  });
+  const {
+    activeTab,
+    navigateToTab,
+    setActiveTab,
+    setTabHistory
+  } = useAppNavigationState({
+    drawerOpen,
+    session,
+    setAppMessage,
+    setAuthScreenOpen,
+    setDrawerOpen,
+    setProfileInitialPanel
   });
   const {
     adminConfig,
@@ -418,29 +429,6 @@ export default function App() {
     showToastSuccess('Volviste a Administrador');
   }
 
-  function navigateToTab(nextTab: TabKey) {
-    setDrawerOpen(false);
-    if (!session && nextTab === 'perfil') {
-      setAuthScreenOpen(true);
-      return;
-    }
-    if (isMissingProfileScope(session) && nextTab !== 'perfil') {
-      setActiveTab('perfil');
-      setTabHistory(['perfil']);
-      setAppMessage('Completa provincia y comunidad para usar la app.');
-      setTimeout(() => setAppMessage(''), 2200);
-      return;
-    }
-    if (nextTab !== 'perfil') {
-      setProfileInitialPanel('vista');
-    }
-    if (nextTab === activeTab) {
-      return;
-    }
-    setTabHistory((current) => [...current.filter((item, index) => index === current.length - 1 || item !== nextTab), nextTab]);
-    setActiveTab(nextTab);
-  }
-
   const dismissedMailboxKey = session?.id ? `palestra.mailboxFloatingDismissed.${session.id}` : '';
 
   async function refreshFloatingMailboxNotice() {
@@ -514,65 +502,6 @@ export default function App() {
     });
     return () => subscription.remove();
   }, [session?.id, activeTab]);
-
-  function goBackInApp() {
-    if (drawerOpen) {
-      setDrawerOpen(false);
-      return true;
-    }
-
-    if (tabHistory.length > 1) {
-      const nextHistory = tabHistory.slice(0, -1);
-      const previousTab = nextHistory[nextHistory.length - 1] ?? 'inicio';
-      setTabHistory(nextHistory);
-      setActiveTab(previousTab);
-      return true;
-    }
-
-    if (activeTab !== 'inicio') {
-      setTabHistory(['inicio']);
-      setActiveTab('inicio');
-      return true;
-    }
-
-    const now = Date.now();
-    if (now - lastBackPressRef.current < 1800) {
-      return false;
-    }
-
-    lastBackPressRef.current = now;
-    const message = 'Presiona nuevamente para salir';
-    if (Platform.OS === 'android') {
-      ToastAndroid.show(message, ToastAndroid.SHORT);
-    }
-    setAppMessage(message);
-    setTimeout(() => setAppMessage(''), 1800);
-    return true;
-  }
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') {
-      return undefined;
-    }
-
-    const subscription = BackHandler.addEventListener('hardwareBackPress', goBackInApp);
-    return () => subscription.remove();
-  }, [activeTab, tabHistory, drawerOpen]);
-
-  useEffect(() => {
-    if (isMissingProfileScope(session) && activeTab !== 'perfil') {
-      setActiveTab('perfil');
-      setTabHistory(['perfil']);
-    }
-  }, [session, activeTab]);
-
-  useEffect(() => {
-    if (!session && activeTab === 'perfil') {
-      setActiveTab('inicio');
-      setTabHistory(['inicio']);
-      setAuthScreenOpen(true);
-    }
-  }, [session, activeTab]);
 
   useEffect(() => {
     let alive = true;
