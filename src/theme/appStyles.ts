@@ -4555,5 +4555,166 @@ export const styles = StyleSheet.create({
   },
   intentionsSmallActionText: {
     color: '#f28a00'
+  },
+  adminHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  colorSwatch: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.9)',
+    shadowColor: '#0b2c3a',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2
+  },
+  colorSwatchActive: {
+    borderColor: palette.ink,
+    transform: [{ scale: 1.08 }]
+  },
+  formationHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 22,
+    padding: 16,
+    backgroundColor: '#eef8fb',
+    borderWidth: 1,
+    borderColor: 'rgba(45,141,200,0.18)',
+    shadowColor: '#2d8dc8',
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3
+  },
+  formationHeroDark: {
+    backgroundColor: '#142633',
+    borderColor: 'rgba(116,203,227,0.18)',
+    shadowOpacity: 0.08
+  },
+  formationHeroIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45,141,200,0.2)'
+  },
+  formationHeroTitle: {
+    color: palette.ink,
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: '900'
+  },
+  formationHeroBody: {
+    color: palette.inkMuted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700'
+  },
+  formationPath: {
+    gap: 0,
+    paddingVertical: 4
+  },
+  formationStationRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+    minHeight: 96
+  },
+  formationRail: {
+    width: 38,
+    alignItems: 'center'
+  },
+  formationStationNode: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: palette.white,
+    shadowColor: '#0b2c3a',
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3
+  },
+  formationStationLine: {
+    flex: 1,
+    width: 3,
+    opacity: 0.28
+  },
+  formationStationCard: {
+    flex: 1,
+    marginBottom: 14,
+    borderRadius: 18,
+    padding: 15,
+    gap: 8,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45,141,200,0.18)',
+    shadowColor: '#0b2c3a',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2
+  },
+  formationStationCardActive: {
+    borderColor: 'rgba(242,64,64,0.34)',
+    shadowOpacity: 0.14,
+    elevation: 4
+  },
+  formationStationHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 10
+  },
+  formationStationTitle: {
+    color: palette.ink,
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: '900'
+  },
+  formationStationSubtitle: {
+    color: palette.red,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '900'
+  },
+  formationStationExpanded: {
+    gap: 10,
+    marginTop: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(45,141,200,0.14)'
+  },
+  formationStationImage: {
+    width: '100%',
+    minHeight: 150,
+    borderRadius: 16,
+    backgroundColor: '#e6f3f7',
+    resizeMode: 'cover'
+  },
+  formationMaterialChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 50,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    backgroundColor: '#f6fbfd',
+    borderWidth: 1,
+    borderColor: 'rgba(45,141,200,0.16)'
   }
 });

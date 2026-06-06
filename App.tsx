@@ -261,7 +261,7 @@ export default function App() {
           ...tab,
           label: setting?.label ?? tab.label,
           icon: isIoniconName(setting?.icon_name) ? setting.icon_name : tab.icon,
-          sectionType: setting?.section_type ?? 'internal',
+          sectionType: setting?.section_type ?? (tab.key === 'proceso_educativo' ? 'formation_path' : 'internal'),
           visible: setting?.is_visible ?? true,
           sortOrder: setting?.sort_order ?? 999,
           visibleRoles: setting?.visible_roles ?? null

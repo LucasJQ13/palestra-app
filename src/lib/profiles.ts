@@ -1380,7 +1380,7 @@ export async function createEvent(title: string, description: string, startsAt: 
   });
 }
 
-export type AppTabSectionType = 'simple' | 'library' | 'links' | 'image_text' | 'form' | 'internal';
+export type AppTabSectionType = 'simple' | 'library' | 'links' | 'image_text' | 'form' | 'internal' | 'formation_path';
 
 export type AppTabSetting = {
   key: string;
@@ -1502,6 +1502,41 @@ export type AppMaterialRecord = {
   province_id: string | null;
 };
 
+export type FormationPathStationRecord = {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  short_description: string | null;
+  image_url: string | null;
+  icon_name: string | null;
+  color: string | null;
+  sort_order: number;
+  young_content: string | null;
+  leader_content: string | null;
+  visible_roles: string[] | null;
+  is_active: boolean;
+  material_ids: string[] | null;
+  created_at: string | null;
+  updated_at: string | null;
+  archived_at?: string | null;
+};
+
+export type FormationPathStationDraft = {
+  id?: string | null;
+  title: string;
+  subtitle?: string | null;
+  shortDescription?: string | null;
+  imageUrl?: string | null;
+  iconName?: string | null;
+  color?: string | null;
+  sortOrder?: number | null;
+  youngContent?: string | null;
+  leaderContent?: string | null;
+  visibleRoles?: string[] | null;
+  isActive?: boolean | null;
+  materialIds?: string[] | null;
+};
+
 export type ChurchDocumentButtonRecord = {
   id: string;
   title: string;
@@ -1604,6 +1639,64 @@ export async function fetchAppMaterials(includeAdminHidden = false): Promise<App
     return data as AppMaterialRecord[];
   } catch {
     return [];
+  }
+}
+
+export async function fetchFormationPathStations(includeInactive = false): Promise<FormationPathStationRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_formation_path_stations', {
+      p_include_inactive: includeInactive
+    });
+    if (error || !data) {
+      return [];
+    }
+    return data as FormationPathStationRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveFormationPathStation(values: FormationPathStationDraft) {
+  try {
+    const result = await supabase.rpc('admin_save_formation_path_station', {
+      p_id: values.id ?? null,
+      p_title: values.title,
+      p_subtitle: values.subtitle ?? null,
+      p_short_description: values.shortDescription ?? null,
+      p_image_url: values.imageUrl ?? null,
+      p_icon_name: values.iconName ?? null,
+      p_color: values.color ?? null,
+      p_sort_order: values.sortOrder ?? 100,
+      p_young_content: values.youngContent ?? null,
+      p_leader_content: values.leaderContent ?? null,
+      p_visible_roles: values.visibleRoles ?? null,
+      p_is_active: values.isActive ?? true,
+      p_material_ids: values.materialIds ?? []
+    });
+    return result;
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function setFormationPathStationStatus(id: string, isActive: boolean) {
+  try {
+    return await supabase.rpc('admin_set_formation_path_station_status', {
+      p_station_id: id,
+      p_is_active: isActive
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function archiveFormationPathStation(id: string) {
+  try {
+    return await supabase.rpc('admin_archive_formation_path_station', {
+      p_station_id: id
+    });
+  } catch (error) {
+    return networkError(error);
   }
 }
 

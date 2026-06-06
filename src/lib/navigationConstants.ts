@@ -15,6 +15,7 @@ export const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: 
   { key: 'crear_provincia', label: 'Crear provincia', icon: 'map-outline', systemOnly: true },
   { key: 'listas_qr', label: 'Listas QR', icon: 'qr-code-outline' },
   { key: 'intenciones', label: 'Intenciones', icon: 'flame-outline', systemOnly: true },
+  { key: 'proceso_educativo', label: 'Proceso Educativo', icon: 'map-outline' },
   { key: 'evangelio_dia', label: 'Evangelio', icon: 'book-outline', systemOnly: true },
   { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
   { key: 'usuarios', label: 'Usuarios', icon: 'people-outline' },
@@ -47,6 +48,7 @@ export const defaultTabs: Array<{ key: TabKey; label: string; icon: keyof typeof
   { key: 'himno', label: 'Himno', icon: 'flag-outline' },
   { key: 'comunidades', label: 'Comunidades', icon: 'people-outline' },
   { key: 'intenciones', label: 'Intenciones', icon: 'flame-outline' },
+  { key: 'proceso_educativo', label: 'Proceso Educativo', icon: 'map-outline' },
   { key: 'historia', label: 'Historia', icon: 'book-outline' },
   { key: 'contacto', label: 'Contacto', icon: 'chatbubbles-outline' },
   { key: 'periodo_motivador', label: 'PM', icon: 'flame-outline' },
@@ -69,7 +71,8 @@ export const navigationSectionTypes: Array<{ key: AppTabSectionType; label: stri
   { key: 'links', label: 'Enlaces', description: 'Botones configurables por bloque enlace.' },
   { key: 'image_text', label: 'Imagen + texto', description: 'Imagen principal y bloque textual.' },
   { key: 'form', label: 'Formulario / Contacto', description: 'Formulario real que envia a buzon interno.' },
-  { key: 'internal', label: 'Modulo interno', description: 'Redirige a una seccion base existente.' }
+  { key: 'internal', label: 'Modulo interno', description: 'Redirige a una seccion base existente.' },
+  { key: 'formation_path', label: 'Camino formativo', description: 'Ruta interactiva con estaciones, contenido por rango y materiales vinculados.' }
 ];
 
 export const defaultTabByKey = new Map(defaultTabs.map((tab) => [tab.key, tab]));
@@ -84,6 +87,8 @@ export const navigationIconSuggestions: Array<keyof typeof Ionicons.glyphMap> = 
   'person-circle-outline',
   'calendar-outline',
   'flame-outline',
+  'map-outline',
+  'trail-sign-outline',
   'folder-open-outline',
   'heart-outline',
   'sparkles-outline',

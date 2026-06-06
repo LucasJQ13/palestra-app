@@ -60,6 +60,7 @@ import { MailboxPanel } from './profile/MailboxPanel';
 import { useMailboxController } from './profile/useMailboxController';
 import { CommunityAdminPanel } from './profile/CommunityAdminPanel';
 import { DownloadsAdminPanel } from './profile/DownloadsAdminPanel';
+import { FormationPathAdminPanel } from './profile/FormationPathAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -599,7 +600,7 @@ export function ProfileScreen({
   const selectedEditableContent = appContent.find((item) => item.tab_key === selectedContentTab);
   const canOpenCommunityAdmin = canUseCommunityAdmin(session);
   const editableTabs = useMemo(
-    () => (tabs.length > 0 ? tabs : defaultTabs.map((tab, index) => ({ ...tab, sectionType: 'internal' as AppTabSectionType, visible: true, sortOrder: index, visibleRoles: null }))),
+    () => (tabs.length > 0 ? tabs : defaultTabs.map((tab, index) => ({ ...tab, sectionType: (tab.key === 'proceso_educativo' ? 'formation_path' : 'internal') as AppTabSectionType, visible: true, sortOrder: index, visibleRoles: null }))),
     [tabs]
   );
   const selectedNavigationTab = editableTabs.find((tab) => tab.key === selectedNavigationTabKey) ?? editableTabs[0];
@@ -5529,6 +5530,10 @@ export function ProfileScreen({
                   onLoad={loadPrayerIntentionsPanel}
                   onDelete={deletePrayerIntentionFromAdmin}
                 />
+              ) : null}
+
+              {adminModule === 'proceso_educativo' ? (
+                <FormationPathAdminPanel session={session} isDark={isDark} />
               ) : null}
 
               {adminModule === 'evangelio_dia' && session?.role === 'administrador' ? (

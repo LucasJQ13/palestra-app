@@ -3,7 +3,7 @@ import { GenderPreference } from '../lib/profileDisplay';
 
 export type TabKey = string;
 
-export type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'crear_provincia' | 'listas_qr' | 'intenciones' | 'evangelio_dia' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'contenido_publicado' | 'navegacion' | 'permisos_roles' | 'etiquetas_roles' | 'rangos_alias';
+export type AdminModule = 'resumen' | 'identidad' | 'home' | 'noticias' | 'descargas' | 'comunidades' | 'crear_provincia' | 'listas_qr' | 'intenciones' | 'proceso_educativo' | 'evangelio_dia' | 'historia_admin' | 'contacto_admin' | 'usuarios' | 'solicitudes' | 'periodo_motivador' | 'configuracion' | 'eventos' | 'contenido_general' | 'contenido_publicado' | 'navegacion' | 'permisos_roles' | 'etiquetas_roles' | 'rangos_alias';
 export type ProfilePanel = 'vista' | 'editar' | 'comunidad' | 'buzon' | 'configuracion' | 'intenciones';
 export type AdminUsersTool = 'crear' | 'editar' | 'listado' | 'pendientes' | 'diagnostico';
 export type AdminRequest = {

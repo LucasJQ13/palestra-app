@@ -10,6 +10,7 @@ import { TabKey } from '../types/appUi';
 import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
 import { MaterialsScreen } from './MaterialsScreen';
+import { FormationPathScreen } from './FormationPathScreen';
 import { DynamicContactForm, GenericPageScreen } from './StaticScreens';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
@@ -20,6 +21,10 @@ export function DynamicNavigationSectionScreen({ session, tab, title, content, e
 
   if (type === 'library') {
     return <MaterialsScreen session={session} title={title} content={content} refreshKey={refreshKey} editor={editor} />;
+  }
+
+  if (type === 'formation_path') {
+    return <FormationPathScreen session={session} title={title} content={content} refreshKey={refreshKey} editor={editor} />;
   }
 
   if (type === 'internal') {
