@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, Easing, Image, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Easing, Image, KeyboardAvoidingView, Modal, Platform, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -21,6 +21,7 @@ import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermiss
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from './src/lib/roles';
 import { ExternalCatholicNewsItem, fetchExternalCatholicNews } from './src/lib/externalNews';
 import { ExternalNewsCarousel } from './src/components/ExternalNewsCarousel';
+import { AppDrawer, AppDrawerItem } from './src/components/AppDrawer';
 import { ActionButton } from './src/components/ActionButton';
 import { SectionTitle } from './src/components/SectionTitle';
 import { LinkedSelectableText } from './src/components/LinkedSelectableText';
@@ -309,14 +310,7 @@ export default function App() {
 
   const drawerWidth = Math.min(348, Math.max(286, viewportWidth * 0.86));
   const drawerItems = useMemo(() => {
-    const items: Array<{
-      key: string;
-      label: string;
-      icon: keyof typeof Ionicons.glyphMap;
-      action: () => void;
-      active: boolean;
-      meta?: string;
-    }> = visibleTabs.map((tab) => ({
+    const items: AppDrawerItem[] = visibleTabs.map((tab) => ({
       key: tab.key,
       label: tab.label,
       icon: tab.icon,
@@ -682,39 +676,16 @@ export default function App() {
             </View>
           </View>
         </View>
-        <Modal visible={drawerOpen} transparent animationType="fade" onRequestClose={() => setDrawerOpen(false)}>
-          <View style={styles.drawerOverlay}>
-            <Pressable style={styles.drawerBackdrop} onPress={() => setDrawerOpen(false)} />
-            <SafeAreaView edges={['top', 'bottom']} style={[styles.drawerPanel, isDarkTheme && styles.drawerPanelDark, { width: drawerWidth }]}>
-              <View style={styles.drawerHeader}>
-                <View style={[styles.drawerLogo, { backgroundColor: identityPrimaryColor }]}>
-                  <Image source={palestraLogo} style={styles.brandLogoImage} />
-                </View>
-                <View style={styles.drawerHeaderText}>
-                  <Text numberOfLines={1} style={[styles.drawerTitle, isDarkTheme && styles.drawerTitleDark]}>Palestra</Text>
-                  <Text numberOfLines={1} style={[styles.drawerSubtitle, isDarkTheme && styles.drawerSubtitleDark]}>{session ? displayRoleLabel(session.role, session.province, [], [], null, session.genderPreference) : 'Invitado'}</Text>
-                </View>
-                <TouchableOpacity style={[styles.drawerCloseButton, isDarkTheme && styles.drawerCloseButtonDark]} onPress={() => setDrawerOpen(false)} activeOpacity={0.85}>
-                  <Ionicons name="close-outline" size={22} color={isDarkTheme ? themePresets.dark.colors.text : palette.ink} />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.drawerScroll} contentContainerStyle={styles.drawerScrollContent} showsVerticalScrollIndicator={false}>
-                {drawerItems.map((item) => (
-                  <TouchableOpacity key={item.key} style={[styles.drawerItem, isDarkTheme && styles.drawerItemDark, item.active && styles.drawerItemActive, item.active && isDarkTheme && styles.drawerItemActiveDark]} onPress={item.action} activeOpacity={0.84}>
-                    <View style={[styles.drawerIconFrame, isDarkTheme && styles.drawerIconFrameDark, item.active && styles.drawerIconFrameActive, item.active && { backgroundColor: identityPrimaryColor, borderColor: identityPrimaryColor }]}>
-                      <Ionicons name={item.icon} size={20} color={item.active ? palette.white : identityPrimaryColor} />
-                    </View>
-                    <View style={styles.drawerItemTextBlock}>
-                      <Text numberOfLines={1} style={[styles.drawerItemText, isDarkTheme && styles.drawerItemTextDark, item.active && styles.drawerItemTextActive]}>{item.label}</Text>
-                      {item.meta ? <Text numberOfLines={1} style={[styles.drawerItemMeta, isDarkTheme && styles.drawerItemMetaDark]}>{item.meta}</Text> : null}
-                    </View>
-                    {item.active ? <Ionicons name="ellipse" size={8} color={identityPrimaryColor} /> : null}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </SafeAreaView>
-          </View>
-        </Modal>
+        <AppDrawer
+          drawerWidth={drawerWidth}
+          identityPrimaryColor={identityPrimaryColor}
+          isDarkTheme={isDarkTheme}
+          items={drawerItems}
+          logo={palestraLogo}
+          onClose={() => setDrawerOpen(false)}
+          roleLabel={session ? displayRoleLabel(session.role, session.province, [], [], null, session.genderPreference) : 'Invitado'}
+          visible={drawerOpen}
+        />
         <Modal visible={globalSearchOpen} transparent animationType="fade" onRequestClose={closeGlobalSearch} statusBarTranslucent>
           <View style={styles.modalOverlay}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalKeyboardAvoider}>
