@@ -22,7 +22,7 @@ export const appStageLabel = 'BETA';
 export const appVersionLabel = `${appStageLabel} ${appBetaVersion}`;
 export const authDeepLinkBaseUrl = 'palestra://auth/callback';
 export const authConfirmedPreviewUrl = `${authDeepLinkBaseUrl}?preview=mail-confirmed`;
-export const authPasswordResetUrl = `${authDeepLinkBaseUrl}?flow=password-reset`;
+export const authPasswordResetUrl = 'https://lucasjq13.github.io/palestra-app/reset-password.html';
 export const touchPointerPreferenceKey = 'palestra.showTouchPointer';
 export const themePreferenceKey = 'palestra.themePreference';
 export const pushDeviceIdKey = 'palestra.push.deviceId';

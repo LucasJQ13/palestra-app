@@ -118,6 +118,9 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showRecoveryForm, setShowRecoveryForm] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
 
   async function submitLogin() {
     if (!isValidEmail(email)) {
@@ -140,14 +143,28 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
   }
 
   async function recoverPassword() {
-    if (!isValidEmail(email)) {
-      onMessage('Escribí tu mail para enviarte la recuperación.');
+    const targetEmail = recoveryEmail.trim();
+    if (!isValidEmail(targetEmail)) {
+      onMessage('Ingresa un mail valido para enviar la recuperacion.');
       return;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    setRecoveryLoading(true);
+    onMessage('Enviando instrucciones...');
+    const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
       redirectTo: authPasswordResetUrl
     });
-    onMessage(error ? safeAuthError(error.message) : 'Te enviamos un mail para recuperar la contraseña.');
+    setRecoveryLoading(false);
+    if (error) {
+      onMessage('No pudimos enviar la recuperacion ahora. Revisa el mail e intenta nuevamente en unos minutos.');
+      return;
+    }
+    onMessage('Si el correo esta registrado, recibiras instrucciones para recuperar tu contrasena.');
+  }
+
+  function openRecoveryForm() {
+    setRecoveryEmail(email.trim());
+    setShowRecoveryForm(true);
+    onMessage('');
   }
 
   return (
@@ -161,6 +178,28 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
       <Text style={styles.authHeroText}>Qué alegría volver a encontrarte en este camino.</Text>
 
       <View style={styles.authFormPanel}>
+        {showRecoveryForm ? (
+          <>
+            <Text style={styles.authInputLabel}>Recuperar contrasena</Text>
+            <Text style={styles.authHeroText}>Ingresa tu mail y te enviaremos un enlace para crear una nueva contrasena.</Text>
+            <AuthTextInput label="Mail" placeholder="tu.mail@email.com" value={recoveryEmail} onChangeText={setRecoveryEmail} keyboardType="email-address" autoCapitalize="none" />
+            <TouchableOpacity style={styles.authPrimaryButton} onPress={recoverPassword} disabled={recoveryLoading} activeOpacity={0.86}>
+              <Text style={styles.authPrimaryText}>{recoveryLoading ? 'Enviando...' : 'Enviar recuperacion'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.authGhostButton}
+              onPress={() => {
+                setShowRecoveryForm(false);
+                onMessage('');
+              }}
+              disabled={recoveryLoading}
+              activeOpacity={0.86}
+            >
+              <Text style={styles.authGhostText}>Volver al inicio de sesion</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
         <AuthTextInput label="Mail" placeholder="tu.mail@email.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
         <View>
           <Text style={styles.authInputLabel}>Contraseña</Text>
@@ -185,9 +224,11 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
         <TouchableOpacity style={styles.authGhostButton} onPress={onRegister} activeOpacity={0.86}>
           <Text style={styles.authGhostText}>Registrarme</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={recoverPassword} activeOpacity={0.75}>
+        <TouchableOpacity onPress={openRecoveryForm} activeOpacity={0.75}>
           <Text style={styles.authLinkText}>Olvidé mi contraseña</Text>
         </TouchableOpacity>
+          </>
+        )}
         {message ? <Text style={styles.authMessage}>{message}</Text> : null}
       </View>
     </ScrollView>
