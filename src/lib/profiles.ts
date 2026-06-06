@@ -521,17 +521,21 @@ export async function updateAdminUser(values: {
   pmMotto?: string | null;
 }) {
   try {
+    const optionalText = (value?: string | null) => {
+      const trimmed = value?.trim();
+      return trimmed ? trimmed : null;
+    };
     const baseResult = await supabase.rpc('admin_update_user', {
       p_profile_id: values.id,
-      p_email: values.email,
+      p_email: optionalText(values.email),
       p_password: values.password || null,
-      p_full_name: values.fullName,
-      p_phone: values.phone,
-      p_province: values.province,
-      p_community_name: values.communityName,
+      p_full_name: optionalText(values.fullName),
+      p_phone: optionalText(values.phone),
+      p_province: optionalText(values.province),
+      p_community_name: optionalText(values.communityName),
       p_status: values.status,
       p_role: values.role,
-      p_display_role_label: values.displayRoleLabel ?? null
+      p_display_role_label: optionalText(values.displayRoleLabel)
     });
     if (baseResult.error) {
       return baseResult;
@@ -547,14 +551,14 @@ export async function updateAdminUser(values: {
     }
     return await supabase.rpc('admin_update_profile_details_v2', {
       p_profile_id: values.id,
-      p_nickname: values.nickname ?? null,
-      p_use_nickname_in_greetings: values.useNicknameInGreetings ?? false,
+      p_nickname: optionalText(values.nickname),
+      p_use_nickname_in_greetings: values.useNicknameInGreetings ?? null,
       p_credential_name_mode: values.credentialNameMode ?? 'name',
       p_perseverance_start_year: values.perseveranceStartYear ?? null,
       p_personal_pm_type: values.personalPmType ?? null,
       p_personal_pm_number: values.personalPmNumber ?? null,
-      p_personal_pm_province: values.personalPmProvince ?? null,
-      p_personal_pm_motto: values.personalPmMotto ?? values.pmMotto ?? null
+      p_personal_pm_province: optionalText(values.personalPmProvince),
+      p_personal_pm_motto: optionalText(values.personalPmMotto ?? values.pmMotto)
     });
   } catch (error) {
     return networkError(error);

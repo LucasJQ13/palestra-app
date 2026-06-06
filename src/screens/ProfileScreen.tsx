@@ -2232,20 +2232,34 @@ export function ProfileScreen({
       setAuthMessage('No podes editar administradores, usuarios superiores o usuarios fuera de tu alcance.');
       return;
     }
+    const preserveText = (draft: string, current?: string | null) => {
+      const trimmed = draft.trim();
+      return trimmed || current || '';
+    };
+    const preserveOptionalText = (draft: string, current?: string | null) => {
+      const trimmed = draft.trim();
+      return trimmed || current || null;
+    };
     const previousRole = (selectedAdminUser.role || 'palestrista') as Role;
-    const changesProvince = Boolean(adminUserProvince && adminUserProvince !== selectedAdminUser.province);
-    const changesCommunity = Boolean(adminUserCommunity && adminUserCommunity !== selectedAdminUser.community_name);
-    let finalRole = roleAfterScopeChange(adminUserRole, changesProvince, changesCommunity);
-    if (previousRole === 'administrador' && adminUserRole !== 'administrador' && session?.role !== 'administrador') {
+    const nextEmail = session?.role === 'administrador' ? preserveText(adminUserEmail, selectedAdminUser.email) : (selectedAdminUser.email ?? '');
+    const nextFullName = preserveText(adminUserFullName, selectedAdminUser.full_name);
+    const nextPhone = preserveText(adminUserPhone, selectedAdminUser.phone);
+    const nextProvince = preserveText(adminUserProvince, selectedAdminUser.province);
+    const nextCommunity = preserveText(adminUserCommunity, selectedAdminUser.community_name);
+    const requestedRole = adminUserRole || previousRole;
+    const changesProvince = Boolean(nextProvince && nextProvince !== selectedAdminUser.province);
+    const changesCommunity = Boolean(nextCommunity && nextCommunity !== selectedAdminUser.community_name);
+    let finalRole = roleAfterScopeChange(requestedRole, changesProvince, changesCommunity);
+    if (previousRole === 'administrador' && requestedRole !== 'administrador' && session?.role !== 'administrador') {
       setAuthMessage('Solo otro Administrador puede quitar el rango Administrador.');
       return;
     }
-    if (adminUserRole === 'administrador') {
+    if (requestedRole === 'administrador') {
       if (session?.role !== 'administrador') {
         setAuthMessage('Solo Administrador puede otorgar Administrador.');
         return;
       }
-      const firstMessage = `Vas a otorgar Administrador a ${adminUserFullName || selectedAdminUser.email}. Este rango puede modificar toda la app. Confirmas?`;
+      const firstMessage = `Vas a otorgar Administrador a ${nextFullName || selectedAdminUser.email}. Este rango puede modificar toda la app. Confirmas?`;
       const secondMessage = 'Confirmacion final: otorgar Administrador puede cambiar permisos, usuarios y contenido global. Escribe aceptar en la siguiente confirmacion visual.';
       const firstConfirmed = Platform.OS === 'web'
         ? (typeof window === 'undefined' ? true : window.confirm(firstMessage))
@@ -2271,7 +2285,7 @@ export function ProfileScreen({
       }
       finalRole = 'administrador';
     }
-    if (!canAccessProvince(session, adminUserProvince)) {
+    if (!canAccessProvince(session, nextProvince)) {
       setAuthMessage('No podes editar usuarios de otra provincia.');
       return;
     }
@@ -2279,8 +2293,8 @@ export function ProfileScreen({
       setAuthMessage(`Tu rango no puede asignar el rol ${roleLabel(finalRole)}.`);
       return;
     }
-    if (finalRole !== adminUserRole) {
-      const warning = `Al cambiar provincia/comunidad, ${roleLabel(adminUserRole)} pierde rango y pasa a Sedimentador. Confirmas guardar?`;
+    if (finalRole !== requestedRole) {
+      const warning = `Al cambiar provincia/comunidad, ${roleLabel(requestedRole)} pierde rango y pasa a Sedimentador. Confirmas guardar?`;
       const confirmed = Platform.OS === 'web'
         ? (typeof window === 'undefined' ? true : window.confirm(warning))
         : await new Promise<boolean>((resolve) => {
@@ -2293,10 +2307,17 @@ export function ProfileScreen({
         return;
       }
     }
-    const canAdminUsePersonalPm = roleRank(finalRole) >= roleRank('sedimentador');
-    const hasCompleteAdminPersonalPm = Boolean(canAdminUsePersonalPm && adminUserPmType && adminUserPmNumber.trim() && adminUserPmProvince);
-    if (hasCompleteAdminPersonalPm) {
-      const parsedPmNumber = Number(adminUserPmNumber);
+    const nextPerseveranceStartYear = adminUserPerseveranceStartYear
+      ? Number(adminUserPerseveranceStartYear)
+      : selectedAdminUser.perseverance_start_year ?? null;
+    const nextPmType = (adminUserPmType || selectedAdminUser.personal_pm_type || null) as PersonalPmType | null;
+    const nextPmNumberText = adminUserPmNumber.trim() || (selectedAdminUser.personal_pm_number ? String(selectedAdminUser.personal_pm_number) : '');
+    const nextPmNumber = nextPmNumberText ? Number(nextPmNumberText) : null;
+    const nextPmProvince = preserveOptionalText(adminUserPmProvince, selectedAdminUser.personal_pm_province);
+    const nextPmMotto = preserveOptionalText(adminUserPmMotto, selectedAdminUser.personal_pm_motto ?? selectedAdminUser.pm_motto);
+    const hasAdminPersonalPm = Boolean(nextPmType || nextPmNumberText || nextPmProvince || nextPmMotto);
+    if (nextPmNumberText) {
+      const parsedPmNumber = Number(nextPmNumberText);
       if (!Number.isInteger(parsedPmNumber) || parsedPmNumber <= 0) {
         setAuthMessage('El número de PM debe ser válido.');
         return;
@@ -2306,25 +2327,25 @@ export function ProfileScreen({
     setAuthMessage('Guardando usuario...');
     const { error } = await updateAdminUser({
       id: selectedAdminUser.id,
-      email: session?.role === 'administrador' ? adminUserEmail : (selectedAdminUser.email ?? ''),
+      email: nextEmail,
       password: session?.role === 'administrador' ? adminUserPassword : '',
-      fullName: adminUserFullName,
-      phone: adminUserPhone,
-      province: adminUserProvince,
-      communityName: adminUserCommunity,
+      fullName: nextFullName,
+      phone: nextPhone,
+      province: nextProvince,
+      communityName: nextCommunity,
       status: adminUserStatus,
       role: finalRole,
       subroleKey: subrolesForRole(finalRole).some((item) => item.key === adminUserSubroleKey) ? adminUserSubroleKey : null,
-      displayRoleLabel: adminUserDisplayRoleLabel.trim() || null,
-      nickname: adminUserNickname.trim() || null,
-      useNicknameInGreetings: adminUserUseNicknameInGreetings,
-      credentialNameMode: adminUserCredentialNameMode,
-      perseveranceStartYear: adminUserPerseveranceStartYear ? Number(adminUserPerseveranceStartYear) : null,
-      personalPmType: hasCompleteAdminPersonalPm ? (adminUserPmType || null) : null,
-      personalPmNumber: hasCompleteAdminPersonalPm ? Number(adminUserPmNumber) : null,
-      personalPmProvince: hasCompleteAdminPersonalPm ? (adminUserPmProvince || null) : null,
-      personalPmMotto: hasCompleteAdminPersonalPm ? (adminUserPmMotto.trim() || null) : null,
-      pmMotto: hasCompleteAdminPersonalPm ? (adminUserPmMotto.trim() || null) : null
+      displayRoleLabel: preserveOptionalText(adminUserDisplayRoleLabel, selectedAdminUser.display_role_label),
+      nickname: preserveOptionalText(adminUserNickname, selectedAdminUser.nickname),
+      useNicknameInGreetings: selectedAdminUser.use_nickname_in_greetings == null ? null : adminUserUseNicknameInGreetings,
+      credentialNameMode: selectedAdminUser.credential_name_mode == null && adminUserCredentialNameMode === 'name' ? null : adminUserCredentialNameMode,
+      perseveranceStartYear: nextPerseveranceStartYear,
+      personalPmType: hasAdminPersonalPm ? nextPmType : null,
+      personalPmNumber: hasAdminPersonalPm ? nextPmNumber : null,
+      personalPmProvince: hasAdminPersonalPm ? nextPmProvince : null,
+      personalPmMotto: hasAdminPersonalPm ? nextPmMotto : null,
+      pmMotto: hasAdminPersonalPm ? nextPmMotto : null
     });
     if (error) {
       setAuthMessage(error.message || 'No se pudo guardar el usuario. Revisa permisos y datos.');
@@ -2332,7 +2353,7 @@ export function ProfileScreen({
     }
     await loadAdminUsers();
     setSelectedAdminUserId('');
-    setAuthMessage(changeDone(finalRole !== adminUserRole ? `Usuario actualizado. Rango ajustado a ${roleLabel(finalRole)}.` : 'Usuario actualizado.'));
+    setAuthMessage(changeDone(finalRole !== requestedRole ? `Usuario actualizado. Rango ajustado a ${roleLabel(finalRole)}.` : 'Usuario actualizado.'));
   }
 
   async function confirmSelectedUserEmail() {
