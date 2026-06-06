@@ -30,7 +30,10 @@ export function isCommunityLeaderRole(session: Session | null) {
 }
 
 export function canCreateOrAdministrateCommunities(session: Session | null) {
-  return Boolean(session && (hasPermission(session, 'gestionar_comunidad') || hasPermission(session, 'gestionar_comunidades_global') || ['vocal', 'coordinador_diocesano'].includes(session.role)));
+  return Boolean(session && (
+    hasPermission(session, 'gestionar_comunidades_global')
+    || ['vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role)
+  ));
 }
 
 export function canUseCommunityAdmin(session: Session | null) {
@@ -62,6 +65,9 @@ export function canEditAdminUser(session: Session | null, user?: AdminUser | nul
 }
 
 export function canManageUsersPanel(session: Session | null) {
+  if (isCommunityLeaderRole(session)) {
+    return false;
+  }
   return hasPermission(session, 'aprobar_sedimentadores') || hasPermission(session, 'otorgar_roles_provincia') || hasPermission(session, 'otorgar_roles_diocesanos') || hasPermission(session, 'gestionar_roles_globales');
 }
 
