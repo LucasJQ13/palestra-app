@@ -145,6 +145,30 @@ function personalGreetingColorError(value?: string | null) {
   return '';
 }
 
+const territorialProfileCooldownDays = 15;
+const profileFallbackValues = new Set(['Sin provincia', 'Sin comunidad asignada', 'Sin contacto']);
+
+function profileDraftValue(value?: string | null) {
+  const normalized = value?.trim() ?? '';
+  return profileFallbackValues.has(normalized) ? '' : normalized;
+}
+
+function territorialCooldownInfo(session: Session | null) {
+  if (!session?.provinceCommunityChangedAt || !profileDraftValue(session.province) || !profileDraftValue(session.communityOfOrigin)) {
+    return { active: false, daysLeft: 0 };
+  }
+  const changedAt = new Date(session.provinceCommunityChangedAt).getTime();
+  if (!Number.isFinite(changedAt)) {
+    return { active: false, daysLeft: 0 };
+  }
+  const unlockAt = changedAt + territorialProfileCooldownDays * 24 * 60 * 60 * 1000;
+  const remainingMs = unlockAt - Date.now();
+  if (remainingMs <= 0) {
+    return { active: false, daysLeft: 0 };
+  }
+  return { active: true, daysLeft: Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000))) };
+}
+
 export function ProfileScreen({
   session,
   onSessionChange,
@@ -265,10 +289,10 @@ export function ProfileScreen({
   const [communityDropdownOpen, setCommunityDropdownOpen] = useState(false);
   const [registerPerseveranceYearDropdownOpen, setRegisterPerseveranceYearDropdownOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [editFullName, setEditFullName] = useState(session?.fullName ?? '');
-  const [editContact, setEditContact] = useState(session?.contact ?? '');
-  const [editProvince, setEditProvince] = useState(session?.province ?? '');
-  const [editCommunity, setEditCommunity] = useState(session?.communityOfOrigin ?? '');
+  const [editFullName, setEditFullName] = useState(profileDraftValue(session?.fullName));
+  const [editContact, setEditContact] = useState(profileDraftValue(session?.contact));
+  const [editProvince, setEditProvince] = useState(profileDraftValue(session?.province));
+  const [editCommunity, setEditCommunity] = useState(profileDraftValue(session?.communityOfOrigin));
   const [editGenderPreference, setEditGenderPreference] = useState<'male' | 'female' | null>(session?.genderPreference ?? null);
   const [editNickname, setEditNickname] = useState(session?.nickname ?? '');
   const [editUseNicknameInGreetings, setEditUseNicknameInGreetings] = useState(Boolean(session?.useNicknameInGreetings));
@@ -721,11 +745,13 @@ export function ProfileScreen({
     nickname: editNickname.trim() || null,
     useNicknameInGreetings: editUseNicknameInGreetings
   }) : 'Palestrista';
+  const territorialCooldown = territorialCooldownInfo(session);
+  const territorialFieldsLocked = territorialCooldown.active && !isMissingProfileScope(session);
   useEffect(() => {
-    setEditFullName(session?.fullName ?? '');
-    setEditContact(session?.contact ?? '');
-    setEditProvince(session?.province ?? '');
-    setEditCommunity(session?.communityOfOrigin ?? '');
+    setEditFullName(profileDraftValue(session?.fullName));
+    setEditContact(profileDraftValue(session?.contact));
+    setEditProvince(profileDraftValue(session?.province));
+    setEditCommunity(profileDraftValue(session?.communityOfOrigin));
     setEditGenderPreference(session?.genderPreference ?? null);
     setEditNickname(session?.nickname ?? '');
     setEditUseNicknameInGreetings(Boolean(session?.useNicknameInGreetings));
@@ -737,6 +763,17 @@ export function ProfileScreen({
     setEditPmProvince(session?.personalPmProvince ?? session?.province ?? '');
     setEditPmMotto(session?.personalPmMotto ?? session?.pmMotto ?? '');
   }, [session]);
+
+  useEffect(() => {
+    if (profilePanel !== 'editar') {
+      return;
+    }
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        loadRealProfile(data.user.id, data.user.email ?? session?.email ?? 'Usuario');
+      }
+    });
+  }, [profilePanel, session?.id]);
 
   useEffect(() => {
     setAdminConfigDraft(adminConfig);
@@ -1784,9 +1821,32 @@ export function ProfileScreen({
         personalPmProvince: result.session.personalPmProvince ?? session.personalPmProvince,
         personalPmMotto: result.session.personalPmMotto ?? session.personalPmMotto,
         pmMotto: result.session.pmMotto ?? session.pmMotto,
-        personalGreetingColor: result.session.personalGreetingColor ?? session.personalGreetingColor
+        personalGreetingColor: result.session.personalGreetingColor ?? session.personalGreetingColor,
+        provinceCommunityChangedAt: result.session.provinceCommunityChangedAt ?? session.provinceCommunityChangedAt
       } : result.session);
     }
+  }
+
+  function resetProfileDraft() {
+    setEditFullName(profileDraftValue(session?.fullName));
+    setEditContact(profileDraftValue(session?.contact));
+    setEditProvince(profileDraftValue(session?.province));
+    setEditCommunity(profileDraftValue(session?.communityOfOrigin));
+    setEditGenderPreference(session?.genderPreference ?? null);
+    setEditNickname(session?.nickname ?? '');
+    setEditUseNicknameInGreetings(Boolean(session?.useNicknameInGreetings));
+    setEditCredentialNameMode(session?.credentialNameMode ?? 'name');
+    setEditPersonalGreetingColor(session?.personalGreetingColor ?? '');
+    setEditPerseveranceStartYear(session?.perseveranceStartYear ? String(session.perseveranceStartYear) : '');
+    setEditPmType(session?.personalPmType ?? '');
+    setEditPmNumber(session?.personalPmNumber ? String(session.personalPmNumber) : '');
+    setEditPmProvince(session?.personalPmProvince ?? profileDraftValue(session?.province));
+    setEditPmMotto(session?.personalPmMotto ?? session?.pmMotto ?? '');
+    setEditProvinceDropdownOpen(false);
+    setEditCommunityDropdownOpen(false);
+    setEditPerseveranceYearDropdownOpen(false);
+    setEditPmProvinceDropdownOpen(false);
+    setAuthMessage('');
   }
 
   function validateAuthForm() {
@@ -1944,6 +2004,10 @@ export function ProfileScreen({
     }
     const changesProvince = editProvince !== session.province;
     const changesCommunity = editCommunity !== session.communityOfOrigin;
+    if ((changesProvince || changesCommunity) && territorialFieldsLocked) {
+      setAuthMessage(`Provincia y comunidad solo pueden cambiarse cada ${territorialProfileCooldownDays} dias. Podras volver a modificarlas en ${territorialCooldown.daysLeft} dia(s). El resto del perfil sigue editable.`);
+      return;
+    }
     const finalSessionRole = roleAfterScopeChange(session.role, changesProvince, changesCommunity);
     const mayDowngrade = finalSessionRole !== session.role;
     const coreProfileChanged = (
@@ -1957,6 +2021,7 @@ export function ProfileScreen({
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
       setAuthMessage('Perfil de prueba actualizado visualmente. Iniciá sesión real para guardar en Supabase.');
+      const changedTerritoryAt = changesProvince || changesCommunity ? new Date().toISOString() : session.provinceCommunityChangedAt;
       onSessionChange({
         ...session,
         fullName: editFullName || session.fullName,
@@ -1975,7 +2040,8 @@ export function ProfileScreen({
         personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
         personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
         pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
-        personalGreetingColor
+        personalGreetingColor,
+        provinceCommunityChangedAt: changedTerritoryAt
       });
       return;
     }
@@ -2006,6 +2072,7 @@ export function ProfileScreen({
       return;
     }
 
+    const changedTerritoryAt = changesProvince || changesCommunity ? new Date().toISOString() : session.provinceCommunityChangedAt;
     onSessionChange({
       ...session,
       fullName: editFullName || session.fullName,
@@ -2024,7 +2091,8 @@ export function ProfileScreen({
       personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
       personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
       pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
-      personalGreetingColor
+      personalGreetingColor,
+      provinceCommunityChangedAt: changedTerritoryAt
     });
     await loadRealProfile(authData.user.id, authData.user.email ?? session.email ?? session.fullName);
     setAuthMessage(mayDowngrade
@@ -4003,7 +4071,13 @@ export function ProfileScreen({
                 <Text style={styles.completionNoticeText}>Completa provincia y comunidad para usar normalmente la app.</Text>
               </View>
             ) : null}
-            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Por seguridad, los datos de perfil solo pueden cambiarse una vez cada 5 dias.</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tus datos personales pueden editarse normalmente. Provincia y comunidad solo pueden cambiarse cada {territorialProfileCooldownDays} dias.</Text>
+            {territorialFieldsLocked ? (
+              <View style={styles.completionNotice}>
+                <Ionicons name="lock-closed-outline" size={20} color={palette.red} />
+                <Text style={styles.completionNoticeText}>Provincia y comunidad estan bloqueadas por {territorialCooldown.daysLeft} dia(s). El resto del perfil sigue editable.</Text>
+              </View>
+            ) : null}
             <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName}  placeholderTextColor={inputPlaceholderColor} />
             <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Apodo" value={editNickname} onChangeText={setEditNickname}  placeholderTextColor={inputPlaceholderColor} />
             <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Contacto" value={editContact} onChangeText={setEditContact}  placeholderTextColor={inputPlaceholderColor} />
@@ -4108,11 +4182,15 @@ export function ProfileScreen({
               </>
             ) : null}
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Provincia</Text>
-            <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditProvinceDropdownOpen(!editProvinceDropdownOpen)}>
+            <TouchableOpacity
+              style={[styles.dropdownButton, isDark && styles.dropdownButtonDark, territorialFieldsLocked && { opacity: 0.58 }]}
+              disabled={territorialFieldsLocked}
+              onPress={() => setEditProvinceDropdownOpen(!editProvinceDropdownOpen)}
+            >
               <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editProvince || 'Seleccionar provincia'}</Text>
-              <Ionicons name={editProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+              <Ionicons name={territorialFieldsLocked ? 'lock-closed-outline' : editProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
             </TouchableOpacity>
-            {editProvinceDropdownOpen ? (
+            {editProvinceDropdownOpen && !territorialFieldsLocked ? (
               <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
                 {registrationCommunities.map((item) => (
                   <TouchableOpacity
@@ -4132,11 +4210,15 @@ export function ProfileScreen({
             {selectedEditProvince ? (
               <>
                 <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Comunidad de origen</Text>
-                <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditCommunityDropdownOpen(!editCommunityDropdownOpen)}>
+                <TouchableOpacity
+                  style={[styles.dropdownButton, isDark && styles.dropdownButtonDark, territorialFieldsLocked && { opacity: 0.58 }]}
+                  disabled={territorialFieldsLocked}
+                  onPress={() => setEditCommunityDropdownOpen(!editCommunityDropdownOpen)}
+                >
                   <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editCommunity || 'Seleccionar comunidad'}</Text>
-                  <Ionicons name={editCommunityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  <Ionicons name={territorialFieldsLocked ? 'lock-closed-outline' : editCommunityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
                 </TouchableOpacity>
-                {editCommunityDropdownOpen ? (
+                {editCommunityDropdownOpen && !territorialFieldsLocked ? (
                   <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
                     {selectedEditProvince.locations.map((item) => (
                       <TouchableOpacity key={item.name} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditCommunity(item.name); setEditCommunityDropdownOpen(false); }}>
@@ -4162,9 +4244,15 @@ export function ProfileScreen({
                 </TouchableOpacity>
               );
             })}
-            <TouchableOpacity style={styles.primaryButton} onPress={saveProfile}>
-              <Text style={styles.primaryButtonText}>Guardar perfil</Text>
-            </TouchableOpacity>
+            <View style={styles.filterRow}>
+              <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={saveProfile}>
+                <Text style={styles.primaryButtonText}>Guardar perfil</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionPill} onPress={resetProfileDraft}>
+                <Ionicons name="close-outline" size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
             {authMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{authMessage}</Text> : null}
           </View> : null}
           {profilePanel === 'configuracion' ? (

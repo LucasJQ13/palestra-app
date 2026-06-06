@@ -63,6 +63,7 @@ export type Session = {
   personalPmMotto?: string | null;
   pmMotto?: string | null;
   personalGreetingColor?: string | null;
+  provinceCommunityChangedAt?: string | null;
   status: UserStatus;
   permissions: Permission[];
 };
