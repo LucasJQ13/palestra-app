@@ -97,6 +97,7 @@ export function MailboxPanel({
   onFilterChange,
   onResponseChange,
   onSubmitResponse,
+  onStartDirectReply,
   onUpdateStatus,
   onOpenMessage,
   onDeleteForMe,
@@ -143,6 +144,7 @@ export function MailboxPanel({
   onFilterChange: (filter: 'entrada' | 'enviados' | 'eliminados') => void;
   onResponseChange: (messageId: string, value: string) => void;
   onSubmitResponse: (messageId: string) => void;
+  onStartDirectReply: (message: MailboxMessageRecord) => void;
   onUpdateStatus: (messageId: string, status: MailboxMessageRecord['status']) => void;
   onOpenMessage: (message: MailboxMessageRecord) => void;
   onDeleteForMe: (message: MailboxMessageRecord) => void;
@@ -366,6 +368,12 @@ export function MailboxPanel({
               <TouchableOpacity style={styles.actionPill} onPress={() => onUpdateStatus(message.id, 'leido')}>
                 <Ionicons name="mail-open-outline" size={16} color={palette.red} />
                 <Text style={styles.actionPillText}>Leido</Text>
+              </TouchableOpacity>
+            ) : null}
+            {folder === 'entrada' && message.source === 'direct' && message.sender_id && message.sender_id !== session.id ? (
+              <TouchableOpacity style={styles.actionPill} onPress={() => onStartDirectReply(message)}>
+                <Ionicons name="return-up-back-outline" size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>Responder</Text>
               </TouchableOpacity>
             ) : null}
             {folder === 'eliminados' ? (

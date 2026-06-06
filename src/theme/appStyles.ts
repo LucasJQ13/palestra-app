@@ -651,6 +651,67 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900'
   },
+  mailboxFloatingNotice: {
+    position: 'absolute',
+    right: 16,
+    bottom: 24,
+    zIndex: 95,
+    maxWidth: 238,
+    minHeight: 62,
+    borderRadius: 22,
+    padding: 8,
+    paddingRight: 42,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.22)',
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 8
+  },
+  mailboxFloatingNoticeDark: {
+    backgroundColor: themePresets.dark.colors.surface,
+    borderColor: 'rgba(229, 240, 244, 0.14)'
+  },
+  mailboxFloatingMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    minWidth: 152
+  },
+  mailboxFloatingIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  mailboxFloatingTextBlock: {
+    flex: 1,
+    minWidth: 0
+  },
+  mailboxFloatingTitle: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: '900'
+  },
+  mailboxFloatingMeta: {
+    color: palette.inkMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2
+  },
+  mailboxFloatingClose: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45, 141, 200, 0.08)'
+  },
   viewAsBanner: {
     marginHorizontal: 16,
     marginTop: 8,

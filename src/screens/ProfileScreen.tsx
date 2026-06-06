@@ -305,6 +305,7 @@ export function ProfileScreen({
   const [editPmProvince, setEditPmProvince] = useState(session?.personalPmProvince ?? session?.province ?? '');
   const [editPmProvinceDropdownOpen, setEditPmProvinceDropdownOpen] = useState(false);
   const [editPmMotto, setEditPmMotto] = useState(session?.personalPmMotto ?? session?.pmMotto ?? '');
+  const [profileEditUnlocked, setProfileEditUnlocked] = useState(false);
   const [editProvinceDropdownOpen, setEditProvinceDropdownOpen] = useState(false);
   const [editCommunityDropdownOpen, setEditCommunityDropdownOpen] = useState(false);
   const [realPendingProfiles, setRealPendingProfiles] = useState<PendingProfile[]>([]);
@@ -747,6 +748,8 @@ export function ProfileScreen({
   }) : 'Palestrista';
   const territorialCooldown = territorialCooldownInfo(session);
   const territorialFieldsLocked = territorialCooldown.active && !isMissingProfileScope(session);
+  const editFormLocked = !profileEditUnlocked;
+  const territorialControlsLocked = editFormLocked || territorialFieldsLocked;
   useEffect(() => {
     setEditFullName(profileDraftValue(session?.fullName));
     setEditContact(profileDraftValue(session?.contact));
@@ -762,6 +765,7 @@ export function ProfileScreen({
     setEditPmNumber(session?.personalPmNumber ? String(session.personalPmNumber) : '');
     setEditPmProvince(session?.personalPmProvince ?? session?.province ?? '');
     setEditPmMotto(session?.personalPmMotto ?? session?.pmMotto ?? '');
+    setProfileEditUnlocked(false);
   }, [session]);
 
   useEffect(() => {
@@ -1846,6 +1850,7 @@ export function ProfileScreen({
     setEditCommunityDropdownOpen(false);
     setEditPerseveranceYearDropdownOpen(false);
     setEditPmProvinceDropdownOpen(false);
+    setProfileEditUnlocked(false);
     setAuthMessage('');
   }
 
@@ -1974,6 +1979,10 @@ export function ProfileScreen({
     if (!session) {
       return;
     }
+    if (!profileEditUnlocked) {
+      setAuthMessage('Presiona Editar para habilitar cambios en tu perfil.');
+      return;
+    }
 
     if (!editProvince || !editCommunity) {
       setAuthMessage('Elegir provincia y comunidad es obligatorio.');
@@ -2095,6 +2104,7 @@ export function ProfileScreen({
       provinceCommunityChangedAt: changedTerritoryAt
     });
     await loadRealProfile(authData.user.id, authData.user.email ?? session.email ?? session.fullName);
+    setProfileEditUnlocked(false);
     setAuthMessage(mayDowngrade
       ? 'Tu provincia/comunidad fue actualizada. Tu rango fue ajustado a Sedimentador según las reglas del movimiento.'
       : changeDone('Perfil guardado.'));
@@ -4072,15 +4082,21 @@ export function ProfileScreen({
               </View>
             ) : null}
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tus datos personales pueden editarse normalmente. Provincia y comunidad solo pueden cambiarse cada {territorialProfileCooldownDays} dias.</Text>
+            {!profileEditUnlocked ? (
+              <TouchableOpacity style={styles.primaryButton} onPress={() => setProfileEditUnlocked(true)}>
+                <Ionicons name="create-outline" size={18} color={palette.white} />
+                <Text style={styles.primaryButtonText}>Editar</Text>
+              </TouchableOpacity>
+            ) : null}
             {territorialFieldsLocked ? (
               <View style={styles.completionNotice}>
                 <Ionicons name="lock-closed-outline" size={20} color={palette.red} />
                 <Text style={styles.completionNoticeText}>Provincia y comunidad estan bloqueadas por {territorialCooldown.daysLeft} dia(s). El resto del perfil sigue editable.</Text>
               </View>
             ) : null}
-            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName}  placeholderTextColor={inputPlaceholderColor} />
-            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Apodo" value={editNickname} onChangeText={setEditNickname}  placeholderTextColor={inputPlaceholderColor} />
-            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Contacto" value={editContact} onChangeText={setEditContact}  placeholderTextColor={inputPlaceholderColor} />
+            <TextInput editable={profileEditUnlocked} style={[styles.input, isDark && styles.inputDark, editFormLocked && { opacity: 0.62 }]} placeholder="Nombre y apellido" value={editFullName} onChangeText={setEditFullName}  placeholderTextColor={inputPlaceholderColor} />
+            <TextInput editable={profileEditUnlocked} style={[styles.input, isDark && styles.inputDark, editFormLocked && { opacity: 0.62 }]} placeholder="Apodo" value={editNickname} onChangeText={setEditNickname}  placeholderTextColor={inputPlaceholderColor} />
+            <TextInput editable={profileEditUnlocked} style={[styles.input, isDark && styles.inputDark, editFormLocked && { opacity: 0.62 }]} placeholder="Contacto" value={editContact} onChangeText={setEditContact}  placeholderTextColor={inputPlaceholderColor} />
             <View style={styles.settingRow}>
               <View style={styles.settingRowText}>
                 <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Usar apodo en saludos</Text>
@@ -4089,6 +4105,7 @@ export function ProfileScreen({
               <Switch
                 value={editUseNicknameInGreetings}
                 onValueChange={setEditUseNicknameInGreetings}
+                disabled={editFormLocked}
                 trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
                 thumbColor={editUseNicknameInGreetings ? palette.red : palette.white}
               />
@@ -4110,6 +4127,7 @@ export function ProfileScreen({
                         borderWidth: normalizeOptionalHexColor(editPersonalGreetingColor) === color ? 3 : 1
                       }
                     ]}
+                    disabled={editFormLocked}
                     onPress={() => setEditPersonalGreetingColor(color)}
                   >
                     {normalizeOptionalHexColor(editPersonalGreetingColor) === color ? <Ionicons name="checkmark" size={18} color={palette.white} /> : null}
@@ -4121,11 +4139,12 @@ export function ProfileScreen({
                 placeholder={`Institucional ${institutionalGreetingColor}`}
                 value={editPersonalGreetingColor}
                 onChangeText={setEditPersonalGreetingColor}
+                editable={profileEditUnlocked}
                 autoCapitalize="characters"
                 placeholderTextColor={inputPlaceholderColor}
               />
               {personalGreetingColorError(editPersonalGreetingColor) ? <Text style={[styles.cardText, { color: palette.red }]}>{personalGreetingColorError(editPersonalGreetingColor)}</Text> : null}
-              <TouchableOpacity style={styles.actionPill} onPress={() => setEditPersonalGreetingColor('')}>
+              <TouchableOpacity style={[styles.actionPill, editFormLocked && { opacity: 0.62 }]} disabled={editFormLocked} onPress={() => setEditPersonalGreetingColor('')}>
                 <Ionicons name="refresh-outline" size={16} color={palette.red} />
                 <Text style={styles.actionPillText}>Usar color institucional</Text>
               </TouchableOpacity>
@@ -4133,17 +4152,17 @@ export function ProfileScreen({
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mostrar en credencial</Text>
             <View style={styles.filterRow}>
               {(['name', 'nickname', 'both'] as const).map((mode) => (
-                <TouchableOpacity key={mode} style={[styles.filterChip, editCredentialNameMode === mode && styles.filterChipActive]} onPress={() => setEditCredentialNameMode(mode)}>
+                <TouchableOpacity key={mode} disabled={editFormLocked} style={[styles.filterChip, editCredentialNameMode === mode && styles.filterChipActive, editFormLocked && { opacity: 0.62 }]} onPress={() => setEditCredentialNameMode(mode)}>
                   <Text style={[styles.filterChipText, editCredentialNameMode === mode && styles.filterChipTextActive]}>{mode === 'name' ? 'Nombre' : mode === 'nickname' ? 'Apodo' : 'Ambos'}</Text>
                 </TouchableOpacity>
               ))}
             </View>
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Año de inicio en el Movimiento</Text>
-            <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditPerseveranceYearDropdownOpen(!editPerseveranceYearDropdownOpen)}>
+            <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark, editFormLocked && { opacity: 0.62 }]} disabled={editFormLocked} onPress={() => setEditPerseveranceYearDropdownOpen(!editPerseveranceYearDropdownOpen)}>
               <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editPerseveranceStartYear || 'Seleccionar año'}</Text>
               <Ionicons name={editPerseveranceYearDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
             </TouchableOpacity>
-            {editPerseveranceYearDropdownOpen ? (
+            {editPerseveranceYearDropdownOpen && profileEditUnlocked ? (
               <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled keyboardShouldPersistTaps="handled">
                 {perseveranceStartYears.map((year) => (
                   <TouchableOpacity key={year} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditPerseveranceStartYear(year); setEditPerseveranceYearDropdownOpen(false); }}>
@@ -4158,17 +4177,17 @@ export function ProfileScreen({
                 <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>PM personal</Text>
                 <View style={styles.filterRow}>
                   {(['pmm', 'pmf'] as const).map((type) => (
-                    <TouchableOpacity key={type} style={[styles.filterChip, editPmType === type && styles.filterChipActive]} onPress={() => setEditPmType(type)}>
+                    <TouchableOpacity key={type} disabled={editFormLocked} style={[styles.filterChip, editPmType === type && styles.filterChipActive, editFormLocked && { opacity: 0.62 }]} onPress={() => setEditPmType(type)}>
                       <Text style={[styles.filterChipText, editPmType === type && styles.filterChipTextActive]}>{personalPmTypeLabel(type)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Numero de PM" value={editPmNumber} onChangeText={(value) => setEditPmNumber(value.replace(/[^0-9]/g, '').slice(0, 4))} keyboardType="number-pad" placeholderTextColor={inputPlaceholderColor} />
-                <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => setEditPmProvinceDropdownOpen(!editPmProvinceDropdownOpen)}>
+                <TextInput editable={profileEditUnlocked} style={[styles.input, isDark && styles.inputDark, editFormLocked && { opacity: 0.62 }]} placeholder="Numero de PM" value={editPmNumber} onChangeText={(value) => setEditPmNumber(value.replace(/[^0-9]/g, '').slice(0, 4))} keyboardType="number-pad" placeholderTextColor={inputPlaceholderColor} />
+                <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark, editFormLocked && { opacity: 0.62 }]} disabled={editFormLocked} onPress={() => setEditPmProvinceDropdownOpen(!editPmProvinceDropdownOpen)}>
                   <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editPmProvince || 'Provincia donde hiciste el PM'}</Text>
                   <Ionicons name={editPmProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
                 </TouchableOpacity>
-                {editPmProvinceDropdownOpen ? (
+                {editPmProvinceDropdownOpen && profileEditUnlocked ? (
                   <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled keyboardShouldPersistTaps="handled">
                     {registrationCommunities.map((item) => (
                       <TouchableOpacity key={`pm-${item.province}`} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditPmProvince(item.province); setEditPmProvinceDropdownOpen(false); }}>
@@ -4177,20 +4196,20 @@ export function ProfileScreen({
                     ))}
                   </ScrollView>
                 ) : null}
-                <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Lema o idea fuerza del PM" value={editPmMotto} onChangeText={setEditPmMotto}  placeholderTextColor={inputPlaceholderColor} />
+                <TextInput editable={profileEditUnlocked} style={[styles.input, isDark && styles.inputDark, editFormLocked && { opacity: 0.62 }]} placeholder="Lema o idea fuerza del PM" value={editPmMotto} onChangeText={setEditPmMotto}  placeholderTextColor={inputPlaceholderColor} />
                 {personalPmSummary({ type: editPmType, number: editPmNumber, province: editPmProvince, motto: editPmMotto }) ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{personalPmSummary({ type: editPmType, number: editPmNumber, province: editPmProvince, motto: editPmMotto })}</Text> : null}
               </>
             ) : null}
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Provincia</Text>
             <TouchableOpacity
-              style={[styles.dropdownButton, isDark && styles.dropdownButtonDark, territorialFieldsLocked && { opacity: 0.58 }]}
-              disabled={territorialFieldsLocked}
+              style={[styles.dropdownButton, isDark && styles.dropdownButtonDark, territorialControlsLocked && { opacity: 0.58 }]}
+              disabled={territorialControlsLocked}
               onPress={() => setEditProvinceDropdownOpen(!editProvinceDropdownOpen)}
             >
               <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editProvince || 'Seleccionar provincia'}</Text>
-              <Ionicons name={territorialFieldsLocked ? 'lock-closed-outline' : editProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+              <Ionicons name={territorialControlsLocked ? 'lock-closed-outline' : editProvinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
             </TouchableOpacity>
-            {editProvinceDropdownOpen && !territorialFieldsLocked ? (
+            {editProvinceDropdownOpen && !territorialControlsLocked ? (
               <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
                 {registrationCommunities.map((item) => (
                   <TouchableOpacity
@@ -4211,14 +4230,14 @@ export function ProfileScreen({
               <>
                 <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Comunidad de origen</Text>
                 <TouchableOpacity
-                  style={[styles.dropdownButton, isDark && styles.dropdownButtonDark, territorialFieldsLocked && { opacity: 0.58 }]}
-                  disabled={territorialFieldsLocked}
+                  style={[styles.dropdownButton, isDark && styles.dropdownButtonDark, territorialControlsLocked && { opacity: 0.58 }]}
+                  disabled={territorialControlsLocked}
                   onPress={() => setEditCommunityDropdownOpen(!editCommunityDropdownOpen)}
                 >
                   <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{editCommunity || 'Seleccionar comunidad'}</Text>
-                  <Ionicons name={territorialFieldsLocked ? 'lock-closed-outline' : editCommunityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
+                  <Ionicons name={territorialControlsLocked ? 'lock-closed-outline' : editCommunityDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
                 </TouchableOpacity>
-                {editCommunityDropdownOpen && !territorialFieldsLocked ? (
+                {editCommunityDropdownOpen && !territorialControlsLocked ? (
                   <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
                     {selectedEditProvince.locations.map((item) => (
                       <TouchableOpacity key={item.name} style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { setEditCommunity(item.name); setEditCommunityDropdownOpen(false); }}>
@@ -4235,7 +4254,7 @@ export function ProfileScreen({
               const selected = editGenderPreference === option;
               const narrative = genderNarratives[option];
               return (
-                <TouchableOpacity key={option} style={[styles.narrativeEditCard, isDark && styles.surfaceRowDark, selected && styles.narrativeEditCardActive]} onPress={() => setEditGenderPreference(option)} activeOpacity={0.86}>
+                <TouchableOpacity key={option} disabled={editFormLocked} style={[styles.narrativeEditCard, isDark && styles.surfaceRowDark, selected && styles.narrativeEditCardActive, editFormLocked && { opacity: 0.62 }]} onPress={() => setEditGenderPreference(option)} activeOpacity={0.86}>
                   <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selected ? palette.white : palette.red} />
                   <View style={styles.narrativeEditTextBlock}>
                     <Text style={[styles.narrativeEditTitle, isDark && styles.textDarkStrong, selected && styles.narrativeEditTitleActive]}>{narrative.title}</Text>
@@ -4244,7 +4263,7 @@ export function ProfileScreen({
                 </TouchableOpacity>
               );
             })}
-            <View style={styles.filterRow}>
+            {profileEditUnlocked ? <View style={styles.filterRow}>
               <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={saveProfile}>
                 <Text style={styles.primaryButtonText}>Guardar perfil</Text>
               </TouchableOpacity>
@@ -4252,7 +4271,7 @@ export function ProfileScreen({
                 <Ionicons name="close-outline" size={16} color={palette.red} />
                 <Text style={styles.actionPillText}>Cancelar</Text>
               </TouchableOpacity>
-            </View>
+            </View> : null}
             {authMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{authMessage}</Text> : null}
           </View> : null}
           {profilePanel === 'configuracion' ? (

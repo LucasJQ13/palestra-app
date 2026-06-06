@@ -342,6 +342,21 @@ export function useMailboxController({
     await refresh();
   }
 
+  function startDirectReply(message: MailboxMessageRecord) {
+    if ((message.mailbox_folder ?? 'entrada') !== 'entrada' || message.source !== 'direct' || !message.sender_id || message.sender_id === activeSession.id) {
+      setAuthMessage('Este mensaje no permite respuesta directa al remitente.');
+      return;
+    }
+    setFilter('entrada');
+    setTargetMode('user');
+    setSelectedUserIds([message.sender_id]);
+    setRecipientSearch(message.sender_name ?? '');
+    setDraft((current) => current.trim() ? current : `Re: ${message.subject || 'Mensaje'}\n\n`);
+    setShowComposer(true);
+    setUserDropdownOpen(false);
+    setAuthMessage('Respuesta preparada para el remitente original.');
+  }
+
   async function restoreForMe(message: MailboxMessageRecord) {
     const { error } = await restoreMailboxMessageForMe(message.id, message.source);
     if (error) {
@@ -426,6 +441,7 @@ export function useMailboxController({
     onFilterChange: setFilter,
     onResponseChange: (messageId: string, value: string) => setResponses((current) => ({ ...current, [messageId]: value })),
     onSubmitResponse: submitResponse,
+    onStartDirectReply: startDirectReply,
     onUpdateStatus: updateStatus,
     onOpenMessage: openMessage,
     onDeleteForMe: deleteForMe,

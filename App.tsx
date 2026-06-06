@@ -5,6 +5,7 @@ import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from './src/theme/palette';
 import { AppTheme, themePresets } from './src/theme/themes';
@@ -92,6 +93,12 @@ function validHexColor(value?: string | null, fallback = palette.red) {
   return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
 }
 
+function newestUnreadMailboxMessage(messages: MailboxMessageRecord[]) {
+  return messages
+    .filter((message) => (message.mailbox_folder ?? 'entrada') === 'entrada' && message.status === 'nuevo')
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] ?? null;
+}
+
 export default function App() {
   const [isBooting, setIsBooting] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('inicio');
@@ -101,6 +108,8 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [authScreenOpen, setAuthScreenOpen] = useState(false);
   const [profileInitialPanel, setProfileInitialPanel] = useState<ProfilePanel>('vista');
+  const [floatingMailboxMessage, setFloatingMailboxMessage] = useState<MailboxMessageRecord | null>(null);
+  const [dismissedMailboxMessageId, setDismissedMailboxMessageId] = useState<string | null>(null);
   const [authConfirmationOpen, setAuthConfirmationOpen] = useState(false);
   const [authConfirmationError, setAuthConfirmationError] = useState('');
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -602,6 +611,70 @@ export default function App() {
     setActiveTab(nextTab);
   }
 
+  const dismissedMailboxKey = session?.id ? `palestra.mailboxFloatingDismissed.${session.id}` : '';
+
+  async function refreshFloatingMailboxNotice() {
+    if (!session?.id || session.role === 'invitado') {
+      setFloatingMailboxMessage(null);
+      return;
+    }
+    if (activeTab === 'perfil' && profileInitialPanel === 'buzon') {
+      setFloatingMailboxMessage(null);
+      return;
+    }
+    const unread = newestUnreadMailboxMessage(await fetchMailboxMessages());
+    setFloatingMailboxMessage(unread && unread.id !== dismissedMailboxMessageId ? unread : null);
+  }
+
+  async function dismissFloatingMailboxNotice() {
+    if (!floatingMailboxMessage) {
+      return;
+    }
+    setDismissedMailboxMessageId(floatingMailboxMessage.id);
+    setFloatingMailboxMessage(null);
+    if (dismissedMailboxKey) {
+      await AsyncStorage.setItem(dismissedMailboxKey, floatingMailboxMessage.id);
+    }
+  }
+
+  async function openMailboxFromFloatingNotice() {
+    if (floatingMailboxMessage && dismissedMailboxKey) {
+      await AsyncStorage.setItem(dismissedMailboxKey, floatingMailboxMessage.id);
+      setDismissedMailboxMessageId(floatingMailboxMessage.id);
+    }
+    setFloatingMailboxMessage(null);
+    setProfileInitialPanel('buzon');
+    navigateToTab('perfil');
+  }
+
+  useEffect(() => {
+    let alive = true;
+    setFloatingMailboxMessage(null);
+    setDismissedMailboxMessageId(null);
+    if (!session?.id || session.role === 'invitado') {
+      return () => {
+        alive = false;
+      };
+    }
+    AsyncStorage.getItem(`palestra.mailboxFloatingDismissed.${session.id}`).then((value) => {
+      if (alive) {
+        setDismissedMailboxMessageId(value);
+      }
+    }).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [session?.id, session?.role]);
+
+  useEffect(() => {
+    if (!session?.id || session.role === 'invitado') {
+      return;
+    }
+    refreshFloatingMailboxNotice();
+    const timer = setInterval(refreshFloatingMailboxNotice, 45000);
+    return () => clearInterval(timer);
+  }, [session?.id, session?.role, activeTab, profileInitialPanel, dismissedMailboxMessageId]);
+
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const tabKey = response.notification.request.content.data?.tabKey;
@@ -945,6 +1018,24 @@ export default function App() {
         {appMessage && !successToastVisible ? (
           <View pointerEvents="none" style={styles.appToast}>
             <Text style={styles.appToastText}>{appMessage}</Text>
+          </View>
+        ) : null}
+        {floatingMailboxMessage && session && !(activeTab === 'perfil' && profileInitialPanel === 'buzon') ? (
+          <View style={[styles.mailboxFloatingNotice, isDarkTheme && styles.mailboxFloatingNoticeDark]}>
+            <TouchableOpacity style={styles.mailboxFloatingMain} onPress={openMailboxFromFloatingNotice} activeOpacity={0.86}>
+              <View style={[styles.mailboxFloatingIcon, { backgroundColor: identityPrimaryColor }]}>
+                <Ionicons name="mail-unread-outline" size={22} color={palette.white} />
+              </View>
+              <View style={styles.mailboxFloatingTextBlock}>
+                <Text numberOfLines={1} style={[styles.mailboxFloatingTitle, isDarkTheme && styles.textDarkStrong]}>Mensaje nuevo</Text>
+                <Text numberOfLines={1} style={[styles.mailboxFloatingMeta, isDarkTheme && styles.textDarkMuted]}>
+                  {floatingMailboxMessage.sender_name || 'Buzon'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.mailboxFloatingClose} onPress={dismissFloatingMailboxNotice} activeOpacity={0.82}>
+              <Ionicons name="close" size={16} color={identityPrimaryColor} />
+            </TouchableOpacity>
           </View>
         ) : null}
         {themeTransitionVisible ? (
