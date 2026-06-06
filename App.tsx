@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Animated, BackHandler, Easing, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, BackHandler, Easing, Image, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, StatusBar, Switch, Text, TextInput, ToastAndroid, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -13,8 +13,8 @@ import { AppThemeContext, useIsDarkTheme } from './src/theme/ThemeContext';
 import { auditLog, calendarActivities, communities, contactInfo, communityNews, faqItems, internalMessages, materials, movementHistory, news, notilestra, pendingUsers, roleDefinitions } from './src/data/content';
 import { Permission, PersonalPmType, Role, Session } from './src/types/auth';
 import { getPermissionsForRole, rolePermissions } from './src/lib/permissions';
-import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
-import { AdminUser, AdminUserLoginDiagnostic, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchPublicUserDirectory, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, PublicUserDirectoryRecord, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from './src/lib/profiles';
+import { AppCommunity, PublicationComment, RemoteAgendaItem, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunityPublications, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from './src/lib/remoteData';
+import { AdminUser, AdminUserLoginDiagnostic, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, MailboxMessageRecord, MailboxTargetMode, MotivadorPeriodRecord, NewsDraftRecord, ProvinceRoleLabelRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createMailboxMessage, createNotificationIntent, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminMotivadorPeriods, fetchAdminRequests, fetchAdminUsers, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMailboxMessages, fetchMyCommunityMembers, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchRolePermissions, fetchUserAgendaPreferences, PendingProfile, registerPushToken, repairAdminUserLogin, resolveUserRequest, respondMailboxMessage, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMailboxMessageStatus, setMotivadorPeriodStatus, setRoleAliasStatus, setUserAgendaPreference, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails } from './src/lib/profiles';
 import { supabase } from './src/lib/supabase';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from './src/lib/forum';
 import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermission, fetchLibraryItems, saveLibraryItem } from './src/lib/library';
@@ -49,7 +49,7 @@ import { credentialDisplayName, displayRoleLabel, firstNameOf, GenderPreference,
 import { changeDone, communityDowngradesRole, friendlyUploadError, hasPlausibleEmailDomain, isMissingProfileScope, isValidEmail, provinceDowngradesRole, safeAuthError, verifyEmailDomainExists } from './src/lib/appMessages';
 import { buildInitialBlocksForSection, splitConfigValue, tabLabelFromKey } from './src/lib/contentBlocks';
 import { canAccessPrivate, canCreateOrAdministrateCommunities, canEditAdminUser, canEditPageContent, canEditStaticInstitutionalPage, canManageGlobalInstagram, canManageMotivadorPanel, canManageNationalPublishedContent, canManageNewsContent, canManagePublishedContent, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from './src/lib/sessionAccess';
-import { AdminModule, AdminRequest, GlobalSearchResult, ProfilePanel, PublicProfilePreview } from './src/types/appUi';
+import { AdminModule, AdminRequest, ProfilePanel } from './src/types/appUi';
 import { internalTestSessions } from './src/lib/internalTestSessions';
 import { permissionOptions } from './src/lib/permissionLabels';
 import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, requestAndRegisterPushToken, showFeedbackMessage } from './src/lib/notificationHelpers';
@@ -58,6 +58,7 @@ import { useAppThemePreference } from './src/hooks/useAppThemePreference';
 import { useTouchPointer } from './src/hooks/useTouchPointer';
 import { useAppBootstrapData } from './src/hooks/useAppBootstrapData';
 import { useAppSessionLinks } from './src/hooks/useAppSessionLinks';
+import { useGlobalSearch } from './src/hooks/useGlobalSearch';
 
 
 Notifications.setNotificationHandler({
@@ -112,12 +113,6 @@ export default function App() {
   const [dismissedMailboxMessageId, setDismissedMailboxMessageId] = useState<string | null>(null);
   const [authConfirmationOpen, setAuthConfirmationOpen] = useState(false);
   const [authConfirmationError, setAuthConfirmationError] = useState('');
-  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
-  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
-  const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
-  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
-  const [globalSearchMessage, setGlobalSearchMessage] = useState('');
-  const [globalSearchProfile, setGlobalSearchProfile] = useState<PublicProfilePreview | null>(null);
   const [appMessage, setAppMessage] = useState('');
   const [successToastVisible, setSuccessToastVisible] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
@@ -366,6 +361,25 @@ export default function App() {
   }, [visibleTabs, activeTab, profileInitialPanel, session]);
 
   const tabLabel = (key: TabKey) => resolvedTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
+  const {
+    close: closeGlobalSearch,
+    loading: globalSearchLoading,
+    message: globalSearchMessage,
+    open: globalSearchOpen,
+    openResult: openGlobalSearchResult,
+    profile: globalSearchProfile,
+    query: globalSearchQuery,
+    results: globalSearchResults,
+    run: runGlobalSearch,
+    setOpen: setGlobalSearchOpen,
+    setProfile: setGlobalSearchProfile,
+    setQuery: setGlobalSearchQuery
+  } = useGlobalSearch({
+    session,
+    roleAliases: adminConfig.settings.roleAliases,
+    tabLabel,
+    navigateToTab
+  });
   const pageEditorProps = (key: TabKey): PageEditorProps => ({
     tabKey: key,
     title: tabLabel(key),
@@ -402,190 +416,6 @@ export default function App() {
     setActiveTab('perfil');
     setTabHistory(['perfil']);
     showToastSuccess('Volviste a Administrador');
-  }
-
-  async function runGlobalSearch() {
-    const query = globalSearchQuery.trim().toLowerCase();
-    if (query.length < 2) {
-      setGlobalSearchResults([]);
-      setGlobalSearchMessage('Escribe al menos 2 caracteres.');
-      return;
-    }
-
-    Keyboard.dismiss();
-    setGlobalSearchLoading(true);
-    setGlobalSearchMessage('');
-    try {
-      const [
-        communitiesRemote,
-        materialsRemote,
-        contentRemote,
-        newsRemote,
-        agendaRemote,
-        pmRemote,
-        communityPublicationsRemote,
-        publicUsersRemote
-      ] = await Promise.all([
-        fetchCommunities(),
-        fetchAppMaterials(session?.role === 'administrador'),
-        fetchAppContent(),
-        fetchNews(session),
-        fetchNotilestra(session),
-        fetchMotivadorPeriods(session),
-        fetchCommunityPublications(session),
-        session && session.status === 'aprobado' && session.role !== 'invitado' ? fetchPublicUserDirectory() : Promise.resolve([] as PublicUserDirectoryRecord[])
-      ]);
-
-      const matches = (values: Array<string | null | undefined>) => values
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(query));
-
-      const nextResults: GlobalSearchResult[] = [];
-
-      publicUsersRemote.forEach((user) => {
-        if (matches([user.full_name, user.nickname, user.province, user.community_name, user.role])) {
-          const role = (user.role || 'palestrista') as Role;
-          nextResults.push({
-            id: `user-${user.id}`,
-            type: 'usuario',
-            title: user.full_name ?? 'Usuario',
-            subtitle: `${displayRoleLabel(role, user.province, [], adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - ${user.community_name ?? 'Sin comunidad'} - ${user.province ?? 'Sin provincia'}`,
-            tab: 'perfil',
-            publicProfile: {
-              id: user.id,
-              fullName: user.full_name ?? 'Usuario',
-              role,
-              province: user.province,
-              communityName: user.community_name,
-              avatarUrl: user.avatar_url,
-              contact: '',
-              displayRoleLabel: user.display_role_label ?? null,
-              genderPreference: user.gender_preference ?? null,
-              nickname: user.nickname ?? null,
-              credentialNameMode: user.credential_name_mode ?? 'name',
-              perseveranceStartYear: user.perseverance_start_year ?? null,
-              personalPmType: user.personal_pm_type ?? null,
-              personalPmNumber: user.personal_pm_number ?? null,
-              personalPmProvince: user.personal_pm_province ?? null,
-              personalPmMotto: user.personal_pm_motto ?? user.pm_motto ?? null,
-              pmMotto: user.pm_motto ?? null
-            }
-          });
-        }
-      });
-
-      communitiesRemote.forEach((province) => {
-        province.locations.forEach((community) => {
-          if (matches([province.province, community.name, community.address, community.description, community.phone])) {
-            nextResults.push({
-              id: `community-${community.id ?? province.province}-${community.name}`,
-              type: 'comunidad',
-              title: community.name,
-              subtitle: `${province.province} - ${community.address}`,
-              tab: 'comunidades'
-            });
-          }
-        });
-      });
-
-      materialsRemote.forEach((material) => {
-        if (matches([material.title, material.description, material.category, material.required_permission, material.visibility])) {
-          nextResults.push({
-            id: `material-${material.id}`,
-            type: 'descarga',
-            title: material.title,
-            subtitle: `${material.category ?? 'Material'} - ${material.visibility}`,
-            tab: 'materiales'
-          });
-        }
-      });
-
-      newsRemote.forEach((item: any, index: number) => {
-        if (matches([item.title, item.body, item.scope, item.province])) {
-          nextResults.push({
-            id: `news-${item.id ?? index}`,
-            type: 'noticia',
-            title: item.title,
-            subtitle: item.scope ?? 'Noticia',
-            tab: 'inicio'
-          });
-        }
-      });
-
-      agendaRemote.forEach((item: any, index: number) => {
-        if (matches([item.title, item.body, item.scope, item.date])) {
-          nextResults.push({
-            id: `agenda-${item.id ?? index}`,
-            type: 'noticia',
-            title: item.title,
-            subtitle: `${item.scope ?? 'Agenda'} - ${item.date}`,
-            tab: 'notilestra'
-          });
-        }
-      });
-
-      pmRemote.forEach((item: any, index: number) => {
-        if (matches([item.title, item.body, item.scope, item.province, item.date])) {
-          nextResults.push({
-            id: `pm-${item.id ?? index}`,
-            type: 'pm',
-            title: item.title,
-            subtitle: `${item.scope ?? 'PM'} - ${item.date}`,
-            tab: 'periodo_motivador'
-          });
-        }
-      });
-
-      communityPublicationsRemote.forEach((item: any, index: number) => {
-        if (matches([item.title, item.body, item.communityName, item.scope, item.visibility])) {
-          nextResults.push({
-            id: `community-publication-${item.id ?? index}`,
-            type: 'aviso',
-            title: item.title,
-            subtitle: item.scope ?? item.communityName ?? 'Aviso comunitario',
-            tab: 'perfil'
-          });
-        }
-      });
-
-      contentRemote.forEach((item) => {
-        const blocksText = Array.isArray(item.blocks) ? item.blocks.map((block) => `${block.type ?? ''} ${block.value ?? ''}`).join(' ') : '';
-        if (matches([item.tab_key, item.title, item.body, blocksText])) {
-          nextResults.push({
-            id: `content-${item.tab_key}`,
-            type: 'contenido',
-            title: item.title || item.tab_key,
-            subtitle: tabLabel(item.tab_key as TabKey),
-            tab: item.tab_key as TabKey
-          });
-        }
-      });
-
-      setGlobalSearchResults(nextResults.slice(0, 80));
-      setGlobalSearchMessage(nextResults.length ? '' : 'No encontré resultados remotos para esa búsqueda.');
-    } catch (error) {
-      console.error('global search', error);
-      setGlobalSearchMessage('No pude buscar en Supabase. Revisa la conexión.');
-    } finally {
-      setGlobalSearchLoading(false);
-    }
-  }
-
-  function closeGlobalSearch() {
-    Keyboard.dismiss();
-    setGlobalSearchOpen(false);
-  }
-
-  function openGlobalSearchResult(result: GlobalSearchResult) {
-    closeGlobalSearch();
-    if (result.publicProfile) {
-      setGlobalSearchProfile(result.publicProfile);
-      navigateToTab('perfil');
-      return;
-    }
-    if (result.tab) {
-      navigateToTab(result.tab);
-    }
   }
 
   function navigateToTab(nextTab: TabKey) {
