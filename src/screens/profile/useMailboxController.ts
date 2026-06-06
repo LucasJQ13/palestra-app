@@ -10,6 +10,7 @@ import {
   MailboxMessageRecord,
   MailboxTargetMode,
   ProvinceRoleLabelRecord,
+  PublicUserDirectoryRecord,
   createMailboxMessage,
   fetchMailboxMessages,
   respondMailboxMessage,
@@ -20,7 +21,7 @@ import { roleRank } from '../../lib/roles';
 type UseMailboxControllerParams = {
   session: Session | null;
   registrationCommunities: AppCommunity[];
-  adminUsers: AdminUser[];
+  adminUsers: Array<AdminUser | PublicUserDirectoryRecord>;
   provinceRoleLabels: ProvinceRoleLabelRecord[];
   roleAliases: RoleAliasConfig[];
   setAuthMessage: (message: string) => void;
@@ -106,7 +107,17 @@ export function useMailboxController({
 
   const provinceOptions = useMemo(() => Array.from(new Set(registrationCommunities.map((item) => item.province))).sort((a, b) => a.localeCompare(b)), [registrationCommunities]);
 
-  const userOptions = useMemo(() => adminUsers.filter((user) => {
+  const directUserOptions = useMemo(() => adminUsers.filter((user) => {
+    if (user.id === activeSession.id || user.status !== 'aprobado' || user.role === 'invitado') {
+      return false;
+    }
+    if (activeSession.role !== 'administrador' && user.role === 'administrador') {
+      return false;
+    }
+    return true;
+  }), [adminUsers, activeSession.id, activeSession.role]);
+
+  const scopedUserOptions = useMemo(() => adminUsers.filter((user) => {
     if (user.role === 'administrador' || user.id === activeSession.id) {
       return false;
     }
@@ -123,48 +134,48 @@ export function useMailboxController({
   }), [adminUsers, activeSession.id, activeSession.role, activeSession.province, activeSession.communityOfOrigin]);
 
   const recipientQuery = recipientSearch.trim().toLowerCase();
-  const filteredUserOptions = useMemo(() => userOptions.filter((user) => {
+  const filteredUserOptions = useMemo(() => directUserOptions.filter((user) => {
     if (!recipientQuery) {
       return true;
     }
     return [user.full_name, user.province, user.community_name, user.role]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(recipientQuery));
-  }), [recipientQuery, userOptions]);
+  }), [recipientQuery, directUserOptions]);
 
-  const selectedUsers = useMemo(() => userOptions.filter((user) => selectedUserIds.includes(user.id)), [selectedUserIds, userOptions]);
+  const selectedUsers = useMemo(() => directUserOptions.filter((user) => selectedUserIds.includes(user.id)), [selectedUserIds, directUserOptions]);
 
   const estimatedRecipients = useMemo(() => {
     if (targetMode === 'user') {
       return selectedUserIds.length;
     }
     if (targetMode === 'all') {
-      return userOptions.length;
+      return scopedUserOptions.length;
     }
     if (targetMode === 'role') {
-      return userOptions.filter((user) => user.role === targetRole).length;
+      return scopedUserOptions.filter((user) => user.role === targetRole).length;
     }
     if (targetMode === 'province') {
       const province = targetProvince || activeSession.province;
-      return userOptions.filter((user) => user.province === province).length;
+      return scopedUserOptions.filter((user) => user.province === province).length;
     }
     if (targetMode === 'role_province') {
       const province = targetProvince || activeSession.province;
-      return userOptions.filter((user) => user.role === targetRole && user.province === province).length;
+      return scopedUserOptions.filter((user) => user.role === targetRole && user.province === province).length;
     }
     if (targetMode === 'diocesan_leadership') {
       const province = targetProvince || '';
-      return userOptions.filter((user) => ['vocal', 'coordinador_diocesano'].includes(user.role) && (!province || user.province === province)).length;
+      return scopedUserOptions.filter((user) => ['vocal', 'coordinador_diocesano'].includes(user.role) && (!province || user.province === province)).length;
     }
     if (targetMode === 'province_communities') {
-      return userOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.province === activeSession.province).length;
+      return scopedUserOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.province === activeSession.province).length;
     }
     if (['community', 'my_community'].includes(targetMode)) {
       const communityName = communityOptions.find((community) => community.id === (targetCommunityId || communityOptions[0]?.id))?.name ?? activeSession.communityOfOrigin;
-      return userOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.community_name === communityName).length;
+      return scopedUserOptions.filter((user) => ['animador_comunidad', 'coordinador_comunidad'].includes(user.role) && user.community_name === communityName).length;
     }
     return 0;
-  }, [communityOptions, selectedUserIds.length, activeSession.communityOfOrigin, activeSession.province, targetCommunityId, targetMode, targetProvince, targetRole, userOptions]);
+  }, [communityOptions, selectedUserIds.length, activeSession.communityOfOrigin, activeSession.province, targetCommunityId, targetMode, targetProvince, targetRole, scopedUserOptions]);
 
   const visibleMessages = useMemo(() => messages.filter((message) => {
     if (filter === 'recibidos') {

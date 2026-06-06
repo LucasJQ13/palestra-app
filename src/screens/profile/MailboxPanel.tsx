@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
-import { AdminUser, MailboxMessageRecord, MailboxTargetMode, ProvinceRoleLabelRecord } from '../../lib/profiles';
+import { AdminUser, MailboxMessageRecord, MailboxTargetMode, ProvinceRoleLabelRecord, PublicUserDirectoryRecord } from '../../lib/profiles';
 import { Role, Session } from '../../types/auth';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleRank, visibleHierarchyFor } from '../../lib/roles';
@@ -112,8 +112,8 @@ export function MailboxPanel({
   recipientSearch: string;
   userDropdownOpen: boolean;
   selectedUserIds: string[];
-  filteredUserOptions: AdminUser[];
-  selectedUsers: AdminUser[];
+  filteredUserOptions: Array<AdminUser | PublicUserDirectoryRecord>;
+  selectedUsers: Array<AdminUser | PublicUserDirectoryRecord>;
   provinceRoleLabels: ProvinceRoleLabelRecord[];
   roleAliases: RoleAliasConfig[];
   estimatedRecipients: number;
@@ -241,7 +241,7 @@ export function MailboxPanel({
                   {filteredUserOptions.length === 0 ? <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>Sin resultados</Text> : null}
                   {filteredUserOptions.slice(0, 60).map((user) => {
                     const selectedUser = selectedUserIds.includes(user.id);
-                    const userName = user.full_name?.trim() || user.nickname?.trim() || user.email?.trim() || 'Usuario sin nombre';
+                    const userName = user.full_name?.trim() || user.nickname?.trim() || 'Usuario sin nombre';
                     const userMeta = [
                       roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, roleAliases, user.gender_preference ?? null),
                       user.community_name || 'Sin comunidad',

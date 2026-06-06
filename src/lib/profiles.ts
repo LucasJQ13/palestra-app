@@ -45,6 +45,13 @@ export type AdminUser = {
   email_confirmed_at: string | null;
 };
 
+export type PublicUserDirectoryRecord = Omit<AdminUser, 'email' | 'phone' | 'email_confirmed_at' | 'use_nickname_in_greetings'> & {
+  email?: never;
+  phone?: never;
+  email_confirmed_at?: never;
+  use_nickname_in_greetings?: never;
+};
+
 export type AdminUserLoginDiagnostic = {
   searched_email: string;
   auth_exists: boolean;
@@ -464,6 +471,20 @@ export async function fetchAdminUsers(): Promise<AdminUser[]> {
     }
 
     return data as AdminUser[];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchPublicUserDirectory(): Promise<PublicUserDirectoryRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_public_user_directory');
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data as PublicUserDirectoryRecord[];
   } catch {
     return [];
   }
