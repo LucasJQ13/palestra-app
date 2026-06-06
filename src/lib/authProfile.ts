@@ -25,6 +25,7 @@ type MyProfileRow = {
   personal_pm_province?: string | null;
   personal_pm_motto?: string | null;
   pm_motto?: string | null;
+  personal_greeting_color?: string | null;
 };
 
 export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ session: Session | null; error?: string }> {
@@ -67,6 +68,7 @@ export async function getMyProfileSession(fallbackEmail = 'Usuario'): Promise<{ 
       personalPmProvince: row.personal_pm_province ?? null,
       personalPmMotto: row.personal_pm_motto ?? row.pm_motto ?? null,
       pmMotto: row.pm_motto ?? null,
+      personalGreetingColor: row.personal_greeting_color ?? null,
       status: row.status ?? 'pendiente',
       permissions
     }

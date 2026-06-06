@@ -106,6 +106,45 @@ function userListDisplayName(user: { id?: string; user_id?: string | null; full_
     || (fallbackId ? `Usuario ${fallbackId.slice(0, 8)}` : 'Usuario');
 }
 
+const personalGreetingColorOptions = ['#2fb66d', '#2d8dc8', '#f28c28', '#ef4444', '#8b5cf6', '#d946ef', '#14b8a6', '#0f766e'];
+
+function normalizeOptionalHexColor(value?: string | null) {
+  const raw = (value ?? '').trim();
+  if (!raw) {
+    return null;
+  }
+  const color = raw.startsWith('#') ? raw : `#${raw}`;
+  return /^#[0-9a-f]{6}$/i.test(color) ? color.toUpperCase() : color;
+}
+
+function isValidHexColor(value?: string | null) {
+  return /^#[0-9a-f]{6}$/i.test((value ?? '').trim());
+}
+
+function hexLuminance(hex: string) {
+  const normalized = hex.replace('#', '');
+  const [red, green, blue] = [0, 2, 4].map((start) => {
+    const channel = parseInt(normalized.slice(start, start + 2), 16) / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function personalGreetingColorError(value?: string | null) {
+  const normalized = normalizeOptionalHexColor(value);
+  if (!normalized) {
+    return '';
+  }
+  if (!isValidHexColor(normalized)) {
+    return 'El color del saludo debe guardarse como HEX, por ejemplo #2FB66D.';
+  }
+  const luminance = hexLuminance(normalized);
+  if (luminance < 0.08 || luminance > 0.9) {
+    return 'Elegí un color con contraste suficiente para que el saludo sea legible.';
+  }
+  return '';
+}
+
 export function ProfileScreen({
   session,
   onSessionChange,
@@ -234,6 +273,7 @@ export function ProfileScreen({
   const [editNickname, setEditNickname] = useState(session?.nickname ?? '');
   const [editUseNicknameInGreetings, setEditUseNicknameInGreetings] = useState(Boolean(session?.useNicknameInGreetings));
   const [editCredentialNameMode, setEditCredentialNameMode] = useState<'name' | 'nickname' | 'both'>(session?.credentialNameMode ?? 'name');
+  const [editPersonalGreetingColor, setEditPersonalGreetingColor] = useState(session?.personalGreetingColor ?? '');
   const [editPerseveranceStartYear, setEditPerseveranceStartYear] = useState(session?.perseveranceStartYear ? String(session.perseveranceStartYear) : '');
   const [editPerseveranceYearDropdownOpen, setEditPerseveranceYearDropdownOpen] = useState(false);
   const [editPmType, setEditPmType] = useState<PersonalPmType | ''>(session?.personalPmType ?? '');
@@ -673,6 +713,14 @@ export function ProfileScreen({
     setAuthMessage,
     onEnsureAdminUsers: loadAdminUsers
   });
+  const institutionalGreetingColor = isValidHexColor(adminConfig.identity.greetingNameColor) ? adminConfig.identity.greetingNameColor!.trim() : '#2fb66d';
+  const normalizedEditGreetingColor = normalizeOptionalHexColor(editPersonalGreetingColor);
+  const editGreetingPreviewColor = normalizedEditGreetingColor && isValidHexColor(normalizedEditGreetingColor) ? normalizedEditGreetingColor : institutionalGreetingColor;
+  const editGreetingPreviewName = session ? homeGreetingName({
+    ...session,
+    nickname: editNickname.trim() || null,
+    useNicknameInGreetings: editUseNicknameInGreetings
+  }) : 'Palestrista';
   useEffect(() => {
     setEditFullName(session?.fullName ?? '');
     setEditContact(session?.contact ?? '');
@@ -682,6 +730,7 @@ export function ProfileScreen({
     setEditNickname(session?.nickname ?? '');
     setEditUseNicknameInGreetings(Boolean(session?.useNicknameInGreetings));
     setEditCredentialNameMode(session?.credentialNameMode ?? 'name');
+    setEditPersonalGreetingColor(session?.personalGreetingColor ?? '');
     setEditPerseveranceStartYear(session?.perseveranceStartYear ? String(session.perseveranceStartYear) : '');
     setEditPmType(session?.personalPmType ?? '');
     setEditPmNumber(session?.personalPmNumber ? String(session.personalPmNumber) : '');
@@ -1734,7 +1783,8 @@ export function ProfileScreen({
         personalPmNumber: result.session.personalPmNumber ?? session.personalPmNumber,
         personalPmProvince: result.session.personalPmProvince ?? session.personalPmProvince,
         personalPmMotto: result.session.personalPmMotto ?? session.personalPmMotto,
-        pmMotto: result.session.pmMotto ?? session.pmMotto
+        pmMotto: result.session.pmMotto ?? session.pmMotto,
+        personalGreetingColor: result.session.personalGreetingColor ?? session.personalGreetingColor
       } : result.session);
     }
   }
@@ -1869,6 +1919,12 @@ export function ProfileScreen({
       setAuthMessage('Elegir provincia y comunidad es obligatorio.');
       return;
     }
+    const greetingColorValidation = personalGreetingColorError(editPersonalGreetingColor);
+    if (greetingColorValidation) {
+      setAuthMessage(greetingColorValidation);
+      return;
+    }
+    const personalGreetingColor = normalizeOptionalHexColor(editPersonalGreetingColor);
     const canUsePersonalPm = roleRank(session.role) >= roleRank('sedimentador');
     if (canUsePersonalPm && (editPmType || editPmNumber || editPmProvince || editPmMotto.trim())) {
       if (!editPmType || !editPmNumber.trim() || !editPmProvince) {
@@ -1918,7 +1974,8 @@ export function ProfileScreen({
         personalPmNumber: canUsePersonalPm && editPmNumber ? Number(editPmNumber) : null,
         personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
         personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
-        pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null
+        pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
+        personalGreetingColor
       });
       return;
     }
@@ -1932,7 +1989,8 @@ export function ProfileScreen({
       personalPmNumber: canUsePersonalPm && editPmNumber ? Number(editPmNumber) : null,
       personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
       personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
-      pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null
+      pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
+      personalGreetingColor: personalGreetingColor ?? ''
     };
     const { error } = coreProfileChanged ? await updateMyProfile({
       fullName: editFullName || session.fullName,
@@ -1965,7 +2023,8 @@ export function ProfileScreen({
       personalPmNumber: canUsePersonalPm && editPmNumber ? Number(editPmNumber) : null,
       personalPmProvince: canUsePersonalPm ? (editPmProvince || null) : null,
       personalPmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
-      pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null
+      pmMotto: canUsePersonalPm ? (editPmMotto.trim() || null) : null,
+      personalGreetingColor
     });
     await loadRealProfile(authData.user.id, authData.user.email ?? session.email ?? session.fullName);
     setAuthMessage(mayDowngrade
@@ -3959,6 +4018,43 @@ export function ProfileScreen({
                 trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
                 thumbColor={editUseNicknameInGreetings ? palette.red : palette.white}
               />
+            </View>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Color personal del saludo</Text>
+            <View style={[styles.card, isDark && styles.surfaceCardDark]}>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Vista previa</Text>
+              <Text style={[styles.cardTitle, { color: editGreetingPreviewColor }]}>{editGreetingPreviewName}</Text>
+              <View style={styles.filterRow}>
+                {personalGreetingColorOptions.map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    accessibilityLabel={`Elegir color ${color}`}
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: color,
+                        borderColor: normalizeOptionalHexColor(editPersonalGreetingColor) === color ? palette.ink : 'rgba(45, 141, 200, 0.24)',
+                        borderWidth: normalizeOptionalHexColor(editPersonalGreetingColor) === color ? 3 : 1
+                      }
+                    ]}
+                    onPress={() => setEditPersonalGreetingColor(color)}
+                  >
+                    {normalizeOptionalHexColor(editPersonalGreetingColor) === color ? <Ionicons name="checkmark" size={18} color={palette.white} /> : null}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={[styles.input, styles.colorInput, isDark && styles.inputDark]}
+                placeholder={`Institucional ${institutionalGreetingColor}`}
+                value={editPersonalGreetingColor}
+                onChangeText={setEditPersonalGreetingColor}
+                autoCapitalize="characters"
+                placeholderTextColor={inputPlaceholderColor}
+              />
+              {personalGreetingColorError(editPersonalGreetingColor) ? <Text style={[styles.cardText, { color: palette.red }]}>{personalGreetingColorError(editPersonalGreetingColor)}</Text> : null}
+              <TouchableOpacity style={styles.actionPill} onPress={() => setEditPersonalGreetingColor('')}>
+                <Ionicons name="refresh-outline" size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>Usar color institucional</Text>
+              </TouchableOpacity>
             </View>
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mostrar en credencial</Text>
             <View style={styles.filterRow}>

@@ -42,6 +42,7 @@ export type AdminUser = {
   personal_pm_province?: string | null;
   personal_pm_motto?: string | null;
   pm_motto?: string | null;
+  personal_greeting_color?: string | null;
   email_confirmed_at: string | null;
 };
 
@@ -913,6 +914,7 @@ export async function updateMyProfile(values: {
   personalPmProvince?: string | null;
   personalPmMotto?: string | null;
   pmMotto?: string | null;
+  personalGreetingColor?: string | null;
 }) {
   const baseResult = await supabase.rpc('update_my_profile', {
     p_full_name: values.fullName,
@@ -932,7 +934,8 @@ export async function updateMyProfile(values: {
     p_personal_pm_type: values.personalPmType ?? null,
     p_personal_pm_number: values.personalPmNumber ?? null,
     p_personal_pm_province: values.personalPmProvince ?? null,
-    p_personal_pm_motto: values.personalPmMotto ?? values.pmMotto ?? null
+    p_personal_pm_motto: values.personalPmMotto ?? values.pmMotto ?? null,
+    p_personal_greeting_color: values.personalGreetingColor ?? null
   });
 }
 
@@ -946,6 +949,7 @@ export async function updateMyProfileDetails(values: {
   personalPmProvince?: string | null;
   personalPmMotto?: string | null;
   pmMotto?: string | null;
+  personalGreetingColor?: string | null;
 }) {
   return supabase.rpc('update_my_profile_details_v2', {
     p_nickname: values.nickname ?? null,
@@ -955,7 +959,8 @@ export async function updateMyProfileDetails(values: {
     p_personal_pm_type: values.personalPmType ?? null,
     p_personal_pm_number: values.personalPmNumber ?? null,
     p_personal_pm_province: values.personalPmProvince ?? null,
-    p_personal_pm_motto: values.personalPmMotto ?? values.pmMotto ?? null
+    p_personal_pm_motto: values.personalPmMotto ?? values.pmMotto ?? null,
+    p_personal_greeting_color: values.personalGreetingColor === undefined ? null : values.personalGreetingColor
   });
 }
 

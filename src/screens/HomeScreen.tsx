@@ -63,7 +63,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
   const greeting = homeGreeting(session, adminConfig.home);
   const greetingName = homeGreetingName(session);
   const identityButtonColor = validHexColor(adminConfig.identity.buttonColor, adminConfig.identity.primaryColor || palette.red);
-  const greetingNameColor = validHexColor(adminConfig.identity.greetingNameColor, '#2fb66d');
+  const greetingNameColor = validHexColor(session?.personalGreetingColor, validHexColor(adminConfig.identity.greetingNameColor, '#2fb66d'));
   const designerCreditUrl = normalizeExternalUrl(adminConfig.identity.designerCreditUrl || defaultDesignerCreditUrl);
   const enabledHomeModules = new Set(adminConfig.home.visibleModules?.length ? adminConfig.home.visibleModules : defaultAdminConfig.home.visibleModules);
   const homeModuleEnabled = (moduleKey: string) => enabledHomeModules.has(moduleKey);
