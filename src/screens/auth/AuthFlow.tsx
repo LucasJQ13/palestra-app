@@ -500,7 +500,7 @@ function RegisterStepCommunity({ draft, onChange, provinces, selectedProvince }:
   return (
     <View style={styles.authStepContent}>
       <Text style={styles.authHeroTitle}>Comunidad y acceso</Text>
-      <Text style={styles.authHeroText}>Elegí tu lugar de origen y prepará tus datos de ingreso.</Text>
+      <Text style={styles.authHeroText}>Elegí la provincia donde perseverás o participás actualmente en Palestra y prepará tus datos de ingreso.</Text>
       <AuthSelect label="Provincia" value={draft.province || 'Seleccioná tu provincia'} open={provinceOpen} onToggle={() => setProvinceOpen(!provinceOpen)}>
         {provinces.map((item) => (
           <TouchableOpacity key={item.province} style={styles.authSelectItem} onPress={() => { onChange({ province: item.province, community: '' }); setProvinceOpen(false); setCommunityOpen(false); }}>

@@ -44,6 +44,14 @@ type RemoteCommunitySectionRow = {
   } | { name: string }[] | null;
 };
 
+type FetchCommunitiesOptions = {
+  includeInactiveProvinces?: boolean;
+  includeArchivedProvinces?: boolean;
+  includeInactiveCommunities?: boolean;
+  includeArchivedCommunities?: boolean;
+  includeEmptyProvinces?: boolean;
+};
+
 export type AppCommunityLocation = (typeof fallbackCommunities)[number]['locations'][number] & {
   latitude?: number | null;
   longitude?: number | null;
@@ -69,6 +77,14 @@ export type RemoteAgendaItem = {
   mapUrl?: string;
 };
 
+export const adminCommunitiesFetchOptions: FetchCommunitiesOptions = {
+  includeInactiveProvinces: true,
+  includeArchivedProvinces: true,
+  includeInactiveCommunities: true,
+  includeArchivedCommunities: true,
+  includeEmptyProvinces: true
+};
+
 export type PublicationComment = {
   id: string;
   publicationId: string;
@@ -82,7 +98,21 @@ export type PublicationComment = {
   authorCommunity?: string | null;
 };
 
-export async function fetchCommunities(): Promise<AppCommunity[]> {
+function isActiveFlag(value?: boolean | null) {
+  return value !== false;
+}
+
+function isVisibleProvince(row: Pick<RemoteProvinceRow, 'is_active' | 'archived_at'>, options: FetchCommunitiesOptions) {
+  return (options.includeInactiveProvinces || isActiveFlag(row.is_active))
+    && (options.includeArchivedProvinces || !row.archived_at);
+}
+
+function isVisibleCommunity(row: Pick<RemoteCommunityRow, 'is_active' | 'archived_at'>, options: FetchCommunitiesOptions) {
+  return (options.includeInactiveCommunities || isActiveFlag(row.is_active))
+    && (options.includeArchivedCommunities || !row.archived_at);
+}
+
+export async function fetchCommunities(options: FetchCommunitiesOptions = {}): Promise<AppCommunity[]> {
   let data: unknown[] | null = null;
   let error: { message?: string } | null = null;
   let provinceRows: RemoteProvinceRow[] = [];
@@ -123,11 +153,17 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
     }
   }
   try {
-    const result = await supabase
+    let query = supabase
       .from('communities')
       .select('id, name, group_type, address, phone, meeting_day, meeting_time, description, image_url, latitude, longitude, is_active, archived_at, provinces(name, region, logo_url, is_active, archived_at)')
-      .is('archived_at', null)
       .order('name');
+    if (!options.includeArchivedCommunities) {
+      query = query.is('archived_at', null);
+    }
+    if (!options.includeInactiveCommunities) {
+      query = query.neq('is_active', false);
+    }
+    const result = await query;
     data = result.data as unknown[] | null;
     error = result.error;
   } catch {
@@ -136,11 +172,17 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
 
   if (error) {
     try {
-      const fallbackResult = await supabase
+      let fallbackQuery = supabase
         .from('communities')
         .select('id, name, group_type, address, phone, meeting_day, meeting_time, description, image_url, is_active, archived_at, provinces(name, region)')
-        .is('archived_at', null)
         .order('name');
+      if (!options.includeArchivedCommunities) {
+        fallbackQuery = fallbackQuery.is('archived_at', null);
+      }
+      if (!options.includeInactiveCommunities) {
+        fallbackQuery = fallbackQuery.neq('is_active', false);
+      }
+      const fallbackResult = await fallbackQuery;
       data = fallbackResult.data as unknown[] | null;
       error = fallbackResult.error;
     } catch {
@@ -158,6 +200,9 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
     if (!row.name) {
       return;
     }
+    if (!isVisibleProvince(row, options)) {
+      return;
+    }
     grouped.set(row.name, {
       id: row.id,
       province: row.name,
@@ -172,6 +217,12 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
   });
 
   ((data ?? []) as unknown as RemoteCommunityRow[]).forEach((row) => {
+    if (!isVisibleCommunity(row, options)) {
+      return;
+    }
+    if (row.provinces && !isVisibleProvince(row.provinces, options)) {
+      return;
+    }
     const province = row.provinces?.name ?? 'Sin provincia';
     const region = row.provinces?.region ?? 'Sin region';
     const current = grouped.get(province) ?? {
@@ -204,7 +255,8 @@ export async function fetchCommunities(): Promise<AppCommunity[]> {
     grouped.set(province, current);
   });
 
-  return Array.from(grouped.values());
+  return Array.from(grouped.values())
+    .filter((province) => options.includeEmptyProvinces || province.locations.length > 0);
 }
 
 export async function fetchNews(session?: Session | null) {
