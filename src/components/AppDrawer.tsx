@@ -53,6 +53,7 @@ export function AppDrawer({
               <Ionicons name="close-outline" size={22} color={isDarkTheme ? themePresets.dark.colors.text : palette.ink} />
             </TouchableOpacity>
           </View>
+          <Text style={[styles.drawerSectionLabel, isDarkTheme && styles.drawerItemMetaDark]}>Navegacion</Text>
           <ScrollView style={styles.drawerScroll} contentContainerStyle={styles.drawerScrollContent} showsVerticalScrollIndicator={false}>
             {items.map((item) => (
               <TouchableOpacity key={item.key} style={[styles.drawerItem, isDarkTheme && styles.drawerItemDark, item.active && styles.drawerItemActive, item.active && isDarkTheme && styles.drawerItemActiveDark]} onPress={item.action} activeOpacity={0.84}>
@@ -63,7 +64,7 @@ export function AppDrawer({
                   <Text numberOfLines={1} style={[styles.drawerItemText, isDarkTheme && styles.drawerItemTextDark, item.active && styles.drawerItemTextActive]}>{item.label}</Text>
                   {item.meta ? <Text numberOfLines={1} style={[styles.drawerItemMeta, isDarkTheme && styles.drawerItemMetaDark]}>{item.meta}</Text> : null}
                 </View>
-                {item.active ? <Ionicons name="ellipse" size={8} color={identityPrimaryColor} /> : null}
+                {item.active ? <View style={[styles.drawerActiveMark, { backgroundColor: identityPrimaryColor }]} /> : null}
               </TouchableOpacity>
             ))}
           </ScrollView>

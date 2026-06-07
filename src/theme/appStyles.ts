@@ -399,28 +399,26 @@ export const styles = StyleSheet.create({
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 100,
-    backgroundColor: palette.white,
+    backgroundColor: ui.color.appBackground,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 34
   },
   loadingFlash: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FFFFFF'
+    backgroundColor: ui.color.surface
   },
   loadingLogoFrame: {
-    width: 142,
-    height: 142,
-    borderRadius: 71,
+    width: 118,
+    height: 118,
+    borderRadius: 32,
     borderWidth: 1,
-    borderColor: palette.line,
-    backgroundColor: palette.white,
+    borderColor: ui.color.borderStrong,
+    backgroundColor: ui.color.surface,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.16,
-    shadowRadius: 24
+    ...ui.shadow.raised
   },
   loadingLogo: {
     width: '100%',
@@ -428,27 +426,28 @@ export const styles = StyleSheet.create({
   },
   loadingTitle: {
     color: palette.ink,
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '900',
-    marginTop: 18
+    marginTop: 22
   },
   loadingSubtitle: {
     color: palette.inkMuted,
     fontSize: 14,
+    fontWeight: '800',
     marginTop: 4
   },
   loadingBarTrack: {
     width: 220,
-    height: 7,
-    borderRadius: 7,
-    backgroundColor: palette.whiteSoft,
+    height: 5,
+    borderRadius: ui.radius.pill,
+    backgroundColor: ui.color.surfaceMuted,
     overflow: 'hidden',
     marginTop: 28
   },
   loadingBarPulse: {
     width: 92,
-    height: 7,
-    borderRadius: 7,
+    height: 5,
+    borderRadius: ui.radius.pill,
     backgroundColor: palette.red
   },
   designerCreditLoading: {
@@ -919,16 +918,16 @@ export const styles = StyleSheet.create({
     borderColor: themePresets.dark.colors.border
   },
   drawerScroll: {
-    marginTop: 14
+    marginTop: 8
   },
   drawerScrollContent: {
     gap: 8,
     paddingBottom: 28
   },
   drawerItem: {
-    minHeight: 58,
-    borderRadius: ui.radius.lg,
-    paddingHorizontal: 10,
+    minHeight: 54,
+    borderRadius: ui.radius.sm,
+    paddingHorizontal: 8,
     paddingVertical: 9,
     flexDirection: 'row',
     alignItems: 'center',
@@ -938,15 +937,15 @@ export const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.02)'
   },
   drawerItemActive: {
-    backgroundColor: 'rgba(45, 141, 200, 0.12)'
+    backgroundColor: ui.color.primarySoft
   },
   drawerItemActiveDark: {
     backgroundColor: 'rgba(93, 167, 219, 0.18)'
   },
   drawerIconFrame: {
-    width: 40,
-    height: 40,
-    borderRadius: ui.radius.md,
+    width: 38,
+    height: 38,
+    borderRadius: ui.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(45, 141, 200, 0.09)'
@@ -963,7 +962,7 @@ export const styles = StyleSheet.create({
   },
   drawerItemText: {
     color: palette.ink,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '900'
   },
   drawerItemTextDark: {
@@ -977,6 +976,20 @@ export const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 2
+  },
+  drawerSectionLabel: {
+    color: palette.inkMuted,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0,
+    textTransform: 'uppercase',
+    marginTop: 16,
+    marginBottom: 2
+  },
+  drawerActiveMark: {
+    width: 4,
+    height: 24,
+    borderRadius: ui.radius.pill
   },
   drawerItemMetaDark: {
     color: themePresets.dark.colors.muted
@@ -1068,14 +1081,13 @@ export const styles = StyleSheet.create({
     gap: 10
   },
   hero: {
-    backgroundColor: palette.red,
-    borderRadius: 30,
-    padding: 24,
+    backgroundColor: ui.color.surface,
+    borderRadius: ui.radius.xl,
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    padding: 22,
     overflow: 'hidden',
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.18,
-    shadowRadius: 22,
-    elevation: 4,
+    ...ui.shadow.soft,
     marginBottom: 2
   },
   heroGlow: {
@@ -1083,56 +1095,93 @@ export const styles = StyleSheet.create({
     width: 170,
     height: 170,
     borderRadius: 85,
-    backgroundColor: '#9FD8E8',
-    opacity: 0.46,
+    backgroundColor: ui.color.appBackgroundTint,
+    opacity: 0.86,
     right: -42,
     top: -54
   },
   kicker: {
-    color: palette.goldSoft,
-    fontSize: 13,
-    fontWeight: '800',
+    color: palette.red,
+    fontSize: 12,
+    fontWeight: '900',
     textTransform: 'uppercase'
   },
   heroTitle: {
-    color: palette.white,
-    fontSize: 30,
+    color: palette.ink,
+    fontSize: 29,
     fontWeight: '900',
-    marginTop: 8
+    lineHeight: 35,
+    marginTop: 8,
+    maxWidth: '92%'
   },
   heroGreetingName: {
     color: '#56D486',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowColor: 'transparent',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4
   },
   heroText: {
-    color: 'rgba(255, 255, 255, 0.86)',
+    color: palette.inkMuted,
     fontSize: 15,
     lineHeight: 22,
-    marginTop: 10
+    marginTop: 10,
+    maxWidth: '94%'
+  },
+  homeHeroFooter: {
+    marginTop: 18,
+    gap: 10
+  },
+  homeHeroStatus: {
+    alignSelf: 'flex-start',
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    borderRadius: ui.radius.pill,
+    backgroundColor: ui.color.primarySoft,
+    borderWidth: 1,
+    borderColor: ui.color.borderStrong
+  },
+  homeHeroStatusText: {
+    color: palette.ink,
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  homeHeroMeta: {
+    color: palette.inkMuted,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  homeQuickPanel: {
+    backgroundColor: ui.color.surface,
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    padding: 8,
+    ...ui.shadow.none
   },
   homeTileGrid: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     flexWrap: 'nowrap',
-    justifyContent: 'space-between',
-    gap: 10,
+    gap: 7,
     backgroundColor: 'transparent',
     borderRadius: 0,
     padding: 0
   },
   homeTile: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 116,
-    borderRadius: 0,
-    padding: 0,
+    width: '100%',
+    minHeight: 62,
+    borderRadius: ui.radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    gap: 10,
     justifyContent: 'flex-start',
     alignItems: 'center',
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0
+    backgroundColor: ui.color.surfaceSoft,
+    borderWidth: 1,
+    borderColor: ui.color.border
   },
   homeTilePrimary: {
     backgroundColor: 'transparent'
@@ -1147,31 +1196,31 @@ export const styles = StyleSheet.create({
     backgroundColor: 'transparent'
   },
   homeTileIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
+    width: 42,
+    height: 42,
+    borderRadius: ui.radius.sm,
     backgroundColor: palette.red,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.14,
-    shadowRadius: 12,
-    elevation: 3
+    ...ui.shadow.none
+  },
+  homeTileCopy: {
+    flex: 1,
+    minWidth: 0
   },
   homeTileTitle: {
     color: palette.ink,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '900',
-    marginTop: 10,
-    textAlign: 'center'
+    textAlign: 'left'
   },
   homeTileMeta: {
     color: palette.inkMuted,
     fontSize: 11,
     fontWeight: '700',
-    marginTop: 4,
-    textAlign: 'center',
+    marginTop: 2,
+    textAlign: 'left',
     lineHeight: 15
   },
   dashboardStrip: {
@@ -1247,17 +1296,14 @@ export const styles = StyleSheet.create({
   },
   dashboardStat: {
     flex: 1,
-    minHeight: 116,
-    borderRadius: 22,
+    minHeight: 102,
+    borderRadius: ui.radius.md,
     padding: 14,
-    backgroundColor: palette.white,
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.12)',
+    borderColor: ui.color.border,
     justifyContent: 'space-between',
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 2
+    ...ui.shadow.none
   },
   dashboardValue: {
     color: palette.ink,

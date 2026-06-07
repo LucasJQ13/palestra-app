@@ -236,21 +236,35 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
           ) : greeting || adminConfig.home.heroTitle}
         </Text>
         <Text style={styles.heroText}>{adminConfig.home.heroText}</Text>
+        <View style={styles.homeHeroFooter}>
+          <View style={styles.homeHeroStatus}>
+            <Ionicons name={session ? 'shield-checkmark-outline' : 'person-add-outline'} size={17} color={palette.red} />
+            <Text style={styles.homeHeroStatusText}>{session ? roleLabel(session.role, session.genderPreference) : 'Ingresar a Palestra'}</Text>
+          </View>
+          {dashboardStats.length > 0 ? (
+            <Text style={styles.homeHeroMeta}>{dashboardStats.map((item) => `${item.value} ${item.label.toLowerCase()}`).join(' · ')}</Text>
+          ) : null}
+        </View>
       </View>
 
       <EditableIntro content={content} editor={editor} />
 
       {homeTiles.length > 0 ? <SectionTitle title="Accesos rápidos" /> : null}
-      {homeTiles.length > 0 ? <View style={styles.homeTileGrid}>
-        {homeTiles.map((tile) => (
-          <TouchableOpacity key={tile.tab} style={styles.homeTile} activeOpacity={0.88} onPress={() => onNavigate(tile.tab)}>
-            <View style={[styles.homeTileIcon, { backgroundColor: tile.color }]}>
-              <Ionicons name={tile.icon} size={25} color={palette.white} />
-            </View>
-            <Text style={[styles.homeTileTitle, isDark && styles.textDarkStrong]}>{tile.title}</Text>
-            <Text style={[styles.homeTileMeta, isDark && styles.textDarkMuted]}>{tile.meta}</Text>
-          </TouchableOpacity>
-        ))}
+      {homeTiles.length > 0 ? <View style={[styles.homeQuickPanel, isDark && styles.surfacePanelDark]}>
+        <View style={styles.homeTileGrid}>
+          {homeTiles.map((tile) => (
+            <TouchableOpacity key={tile.tab} style={[styles.homeTile, isDark && styles.surfaceRowDark]} activeOpacity={0.88} onPress={() => onNavigate(tile.tab)}>
+              <View style={[styles.homeTileIcon, { backgroundColor: tile.color }]}>
+                <Ionicons name={tile.icon} size={22} color={palette.white} />
+              </View>
+              <View style={styles.homeTileCopy}>
+                <Text style={[styles.homeTileTitle, isDark && styles.textDarkStrong]}>{tile.title}</Text>
+                <Text style={[styles.homeTileMeta, isDark && styles.textDarkMuted]}>{tile.meta}</Text>
+              </View>
+              <Ionicons name="chevron-forward-outline" size={16} color={isDark ? themePresets.dark.colors.secondary : palette.inkMuted} />
+            </TouchableOpacity>
+          ))}
+        </View>
       </View> : null}
 
       {dashboardStats.length > 0 ? <SectionTitle title="Resumen" /> : null}
