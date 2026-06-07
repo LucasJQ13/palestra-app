@@ -7,6 +7,7 @@ import { RoleAliasConfig } from '../../lib/appConfig';
 import { changeDone } from '../../lib/appMessages';
 import {
   AdminUser,
+  MailboxConversationRecord,
   MailboxMessageRecord,
   MailboxTargetMode,
   ProvinceRoleLabelRecord,
@@ -80,6 +81,9 @@ export function useMailboxController({
   const [responses, setResponses] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'entrada' | 'enviados' | 'eliminados'>('entrada');
   const [expandedMessageIds, setExpandedMessageIds] = useState<string[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [conversationDraft, setConversationDraft] = useState('');
+  const [conversationSending, setConversationSending] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
   const [draft, setDraft] = useState('');
   const [targetMode, setTargetMode] = useState<MailboxTargetMode>(defaultTargetModeForSession(activeSession));
@@ -176,7 +180,92 @@ export function useMailboxController({
     return 0;
   }, [communityOptions, selectedUserIds.length, activeSession.communityOfOrigin, activeSession.province, targetCommunityId, targetMode, targetProvince, targetRole, scopedUserOptions]);
 
+  function userLabel(user?: AdminUser | PublicUserDirectoryRecord | null) {
+    return user?.full_name?.trim() || user?.nickname?.trim() || 'Palestrista';
+  }
+
+  function userSubtitle(user?: AdminUser | PublicUserDirectoryRecord | null) {
+    return [user?.role, user?.province, user?.community_name].filter(Boolean).join(' - ');
+  }
+
   const visibleMessages = useMemo(() => messages.filter((message) => (message.mailbox_folder ?? 'entrada') === filter), [filter, messages]);
+
+  const conversations = useMemo<MailboxConversationRecord[]>(() => {
+    const usersById = new Map(adminUsers.map((user) => [user.id, user]));
+    const groups = new Map<string, MailboxConversationRecord>();
+    const baseMessages = messages.filter((message) => (
+      filter === 'eliminados'
+        ? (message.mailbox_folder ?? 'entrada') === 'eliminados'
+        : (message.mailbox_folder ?? 'entrada') !== 'eliminados'
+    ));
+
+    baseMessages.forEach((message) => {
+      const folder = message.mailbox_folder ?? 'entrada';
+      const sentByMe = message.sender_id === activeSession.id || folder === 'enviados';
+      const counterpartId = message.source === 'direct'
+        ? (sentByMe ? message.recipient_id : message.sender_id)
+        : (sentByMe ? message.recipient_id : message.sender_id);
+      const counterpart = counterpartId ? usersById.get(counterpartId) : null;
+      const fallbackTitle = sentByMe
+        ? (message.recipient_name || message.recipient_names || 'Destinatario')
+        : (message.sender_name || message.community_name || 'Palestrista');
+      const title = counterpart ? userLabel(counterpart) : fallbackTitle;
+      const subtitle = counterpart ? userSubtitle(counterpart) : [message.province, message.community_name].filter(Boolean).join(' - ');
+      const key = counterpartId
+        ? `user:${counterpartId}`
+        : `${message.source ?? 'community'}:${sentByMe ? message.recipient_names || message.recipient_name || message.id : message.sender_name || message.community_id || message.id}`;
+      const current = groups.get(key);
+      const unread = folder === 'entrada' && message.status === 'nuevo' ? 1 : 0;
+      const hasSent = sentByMe;
+      const hasReceived = !sentByMe;
+
+      if (!current) {
+        groups.set(key, {
+          id: key,
+          title,
+          subtitle,
+          lastMessage: message.message,
+          lastAt: message.created_at,
+          unreadCount: unread,
+          hasSent,
+          hasReceived,
+          lastDirection: sentByMe ? 'sent' : 'received',
+          counterpartUserId: counterpartId,
+          isDirect: Boolean(counterpartId),
+          messages: [message]
+        });
+        return;
+      }
+
+      current.messages.push(message);
+      current.unreadCount += unread;
+      current.hasSent = current.hasSent || hasSent;
+      current.hasReceived = current.hasReceived || hasReceived;
+      if (Date.parse(message.created_at) > Date.parse(current.lastAt)) {
+        current.lastMessage = message.message;
+        current.lastAt = message.created_at;
+        current.lastDirection = sentByMe ? 'sent' : 'received';
+      }
+    });
+
+    return Array.from(groups.values())
+      .filter((conversation) => {
+        if (filter === 'entrada') {
+          return conversation.hasReceived;
+        }
+        if (filter === 'enviados') {
+          return conversation.hasSent;
+        }
+        return true;
+      })
+      .map((conversation) => ({
+        ...conversation,
+        messages: [...conversation.messages].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))
+      }))
+      .sort((a, b) => Date.parse(b.lastAt) - Date.parse(a.lastAt));
+  }, [adminUsers, activeSession.id, filter, messages]);
+
+  const selectedConversation = useMemo(() => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null, [conversations, selectedConversationId]);
 
   async function refresh() {
     if (activeSession.role === 'invitado') {
@@ -320,6 +409,49 @@ export function useMailboxController({
     await refresh();
   }
 
+  async function openConversation(conversationId: string) {
+    setSelectedConversationId(conversationId);
+    const conversation = conversations.find((item) => item.id === conversationId);
+    if (!conversation) {
+      return;
+    }
+    const unreadMessages = conversation.messages.filter((message) => (message.mailbox_folder ?? 'entrada') === 'entrada' && message.status === 'nuevo');
+    if (unreadMessages.length === 0) {
+      return;
+    }
+    await Promise.all(unreadMessages.map((message) => markMailboxMessageAsRead(message.id, message.source)));
+    await refresh();
+  }
+
+  async function sendConversationReply() {
+    const body = conversationDraft.trim();
+    if (!selectedConversation) {
+      setAuthMessage('Selecciona una conversacion para responder.');
+      return;
+    }
+    if (!selectedConversation.counterpartUserId) {
+      setAuthMessage('Esta conversacion no tiene un usuario directo para responder.');
+      return;
+    }
+    if (!body) {
+      setAuthMessage('Escribe una respuesta antes de enviar.');
+      return;
+    }
+    setConversationSending(true);
+    const { error } = await sendDirectMailboxMessage({
+      recipientIds: [selectedConversation.counterpartUserId],
+      message: body
+    });
+    setConversationSending(false);
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setConversationDraft('');
+    setAuthMessage(changeDone('Respuesta enviada.'));
+    await refresh();
+  }
+
   async function openMessage(message: MailboxMessageRecord) {
     setExpandedMessageIds((current) => current.includes(message.id) ? current.filter((id) => id !== message.id) : [...current, message.id]);
     if ((message.mailbox_folder ?? 'entrada') === 'entrada' && message.status === 'nuevo') {
@@ -421,6 +553,11 @@ export function useMailboxController({
     estimatedRecipients,
     draft,
     filter,
+    conversations,
+    selectedConversationId,
+    selectedConversation,
+    conversationDraft,
+    conversationSending,
     messages: visibleMessages,
     expandedMessageIds,
     responses,
@@ -439,6 +576,10 @@ export function useMailboxController({
     onSubmitNewMessage: submitNewMessage,
     onSaveDraft: saveDraft,
     onFilterChange: setFilter,
+    onOpenConversation: openConversation,
+    onCloseConversation: () => setSelectedConversationId(null),
+    onConversationDraftChange: setConversationDraft,
+    onSendConversationReply: sendConversationReply,
     onResponseChange: (messageId: string, value: string) => setResponses((current) => ({ ...current, [messageId]: value })),
     onSubmitResponse: submitResponse,
     onStartDirectReply: startDirectReply,

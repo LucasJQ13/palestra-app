@@ -162,6 +162,21 @@ export type MailboxMessageRecord = {
   can_respond: boolean;
 };
 
+export type MailboxConversationRecord = {
+  id: string;
+  title: string;
+  subtitle: string;
+  lastMessage: string;
+  lastAt: string;
+  unreadCount: number;
+  hasSent: boolean;
+  hasReceived: boolean;
+  lastDirection: 'sent' | 'received';
+  counterpartUserId?: string | null;
+  isDirect: boolean;
+  messages: MailboxMessageRecord[];
+};
+
 export type MailboxTargetMode = 'my_community' | 'community' | 'province_communities' | 'diocesan_leadership' | 'all' | 'user' | 'role' | 'province' | 'role_province';
 
 export type UserAgendaPreferenceRecord = {

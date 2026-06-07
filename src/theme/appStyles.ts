@@ -3184,6 +3184,131 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: ui.color.border
   },
+  mailboxConversationRow: {
+    minHeight: 78,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: ui.color.surface,
+    ...ui.shadow.none
+  },
+  mailboxConversationRowActive: {
+    backgroundColor: '#EFF8FB',
+    borderColor: ui.color.borderStrong
+  },
+  mailboxAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ui.color.primarySoft,
+    borderWidth: 1,
+    borderColor: ui.color.borderStrong
+  },
+  mailboxAvatarText: {
+    color: palette.red,
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  mailboxConversationTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  mailboxConversationTitle: {
+    flex: 1,
+    minWidth: 0,
+    color: palette.ink,
+    fontSize: 15,
+    fontWeight: '900'
+  },
+  mailboxConversationBadges: {
+    alignItems: 'flex-end',
+    gap: 6
+  },
+  mailboxUnreadDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: palette.red
+  },
+  mailboxThreadPanel: {
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    backgroundColor: '#FAFDFD',
+    padding: 12,
+    gap: 12
+  },
+  mailboxThreadHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  mailboxThreadScroll: {
+    maxHeight: 420
+  },
+  mailboxBubble: {
+    maxWidth: '88%',
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 5,
+    marginBottom: 9
+  },
+  mailboxBubbleReceived: {
+    alignSelf: 'flex-start',
+    backgroundColor: ui.color.surface
+  },
+  mailboxBubbleSent: {
+    alignSelf: 'flex-end',
+    backgroundColor: palette.red,
+    borderColor: palette.red
+  },
+  mailboxBubbleMeta: {
+    color: palette.inkMuted,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase'
+  },
+  mailboxBubbleText: {
+    color: palette.ink,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700'
+  },
+  mailboxBubbleTextSent: {
+    color: palette.white
+  },
+  mailboxReplyBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8
+  },
+  mailboxReplyInput: {
+    flex: 1,
+    minHeight: 42,
+    maxHeight: 112,
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    backgroundColor: ui.color.surface,
+    color: palette.ink,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlignVertical: 'top'
+  },
   adminUserAvatar: {
     width: 42,
     height: 42,

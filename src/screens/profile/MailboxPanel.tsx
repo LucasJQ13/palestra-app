@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
-import { AdminUser, MailboxMessageRecord, MailboxTargetMode, ProvinceRoleLabelRecord, PublicUserDirectoryRecord } from '../../lib/profiles';
+import { AdminUser, MailboxConversationRecord, MailboxMessageRecord, MailboxTargetMode, ProvinceRoleLabelRecord, PublicUserDirectoryRecord } from '../../lib/profiles';
 import { Role, Session } from '../../types/auth';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleRank, visibleHierarchyFor } from '../../lib/roles';
@@ -77,6 +77,11 @@ export function MailboxPanel({
   estimatedRecipients,
   draft,
   filter,
+  conversations,
+  selectedConversationId,
+  selectedConversation,
+  conversationDraft,
+  conversationSending,
   messages,
   expandedMessageIds,
   responses,
@@ -95,6 +100,10 @@ export function MailboxPanel({
   onSubmitNewMessage,
   onSaveDraft,
   onFilterChange,
+  onOpenConversation,
+  onCloseConversation,
+  onConversationDraftChange,
+  onSendConversationReply,
   onResponseChange,
   onSubmitResponse,
   onStartDirectReply,
@@ -124,6 +133,11 @@ export function MailboxPanel({
   estimatedRecipients: number;
   draft: string;
   filter: 'entrada' | 'enviados' | 'eliminados';
+  conversations: MailboxConversationRecord[];
+  selectedConversationId: string | null;
+  selectedConversation: MailboxConversationRecord | null;
+  conversationDraft: string;
+  conversationSending: boolean;
   messages: MailboxMessageRecord[];
   expandedMessageIds: string[];
   responses: Record<string, string>;
@@ -142,6 +156,10 @@ export function MailboxPanel({
   onSubmitNewMessage: () => void;
   onSaveDraft: () => void;
   onFilterChange: (filter: 'entrada' | 'enviados' | 'eliminados') => void;
+  onOpenConversation: (conversationId: string) => void;
+  onCloseConversation: () => void;
+  onConversationDraftChange: (value: string) => void;
+  onSendConversationReply: () => void;
   onResponseChange: (messageId: string, value: string) => void;
   onSubmitResponse: (messageId: string) => void;
   onStartDirectReply: (message: MailboxMessageRecord) => void;
@@ -157,10 +175,10 @@ export function MailboxPanel({
       <View style={styles.mailboxHeaderBar}>
         <View style={styles.adminUserHeaderText}>
           <SectionTitle title="Buzon de mensajes" />
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Mensajes directos y consultas comunitarias.</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Conversaciones directas y consultas comunitarias.</Text>
         </View>
         <View style={styles.mailboxCountBadge}>
-          <Text style={styles.mailboxCountValue}>{messages.length}</Text>
+          <Text style={styles.mailboxCountValue}>{conversations.length}</Text>
           <Text style={styles.mailboxCountLabel}>{filter}</Text>
         </View>
       </View>
@@ -324,88 +342,96 @@ export function MailboxPanel({
         ))}
       </View>
 
-      {messages.length === 0 ? (
+      {selectedConversation ? (
+        <View style={[styles.mailboxThreadPanel, isDark && styles.surfacePanelDark]}>
+          <View style={styles.mailboxThreadHeader}>
+            <TouchableOpacity style={styles.iconButtonGhost} onPress={onCloseConversation} activeOpacity={0.84}>
+              <Ionicons name="arrow-back-outline" size={18} color={palette.red} />
+            </TouchableOpacity>
+            <View style={styles.mailboxAvatar}>
+              <Text style={styles.mailboxAvatarText}>{selectedConversation.title.trim().charAt(0).toUpperCase() || 'P'}</Text>
+            </View>
+            <View style={styles.adminUserHeaderText}>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedConversation.title}</Text>
+              {selectedConversation.subtitle ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{selectedConversation.subtitle}</Text> : null}
+            </View>
+          </View>
+          <ScrollView style={styles.mailboxThreadScroll} nestedScrollEnabled showsVerticalScrollIndicator>
+            {selectedConversation.messages.map((message) => {
+              const sentByMe = message.sender_id === session.id || (message.mailbox_folder ?? 'entrada') === 'enviados';
+              return (
+                <View key={`${message.source}-${message.id}-${message.mailbox_folder}`} style={[styles.mailboxBubble, sentByMe ? styles.mailboxBubbleSent : styles.mailboxBubbleReceived, isDark && !sentByMe && styles.surfaceRowDark]}>
+                  <Text style={[styles.mailboxBubbleMeta, isDark && !sentByMe && styles.textDarkMuted, sentByMe && styles.mailboxBubbleTextSent]}>
+                    {sentByMe ? 'Enviado' : 'Recibido'} · {new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Text style={[styles.mailboxBubbleText, sentByMe && styles.mailboxBubbleTextSent, isDark && !sentByMe && styles.textDarkBody]}>{message.message}</Text>
+                  {message.response ? (
+                    <View style={styles.notice}>
+                      <Ionicons name="return-up-forward-outline" size={16} color={palette.red} />
+                      <Text style={styles.noticeText}>{message.response}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </ScrollView>
+          <View style={styles.mailboxReplyBar}>
+            <TextInput
+              style={[styles.mailboxReplyInput, isDark && styles.inputDark]}
+              placeholder={selectedConversation.counterpartUserId ? 'Responder en esta conversacion' : 'Respuesta directa no disponible'}
+              value={conversationDraft}
+              onChangeText={(value) => onConversationDraftChange(value.slice(0, 500))}
+              editable={Boolean(selectedConversation.counterpartUserId) && !conversationSending}
+              multiline
+              placeholderTextColor={inputPlaceholderColor}
+            />
+            <TouchableOpacity
+              style={[styles.compactSquareButton, styles.compactSquareButtonActive, (!selectedConversation.counterpartUserId || conversationSending) && styles.disabledButton]}
+              onPress={onSendConversationReply}
+              disabled={!selectedConversation.counterpartUserId || conversationSending}
+            >
+              <Ionicons name="send-outline" size={17} color={palette.white} />
+              <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>{conversationSending ? '...' : 'Enviar'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
+
+      {!selectedConversation && conversations.length === 0 ? (
         <View style={[styles.card, isDark && styles.surfaceRowDark]}>
           <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>No tienes mensajes actualmente</Text>
         </View>
       ) : null}
 
-      {messages.map((message) => {
-        const folder = message.mailbox_folder ?? 'entrada';
-        const expanded = expandedMessageIds.includes(message.id);
-        const isOwnSentMessage = message.sender_id === session.id;
-        const counterpartLabel = folder === 'enviados' || (folder === 'eliminados' && isOwnSentMessage)
-          ? `Para: ${message.recipient_names || message.recipient_name || 'Destinatario'}`
-          : `De: ${message.sender_name ?? 'Palestrista'}`;
-        const preview = message.message.length > 150 ? `${message.message.slice(0, 150)}...` : message.message;
+      {!selectedConversation && conversations.map((conversation) => {
+        const preview = conversation.lastMessage.length > 96 ? `${conversation.lastMessage.slice(0, 96)}...` : conversation.lastMessage;
+        const selected = selectedConversationId === conversation.id;
+        const statusLabel = conversation.unreadCount > 0 ? 'Nuevo' : conversation.lastDirection === 'sent' ? 'Enviado' : conversation.hasSent && conversation.hasReceived ? 'Conversacion' : 'Recibido';
         return (
-        <View key={message.id} style={[styles.mailboxMessageCard, isDark && styles.surfaceRowDark]}>
-          <View style={styles.mailboxMessageTop}>
-            <View style={styles.mailboxMessageIcon}>
-              <Ionicons name={folder === 'enviados' ? 'paper-plane-outline' : 'mail-outline'} size={18} color={palette.red} />
+          <TouchableOpacity key={conversation.id} style={[styles.mailboxConversationRow, selected && styles.mailboxConversationRowActive, isDark && styles.surfaceRowDark]} onPress={() => onOpenConversation(conversation.id)} activeOpacity={0.86}>
+            <View style={styles.mailboxAvatar}>
+              <Text style={styles.mailboxAvatarText}>{conversation.title.trim().charAt(0).toUpperCase() || 'P'}</Text>
             </View>
             <View style={styles.adminUserHeaderText}>
-              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
-              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{counterpartLabel}</Text>
+              <View style={styles.mailboxConversationTop}>
+                <Text numberOfLines={1} style={[styles.mailboxConversationTitle, isDark && styles.textDarkStrong]}>{conversation.title}</Text>
+                <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{new Date(conversation.lastAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}</Text>
+              </View>
+              {conversation.subtitle ? <Text numberOfLines={1} style={[styles.mailboxRecipientMeta, isDark && styles.mailboxRecipientMetaDark]}>{conversation.subtitle}</Text> : null}
+              <Text numberOfLines={2} style={[styles.cardText, isDark && styles.textDarkBody]}>
+                {conversation.lastDirection === 'sent' ? 'Enviado: ' : 'Recibido: '}{preview}
+              </Text>
             </View>
-          </View>
-          {message.sender_contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {message.sender_contact}</Text> : null}
-          <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{expanded ? message.message : preview}</Text>
-          {message.response ? (
-            <View style={styles.notice}>
-              <Ionicons name="return-up-forward-outline" size={18} color={palette.red} />
-              <Text style={styles.noticeText}>{message.response}</Text>
+            <View style={styles.mailboxConversationBadges}>
+              <View style={[styles.actionPill, conversation.unreadCount > 0 && styles.actionPillActive]}>
+                <Text style={[styles.actionPillText, conversation.unreadCount > 0 && styles.actionPillTextActive]}>{statusLabel}</Text>
+              </View>
+              {conversation.unreadCount > 0 ? <View style={styles.mailboxUnreadDot} /> : null}
             </View>
-          ) : null}
-          {message.can_respond && message.status !== 'cerrado' && message.status !== 'archivado' ? (
-            <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
-              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Respuesta</Text>
-              <TextInput
-                style={[styles.input, styles.textArea, isDark && styles.inputDark]}
-                placeholder="Escribe una respuesta clara"
-                value={responses[message.id] ?? ''}
-                onChangeText={(value) => onResponseChange(message.id, value.slice(0, 1000))}
-                multiline
-                placeholderTextColor={inputPlaceholderColor}
-              />
-              <TouchableOpacity style={styles.primaryButton} onPress={() => onSubmitResponse(message.id)}>
-                <Text style={styles.primaryButtonText}>Responder</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-          <View style={styles.inlineActions}>
-            <TouchableOpacity style={styles.actionPill} onPress={() => onOpenMessage(message)}>
-              <Ionicons name={expanded ? 'chevron-up-outline' : 'open-outline'} size={16} color={palette.red} />
-              <Text style={styles.actionPillText}>{expanded ? 'Cerrar' : 'Abrir'}</Text>
-            </TouchableOpacity>
-            {folder === 'entrada' && message.status !== 'leido' ? (
-              <TouchableOpacity style={styles.actionPill} onPress={() => onUpdateStatus(message.id, 'leido')}>
-                <Ionicons name="mail-open-outline" size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>Leido</Text>
-              </TouchableOpacity>
-            ) : null}
-            {folder === 'entrada' && message.source === 'direct' && message.sender_id && message.sender_id !== session.id ? (
-              <TouchableOpacity style={styles.actionPill} onPress={() => onStartDirectReply(message)}>
-                <Ionicons name="return-up-back-outline" size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>Responder</Text>
-              </TouchableOpacity>
-            ) : null}
-            {folder === 'eliminados' ? (
-              <TouchableOpacity style={styles.actionPill} onPress={() => onRestoreForMe(message)}>
-                <Ionicons name="refresh-outline" size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>Restaurar</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.actionPill} onPress={() => onDeleteForMe(message)}>
-                <Ionicons name="trash-outline" size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>Eliminar</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+          </TouchableOpacity>
         );
       })}
+
     </View>
   );
 }
