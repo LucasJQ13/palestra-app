@@ -17,6 +17,46 @@ Este documento es descriptivo. No modifica codigo ni configura Supabase.
 - Las columnas exactas, policies RLS y permisos reales quedan como: `pendiente de verificar en Supabase`.
 - Que una tabla/RPC aparezca definida en archivos SQL del repo no garantiza que esa sea la version final aplicada en la base remota.
 
+## Configuracion externa del cliente
+
+La configuracion de Supabase que usa el cliente se lee desde `Constants.expoConfig.extra` en `src/lib/supabase.ts`.
+
+Valores esperados en `extra`:
+
+| Clave | Uso en cliente | Obligatoria para Supabase | Observacion |
+|---|---|---:|---|
+| `supabaseUrl` | URL del proyecto Supabase usada por `createClient`. | si | Si falta, el cliente usa `https://example.supabase.co` como fallback tecnico para evitar crash de inicializacion, pero `hasSupabaseConfig` queda en `false`. |
+| `supabaseAnonKey` | Clave anon/publicable usada por `createClient`. | si | Si falta, el cliente usa `missing-anon-key` como fallback tecnico; no permite operar contra Supabase real. |
+| `eas.projectId` | Identificador de proyecto EAS/Expo. | no para Supabase | Se usa por Expo/EAS y notificaciones; no reemplaza configuracion de Supabase. |
+
+El archivo `app.json` actualmente declara estos valores bajo `expo.extra`. Esta auditoria no modifica credenciales ni configuracion.
+
+Comportamiento comprobado en `src/lib/supabase.ts`:
+
+- `hasSupabaseConfig` es `true` solo cuando existen `supabaseUrl` y `supabaseAnonKey`.
+- La sesion de Auth se persiste con `AsyncStorage`.
+- `autoRefreshToken` y `persistSession` estan activos.
+- `detectSessionInUrl` esta desactivado.
+- `storageKey` es `palestra.supabase.auth`.
+
+Reglas externas que deben verificarse fuera del repo:
+
+- RLS por tabla en el Dashboard de Supabase.
+- Grants/permiso de ejecucion de RPCs para `authenticated` y, cuando corresponda, `anon`.
+- Policies de Storage para buckets usados por la app.
+- Configuracion de Auth: confirmacion de email, redirect URLs y deep links `palestra://auth/callback`.
+- Edge Functions publicadas y sus secrets/configuracion.
+- Configuracion externa de Expo/EAS/Firebase para push notifications, incluyendo `google-services.json`.
+
+Verificaciones pendientes fuera del repo:
+
+1. Confirmar que `supabaseUrl` apunta al proyecto productivo correcto.
+2. Confirmar que `supabaseAnonKey` corresponde al proyecto de `supabaseUrl` y no esta vencida/revocada.
+3. Confirmar que las credenciales publicables usadas en `app.json` coinciden con el panel de Supabase.
+4. Confirmar que la app instalada en Android recibe la misma configuracion `extra` que localhost/Expo.
+5. Confirmar que las reglas de acceso reales estan validadas en Supabase y no dependen solo del frontend.
+6. Confirmar que ningun cambio de entorno externo queda pendiente antes de publicar una build.
+
 ## Resumen
 
 - Tablas usadas directamente desde cliente: 20.
