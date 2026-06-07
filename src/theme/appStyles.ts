@@ -2508,17 +2508,49 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     alignItems: 'flex-start',
-    marginBottom: 18
+    marginBottom: 18,
+    backgroundColor: ui.color.surface,
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.xl,
+    padding: 16,
+    ...ui.shadow.soft
   },
   profileHeroInfo: {
     flex: 1,
-    paddingTop: 6
+    paddingTop: 2
   },
   profileName: {
     color: palette.ink,
-    fontSize: 22,
+    fontSize: 23,
+    lineHeight: 29,
     fontWeight: '900',
     flex: 1
+  },
+  profileRolePill: {
+    alignSelf: 'flex-start',
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 11,
+    borderRadius: ui.radius.pill,
+    backgroundColor: ui.color.primarySoft,
+    borderWidth: 1,
+    borderColor: ui.color.borderStrong,
+    marginTop: 2,
+    marginBottom: 8
+  },
+  profileRolePillText: {
+    color: palette.ink,
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  profileEmailText: {
+    color: palette.inkMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700'
   },
   profileMetaGrid: {
     flexDirection: 'row',
@@ -2529,15 +2561,15 @@ export const styles = StyleSheet.create({
   profileMetaItem: {
     flex: 1,
     minWidth: '46%',
-    minHeight: 72,
+    minHeight: 76,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 8,
-    borderRadius: 20,
+    borderRadius: ui.radius.md,
     padding: 12,
-    backgroundColor: palette.whiteSoft,
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.12)'
+    borderColor: ui.color.border
   },
   profileMetaText: {
     flex: 1
@@ -2563,11 +2595,12 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: 18,
+    borderRadius: ui.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)',
-    backgroundColor: palette.white,
-    padding: 12
+    borderColor: ui.color.borderStrong,
+    backgroundColor: ui.color.surface,
+    padding: 14,
+    ...ui.shadow.soft
   },
   digitalCredentialDark: {
     backgroundColor: themePresets.dark.colors.surfaceSoft,
@@ -2597,10 +2630,10 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: 14,
+    borderRadius: ui.radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)',
-    backgroundColor: palette.whiteSoft,
+    borderColor: ui.color.border,
+    backgroundColor: ui.color.surfaceSoft,
     padding: 10
   },
   credentialQrImage: {
@@ -2633,15 +2666,16 @@ export const styles = StyleSheet.create({
     backgroundColor: palette.ink
   },
   avatarFrameLarge: {
-    width: 132,
-    height: 132,
-    borderRadius: 66,
+    width: 104,
+    height: 104,
+    borderRadius: 32,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.14)',
-    backgroundColor: palette.whiteSoft,
+    borderColor: ui.color.borderStrong,
+    backgroundColor: ui.color.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    ...ui.shadow.soft
   },
   avatarImageLarge: {
     width: '100%',
@@ -2653,16 +2687,13 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)',
-    backgroundColor: palette.white,
-    borderRadius: 18,
-    minHeight: 42,
+    borderColor: ui.color.border,
+    backgroundColor: ui.color.surface,
+    borderRadius: ui.radius.md,
+    minHeight: 38,
     paddingHorizontal: 12,
     marginTop: 12,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 1
+    ...ui.shadow.none
   },
   photoChangeText: {
     color: palette.red,
@@ -3076,6 +3107,80 @@ export const styles = StyleSheet.create({
   },
   mailboxRecipientMetaDark: {
     color: themePresets.dark.colors.muted
+  },
+  mailboxShell: {
+    backgroundColor: ui.color.surface,
+    borderColor: ui.color.border,
+    borderWidth: 1,
+    borderRadius: ui.radius.xl,
+    padding: 14,
+    gap: 12,
+    ...ui.shadow.soft
+  },
+  mailboxHeaderBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  mailboxCountBadge: {
+    minWidth: 58,
+    minHeight: 58,
+    borderRadius: ui.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ui.color.primarySoft,
+    borderWidth: 1,
+    borderColor: ui.color.borderStrong,
+    paddingHorizontal: 8
+  },
+  mailboxCountValue: {
+    color: palette.red,
+    fontSize: 19,
+    fontWeight: '900'
+  },
+  mailboxCountLabel: {
+    color: palette.inkMuted,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase'
+  },
+  mailboxToolbar: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center'
+  },
+  mailboxTabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: 6,
+    borderRadius: ui.radius.lg,
+    backgroundColor: ui.color.surfaceMuted
+  },
+  mailboxMessageCard: {
+    backgroundColor: ui.color.surface,
+    borderColor: ui.color.border,
+    borderWidth: 1,
+    borderRadius: ui.radius.lg,
+    padding: 14,
+    gap: 9,
+    ...ui.shadow.none
+  },
+  mailboxMessageTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10
+  },
+  mailboxMessageIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: ui.radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ui.color.primarySoft,
+    borderWidth: 1,
+    borderColor: ui.color.border
   },
   adminUserAvatar: {
     width: 42,

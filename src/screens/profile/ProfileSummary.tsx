@@ -45,14 +45,18 @@ export function ProfileSummary({
           {session.avatarUrl ? <Image source={{ uri: session.avatarUrl }} style={styles.avatarImageLarge} /> : <Ionicons name="camera-outline" size={42} color={palette.red} />}
         </TouchableOpacity>
         <View style={styles.profileHeroInfo}>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mi Perfil</Text>
           <View style={styles.profileNameRow}>
             <Text style={[styles.profileName, isDark && styles.textDarkStrong]}>{session.fullName}</Text>
             <View style={styles.verifiedRow}>
               <Ionicons name="shield-checkmark-outline" size={22} color={palette.green} />
             </View>
           </View>
-          {session.email ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{session.email}</Text> : null}
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{role}</Text>
+          <View style={styles.profileRolePill}>
+            <Ionicons name="ribbon-outline" size={15} color={palette.red} />
+            <Text style={styles.profileRolePillText}>{role}</Text>
+          </View>
+          {session.email ? <Text style={[styles.profileEmailText, isDark && styles.textDarkBody]}>{session.email}</Text> : null}
           {perseverance ? <Text style={[styles.profileHonorText, isDark && styles.textDarkAccent]}>{perseverance}</Text> : null}
           {roleRank(session.role) >= roleRank('sedimentador') && pmSummary ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{pmSummary}</Text> : null}
           <TouchableOpacity style={[styles.photoChangeButton, isDark && styles.darkSoftButton]} onPress={onUploadPhoto}>

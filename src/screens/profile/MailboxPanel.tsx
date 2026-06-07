@@ -153,10 +153,18 @@ export function MailboxPanel({
   const selectedCommunityId = targetCommunityId || communityOptions[0]?.id;
 
   return (
-    <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-      <SectionTitle title="Buzon de mensajes" />
-      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Mensajes directos entre usuarios registrados y consultas de tu comunidad.</Text>
-      <View style={styles.compactToolRow}>
+    <View style={[styles.mailboxShell, isDark && styles.surfacePanelDark]}>
+      <View style={styles.mailboxHeaderBar}>
+        <View style={styles.adminUserHeaderText}>
+          <SectionTitle title="Buzon de mensajes" />
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Mensajes directos y consultas comunitarias.</Text>
+        </View>
+        <View style={styles.mailboxCountBadge}>
+          <Text style={styles.mailboxCountValue}>{messages.length}</Text>
+          <Text style={styles.mailboxCountLabel}>{filter}</Text>
+        </View>
+      </View>
+      <View style={styles.mailboxToolbar}>
         <TouchableOpacity style={[styles.compactSquareButton, showComposer && styles.compactSquareButtonActive]} onPress={onToggleComposer}>
           <Ionicons name="create-outline" size={17} color={showComposer ? palette.white : palette.red} />
           <Text style={[styles.compactSquareButtonText, showComposer && styles.compactSquareButtonTextActive]}>Nuevo</Text>
@@ -308,7 +316,7 @@ export function MailboxPanel({
         </View>
       ) : null}
 
-      <View style={styles.compactTabs}>
+      <View style={styles.mailboxTabs}>
         {(['entrada', 'enviados', 'eliminados'] as const).map((item) => (
           <TouchableOpacity key={item} style={[styles.filterChip, filter === item && styles.filterChipActive]} onPress={() => onFilterChange(item)}>
             <Text style={[styles.filterChipText, filter === item && styles.filterChipTextActive]}>{item}</Text>
@@ -331,9 +339,16 @@ export function MailboxPanel({
           : `De: ${message.sender_name ?? 'Palestrista'}`;
         const preview = message.message.length > 150 ? `${message.message.slice(0, 150)}...` : message.message;
         return (
-        <View key={message.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{counterpartLabel}</Text>
+        <View key={message.id} style={[styles.mailboxMessageCard, isDark && styles.surfaceRowDark]}>
+          <View style={styles.mailboxMessageTop}>
+            <View style={styles.mailboxMessageIcon}>
+              <Ionicons name={folder === 'enviados' ? 'paper-plane-outline' : 'mail-outline'} size={18} color={palette.red} />
+            </View>
+            <View style={styles.adminUserHeaderText}>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{message.status} - {message.community_name || 'Mensaje directo'} {message.province ? `(${message.province})` : ''}</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{counterpartLabel}</Text>
+            </View>
+          </View>
           {message.sender_contact ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {message.sender_contact}</Text> : null}
           <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
           <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{expanded ? message.message : preview}</Text>
