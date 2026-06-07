@@ -125,14 +125,17 @@ export function ProvinceAdminPanel({
               </View>
             </View>
             <View style={styles.provinceAdminActions}>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => onPickLogo(item.province)} disabled={logoUploading === item.province}>
-                <Text style={styles.secondaryButtonText}>{logoUploading === item.province ? 'Subiendo...' : 'Logo'}</Text>
+              <TouchableOpacity style={styles.rowActionButton} onPress={() => onPickLogo(item.province)} disabled={logoUploading === item.province}>
+                <Ionicons name="image-outline" size={14} color={palette.red} />
+                <Text style={styles.rowActionButtonText}>{logoUploading === item.province ? 'Subiendo...' : 'Logo'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => onToggleProvince(item.province, !active)}>
-                <Text style={styles.secondaryButtonText}>{active ? 'Deshabilitar' : 'Habilitar'}</Text>
+              <TouchableOpacity style={styles.rowActionButton} onPress={() => onToggleProvince(item.province, !active)}>
+                <Ionicons name={active ? 'pause-circle-outline' : 'checkmark-circle-outline'} size={14} color={palette.red} />
+                <Text style={styles.rowActionButtonText}>{active ? 'Deshabilitar' : 'Habilitar'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => onArchiveProvince(item.province)}>
-                <Text style={styles.secondaryButtonText}>Eliminar</Text>
+              <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => onArchiveProvince(item.province)}>
+                <Ionicons name="trash-outline" size={14} color="#B93232" />
+                <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar</Text>
               </TouchableOpacity>
             </View>
           </View>

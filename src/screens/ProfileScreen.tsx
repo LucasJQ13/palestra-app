@@ -5315,14 +5315,17 @@ export function ProfileScreen({
                             <Text style={styles.cardText}>Apertura: {period.opening_time ?? 'Sin horario'} - Clausura: {period.closing_time ?? 'Sin horario'}</Text>
                             <Text style={styles.cardText}>Estado: {period.status}. Última edición: {period.updated_by_name ?? 'Sin registro'}</Text>
                             <View style={styles.inlineActions}>
-                              <TouchableOpacity style={styles.secondaryButton} onPress={() => editMotivadorPeriod(period)}>
-                                <Text style={styles.secondaryButtonText}>Editar</Text>
+                              <TouchableOpacity style={styles.rowActionButton} onPress={() => editMotivadorPeriod(period)}>
+                                <Ionicons name="create-outline" size={14} color={palette.red} />
+                                <Text style={styles.rowActionButtonText}>Editar</Text>
                               </TouchableOpacity>
-                              <TouchableOpacity style={styles.secondaryButton} onPress={() => updateMotivadorStatus(period.id, period.status === 'activo' ? 'inactivo' : 'activo')}>
-                                <Text style={styles.secondaryButtonText}>{period.status === 'activo' ? 'Inhabilitar' : 'Habilitar'}</Text>
+                              <TouchableOpacity style={styles.rowActionButton} onPress={() => updateMotivadorStatus(period.id, period.status === 'activo' ? 'inactivo' : 'activo')}>
+                                <Ionicons name={period.status === 'activo' ? 'pause-circle-outline' : 'checkmark-circle-outline'} size={14} color={palette.red} />
+                                <Text style={styles.rowActionButtonText}>{period.status === 'activo' ? 'Inhabilitar' : 'Habilitar'}</Text>
                               </TouchableOpacity>
-                              <TouchableOpacity style={styles.secondaryButton} onPress={() => updateMotivadorStatus(period.id, 'archivado')}>
-                                <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                              <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => updateMotivadorStatus(period.id, 'archivado')}>
+                                <Ionicons name="trash-outline" size={14} color="#B93232" />
+                                <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar</Text>
                               </TouchableOpacity>
                             </View>
                           </View>
@@ -5704,9 +5707,9 @@ export function ProfileScreen({
                           <Ionicons name="construct-outline" size={17} color={palette.red} />
                           <Text style={styles.secondaryButtonText}>Reparar usuario</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.secondaryButton} onPress={deleteUserByDiagnosticEmail}>
-                          <Ionicons name="trash-outline" size={17} color={palette.red} />
-                          <Text style={styles.secondaryButtonText}>Eliminar y liberar mail</Text>
+                        <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={deleteUserByDiagnosticEmail}>
+                          <Ionicons name="trash-outline" size={14} color="#B93232" />
+                          <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar y liberar mail</Text>
                         </TouchableOpacity>
                       </View>
                       {adminLoginDiagnostic ? (
@@ -5986,9 +5989,9 @@ export function ProfileScreen({
                                         <Text style={styles.secondaryButtonText}>Confirmar email</Text>
                                       </TouchableOpacity>
                                     ) : null}
-                                    <TouchableOpacity style={styles.secondaryButton} onPress={deleteSelectedAdminUser}>
-                                      <Ionicons name="trash-outline" size={17} color={palette.red} />
-                                      <Text style={styles.secondaryButtonText}>Eliminar usuario</Text>
+                                    <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={deleteSelectedAdminUser}>
+                                      <Ionicons name="trash-outline" size={14} color="#B93232" />
+                                      <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar usuario</Text>
                                     </TouchableOpacity>
                                   </>
                                 ) : null}
@@ -6292,14 +6295,17 @@ export function ProfileScreen({
                           </View>
                         </View>
                         <View style={styles.provinceAdminActions}>
-                          <TouchableOpacity style={styles.secondaryButton} onPress={() => pickProvinceLogo(item.province)} disabled={provinceLogoUploading === item.province}>
-                            <Text style={styles.secondaryButtonText}>{provinceLogoUploading === item.province ? 'Subiendo...' : 'Logo'}</Text>
+                          <TouchableOpacity style={styles.rowActionButton} onPress={() => pickProvinceLogo(item.province)} disabled={provinceLogoUploading === item.province}>
+                            <Ionicons name="image-outline" size={14} color={palette.red} />
+                            <Text style={styles.rowActionButtonText}>{provinceLogoUploading === item.province ? 'Subiendo...' : 'Logo'}</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity style={styles.secondaryButton} onPress={() => adminSetProvinceActive(item.province, !active)}>
-                            <Text style={styles.secondaryButtonText}>{active ? 'Deshabilitar' : 'Habilitar'}</Text>
+                          <TouchableOpacity style={styles.rowActionButton} onPress={() => adminSetProvinceActive(item.province, !active)}>
+                            <Ionicons name={active ? 'pause-circle-outline' : 'checkmark-circle-outline'} size={14} color={palette.red} />
+                            <Text style={styles.rowActionButtonText}>{active ? 'Deshabilitar' : 'Habilitar'}</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity style={styles.secondaryButton} onPress={() => adminArchiveProvince(item.province)}>
-                            <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                          <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => adminArchiveProvince(item.province)}>
+                            <Ionicons name="trash-outline" size={14} color="#B93232" />
+                            <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -6983,14 +6989,17 @@ export function ProfileScreen({
                       multiline={block.type !== 'titulo'}
                      placeholderTextColor={inputPlaceholderColor} />
                     <View style={styles.inlineActions}>
-                      <TouchableOpacity style={styles.secondaryButton} onPress={() => moveContentBlock(index, -1)}>
-                        <Text style={styles.secondaryButtonText}>Subir</Text>
+                      <TouchableOpacity style={styles.rowActionButton} onPress={() => moveContentBlock(index, -1)}>
+                        <Ionicons name="arrow-up-outline" size={14} color={palette.red} />
+                        <Text style={styles.rowActionButtonText}>Subir</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.secondaryButton} onPress={() => moveContentBlock(index, 1)}>
-                        <Text style={styles.secondaryButtonText}>Bajar</Text>
+                      <TouchableOpacity style={styles.rowActionButton} onPress={() => moveContentBlock(index, 1)}>
+                        <Ionicons name="arrow-down-outline" size={14} color={palette.red} />
+                        <Text style={styles.rowActionButtonText}>Bajar</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.secondaryButton} onPress={() => deleteContentBlock(block.id)}>
-                        <Text style={styles.secondaryButtonText}>Borrar</Text>
+                      <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => deleteContentBlock(block.id)}>
+                        <Ionicons name="trash-outline" size={14} color="#B93232" />
+                        <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Borrar</Text>
                       </TouchableOpacity>
                     </View>
                   </View>

@@ -239,13 +239,15 @@ export function CommunityAdminPanel({
                       {adminCommunityImageAsset ? <Text style={styles.cardText}>Vista previa lista. Tocá Guardar comunidad para subirla y asociarla.</Text> : null}
                       <View style={styles.filterRow}>
                         {canAdministrateCommunities ? (
-                          <TouchableOpacity style={styles.secondaryButton} onPress={() => onToggleCommunityStatus(itemKey, !isActive)}>
-                            <Text style={styles.secondaryButtonText}>{isActive ? 'Deshabilitar' : 'Habilitar'}</Text>
+                          <TouchableOpacity style={styles.rowActionButton} onPress={() => onToggleCommunityStatus(itemKey, !isActive)}>
+                            <Ionicons name={isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'} size={14} color={palette.red} />
+                            <Text style={styles.rowActionButtonText}>{isActive ? 'Deshabilitar' : 'Habilitar'}</Text>
                           </TouchableOpacity>
                         ) : null}
                         {canAdministrateCommunities ? (
-                          <TouchableOpacity style={styles.secondaryButton} onPress={() => onArchiveCommunity(itemKey)}>
-                            <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                          <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => onArchiveCommunity(itemKey)}>
+                            <Ionicons name="trash-outline" size={14} color="#B93232" />
+                            <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar</Text>
                           </TouchableOpacity>
                         ) : null}
                       </View>

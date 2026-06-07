@@ -595,11 +595,13 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
                   ) : null}
                   {canEditThisMaterial ? (
                     <View style={styles.inlineActions}>
-                      <TouchableOpacity style={styles.secondaryButton} onPress={() => startEditMaterial(material)}>
-                        <Text style={styles.secondaryButtonText}>Editar</Text>
+                      <TouchableOpacity style={styles.rowActionButton} onPress={() => startEditMaterial(material)}>
+                        <Ionicons name="create-outline" size={14} color={palette.red} />
+                        <Text style={styles.rowActionButtonText}>Editar</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.secondaryButton} onPress={() => deleteMaterial(material)}>
-                        <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                      <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => deleteMaterial(material)}>
+                        <Ionicons name="trash-outline" size={14} color="#B93232" />
+                        <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar</Text>
                       </TouchableOpacity>
                     </View>
                   ) : null}

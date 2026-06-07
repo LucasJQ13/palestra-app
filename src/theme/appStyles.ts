@@ -2791,20 +2791,21 @@ export const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: palette.red,
-    minHeight: 48,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: ui.radius.md,
+    minHeight: 42,
+    maxWidth: '100%',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: ui.radius.sm,
     flexDirection: 'row',
     gap: 7,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
+    alignSelf: 'flex-start',
     ...ui.shadow.soft
   },
   primaryButtonText: {
     color: palette.white,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
     textAlign: 'center',
     flexShrink: 1
@@ -2812,20 +2813,21 @@ export const styles = StyleSheet.create({
   secondaryButton: {
     borderWidth: 1,
     borderColor: ui.color.borderStrong,
-    minHeight: 48,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: ui.radius.md,
+    minHeight: 42,
+    maxWidth: '100%',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: ui.radius.sm,
     flexDirection: 'row',
     gap: 7,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 14,
+    alignSelf: 'flex-start',
     backgroundColor: ui.color.surface
   },
   secondaryButtonText: {
     color: palette.red,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
     textAlign: 'center',
     flexShrink: 1
@@ -3200,7 +3202,8 @@ export const styles = StyleSheet.create({
   inlineActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: 8,
+    alignItems: 'center'
   },
   compactToolRow: {
     flexDirection: 'row',
@@ -3215,12 +3218,12 @@ export const styles = StyleSheet.create({
     marginTop: 8
   },
   compactSquareButton: {
-    minWidth: 82,
-    minHeight: 44,
+    minWidth: 76,
+    minHeight: 40,
     borderWidth: 1,
     borderColor: ui.color.border,
     borderRadius: ui.radius.sm,
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 6,
     backgroundColor: palette.white,
     alignItems: 'center',
@@ -3264,13 +3267,38 @@ export const styles = StyleSheet.create({
   actionPillTextActive: {
     color: palette.white
   },
+  rowActionButton: {
+    minHeight: 36,
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: ui.color.surface
+  },
+  rowActionButtonDanger: {
+    borderColor: 'rgba(185, 50, 50, 0.18)',
+    backgroundColor: 'rgba(185, 50, 50, 0.05)'
+  },
+  rowActionButtonText: {
+    color: palette.red,
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  rowActionButtonTextDanger: {
+    color: ui.color.danger
+  },
   inlineEditButton: {
     alignSelf: 'flex-start',
-    minHeight: 38,
+    minHeight: 36,
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.18)',
-    borderRadius: 18,
-    paddingHorizontal: 14,
+    borderRadius: ui.radius.sm,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -3303,11 +3331,11 @@ export const styles = StyleSheet.create({
     backgroundColor: 'rgba(230, 243, 245, 0.55)'
   },
   smallActionButton: {
-    minHeight: 36,
+    minHeight: 34,
     borderWidth: 1,
     borderColor: 'rgba(45, 141, 200, 0.16)',
-    borderRadius: 16,
-    paddingHorizontal: 11,
+    borderRadius: ui.radius.sm,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -3890,8 +3918,10 @@ export const styles = StyleSheet.create({
     backgroundColor: ui.color.surface
   },
   provinceAdminRow: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
     paddingVertical: 14
   },
@@ -3899,13 +3929,15 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    minWidth: 0
+    minWidth: 0,
+    flex: 1
   },
   provinceAdminActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 10
+    justifyContent: 'flex-end',
+    gap: 8
   },
   adminListRowActive: {
     backgroundColor: '#EFF8FB',

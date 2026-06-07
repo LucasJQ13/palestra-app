@@ -139,8 +139,9 @@ export function ContactAdminPanel({
                 multiline
                 placeholderTextColor={inputPlaceholderColor}
               />
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => removeBlock(block.id)}>
-                <Text style={styles.secondaryButtonText}>Eliminar bloque</Text>
+              <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => removeBlock(block.id)}>
+                <Ionicons name="trash-outline" size={14} color="#B93232" />
+                <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar bloque</Text>
               </TouchableOpacity>
             </View>
           ))}
