@@ -44,6 +44,14 @@ export function canManageMotivadorPanel(session: Session | null) {
   return hasPermission(session, 'gestionar_contenido') || hasPermission(session, 'gestionar_sistema');
 }
 
+export function canManageFormationPathAdmin(session: Session | null) {
+  return session?.role === 'administrador';
+}
+
+export function canManageRequestsPanel(session: Session | null) {
+  return Boolean(session && ['vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role));
+}
+
 export function canEditAdminUser(session: Session | null, user?: AdminUser | null) {
   if (!session || !user) {
     return false;

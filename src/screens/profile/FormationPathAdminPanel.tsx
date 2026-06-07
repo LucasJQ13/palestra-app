@@ -7,7 +7,8 @@ import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { uploadPickedImageToPublicUrl } from '../../lib/uploads';
 import { roleLabel } from '../../lib/profileDisplay';
-import { roleRank, visibleHierarchyFor } from '../../lib/roles';
+import { visibleHierarchyFor } from '../../lib/roles';
+import { canManageFormationPathAdmin } from '../../lib/sessionAccess';
 import { Role, Session } from '../../types/auth';
 import {
   AppMaterialRecord,
@@ -81,7 +82,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
   const [showEditor, setShowEditor] = useState(false);
   const [showMaterials, setShowMaterials] = useState(false);
 
-  const canManage = roleRank(session.role) >= roleRank('vocal') && session.role !== 'asesor';
+  const canManage = canManageFormationPathAdmin(session);
   const roleOptions = useMemo(() => visibleHierarchyFor(session).map((item) => item.role as Role), [session.role]);
 
   async function load() {
@@ -216,7 +217,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
       {!canManage ? (
         <View style={styles.notice}>
           <Ionicons name="lock-closed-outline" size={20} color={palette.red} />
-          <Text style={styles.noticeText}>Disponible para rangos diocesanos/nacionales y administracion.</Text>
+          <Text style={styles.noticeText}>Disponible solo para Administrador.</Text>
         </View>
       ) : null}
 

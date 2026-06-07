@@ -31,7 +31,7 @@ import { argentinaProvinceDefinitions, provinceDefinitionFor } from '../lib/arge
 import { credentialDisplayName, displayRoleLabel, firstNameOf, GenderPreference, genderNarratives, homeGreetingName, perseveranceLabel, personalPmSummary, personalPmTypeLabel, renderGreetingTemplate, roleLabel, roleLabelForProvince, roleShortLabel } from '../lib/profileDisplay';
 import { changeDone, communityDowngradesRole, friendlyUploadError, hasPlausibleEmailDomain, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError, verifyEmailDomainExists } from '../lib/appMessages';
 import { buildInitialBlocksForSection, tabLabelFromKey } from '../lib/contentBlocks';
-import { canCreateOrAdministrateCommunities, canEditAdminUser, canEditStaticInstitutionalPage, canManageGlobalInstagram, canManageMotivadorPanel, canManageNewsContent, canManagePublishedContent, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from '../lib/sessionAccess';
+import { canCreateOrAdministrateCommunities, canEditAdminUser, canEditStaticInstitutionalPage, canManageFormationPathAdmin, canManageGlobalInstagram, canManageMotivadorPanel, canManageNewsContent, canManagePublishedContent, canManageRequestsPanel, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from '../lib/sessionAccess';
 import { AdminModule, AdminRequest, AdminUsersTool, ProfilePanel, PublicProfilePreview, TabKey } from '../types/appUi';
 import { internalTestSessions } from '../lib/internalTestSessions';
 import { permissionOptions } from '../lib/permissionLabels';
@@ -697,6 +697,12 @@ export function ProfileScreen({
     if (item.key === 'navegacion') {
       return session?.role === 'administrador';
     }
+    if (item.key === 'proceso_educativo') {
+      return canManageFormationPathAdmin(session);
+    }
+    if (item.key === 'solicitudes') {
+      return canManageRequestsPanel(session);
+    }
     if (item.key === 'usuarios') {
       return canManageUsers;
     }
@@ -715,7 +721,7 @@ export function ProfileScreen({
     if (hasPermission(session, 'gestionar_sistema')) {
       return true;
     }
-    if (['resumen', 'solicitudes'].includes(item.key)) {
+    if (item.key === 'resumen') {
       return true;
     }
     if (item.key === 'periodo_motivador') {
@@ -726,11 +732,21 @@ export function ProfileScreen({
     }
     return !item.systemOnly;
   });
+  const canManageRequests = canManageRequestsPanel(session);
+  const canManageFormationPath = canManageFormationPathAdmin(session);
   const adminDraftSummary = [
     { label: 'Usuarios', value: String(usersSummaryCount), icon: 'people-outline' as keyof typeof Ionicons.glyphMap },
-    { label: 'Solicitudes', value: String(pendingAdminRequests.length), icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap },
+    ...(canManageRequests ? [{ label: 'Solicitudes', value: String(pendingAdminRequests.length), icon: 'mail-unread-outline' as keyof typeof Ionicons.glyphMap }] : []),
     { label: 'Comunidades', value: String(manageableCommunities.reduce((total, item) => total + item.locations.length, 0)), icon: 'location-outline' as keyof typeof Ionicons.glyphMap }
   ];
+  useEffect(() => {
+    if (adminModule === 'proceso_educativo' && !canManageFormationPath) {
+      setAdminModule('resumen');
+    }
+    if (adminModule === 'solicitudes' && !canManageRequests) {
+      setAdminModule('resumen');
+    }
+  }, [adminModule, canManageFormationPath, canManageRequests]);
   const mailboxController = useMailboxController({
     session,
     registrationCommunities,
@@ -1652,9 +1668,15 @@ export function ProfileScreen({
   }
 
   async function loadAdminRequests() {
+    if (!canManageRequestsPanel(session)) {
+      setAdminRequests([]);
+      return;
+    }
     const items = await fetchAdminRequests();
     if (items.length > 0) {
       setAdminRequests(items.map(normalizeRequest));
+    } else {
+      setAdminRequests([]);
     }
   }
 
@@ -1734,10 +1756,7 @@ export function ProfileScreen({
       if (['animador_comunidad', 'coordinador_comunidad'].includes(session.role)) {
         fetchMyCommunityMembers().then(setCommunityMembers);
       }
-      if (session.role === 'administrador') {
-        loadAdminRequests();
-      }
-      if (['vocal', 'coordinador_diocesano'].includes(session.role)) {
+      if (canManageRequestsPanel(session)) {
         loadAdminRequests();
       }
     }
@@ -3582,15 +3601,19 @@ export function ProfileScreen({
       return;
     }
     await loadMyRequests();
-    await loadAdminRequests();
+    if (canManageRequestsPanel(session)) {
+      await loadAdminRequests();
+    }
     setSentRequests((current) => [
       ...current,
       newRequest
     ]);
-    setAdminRequests((current) => [
-      ...current,
-      newRequest
-    ]);
+    if (canManageRequestsPanel(session)) {
+      setAdminRequests((current) => [
+        ...current,
+        newRequest
+      ]);
+    }
     setSelectedRequest(null);
     setUserRequestText('');
     setAuthMessage(changeDone(title === 'Solicitud Especial' ? 'Solicitud enviada a la dirigencia diocesana.' : 'Solicitud enviada al panel del administrador.'));
@@ -5532,7 +5555,7 @@ export function ProfileScreen({
                 />
               ) : null}
 
-              {adminModule === 'proceso_educativo' ? (
+              {adminModule === 'proceso_educativo' && canManageFormationPath ? (
                 <FormationPathAdminPanel session={session} isDark={isDark} />
               ) : null}
 
@@ -5997,7 +6020,7 @@ export function ProfileScreen({
                 </View>
               ) : null}
 
-              {adminModule === 'solicitudes' ? (
+              {adminModule === 'solicitudes' && canManageRequests ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Solicitudes</Text>
                   <View style={styles.filterRow}>
