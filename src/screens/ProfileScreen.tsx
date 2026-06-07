@@ -61,6 +61,7 @@ import { useMailboxController } from './profile/useMailboxController';
 import { CommunityAdminPanel } from './profile/CommunityAdminPanel';
 import { DownloadsAdminPanel } from './profile/DownloadsAdminPanel';
 import { FormationPathAdminPanel } from './profile/FormationPathAdminPanel';
+import { MessageModerationAdminPanel } from './profile/MessageModerationAdminPanel';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -706,6 +707,9 @@ export function ProfileScreen({
     if (item.key === 'usuarios') {
       return canManageUsers;
     }
+    if (item.key === 'moderacion') {
+      return Boolean(session && ['administrador', 'coordinador_nacional', 'vocal_nacional', 'coordinador_diocesano'].includes(session.role));
+    }
     if (item.key === 'home') {
       return session?.role === 'administrador';
     }
@@ -746,7 +750,10 @@ export function ProfileScreen({
     if (adminModule === 'solicitudes' && !canManageRequests) {
       setAdminModule('resumen');
     }
-  }, [adminModule, canManageFormationPath, canManageRequests]);
+    if (adminModule === 'moderacion' && !['administrador', 'coordinador_nacional', 'vocal_nacional', 'coordinador_diocesano'].includes(session?.role ?? 'invitado')) {
+      setAdminModule('resumen');
+    }
+  }, [adminModule, canManageFormationPath, canManageRequests, session?.role]);
   const mailboxController = useMailboxController({
     session,
     registrationCommunities,
@@ -5556,6 +5563,10 @@ export function ProfileScreen({
                   onLoad={loadPrayerIntentionsPanel}
                   onDelete={deletePrayerIntentionFromAdmin}
                 />
+              ) : null}
+
+              {adminModule === 'moderacion' && ['administrador', 'coordinador_nacional', 'vocal_nacional', 'coordinador_diocesano'].includes(session?.role ?? 'invitado') ? (
+                <MessageModerationAdminPanel isDark={isDark} onMessage={setAuthMessage} />
               ) : null}
 
               {adminModule === 'proceso_educativo' && canManageFormationPath ? (

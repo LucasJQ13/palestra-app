@@ -82,6 +82,9 @@ export function MailboxPanel({
   selectedConversation,
   conversationDraft,
   conversationSending,
+  reportingMessageId,
+  reportReason,
+  reportComment,
   messages,
   expandedMessageIds,
   responses,
@@ -104,6 +107,10 @@ export function MailboxPanel({
   onCloseConversation,
   onConversationDraftChange,
   onSendConversationReply,
+  onToggleReportMessage,
+  onReportReasonChange,
+  onReportCommentChange,
+  onSubmitMessageReport,
   onResponseChange,
   onSubmitResponse,
   onStartDirectReply,
@@ -138,6 +145,9 @@ export function MailboxPanel({
   selectedConversation: MailboxConversationRecord | null;
   conversationDraft: string;
   conversationSending: boolean;
+  reportingMessageId: string | null;
+  reportReason: string;
+  reportComment: string;
   messages: MailboxMessageRecord[];
   expandedMessageIds: string[];
   responses: Record<string, string>;
@@ -160,6 +170,10 @@ export function MailboxPanel({
   onCloseConversation: () => void;
   onConversationDraftChange: (value: string) => void;
   onSendConversationReply: () => void;
+  onToggleReportMessage: (messageId: string | null) => void;
+  onReportReasonChange: (reason: string) => void;
+  onReportCommentChange: (value: string) => void;
+  onSubmitMessageReport: (message: MailboxMessageRecord) => void;
   onResponseChange: (messageId: string, value: string) => void;
   onSubmitResponse: (messageId: string) => void;
   onStartDirectReply: (message: MailboxMessageRecord) => void;
@@ -196,6 +210,12 @@ export function MailboxPanel({
       {showComposer ? (
         <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
           <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo mensaje</Text>
+          <View style={styles.mailboxRulesNotice}>
+            <Ionicons name="shield-checkmark-outline" size={18} color={palette.red} />
+            <Text style={[styles.noticeText, isDark && styles.textDarkBody]}>
+              Usa lenguaje respetuoso. No se permiten insultos, amenazas, acoso ni contenido sexual. Los mensajes pueden ser reportados y revisados por moderadores autorizados.
+            </Text>
+          </View>
           <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Destino</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
             {targetModesForSession(session).map(([mode, label]) => (
@@ -359,6 +379,7 @@ export function MailboxPanel({
           <ScrollView style={styles.mailboxThreadScroll} nestedScrollEnabled showsVerticalScrollIndicator>
             {selectedConversation.messages.map((message) => {
               const sentByMe = message.sender_id === session.id || (message.mailbox_folder ?? 'entrada') === 'enviados';
+              const canReport = !sentByMe && (message.mailbox_folder ?? 'entrada') === 'entrada';
               return (
                 <View key={`${message.source}-${message.id}-${message.mailbox_folder}`} style={[styles.mailboxBubble, sentByMe ? styles.mailboxBubbleSent : styles.mailboxBubbleReceived, isDark && !sentByMe && styles.surfaceRowDark]}>
                   <Text style={[styles.mailboxBubbleMeta, isDark && !sentByMe && styles.textDarkMuted, sentByMe && styles.mailboxBubbleTextSent]}>
@@ -369,6 +390,48 @@ export function MailboxPanel({
                     <View style={styles.notice}>
                       <Ionicons name="return-up-forward-outline" size={16} color={palette.red} />
                       <Text style={styles.noticeText}>{message.response}</Text>
+                    </View>
+                  ) : null}
+                  {canReport ? (
+                    <TouchableOpacity style={styles.mailboxReportLink} onPress={() => onToggleReportMessage(message.id)}>
+                      <Ionicons name="flag-outline" size={14} color={palette.red} />
+                      <Text style={styles.actionPillText}>Reportar</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {reportingMessageId === message.id ? (
+                    <View style={styles.mailboxReportPanel}>
+                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Motivo</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
+                        {[
+                          ['lenguaje_ofensivo', 'Lenguaje ofensivo'],
+                          ['contenido_sexual', 'Contenido sexual'],
+                          ['acoso', 'Acoso'],
+                          ['amenaza', 'Amenaza'],
+                          ['spam', 'Spam'],
+                          ['otro', 'Otro']
+                        ].map(([key, label]) => (
+                          <TouchableOpacity key={key} style={[styles.filterChip, reportReason === key && styles.filterChipActive]} onPress={() => onReportReasonChange(key)}>
+                            <Text style={[styles.filterChipText, reportReason === key && styles.filterChipTextActive]}>{label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                      <TextInput
+                        style={[styles.input, isDark && styles.inputDark]}
+                        placeholder="Comentario opcional"
+                        value={reportComment}
+                        onChangeText={(value) => onReportCommentChange(value.slice(0, 300))}
+                        placeholderTextColor={inputPlaceholderColor}
+                      />
+                      <View style={styles.compactToolRow}>
+                        <TouchableOpacity style={[styles.compactSquareButton, styles.compactSquareButtonActive]} onPress={() => onSubmitMessageReport(message)}>
+                          <Ionicons name="flag-outline" size={16} color={palette.white} />
+                          <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>Enviar reporte</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.compactSquareButton} onPress={() => onToggleReportMessage(null)}>
+                          <Ionicons name="close-outline" size={16} color={palette.red} />
+                          <Text style={styles.compactSquareButtonText}>Cancelar</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   ) : null}
                 </View>

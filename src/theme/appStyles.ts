@@ -3309,6 +3309,37 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     textAlignVertical: 'top'
   },
+  mailboxRulesNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#FFF6F0',
+    borderWidth: 1,
+    borderColor: '#F7D6C8',
+    marginBottom: 10
+  },
+  mailboxReportLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    marginTop: 8
+  },
+  mailboxReportPanel: {
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#DDECF0'
+  },
+  compactNumberInput: {
+    width: 76,
+    minWidth: 76,
+    marginBottom: 0,
+    textAlign: 'center'
+  },
   adminUserAvatar: {
     width: 42,
     height: 42,

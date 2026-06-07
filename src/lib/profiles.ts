@@ -179,6 +179,36 @@ export type MailboxConversationRecord = {
 
 export type MailboxTargetMode = 'my_community' | 'community' | 'province_communities' | 'diocesan_leadership' | 'all' | 'user' | 'role' | 'province' | 'role_province';
 
+export type MessageModerationStatus = 'pendiente' | 'en_revision' | 'resuelto' | 'descartado';
+
+export type MessageModerationRecord = {
+  id: string;
+  item_type: 'report' | 'event';
+  message_id: string | null;
+  source: 'direct' | 'community' | null;
+  reporter_id: string | null;
+  reporter_name: string | null;
+  reported_user_id: string | null;
+  reported_user_name: string | null;
+  reason: string | null;
+  comment: string | null;
+  status: MessageModerationStatus;
+  severity: 'baja' | 'media' | 'alta' | 'critica' | null;
+  action_taken: string | null;
+  message_preview: string | null;
+  created_at: string;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+};
+
+export type ModerationRuleRecord = {
+  id: string;
+  pattern: string;
+  severity: 'baja' | 'media' | 'alta' | 'critica';
+  action: 'advertir' | 'bloquear' | 'revisar';
+  is_active: boolean;
+};
+
 export type UserAgendaPreferenceRecord = {
   item_key: string;
   preference_type: 'favorite' | 'reminder';
@@ -815,10 +845,74 @@ export async function sendDirectMailboxMessage(values: {
   subject?: string | null;
 }) {
   try {
-    return await supabase.rpc('send_direct_message', {
+    return await supabase.rpc('send_direct_message_with_moderation', {
       p_recipient_ids: values.recipientIds,
       p_body: values.message,
       p_subject: values.subject ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function reportMailboxMessage(values: {
+  messageId: string;
+  source?: MailboxMessageRecord['source'];
+  reason: string;
+  comment?: string;
+}) {
+  try {
+    return await supabase.rpc('report_message', {
+      p_message_id: values.messageId,
+      p_source: values.source ?? 'direct',
+      p_reason: values.reason,
+      p_comment: values.comment ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function fetchModerationQueue(): Promise<MessageModerationRecord[]> {
+  try {
+    const { data, error } = await supabase.rpc('get_moderation_queue');
+    if (error || !data) {
+      return [];
+    }
+    return data as MessageModerationRecord[];
+  } catch {
+    return [];
+  }
+}
+
+export async function reviewMessageReport(values: { reportId: string; status: MessageModerationStatus; actionTaken?: string | null }) {
+  try {
+    return await supabase.rpc('review_message_report', {
+      p_report_id: values.reportId,
+      p_status: values.status,
+      p_action_taken: values.actionTaken ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function restrictUserMessaging(values: { userId: string; reason: string; days?: number | null }) {
+  try {
+    return await supabase.rpc('restrict_user_messaging', {
+      p_user_id: values.userId,
+      p_reason: values.reason,
+      p_days: values.days ?? 7
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
+export async function restoreUserMessaging(userId: string) {
+  try {
+    return await supabase.rpc('restore_user_messaging', {
+      p_user_id: userId
     });
   } catch (error) {
     return networkError(error);

@@ -16,6 +16,7 @@ import {
   deleteMailboxMessageForMe,
   fetchMailboxMessages,
   markMailboxMessageAsRead,
+  reportMailboxMessage,
   respondMailboxMessage,
   restoreMailboxMessageForMe,
   sendDirectMailboxMessage,
@@ -84,6 +85,9 @@ export function useMailboxController({
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [conversationDraft, setConversationDraft] = useState('');
   const [conversationSending, setConversationSending] = useState(false);
+  const [reportingMessageId, setReportingMessageId] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState('lenguaje_ofensivo');
+  const [reportComment, setReportComment] = useState('');
   const [showComposer, setShowComposer] = useState(false);
   const [draft, setDraft] = useState('');
   const [targetMode, setTargetMode] = useState<MailboxTargetMode>(defaultTargetModeForSession(activeSession));
@@ -452,6 +456,26 @@ export function useMailboxController({
     await refresh();
   }
 
+  async function submitMessageReport(message: MailboxMessageRecord) {
+    if ((message.mailbox_folder ?? 'entrada') !== 'entrada') {
+      setAuthMessage('Solo puedes reportar mensajes recibidos.');
+      return;
+    }
+    const { error } = await reportMailboxMessage({
+      messageId: message.id,
+      source: message.source ?? 'direct',
+      reason: reportReason,
+      comment: reportComment
+    });
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+    setReportingMessageId(null);
+    setReportComment('');
+    setAuthMessage(changeDone('Reporte enviado para revision.'));
+  }
+
   async function openMessage(message: MailboxMessageRecord) {
     setExpandedMessageIds((current) => current.includes(message.id) ? current.filter((id) => id !== message.id) : [...current, message.id]);
     if ((message.mailbox_folder ?? 'entrada') === 'entrada' && message.status === 'nuevo') {
@@ -558,6 +582,9 @@ export function useMailboxController({
     selectedConversation,
     conversationDraft,
     conversationSending,
+    reportingMessageId,
+    reportReason,
+    reportComment,
     messages: visibleMessages,
     expandedMessageIds,
     responses,
@@ -580,6 +607,10 @@ export function useMailboxController({
     onCloseConversation: () => setSelectedConversationId(null),
     onConversationDraftChange: setConversationDraft,
     onSendConversationReply: sendConversationReply,
+    onToggleReportMessage: (messageId: string | null) => setReportingMessageId((current) => current === messageId ? null : messageId),
+    onReportReasonChange: setReportReason,
+    onReportCommentChange: setReportComment,
+    onSubmitMessageReport: submitMessageReport,
     onResponseChange: (messageId: string, value: string) => setResponses((current) => ({ ...current, [messageId]: value })),
     onSubmitResponse: submitResponse,
     onStartDirectReply: startDirectReply,

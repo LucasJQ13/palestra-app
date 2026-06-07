@@ -49,6 +49,8 @@ export function AdminOverviewPanel({
   onSetCommunityPanel: () => void;
   onViewAsSession: (session: Session) => void;
 }) {
+  const canOpenModeration = ['administrador', 'coordinador_nacional', 'vocal_nacional', 'coordinador_diocesano'].includes(session.role);
+
   return (
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
       <View style={styles.adminStatRow}>
@@ -109,10 +111,12 @@ export function AdminOverviewPanel({
           { label: isCommunityLeader ? 'Nuevo aviso comunitario' : 'Nueva noticia', module: isCommunityLeader ? 'muro_comunitario' : 'noticias', icon: 'add-circle-outline' },
           { label: 'Coordinaciones Activas', module: 'coordinaciones_activas', icon: 'people-circle-outline' },
           { label: canAdministrateCommunities ? 'Crear comunidad' : 'Comunidades', module: 'comunidades', icon: 'location-outline' },
+          { label: 'Moderacion', module: 'moderacion', icon: 'shield-checkmark-outline' },
           { label: 'Revisar usuarios', module: 'usuarios', icon: 'people-outline' }
         ].filter((item) => (
           (item.module !== 'usuarios' || canManageUsers)
           && (item.module !== 'comunidades' || canOpenCommunityAdmin)
+          && (item.module !== 'moderacion' || canOpenModeration)
         )).map((item) => (
           <TouchableOpacity key={item.label} style={[styles.adminQuickAction, isDark && styles.adminQuickActionDark]} onPress={() => item.module === 'muro_comunitario' ? onSetCommunityPanel() : item.module === 'coordinaciones_activas' ? onOpenCoordinations() : onSetAdminModule(item.module as AdminModule)}>
             <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={20} color={palette.red} />

@@ -15,6 +15,7 @@ export const adminModuleCatalog: Array<{ key: AdminModule; label: string; icon: 
   { key: 'crear_provincia', label: 'Crear provincia', icon: 'map-outline', systemOnly: true },
   { key: 'listas_qr', label: 'Listas QR', icon: 'qr-code-outline' },
   { key: 'intenciones', label: 'Intenciones', icon: 'flame-outline', systemOnly: true },
+  { key: 'moderacion', label: 'Moderacion', icon: 'shield-checkmark-outline' },
   { key: 'proceso_educativo', label: 'Proceso Educativo', icon: 'map-outline' },
   { key: 'evangelio_dia', label: 'Evangelio', icon: 'book-outline', systemOnly: true },
   { key: 'contacto_admin', label: 'Contacto', icon: 'chatbubbles-outline', systemOnly: true },
