@@ -7,6 +7,7 @@ import { PageEditorProps } from '../lib/navigationConstants';
 import { AppAdminConfig } from '../lib/appConfig';
 import { inputPlaceholderColor, palestraLogo, provinceDisplayNames, provinceLogos } from '../lib/constants';
 import { supabase } from '../lib/supabase';
+import { APP_MESSAGES } from '../lib/appMessages';
 import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
 import { useIsDarkTheme } from '../theme/ThemeContext';
@@ -169,7 +170,7 @@ export function DynamicContactForm({ title, content, editor }: { title: string; 
       message: `${destination ? `[${destination}] ` : ''}${message.trim()}`,
       status: 'nuevo'
     });
-    setStatus(error ? error.message : 'Mensaje enviado');
+    setStatus(error ? error.message : APP_MESSAGES.messageSent);
     if (!error) {
       setName('');
       setContact('');

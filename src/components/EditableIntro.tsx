@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { AppContentBlock, ContentEditorBlock, updateAppContent, updateAppTab } from '../lib/profiles';
 import { PageEditorProps } from '../lib/navigationConstants';
-import { changeDone } from '../lib/appMessages';
+import { APP_MESSAGES, changeDone } from '../lib/appMessages';
 import { normalizeContentCards, prepareContentCardsForSave } from '../lib/contentBlocks';
 import { normalizeExternalUrl } from '../lib/urls';
 import { supabase } from '../lib/supabase';
@@ -57,7 +57,7 @@ export function EditableIntro({ content, editor }: { content?: AppContentBlock; 
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setEditorMessage('Necesito permiso para acceder a tus fotos.');
+      setEditorMessage(APP_MESSAGES.photoPermission);
       return;
     }
 

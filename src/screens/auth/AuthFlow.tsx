@@ -7,7 +7,7 @@ import { checkRegistrationEmailAvailable, createEmailConfirmationRequest } from 
 import { AppCommunity, fetchCommunities } from '../../lib/remoteData';
 import { getMyProfileSession } from '../../lib/authProfile';
 import { supabase } from '../../lib/supabase';
-import { hasPlausibleEmailDomain, isValidEmail, safeAuthError, verifyEmailDomainExists } from '../../lib/appMessages';
+import { APP_MESSAGES, hasPlausibleEmailDomain, isValidEmail, safeAuthError, verifyEmailDomainExists } from '../../lib/appMessages';
 import { genderNarratives } from '../../lib/profileDisplay';
 import { authDeepLinkBaseUrl, authPasswordResetUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames } from '../../lib/constants';
 import { Session } from '../../types/auth';
@@ -265,7 +265,7 @@ function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: {
       communityName: profile.community,
       contact: profile.contact
     });
-    onMessage(error ? error.message : 'Mensaje enviado');
+    onMessage(error ? error.message : APP_MESSAGES.messageSent);
   }
 
   return (

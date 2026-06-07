@@ -11,7 +11,7 @@ import { rolePermissions } from '../lib/permissions';
 import { Permission, Role, Session } from '../types/auth';
 import { roleDefinitions } from '../data/content';
 import { roleRank } from '../lib/roles';
-import { friendlyUploadError, changeDone } from '../lib/appMessages';
+import { APP_MESSAGES, friendlyUploadError, changeDone } from '../lib/appMessages';
 import { inputPlaceholderColor } from '../lib/constants';
 import { supabase } from '../lib/supabase';
 import { EditableIntro } from '../components/EditableIntro';
@@ -219,12 +219,12 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
 
   async function uploadChurchDocumentLogoFromDownloads() {
     if (session?.role !== 'administrador') {
-      setUploadMessage('Solo Administrador puede subir logos.');
+      setUploadMessage(APP_MESSAGES.adminOnly('subir logos'));
       return;
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setUploadMessage('Necesito permiso para seleccionar imagen.');
+      setUploadMessage(APP_MESSAGES.imageSelectionPermission);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -260,7 +260,7 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
 
   async function saveChurchDocumentFromDownloads() {
     if (session?.role !== 'administrador') {
-      setUploadMessage('Solo Administrador puede gestionar documentos de la Iglesia.');
+      setUploadMessage(APP_MESSAGES.adminOnly('gestionar documentos de la Iglesia'));
       return;
     }
     if (!churchDocumentTitle.trim() || !churchDocumentTargetUrl.trim()) {

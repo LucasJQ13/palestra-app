@@ -1,4 +1,5 @@
 import { Role, Session } from '../types/auth';
+import { APP_MESSAGES } from './appMessages';
 import { roleRank } from './roles';
 import { supabase } from './supabase';
 
@@ -6,7 +7,7 @@ function networkError(error: unknown) {
   return {
     data: null,
     error: {
-      message: error instanceof Error ? error.message : 'No se pudo conectar con Supabase.'
+      message: error instanceof Error ? error.message : APP_MESSAGES.supabaseConnectionError
     }
   };
 }

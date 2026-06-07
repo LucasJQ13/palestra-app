@@ -3,6 +3,7 @@ import { Session } from '../types/auth';
 import { CommunityGroupType, CommunitySectionVisibility, defaultCommunitySectionVisibility, normalizeCommunityGroup } from './communitySections';
 import { canAccessProvince, roleRank } from './roles';
 import { supabase } from './supabase';
+import { APP_MESSAGES } from './appMessages';
 
 type RemoteCommunityRow = {
   id: string;
@@ -369,7 +370,7 @@ export async function createCommunityPublication(values: {
     return {
       data: null,
       error: {
-        message: error instanceof Error ? error.message : 'No se pudo conectar con Supabase.'
+        message: error instanceof Error ? error.message : APP_MESSAGES.supabaseConnectionError
       }
     };
   }

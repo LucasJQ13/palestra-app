@@ -29,7 +29,7 @@ import { normalizeExternalUrl } from '../lib/urls';
 import { uploadPickedImageToPublicUrl } from '../lib/uploads';
 import { argentinaProvinceDefinitions, provinceDefinitionFor } from '../lib/argentinaProvinces';
 import { credentialDisplayName, displayRoleLabel, firstNameOf, GenderPreference, genderNarratives, homeGreetingName, perseveranceLabel, personalPmSummary, personalPmTypeLabel, renderGreetingTemplate, roleLabel, roleLabelForProvince, roleShortLabel } from '../lib/profileDisplay';
-import { changeDone, communityDowngradesRole, friendlyUploadError, hasPlausibleEmailDomain, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError, verifyEmailDomainExists } from '../lib/appMessages';
+import { APP_MESSAGES, changeDone, communityDowngradesRole, friendlyUploadError, hasPlausibleEmailDomain, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError, verifyEmailDomainExists } from '../lib/appMessages';
 import { buildInitialBlocksForSection, tabLabelFromKey } from '../lib/contentBlocks';
 import { canCreateOrAdministrateCommunities, canEditAdminUser, canEditStaticInstitutionalPage, canManageFormationPathAdmin, canManageGlobalInstagram, canManageMotivadorPanel, canManageNewsContent, canManagePublishedContent, canManageRequestsPanel, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from '../lib/sessionAccess';
 import { AdminModule, AdminRequest, AdminUsersTool, ProfilePanel, PublicProfilePreview, TabKey } from '../types/appUi';
@@ -1494,7 +1494,7 @@ export function ProfileScreen({
 
   async function saveQrActivityShares() {
     if (!selectedQrActivityList) {
-      setAuthMessage('Selecciona una lista QR.');
+      setAuthMessage(APP_MESSAGES.selectQrList);
       return;
     }
     const { error } = await shareQrActivityList({
@@ -1514,7 +1514,7 @@ export function ProfileScreen({
 
   async function saveQrActivityListEdit() {
     if (!selectedQrActivityList) {
-      setAuthMessage('Selecciona una lista QR.');
+      setAuthMessage(APP_MESSAGES.selectQrList);
       return;
     }
     const title = qrActivityEditTitle.trim();
@@ -1539,7 +1539,7 @@ export function ProfileScreen({
 
   async function addUserToQrActivity(userId: string) {
     if (!selectedQrActivityListId) {
-      setAuthMessage('Selecciona una lista QR.');
+      setAuthMessage(APP_MESSAGES.selectQrList);
       return;
     }
     const { error } = await addQrActivityMember(selectedQrActivityListId, userId);
@@ -1553,7 +1553,7 @@ export function ProfileScreen({
 
   async function addAllUsersToQrActivity() {
     if (!selectedQrActivityList) {
-      setAuthMessage('Selecciona una lista QR.');
+      setAuthMessage(APP_MESSAGES.selectQrList);
       return;
     }
     const { error } = await addQrActivityMembersByScope(selectedQrActivityList.id, selectedQrActivityList.province, selectedQrActivityList.community_name);
@@ -1728,7 +1728,7 @@ export function ProfileScreen({
 
   async function deletePrayerIntentionFromAdmin(item: PrayerIntentionRecord) {
     if (session?.role !== 'administrador') {
-      setPrayerIntentionsMessage('Solo Administrador puede eliminar intenciones.');
+      setPrayerIntentionsMessage(APP_MESSAGES.adminOnly('eliminar intenciones'));
       return;
     }
     const confirmed = Platform.OS === 'web'
@@ -2145,7 +2145,7 @@ export function ProfileScreen({
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setAuthMessage('Necesito permiso para acceder a tus fotos.');
+      setAuthMessage(APP_MESSAGES.photoPermission);
       return;
     }
 
@@ -2221,7 +2221,7 @@ export function ProfileScreen({
 
   async function createBasicAdminUser() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede crear usuarios.');
+      setAuthMessage(APP_MESSAGES.adminOnly('crear usuarios'));
       return;
     }
     if (!isValidEmail(adminCreateEmail)) {
@@ -2386,7 +2386,7 @@ export function ProfileScreen({
 
   async function confirmSelectedUserEmail() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede confirmar mails desde Auth.');
+      setAuthMessage(APP_MESSAGES.adminOnly('confirmar mails desde Auth'));
       return;
     }
     if (!selectedAdminUser) {
@@ -2409,7 +2409,7 @@ export function ProfileScreen({
 
   async function deleteSelectedAdminUser() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede eliminar usuarios y liberar mails.');
+      setAuthMessage(APP_MESSAGES.adminOnly('eliminar usuarios y liberar mails'));
       return;
     }
     if (!selectedAdminUser) {
@@ -2697,7 +2697,7 @@ export function ProfileScreen({
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setAuthMessage('Necesito permiso para seleccionar una imagen.');
+      setAuthMessage(APP_MESSAGES.imageSelectionPermissionWithArticle);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -2822,7 +2822,7 @@ export function ProfileScreen({
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setAuthMessage('Necesito permiso para seleccionar imagen.');
+      setAuthMessage(APP_MESSAGES.imageSelectionPermission);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -2858,7 +2858,7 @@ export function ProfileScreen({
 
   async function saveChurchDocumentDraft() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede gestionar documentos de la Iglesia.');
+      setAuthMessage(APP_MESSAGES.adminOnly('gestionar documentos de la Iglesia'));
       return;
     }
     if (!churchDocumentTitle.trim() || !churchDocumentTargetUrl.trim()) {
@@ -3174,7 +3174,7 @@ export function ProfileScreen({
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setAuthMessage('Necesitamos permiso para elegir una imagen.');
+      setAuthMessage(APP_MESSAGES.chooseImagePermission);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -3198,7 +3198,7 @@ export function ProfileScreen({
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setAuthMessage('Necesitamos permiso para elegir una imagen.');
+      setAuthMessage(APP_MESSAGES.chooseImagePermission);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -3413,7 +3413,7 @@ export function ProfileScreen({
 
   async function adminCreateProvince() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede crear provincias.');
+      setAuthMessage(APP_MESSAGES.adminOnly('crear provincias'));
       return;
     }
     const definition = provinceDefinitionFor(newProvinceName) ?? selectedNewProvinceDefinition;
@@ -3832,10 +3832,10 @@ export function ProfileScreen({
     setCommunityPostDate('');
     setCommunityPollOptions('');
     setCommunityPostNotify(false);
-    const successMessage = notificationWarning ?? changeDone('Mensaje enviado correctamente');
+    const successMessage = notificationWarning ?? changeDone(APP_MESSAGES.messageSentCorrectly);
     setAuthMessage(successMessage);
     if (!notificationWarning) {
-      showFeedbackMessage('Mensaje enviado correctamente');
+      showFeedbackMessage(APP_MESSAGES.messageSentCorrectly);
     }
     await refreshCommunityForum();
     await onContentChanged();
@@ -3932,7 +3932,7 @@ export function ProfileScreen({
       return;
     }
     setForumReportDrafts((current) => ({ ...current, [publicationId]: '' }));
-    setAuthMessage(changeDone('Reporte enviado para moderacion.'));
+    setAuthMessage(changeDone(APP_MESSAGES.reportSentForModeration));
   }
 
   async function openPublicProfile(profile: PublicProfilePreview) {
@@ -3982,7 +3982,7 @@ export function ProfileScreen({
       communityName: session.communityOfOrigin,
       contact: session.contact
     });
-    setAuthMessage(error ? error.message : 'Mensaje enviado');
+    setAuthMessage(error ? error.message : APP_MESSAGES.messageSent);
     if (!error) {
       await loadMyRequests();
     }

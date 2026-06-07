@@ -1,5 +1,25 @@
 import { Role, Session, UserStatus } from '../types/auth';
 
+export const APP_MESSAGES = {
+  supabaseConnectionError: 'No se pudo conectar con Supabase.',
+  saveFailed: 'No se pudo guardar',
+  operationFailed: 'No se pudo completar la operacion.',
+  messageSent: 'Mensaje enviado',
+  messageSentDone: 'Mensaje enviado.',
+  messageSentCorrectly: 'Mensaje enviado correctamente',
+  responseSent: 'Respuesta enviada.',
+  reportSentForReview: 'Reporte enviado para revision.',
+  reportSentForModeration: 'Reporte enviado para moderacion.',
+  selectQrList: 'Selecciona una lista QR.',
+  photoPermission: 'Necesito permiso para acceder a tus fotos.',
+  imageSelectionPermission: 'Necesito permiso para seleccionar imagen.',
+  imageSelectionPermissionWithArticle: 'Necesito permiso para seleccionar una imagen.',
+  chooseImagePermission: 'Necesitamos permiso para elegir una imagen.',
+  adminOnly(action: string) {
+    return `Solo Administrador puede ${action}.`;
+  }
+} as const;
+
 export function statusLabel(status: UserStatus) {
   if (status === 'aprobado') {
     return 'Aprobado';

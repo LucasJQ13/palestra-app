@@ -6,6 +6,7 @@ import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { uploadPickedImageToPublicUrl } from '../../lib/uploads';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { roleLabel } from '../../lib/profileDisplay';
 import { visibleHierarchyFor } from '../../lib/roles';
 import { canManageFormationPathAdmin } from '../../lib/sessionAccess';
@@ -124,7 +125,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
   async function uploadImage() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setMessage('Necesito permiso para acceder a tus fotos.');
+      setMessage(APP_MESSAGES.photoPermission);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

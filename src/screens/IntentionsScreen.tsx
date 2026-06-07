@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppContentBlock, ContentEditorBlock, PrayerIntentionRecord, createPrayerIntention, deliverNotificationIntent, fetchRandomPrayerIntention, recordPrayerForIntention, updateAppContent, updateAppTab } from '../lib/profiles';
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor } from '../lib/constants';
-import { changeDone } from '../lib/appMessages';
+import { APP_MESSAGES, changeDone } from '../lib/appMessages';
 import { normalizeContentCards, prepareContentCardsForSave } from '../lib/contentBlocks';
 import { supabase } from '../lib/supabase';
 import { Session } from '../types/auth';
@@ -104,7 +104,7 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setHeroEditMessage('Necesito permiso para acceder a tus fotos.');
+      setHeroEditMessage(APP_MESSAGES.photoPermission);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({

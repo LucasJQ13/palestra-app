@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppCommunity } from '../../lib/remoteData';
 import { Role, Session } from '../../types/auth';
 import { RoleAliasConfig } from '../../lib/appConfig';
-import { changeDone } from '../../lib/appMessages';
+import { APP_MESSAGES, changeDone } from '../../lib/appMessages';
 import {
   AdminUser,
   MailboxConversationRecord,
@@ -351,7 +351,7 @@ export function useMailboxController({
     setSelectedUserIds([]);
     setShowComposer(false);
     await AsyncStorage.removeItem(`palestra.mailboxDraft.${activeSession.id}`);
-    setAuthMessage(changeDone('Mensaje enviado.'));
+    setAuthMessage(changeDone(APP_MESSAGES.messageSentDone));
     await refresh();
   }
 
@@ -388,7 +388,7 @@ export function useMailboxController({
       return;
     }
     setResponses((current) => ({ ...current, [messageId]: '' }));
-    setAuthMessage(changeDone('Respuesta enviada.'));
+    setAuthMessage(changeDone(APP_MESSAGES.responseSent));
     await refresh();
   }
 
@@ -452,7 +452,7 @@ export function useMailboxController({
       return;
     }
     setConversationDraft('');
-    setAuthMessage(changeDone('Respuesta enviada.'));
+    setAuthMessage(changeDone(APP_MESSAGES.responseSent));
     await refresh();
   }
 
@@ -473,7 +473,7 @@ export function useMailboxController({
     }
     setReportingMessageId(null);
     setReportComment('');
-    setAuthMessage(changeDone('Reporte enviado para revision.'));
+    setAuthMessage(changeDone(APP_MESSAGES.reportSentForReview));
   }
 
   async function openMessage(message: MailboxMessageRecord) {

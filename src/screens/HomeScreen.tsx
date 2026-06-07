@@ -10,7 +10,7 @@ import { themePresets } from '../theme/themes';
 import { AppAdminConfig, defaultAdminConfig } from '../lib/appConfig';
 import { canAccessPrivate, canManageNationalPublishedContent } from '../lib/sessionAccess';
 import { fallbackContentKey } from '../lib/contentBlocks';
-import { changeDone } from '../lib/appMessages';
+import { APP_MESSAGES, changeDone } from '../lib/appMessages';
 import { defaultDesignerCreditUrl, inputPlaceholderColor } from '../lib/constants';
 import { DailyGospelRecord, fetchDailyGospel } from '../lib/dailyGospel';
 import { homeGreeting, homeGreetingName, roleLabel } from '../lib/profileDisplay';
@@ -138,7 +138,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setHomeActionMessage('Necesito permiso para seleccionar una imagen.');
+      setHomeActionMessage(APP_MESSAGES.imageSelectionPermissionWithArticle);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
