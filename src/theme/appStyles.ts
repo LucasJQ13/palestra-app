@@ -1,11 +1,12 @@
 import { StyleSheet } from 'react-native';
 import { palette } from './palette';
 import { themePresets } from './themes';
+import { designTokens as ui } from './designTokens';
 
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.paper
+    backgroundColor: ui.color.appBackground
   },
   safeAreaDark: {
     backgroundColor: themePresets.dark.colors.background
@@ -486,8 +487,9 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 10,
-    borderBottomWidth: 0,
-    backgroundColor: '#DDF1F6',
+    borderBottomWidth: 1,
+    borderBottomColor: ui.color.border,
+    backgroundColor: ui.color.appBackgroundTint,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
@@ -529,16 +531,13 @@ export const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    borderWidth: 2,
-    borderColor: 'rgba(45, 141, 200, 0.18)',
-    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: ui.color.borderStrong,
+    backgroundColor: ui.color.surface,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 2
+    ...ui.shadow.soft
   },
   brandLogoImage: {
     width: '100%',
@@ -821,10 +820,10 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 10,
-    borderRadius: 18,
-    backgroundColor: palette.white,
+    borderRadius: ui.radius.md,
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)'
+    borderColor: ui.color.border
   },
   headerProfileButtonText: {
     color: palette.red,
@@ -834,10 +833,10 @@ export const styles = StyleSheet.create({
   headerMenuButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: palette.white,
+    borderRadius: ui.radius.md,
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)',
+    borderColor: ui.color.border,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -851,16 +850,13 @@ export const styles = StyleSheet.create({
   },
   drawerPanel: {
     height: '100%',
-    backgroundColor: '#F6FBFC',
-    borderTopRightRadius: 30,
-    borderBottomRightRadius: 30,
+    backgroundColor: ui.color.surfaceSoft,
+    borderTopRightRadius: ui.radius.xl,
+    borderBottomRightRadius: ui.radius.xl,
     paddingTop: 18,
     paddingHorizontal: 16,
     paddingBottom: 20,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.22,
-    shadowRadius: 24,
-    elevation: 12
+    ...ui.shadow.modal
   },
   drawerPanelDark: {
     backgroundColor: themePresets.dark.colors.surface,
@@ -872,7 +868,7 @@ export const styles = StyleSheet.create({
     gap: 11,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(45, 141, 200, 0.12)'
+    borderBottomColor: ui.color.border
   },
   drawerLogo: {
     width: 46,
@@ -911,12 +907,12 @@ export const styles = StyleSheet.create({
   drawerCloseButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: palette.white,
+    borderRadius: ui.radius.md,
+    backgroundColor: ui.color.surface,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.14)'
+    borderColor: ui.color.border
   },
   drawerCloseButtonDark: {
     backgroundColor: themePresets.dark.colors.surfaceSoft,
@@ -931,7 +927,7 @@ export const styles = StyleSheet.create({
   },
   drawerItem: {
     minHeight: 58,
-    borderRadius: 20,
+    borderRadius: ui.radius.lg,
     paddingHorizontal: 10,
     paddingVertical: 9,
     flexDirection: 'row',
@@ -950,7 +946,7 @@ export const styles = StyleSheet.create({
   drawerIconFrame: {
     width: 40,
     height: 40,
-    borderRadius: 15,
+    borderRadius: ui.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(45, 141, 200, 0.09)'
@@ -1033,13 +1029,13 @@ export const styles = StyleSheet.create({
     flex: 1
   },
   surfacePanelDark: {
-    backgroundColor: '#32373A',
-    borderColor: themePresets.dark.colors.border,
+    backgroundColor: ui.color.darkSurface,
+    borderColor: ui.color.darkBorder,
     shadowColor: '#000'
   },
   surfaceCardDark: {
-    backgroundColor: '#3A4246',
-    borderColor: themePresets.dark.colors.border,
+    backgroundColor: ui.color.darkSurfaceSoft,
+    borderColor: ui.color.darkBorder,
     shadowColor: '#000'
   },
   surfaceRowDark: {
@@ -1341,7 +1337,7 @@ export const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: palette.ink,
-    fontSize: 21,
+    fontSize: ui.font.title,
     fontWeight: '900',
     marginTop: 6,
     marginBottom: 2
@@ -1350,19 +1346,16 @@ export const styles = StyleSheet.create({
     color: themePresets.dark.colors.text
   },
   card: {
-    backgroundColor: palette.white,
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.08)',
-    borderRadius: 22,
-    padding: 16,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 0
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    padding: ui.space.lg,
+    ...ui.shadow.none
   },
   feedCard: {
     gap: 10,
-    borderRadius: 22,
+    borderRadius: ui.radius.lg,
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderTopWidth: 1,
@@ -1710,16 +1703,13 @@ export const styles = StyleSheet.create({
   modalPanel: {
     width: '100%',
     maxWidth: 520,
-    backgroundColor: 'rgba(255, 255, 255, 0.96)',
-    borderColor: 'rgba(45, 141, 200, 0.18)',
+    backgroundColor: ui.color.surface,
+    borderColor: ui.color.borderStrong,
     borderWidth: 1,
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: ui.radius.xl,
+    padding: ui.space.lg,
     gap: 10,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 8
+    ...ui.shadow.modal
   },
   modalOverlay: {
     flex: 1,
@@ -2422,15 +2412,12 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: palette.white,
-    borderColor: 'rgba(45, 141, 200, 0.14)',
+    backgroundColor: ui.color.surface,
+    borderColor: ui.color.border,
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 14,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 1
+    borderRadius: ui.radius.md,
+    padding: ui.space.md,
+    ...ui.shadow.soft
   },
   noticeText: {
     flex: 1,
@@ -2730,16 +2717,13 @@ export const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 18,
+    borderRadius: ui.radius.md,
     flexDirection: 'row',
     gap: 7,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 2
+    ...ui.shadow.soft
   },
   primaryButtonText: {
     color: palette.white,
@@ -2750,17 +2734,17 @@ export const styles = StyleSheet.create({
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.32)',
+    borderColor: ui.color.borderStrong,
     minHeight: 48,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 18,
+    borderRadius: ui.radius.md,
     flexDirection: 'row',
     gap: 7,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 14,
-    backgroundColor: palette.white
+    backgroundColor: ui.color.surface
   },
   secondaryButtonText: {
     color: palette.red,
@@ -2873,17 +2857,14 @@ export const styles = StyleSheet.create({
     marginTop: 1
   },
   profileCommunityPanel: {
-    backgroundColor: palette.white,
-    borderColor: 'rgba(45, 141, 200, 0.14)',
+    backgroundColor: ui.color.surface,
+    borderColor: ui.color.border,
     borderWidth: 1,
-    borderRadius: 20,
-    padding: 14,
+    borderRadius: ui.radius.lg,
+    padding: ui.space.md,
     marginTop: 12,
     gap: 10,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 1
+    ...ui.shadow.soft
   },
   contentBlockStack: {
     gap: 10
@@ -3086,8 +3067,8 @@ export const styles = StyleSheet.create({
     minWidth: 82,
     minHeight: 44,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)',
-    borderRadius: 8,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.sm,
     paddingHorizontal: 8,
     paddingVertical: 6,
     backgroundColor: palette.white,
@@ -3114,11 +3095,11 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.18)',
-    borderRadius: 18,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.md,
     paddingHorizontal: 10,
     marginTop: 10,
-    backgroundColor: palette.white
+    backgroundColor: ui.color.surface
   },
   actionPillActive: {
     backgroundColor: palette.red,
@@ -3154,16 +3135,13 @@ export const styles = StyleSheet.create({
     fontWeight: '900'
   },
   inlineEditorPanel: {
-    backgroundColor: palette.white,
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.14)',
-    borderRadius: 22,
-    padding: 14,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    padding: ui.space.md,
     gap: 8,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 1
+    ...ui.shadow.soft
   },
   inlineEditorToolbar: {
     flexDirection: 'row',
@@ -3225,9 +3203,9 @@ export const styles = StyleSheet.create({
   },
   filterChip: {
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.16)',
-    backgroundColor: palette.white,
-    borderRadius: 18,
+    borderColor: ui.color.border,
+    backgroundColor: ui.color.surface,
+    borderRadius: ui.radius.md,
     paddingHorizontal: 12,
     paddingVertical: 9
   },
@@ -3323,12 +3301,12 @@ export const styles = StyleSheet.create({
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.16)',
-    borderRadius: 18,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.md,
     paddingHorizontal: 14,
     marginTop: 10,
     color: palette.ink,
-    backgroundColor: palette.white
+    backgroundColor: ui.color.surface
   },
   inputDark: {
     backgroundColor: '#33383B',
@@ -3362,12 +3340,12 @@ export const styles = StyleSheet.create({
   passwordField: {
     minHeight: 48,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.16)',
-    borderRadius: 18,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.md,
     paddingLeft: 14,
     paddingRight: 8,
     marginTop: 10,
-    backgroundColor: palette.white,
+    backgroundColor: ui.color.surface,
     flexDirection: 'row',
     alignItems: 'center'
   },
@@ -3426,11 +3404,11 @@ export const styles = StyleSheet.create({
   dropdownButton: {
     minHeight: 48,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.16)',
-    borderRadius: 18,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.md,
     paddingHorizontal: 14,
     marginTop: 8,
-    backgroundColor: palette.white,
+    backgroundColor: ui.color.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -3451,9 +3429,9 @@ export const styles = StyleSheet.create({
   },
   dropdownList: {
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.16)',
-    borderRadius: 18,
-    backgroundColor: palette.white,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.md,
+    backgroundColor: ui.color.surface,
     marginTop: 8,
     maxHeight: 200,
     overflow: 'hidden'
@@ -3512,17 +3490,14 @@ export const styles = StyleSheet.create({
     fontWeight: '800'
   },
   adminPanel: {
-    backgroundColor: palette.white,
-    borderColor: 'rgba(45, 141, 200, 0.14)',
+    backgroundColor: ui.color.surface,
+    borderColor: ui.color.border,
     borderWidth: 1,
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: ui.radius.xl,
+    padding: ui.space.lg,
     gap: 10,
     marginTop: 12,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.09,
-    shadowRadius: 16,
-    elevation: 2
+    ...ui.shadow.soft
   },
   collapsedPanel: {
     display: 'none'
@@ -3531,8 +3506,8 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    backgroundColor: 'rgba(230, 243, 245, 0.58)',
-    borderRadius: 22,
+    backgroundColor: ui.color.surfaceMuted,
+    borderRadius: ui.radius.lg,
     padding: 7
   },
   adminModuleGridDark: {
@@ -3545,8 +3520,8 @@ export const styles = StyleSheet.create({
     minHeight: 54,
     borderWidth: 0,
     borderColor: palette.line,
-    backgroundColor: 'rgba(45, 141, 200, 0.09)',
-    borderRadius: 16,
+    backgroundColor: ui.color.primarySoft,
+    borderRadius: ui.radius.md,
     paddingHorizontal: 6,
     paddingVertical: 8,
     alignItems: 'center',
@@ -3574,16 +3549,13 @@ export const styles = StyleSheet.create({
     color: palette.white
   },
   adminWorkspace: {
-    backgroundColor: 'rgba(255,255,255,0.38)',
-    borderColor: 'rgba(45, 141, 200, 0.12)',
+    backgroundColor: ui.color.surfaceSoft,
+    borderColor: ui.color.border,
     borderWidth: 1,
-    borderRadius: 22,
-    padding: 14,
+    borderRadius: ui.radius.lg,
+    padding: ui.space.md,
     gap: 10,
-    shadowColor: palette.blueDeep,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 0
+    ...ui.shadow.none
   },
   adminWorkspaceDark: {
     backgroundColor: '#32373A',
@@ -4604,7 +4576,7 @@ export const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.white,
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
     borderColor: 'rgba(45,141,200,0.2)'
   },
@@ -4659,7 +4631,7 @@ export const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 15,
     gap: 8,
-    backgroundColor: palette.white,
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
     borderColor: 'rgba(45,141,200,0.18)',
     shadowColor: '#0b2c3a',
