@@ -3628,12 +3628,12 @@ export const styles = StyleSheet.create({
     color: themePresets.dark.colors.text
   },
   debugPanel: {
-    backgroundColor: '#FFF4CC',
-    borderColor: palette.gold,
+    backgroundColor: '#FFF8DF',
+    borderColor: 'rgba(243, 183, 0, 0.34)',
     borderWidth: 1,
-    borderRadius: 18,
-    padding: 8,
-    marginBottom: 8
+    borderRadius: ui.radius.md,
+    padding: ui.space.md,
+    marginBottom: ui.space.sm
   },
   debugText: {
     color: palette.ink,
@@ -3645,9 +3645,9 @@ export const styles = StyleSheet.create({
     borderColor: ui.color.border,
     borderWidth: 1,
     borderRadius: ui.radius.xl,
-    padding: ui.space.lg,
-    gap: 10,
-    marginTop: 12,
+    padding: ui.space.xl,
+    gap: ui.space.md,
+    marginTop: ui.space.md,
     ...ui.shadow.soft
   },
   collapsedPanel: {
@@ -3657,9 +3657,11 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    backgroundColor: ui.color.surfaceMuted,
+    backgroundColor: '#F6FBFC',
+    borderWidth: 1,
+    borderColor: ui.color.border,
     borderRadius: ui.radius.lg,
-    padding: 7
+    padding: 8
   },
   adminModuleGridDark: {
     backgroundColor: 'rgba(168, 221, 243, 0.08)',
@@ -3668,28 +3670,33 @@ export const styles = StyleSheet.create({
   },
   adminModuleButton: {
     width: '23%',
-    minHeight: 54,
-    borderWidth: 0,
-    borderColor: palette.line,
-    backgroundColor: ui.color.primarySoft,
+    minHeight: 62,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.10)',
+    backgroundColor: ui.color.surface,
     borderRadius: ui.radius.md,
     paddingHorizontal: 6,
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4
+    gap: 5,
+    ...ui.shadow.none
   },
   adminModuleButtonDark: {
     backgroundColor: 'rgba(168, 221, 243, 0.08)',
     borderColor: themePresets.dark.colors.border
   },
   adminModuleButtonActive: {
-    backgroundColor: palette.red,
-    borderColor: palette.red
+    backgroundColor: ui.color.primary,
+    borderColor: ui.color.primary,
+    shadowColor: palette.blueDeep,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 2
   },
   adminModuleText: {
     color: palette.ink,
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '900',
     textAlign: 'center'
   },
@@ -3700,12 +3707,12 @@ export const styles = StyleSheet.create({
     color: palette.white
   },
   adminWorkspace: {
-    backgroundColor: ui.color.surfaceSoft,
+    backgroundColor: '#FAFDFD',
     borderColor: ui.color.border,
     borderWidth: 1,
     borderRadius: ui.radius.lg,
-    padding: ui.space.md,
-    gap: 10,
+    padding: ui.space.lg,
+    gap: ui.space.md,
     ...ui.shadow.none
   },
   adminWorkspaceDark: {
@@ -3717,10 +3724,12 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: palette.goldSoft,
-    borderRadius: 18,
+    backgroundColor: '#FFF7E0',
+    borderWidth: 1,
+    borderColor: 'rgba(243, 183, 0, 0.24)',
+    borderRadius: ui.radius.pill,
     paddingHorizontal: 12,
-    paddingVertical: 9
+    paddingVertical: 8
   },
   adminStatusText: {
     color: palette.ink,
@@ -3730,20 +3739,21 @@ export const styles = StyleSheet.create({
   adminStatRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: 10
   },
   adminStat: {
     flex: 1,
     minWidth: '46%',
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.14)',
-    borderRadius: 18,
-    padding: 12,
-    backgroundColor: palette.whiteSoft
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    padding: ui.space.lg,
+    backgroundColor: ui.color.surface,
+    ...ui.shadow.none
   },
   adminStatNumber: {
     color: palette.red,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900'
   },
   adminStatLabel: {
@@ -3759,24 +3769,26 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    borderRadius: 18,
+    borderRadius: ui.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.12)',
-    backgroundColor: palette.whiteSoft,
+    borderColor: ui.color.border,
+    backgroundColor: ui.color.surface,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8
+    paddingVertical: 12,
+    marginBottom: 8,
+    ...ui.shadow.none
   },
   adminEditForm: {
     gap: 4
   },
   adminInlineEditor: {
-    backgroundColor: palette.whiteSoft,
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.16)',
-    borderRadius: 18,
-    padding: 12,
-    margin: 8
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    padding: ui.space.lg,
+    margin: 8,
+    ...ui.shadow.none
   },
   adminQuickGrid: {
     flexDirection: 'row',
@@ -3786,13 +3798,15 @@ export const styles = StyleSheet.create({
   adminQuickAction: {
     flex: 1,
     minWidth: '46%',
-    minHeight: 58,
+    minHeight: 60,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.md,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(45, 141, 200, 0.09)'
+    backgroundColor: ui.color.surface
   },
   adminQuickActionDark: {
     backgroundColor: 'rgba(168, 221, 243, 0.08)',
@@ -3805,12 +3819,12 @@ export const styles = StyleSheet.create({
     flex: 1
   },
   adminPreviewPane: {
-    backgroundColor: 'rgba(230, 243, 245, 0.72)',
+    backgroundColor: '#F6FBFC',
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.12)',
-    borderRadius: 22,
-    padding: 14,
-    gap: 6
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    padding: ui.space.lg,
+    gap: 8
   },
   previewButtonSwatch: {
     minHeight: 38,
@@ -3821,23 +3835,23 @@ export const styles = StyleSheet.create({
     alignSelf: 'flex-start'
   },
   permissionGrid: {
-    gap: 8
+    gap: 10
   },
   permissionToggle: {
     minHeight: 64,
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    borderRadius: ui.radius.lg,
+    paddingHorizontal: ui.space.md,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: ui.color.surface,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.16)'
+    borderColor: ui.color.border
   },
   permissionToggleActive: {
-    backgroundColor: palette.red,
-    borderColor: palette.red
+    backgroundColor: ui.color.primary,
+    borderColor: ui.color.primary
   },
   permissionToggleTitle: {
     color: palette.ink,
@@ -3867,9 +3881,13 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(45, 141, 200, 0.11)',
-    paddingVertical: 12
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    paddingHorizontal: ui.space.md,
+    paddingVertical: 12,
+    marginBottom: 8,
+    backgroundColor: ui.color.surface
   },
   provinceAdminRow: {
     flexDirection: 'column',
@@ -3890,10 +3908,8 @@ export const styles = StyleSheet.create({
     gap: 10
   },
   adminListRowActive: {
-    backgroundColor: 'rgba(45, 141, 200, 0.08)',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    borderBottomWidth: 0
+    backgroundColor: '#EFF8FB',
+    borderColor: ui.color.borderStrong
   },
   qrActivityListRow: {
     flexDirection: 'row',
@@ -3902,25 +3918,25 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.16)',
-    borderRadius: 14,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
     paddingHorizontal: 12,
     paddingVertical: 12,
     marginBottom: 10,
-    backgroundColor: palette.white
+    backgroundColor: ui.color.surface
   },
   qrActivityListRowActive: {
-    backgroundColor: 'rgba(45, 141, 200, 0.08)',
-    borderColor: 'rgba(45, 141, 200, 0.34)'
+    backgroundColor: '#EFF8FB',
+    borderColor: ui.color.borderStrong
   },
   adminDocumentThumb: {
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: ui.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     resizeMode: 'contain',
-    backgroundColor: palette.whiteSoft
+    backgroundColor: ui.color.surfaceMuted
   },
   adminStateDraft: {
     color: palette.red,
@@ -3929,18 +3945,18 @@ export const styles = StyleSheet.create({
   },
   blockEditorCard: {
     borderWidth: 1,
-    borderColor: 'rgba(45, 141, 200, 0.16)',
-    borderRadius: 18,
-    padding: 12,
-    backgroundColor: palette.whiteSoft
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    padding: ui.space.lg,
+    backgroundColor: ui.color.surface
   },
   adminMessage: {
-    color: palette.white,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    color: palette.ink,
+    backgroundColor: '#F6FBFC',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 18,
-    padding: 10,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    padding: ui.space.md,
     fontWeight: '800'
   },
   tabEditorRow: {
