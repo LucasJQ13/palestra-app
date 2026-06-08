@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
@@ -117,6 +117,7 @@ export function MailboxPanel({
   onUpdateStatus,
   onOpenMessage,
   onDeleteForMe,
+  onDeleteConversationForMe,
   onRestoreForMe
 }: {
   session: Session;
@@ -180,9 +181,52 @@ export function MailboxPanel({
   onUpdateStatus: (messageId: string, status: MailboxMessageRecord['status']) => void;
   onOpenMessage: (message: MailboxMessageRecord) => void;
   onDeleteForMe: (message: MailboxMessageRecord) => void;
+  onDeleteConversationForMe: (conversation: MailboxConversationRecord) => void;
   onRestoreForMe: (message: MailboxMessageRecord) => void;
 }) {
   const selectedCommunityId = targetCommunityId || communityOptions[0]?.id;
+  const confirmAction = (title: string, message: string, actionLabel: string, action: () => void) => {
+    if (Platform.OS === 'web') {
+      if (typeof window === 'undefined' || window.confirm(message)) {
+        action();
+      }
+      return;
+    }
+    Alert.alert(title, message, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: actionLabel, style: 'destructive', onPress: action }
+    ]);
+  };
+  const openMessageActions = (message: MailboxMessageRecord) => {
+    const deleted = (message.mailbox_folder ?? 'entrada') === 'eliminados';
+    if (Platform.OS === 'web') {
+      confirmAction(
+        deleted ? 'Restaurar mensaje' : 'Eliminar mensaje',
+        deleted ? '¿Querés restaurar este mensaje en tu vista?' : '¿Querés eliminar este mensaje solo de tu vista?',
+        deleted ? 'Restaurar' : 'Eliminar',
+        () => deleted ? onRestoreForMe(message) : onDeleteForMe(message)
+      );
+      return;
+    }
+    Alert.alert('Acciones del mensaje', 'Elegí qué hacer con este mensaje.', [
+      { text: 'Cancelar', style: 'cancel' },
+      deleted
+        ? { text: 'Restaurar mensaje', onPress: () => onRestoreForMe(message) }
+        : {
+          text: 'Eliminar mensaje',
+          style: 'destructive',
+          onPress: () => confirmAction('Eliminar mensaje', 'Este mensaje se eliminará solo de tu vista. ¿Deseás continuar?', 'Eliminar', () => onDeleteForMe(message))
+        }
+    ]);
+  };
+  const openConversationActions = (conversation: MailboxConversationRecord) => {
+    confirmAction(
+      'Eliminar conversación',
+      'Esta conversación se eliminará solo de tu vista. ¿Deseás continuar?',
+      'Eliminar conversación',
+      () => onDeleteConversationForMe(conversation)
+    );
+  };
 
   return (
     <View style={[styles.mailboxShell, isDark && styles.surfacePanelDark]}>
@@ -363,7 +407,11 @@ export function MailboxPanel({
       </View>
 
       {selectedConversation ? (
-        <View style={[styles.mailboxThreadPanel, isDark && styles.surfacePanelDark]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 92 : 74}
+          style={[styles.mailboxThreadKeyboard, isDark && styles.surfacePanelDark]}
+        >
           <View style={styles.mailboxThreadHeader}>
             <TouchableOpacity style={styles.iconButtonGhost} onPress={onCloseConversation} activeOpacity={0.84}>
               <Ionicons name="arrow-back-outline" size={18} color={palette.red} />
@@ -375,13 +423,16 @@ export function MailboxPanel({
               <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedConversation.title}</Text>
               {selectedConversation.subtitle ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{selectedConversation.subtitle}</Text> : null}
             </View>
+            <TouchableOpacity style={styles.iconButtonGhost} onPress={() => openConversationActions(selectedConversation)} onLongPress={() => openConversationActions(selectedConversation)} activeOpacity={0.84}>
+              <Ionicons name="ellipsis-vertical" size={18} color={palette.red} />
+            </TouchableOpacity>
           </View>
-          <ScrollView style={styles.mailboxThreadScroll} nestedScrollEnabled showsVerticalScrollIndicator>
+          <ScrollView style={styles.mailboxThreadScroll} contentContainerStyle={styles.mailboxThreadScrollContent} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator>
             {selectedConversation.messages.map((message) => {
               const sentByMe = message.sender_id === session.id || (message.mailbox_folder ?? 'entrada') === 'enviados';
               const canReport = !sentByMe && (message.mailbox_folder ?? 'entrada') === 'entrada';
               return (
-                <View key={`${message.source}-${message.id}-${message.mailbox_folder}`} style={[styles.mailboxBubble, sentByMe ? styles.mailboxBubbleSent : styles.mailboxBubbleReceived, isDark && !sentByMe && styles.surfaceRowDark]}>
+                <TouchableOpacity key={`${message.source}-${message.id}-${message.mailbox_folder}`} style={[styles.mailboxBubble, sentByMe ? styles.mailboxBubbleSent : styles.mailboxBubbleReceived, isDark && !sentByMe && styles.surfaceRowDark]} activeOpacity={0.86} onPress={() => onOpenMessage(message)} onLongPress={() => openMessageActions(message)}>
                   <Text style={[styles.mailboxBubbleMeta, isDark && !sentByMe && styles.textDarkMuted, sentByMe && styles.mailboxBubbleTextSent]}>
                     {sentByMe ? 'Enviado' : 'Recibido'} · {new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </Text>
@@ -434,7 +485,7 @@ export function MailboxPanel({
                       </View>
                     </View>
                   ) : null}
-                </View>
+                </TouchableOpacity>
               );
             })}
           </ScrollView>
@@ -457,7 +508,7 @@ export function MailboxPanel({
               <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>{conversationSending ? '...' : 'Enviar'}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       ) : null}
 
       {!selectedConversation && conversations.length === 0 ? (
@@ -471,7 +522,7 @@ export function MailboxPanel({
         const selected = selectedConversationId === conversation.id;
         const statusLabel = conversation.unreadCount > 0 ? 'Nuevo' : conversation.lastDirection === 'sent' ? 'Enviado' : conversation.hasSent && conversation.hasReceived ? 'Conversacion' : 'Recibido';
         return (
-          <TouchableOpacity key={conversation.id} style={[styles.mailboxConversationRow, selected && styles.mailboxConversationRowActive, isDark && styles.surfaceRowDark]} onPress={() => onOpenConversation(conversation.id)} activeOpacity={0.86}>
+          <TouchableOpacity key={conversation.id} style={[styles.mailboxConversationRow, selected && styles.mailboxConversationRowActive, isDark && styles.surfaceRowDark]} onPress={() => onOpenConversation(conversation.id)} onLongPress={() => openConversationActions(conversation)} activeOpacity={0.86}>
             <View style={styles.mailboxAvatar}>
               <Text style={styles.mailboxAvatarText}>{conversation.title.trim().charAt(0).toUpperCase() || 'P'}</Text>
             </View>

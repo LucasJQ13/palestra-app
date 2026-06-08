@@ -351,7 +351,6 @@ export function useMailboxController({
     setSelectedUserIds([]);
     setShowComposer(false);
     await AsyncStorage.removeItem(`palestra.mailboxDraft.${activeSession.id}`);
-    setAuthMessage(changeDone(APP_MESSAGES.messageSentDone));
     await refresh();
   }
 
@@ -388,7 +387,6 @@ export function useMailboxController({
       return;
     }
     setResponses((current) => ({ ...current, [messageId]: '' }));
-    setAuthMessage(changeDone(APP_MESSAGES.responseSent));
     await refresh();
   }
 
@@ -452,7 +450,6 @@ export function useMailboxController({
       return;
     }
     setConversationDraft('');
-    setAuthMessage(changeDone(APP_MESSAGES.responseSent));
     await refresh();
   }
 
@@ -494,7 +491,22 @@ export function useMailboxController({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone('Mensaje eliminado de tu vista.'));
+    await refresh();
+  }
+
+  async function deleteConversationForMe(conversation: MailboxConversationRecord) {
+    const errors: string[] = [];
+    await Promise.all(conversation.messages.map(async (message) => {
+      const { error } = await deleteMailboxMessageForMe(message.id, message.source);
+      if (error) {
+        errors.push(error.message);
+      }
+    }));
+    if (errors.length > 0) {
+      setAuthMessage(errors[0]);
+      return;
+    }
+    setSelectedConversationId(null);
     await refresh();
   }
 
@@ -617,6 +629,7 @@ export function useMailboxController({
     onUpdateStatus: updateStatus,
     onOpenMessage: openMessage,
     onDeleteForMe: deleteForMe,
+    onDeleteConversationForMe: deleteConversationForMe,
     onRestoreForMe: restoreForMe
   };
 }

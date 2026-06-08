@@ -293,6 +293,13 @@ export default function App() {
       if (tab.key === 'perfil') {
         return false;
       }
+      if (tab.key === 'inicio') {
+        if (seen.has(tab.key)) {
+          return false;
+        }
+        seen.add(tab.key);
+        return true;
+      }
       if (maintenanceForUser) {
         return false;
       }

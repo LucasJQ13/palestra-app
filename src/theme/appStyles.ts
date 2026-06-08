@@ -3247,6 +3247,14 @@ export const styles = StyleSheet.create({
     padding: 12,
     gap: 12
   },
+  mailboxThreadKeyboard: {
+    borderWidth: 1,
+    borderColor: ui.color.border,
+    borderRadius: ui.radius.lg,
+    backgroundColor: '#FAFDFD',
+    padding: 12,
+    gap: 12
+  },
   mailboxThreadHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3254,6 +3262,9 @@ export const styles = StyleSheet.create({
   },
   mailboxThreadScroll: {
     maxHeight: 420
+  },
+  mailboxThreadScrollContent: {
+    paddingBottom: 14
   },
   mailboxBubble: {
     maxWidth: '88%',
