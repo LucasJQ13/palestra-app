@@ -435,7 +435,7 @@ export async function fetchCommunityPublications(session?: Session | null) {
           scope: `${item.kind} - ${item.community_name ?? 'Comunidad'}`,
           title: item.title,
           body: item.event_date ? `${String(item.event_date).slice(0, 10)} - ${item.body}` : item.body,
-          imageUrl: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
+          imageUrl: item.image_url || undefined
         }));
       }
     } catch {
@@ -447,7 +447,7 @@ export async function fetchCommunityPublications(session?: Session | null) {
   try {
     result = await supabase
       .from('community_publications')
-      .select('id, kind, title, body, event_date, visibility, poll_options, poll_results, status, created_by, created_at, profiles(full_name, role), communities(name, provinces(name))')
+      .select('id, kind, title, body, event_date, visibility, poll_options, poll_results, status, created_by, created_at, image_url, profiles(full_name, role), communities(name, provinces(name))')
       .is('archived_at', null)
       .order('created_at', { ascending: false })
       .limit(100);
@@ -455,7 +455,18 @@ export async function fetchCommunityPublications(session?: Session | null) {
     return [];
   }
 
-  const { data, error } = result;
+  let data: any[] | null = result.data as any[] | null;
+  let error = result.error;
+  if (error && /image_url|column .* does not exist/i.test(error.message)) {
+    const fallback = await supabase
+      .from('community_publications')
+      .select('id, kind, title, body, event_date, visibility, poll_options, poll_results, status, created_by, created_at, profiles(full_name, role), communities(name, provinces(name))')
+      .is('archived_at', null)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (error || !data) {
     return [];
   }
@@ -498,7 +509,7 @@ export async function fetchCommunityPublications(session?: Session | null) {
       scope: `${item.kind} - ${item.communities?.name ?? 'Comunidad'}`,
       title: item.title,
       body: item.event_date ? `${String(item.event_date).slice(0, 10)} - ${item.body}` : item.body,
-      imageUrl: 'https://www.lisanews.org/wp-content/uploads/2025/04/ACTUALIDAD-2025-04-23T103601.604-scaled.png'
+      imageUrl: item.image_url || undefined
     }));
 }
 
