@@ -3345,6 +3345,35 @@ export const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#DDECF0'
   },
+  mailboxReportModal: {
+    width: '92%',
+    maxHeight: '86%',
+    alignSelf: 'center'
+  },
+  mailboxReportModalContent: {
+    gap: 12,
+    paddingBottom: 4
+  },
+  mailboxReportReasonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  mailboxReportReasonButton: {
+    minWidth: '46%',
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#D8EAF0',
+    backgroundColor: palette.white,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  flexButton: {
+    flex: 1
+  },
   compactNumberInput: {
     width: 76,
     minWidth: 76,

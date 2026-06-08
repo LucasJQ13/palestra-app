@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
@@ -41,6 +41,15 @@ const communityTargetModes: [MailboxTargetMode, string][] = [
   ['user', 'Usuario'],
   ['my_community', 'Responsables']
 ];
+
+const reportReasons = [
+  ['lenguaje_ofensivo', 'Lenguaje ofensivo'],
+  ['contenido_sexual', 'Contenido sexual'],
+  ['acoso', 'Acoso'],
+  ['amenaza', 'Amenaza'],
+  ['spam', 'Spam'],
+  ['otro', 'Otro']
+] as const;
 
 function targetModesForSession(session: Session): [MailboxTargetMode, string][] {
   if (session.role === 'administrador') {
@@ -185,6 +194,16 @@ export function MailboxPanel({
   onRestoreForMe: (message: MailboxMessageRecord) => void;
 }) {
   const selectedCommunityId = targetCommunityId || communityOptions[0]?.id;
+  const allConversationMessages = conversations.flatMap((conversation) => conversation.messages);
+  const reportMessage = reportingMessageId ? allConversationMessages.find((message) => message.id === reportingMessageId) ?? null : null;
+  const canReportMessage = (message: MailboxMessageRecord) => message.sender_id !== session.id && (message.mailbox_folder ?? 'entrada') === 'entrada';
+  const startReport = (message: MailboxMessageRecord) => {
+    if (!canReportMessage(message)) {
+      return;
+    }
+    onReportCommentChange('');
+    onToggleReportMessage(message.id);
+  };
   const confirmAction = (title: string, message: string, actionLabel: string, action: () => void) => {
     if (Platform.OS === 'web') {
       if (typeof window === 'undefined' || window.confirm(message)) {
@@ -200,6 +219,10 @@ export function MailboxPanel({
   const openMessageActions = (message: MailboxMessageRecord) => {
     const deleted = (message.mailbox_folder ?? 'entrada') === 'eliminados';
     if (Platform.OS === 'web') {
+      if (canReportMessage(message)) {
+        startReport(message);
+        return;
+      }
       confirmAction(
         deleted ? 'Restaurar mensaje' : 'Eliminar mensaje',
         deleted ? '¿Querés restaurar este mensaje en tu vista?' : '¿Querés eliminar este mensaje solo de tu vista?',
@@ -210,6 +233,7 @@ export function MailboxPanel({
     }
     Alert.alert('Acciones del mensaje', 'Elegí qué hacer con este mensaje.', [
       { text: 'Cancelar', style: 'cancel' },
+      ...(canReportMessage(message) ? [{ text: 'Reportar', onPress: () => startReport(message) }] : []),
       deleted
         ? { text: 'Restaurar mensaje', onPress: () => onRestoreForMe(message) }
         : {
@@ -220,6 +244,23 @@ export function MailboxPanel({
     ]);
   };
   const openConversationActions = (conversation: MailboxConversationRecord) => {
+    const reportableMessage = [...conversation.messages].reverse().find(canReportMessage);
+    if (Platform.OS === 'web' && reportableMessage) {
+      startReport(reportableMessage);
+      return;
+    }
+    if (Platform.OS !== 'web') {
+      Alert.alert('Acciones de la conversacion', 'Elegi que hacer con esta conversacion.', [
+        { text: 'Cancelar', style: 'cancel' },
+        ...(reportableMessage ? [{ text: 'Reportar conversacion', onPress: () => startReport(reportableMessage) }] : []),
+        {
+          text: 'Eliminar conversacion',
+          style: 'destructive',
+          onPress: () => confirmAction('Eliminar conversacion', 'Esta conversacion se eliminara solo de tu vista. Deseas continuar?', 'Eliminar conversacion', () => onDeleteConversationForMe(conversation))
+        }
+      ]);
+      return;
+    }
     confirmAction(
       'Eliminar conversación',
       'Esta conversación se eliminará solo de tu vista. ¿Deseás continuar?',
@@ -430,7 +471,6 @@ export function MailboxPanel({
           <ScrollView style={styles.mailboxThreadScroll} contentContainerStyle={styles.mailboxThreadScrollContent} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator>
             {selectedConversation.messages.map((message) => {
               const sentByMe = message.sender_id === session.id || (message.mailbox_folder ?? 'entrada') === 'enviados';
-              const canReport = !sentByMe && (message.mailbox_folder ?? 'entrada') === 'entrada';
               return (
                 <TouchableOpacity key={`${message.source}-${message.id}-${message.mailbox_folder}`} style={[styles.mailboxBubble, sentByMe ? styles.mailboxBubbleSent : styles.mailboxBubbleReceived, isDark && !sentByMe && styles.surfaceRowDark]} activeOpacity={0.86} onPress={() => onOpenMessage(message)} onLongPress={() => openMessageActions(message)}>
                   <Text style={[styles.mailboxBubbleMeta, isDark && !sentByMe && styles.textDarkMuted, sentByMe && styles.mailboxBubbleTextSent]}>
@@ -441,48 +481,6 @@ export function MailboxPanel({
                     <View style={styles.notice}>
                       <Ionicons name="return-up-forward-outline" size={16} color={palette.red} />
                       <Text style={styles.noticeText}>{message.response}</Text>
-                    </View>
-                  ) : null}
-                  {canReport ? (
-                    <TouchableOpacity style={styles.mailboxReportLink} onPress={() => onToggleReportMessage(message.id)}>
-                      <Ionicons name="flag-outline" size={14} color={palette.red} />
-                      <Text style={styles.actionPillText}>Reportar</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  {reportingMessageId === message.id ? (
-                    <View style={styles.mailboxReportPanel}>
-                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Motivo</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-                        {[
-                          ['lenguaje_ofensivo', 'Lenguaje ofensivo'],
-                          ['contenido_sexual', 'Contenido sexual'],
-                          ['acoso', 'Acoso'],
-                          ['amenaza', 'Amenaza'],
-                          ['spam', 'Spam'],
-                          ['otro', 'Otro']
-                        ].map(([key, label]) => (
-                          <TouchableOpacity key={key} style={[styles.filterChip, reportReason === key && styles.filterChipActive]} onPress={() => onReportReasonChange(key)}>
-                            <Text style={[styles.filterChipText, reportReason === key && styles.filterChipTextActive]}>{label}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                      <TextInput
-                        style={[styles.input, isDark && styles.inputDark]}
-                        placeholder="Comentario opcional"
-                        value={reportComment}
-                        onChangeText={(value) => onReportCommentChange(value.slice(0, 300))}
-                        placeholderTextColor={inputPlaceholderColor}
-                      />
-                      <View style={styles.compactToolRow}>
-                        <TouchableOpacity style={[styles.compactSquareButton, styles.compactSquareButtonActive]} onPress={() => onSubmitMessageReport(message)}>
-                          <Ionicons name="flag-outline" size={16} color={palette.white} />
-                          <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>Enviar reporte</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.compactSquareButton} onPress={() => onToggleReportMessage(null)}>
-                          <Ionicons name="close-outline" size={16} color={palette.red} />
-                          <Text style={styles.compactSquareButtonText}>Cancelar</Text>
-                        </TouchableOpacity>
-                      </View>
                     </View>
                   ) : null}
                 </TouchableOpacity>
@@ -545,6 +543,60 @@ export function MailboxPanel({
           </TouchableOpacity>
         );
       })}
+
+      <Modal visible={Boolean(reportMessage)} transparent animationType="fade" onRequestClose={() => onToggleReportMessage(null)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.modalPanel, styles.mailboxReportModal, isDark && styles.surfacePanelDark]}>
+            <ScrollView contentContainerStyle={styles.mailboxReportModalContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <View style={styles.mailboxThreadHeader}>
+                <View style={styles.mailboxAvatar}>
+                  <Ionicons name="flag-outline" size={18} color={palette.red} />
+                </View>
+                <View style={styles.adminUserHeaderText}>
+                  <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Reportar mensaje</Text>
+                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>
+                    Usuario reportado: {reportMessage?.sender_name || 'Usuario'}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.iconButtonGhost} onPress={() => onToggleReportMessage(null)} activeOpacity={0.84}>
+                  <Ionicons name="close-outline" size={20} color={palette.red} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Motivo</Text>
+              <View style={styles.mailboxReportReasonGrid}>
+                {reportReasons.map(([key, label]) => (
+                  <TouchableOpacity key={key} style={[styles.mailboxReportReasonButton, reportReason === key && styles.filterChipActive]} onPress={() => onReportReasonChange(key)} activeOpacity={0.84}>
+                    <Text style={[styles.filterChipText, reportReason === key && styles.filterChipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Comentario opcional</Text>
+              <TextInput
+                style={[styles.input, styles.textArea, isDark && styles.inputDark]}
+                placeholder="Agrega un detalle si hace falta"
+                value={reportComment}
+                onChangeText={(value) => onReportCommentChange(value.slice(0, 300))}
+                placeholderTextColor={inputPlaceholderColor}
+                multiline
+              />
+              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{reportComment.length}/300</Text>
+
+              <View style={styles.compactToolRow}>
+                <TouchableOpacity style={[styles.compactSquareButton, styles.compactSquareButtonActive, styles.flexButton]} onPress={() => reportMessage ? onSubmitMessageReport(reportMessage) : null} activeOpacity={0.86}>
+                  <Ionicons name="flag-outline" size={16} color={palette.white} />
+                  <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>Enviar reporte</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.compactSquareButton, styles.flexButton]} onPress={() => onToggleReportMessage(null)} activeOpacity={0.86}>
+                  <Ionicons name="close-outline" size={16} color={palette.red} />
+                  <Text style={styles.compactSquareButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
 
     </View>
   );

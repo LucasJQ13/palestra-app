@@ -470,7 +470,7 @@ export function useMailboxController({
     }
     setReportingMessageId(null);
     setReportComment('');
-    setAuthMessage(changeDone(APP_MESSAGES.reportSentForReview));
+    setAuthMessage(APP_MESSAGES.reportSentForReview);
   }
 
   async function openMessage(message: MailboxMessageRecord) {
@@ -619,7 +619,7 @@ export function useMailboxController({
     onCloseConversation: () => setSelectedConversationId(null),
     onConversationDraftChange: setConversationDraft,
     onSendConversationReply: sendConversationReply,
-    onToggleReportMessage: (messageId: string | null) => setReportingMessageId((current) => current === messageId ? null : messageId),
+    onToggleReportMessage: setReportingMessageId,
     onReportReasonChange: setReportReason,
     onReportCommentChange: setReportComment,
     onSubmitMessageReport: submitMessageReport,
