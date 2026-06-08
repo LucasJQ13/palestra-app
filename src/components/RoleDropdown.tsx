@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { roleDefinitions } from '../data/content';
 import { Role } from '../types/auth';
 import { roleLabel } from '../lib/profileDisplay';
+import { useIsDarkTheme } from '../theme/ThemeContext';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
 
@@ -22,27 +23,28 @@ export function RoleDropdown({
   onSelect: (role: Role) => void;
   roles?: typeof roleDefinitions;
 }) {
+  const isDark = useIsDarkTheme();
   const options = (roles ?? roleDefinitions).filter((role) => role.role !== 'invitado');
   const selected = options.find((role) => role.role === value);
   return (
     <View>
-      <Text style={styles.cardEyebrow}>{label}</Text>
-      <TouchableOpacity style={styles.dropdownButton} onPress={onToggle} activeOpacity={0.84}>
-        <Text style={styles.dropdownButtonText}>{selected?.label ?? roleLabel(value)}</Text>
+      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{label}</Text>
+      <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={onToggle} activeOpacity={0.84}>
+        <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{selected?.label ?? roleLabel(value)}</Text>
         <Ionicons name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={18} color={palette.red} />
       </TouchableOpacity>
       {open ? (
-        <ScrollView style={styles.dropdownList} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+        <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled keyboardShouldPersistTaps="handled">
           {options.map((role) => (
             <TouchableOpacity
               key={role.role}
-              style={[styles.dropdownItem, role.role === value && styles.communityChoiceActive]}
+              style={[styles.dropdownItem, isDark && styles.dropdownItemDark, role.role === value && styles.communityChoiceActive]}
               onPress={() => {
                 onSelect(role.role as Role);
                 onToggle();
               }}
             >
-              <Text style={[styles.dropdownItemText, role.role === value && styles.filterChipTextActive]}>{role.label}</Text>
+              <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark, role.role === value && styles.filterChipTextActive]}>{role.label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>

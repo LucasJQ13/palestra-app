@@ -1042,22 +1042,22 @@ export const styles = StyleSheet.create({
     flex: 1
   },
   surfacePanelDark: {
-    backgroundColor: ui.color.darkSurface,
-    borderColor: ui.color.darkBorder,
+    backgroundColor: '#303437',
+    borderColor: 'rgba(168, 221, 243, 0.20)',
     shadowColor: '#000'
   },
   surfaceCardDark: {
-    backgroundColor: ui.color.darkSurfaceSoft,
-    borderColor: ui.color.darkBorder,
+    backgroundColor: '#363C40',
+    borderColor: 'rgba(168, 221, 243, 0.18)',
     shadowColor: '#000'
   },
   surfaceRowDark: {
-    backgroundColor: 'rgba(168, 221, 243, 0.08)',
-    borderColor: themePresets.dark.colors.border
+    backgroundColor: '#373D41',
+    borderColor: 'rgba(168, 221, 243, 0.18)'
   },
   darkSoftButton: {
-    backgroundColor: themePresets.dark.colors.surfaceSoft,
-    borderColor: 'rgba(139, 201, 234, 0.34)'
+    backgroundColor: '#333B40',
+    borderColor: 'rgba(168, 221, 243, 0.34)'
   },
   textDarkStrong: {
     color: themePresets.dark.colors.text
@@ -3692,8 +3692,8 @@ export const styles = StyleSheet.create({
     backgroundColor: ui.color.surface
   },
   inputDark: {
-    backgroundColor: '#33383B',
-    borderColor: 'rgba(139, 201, 234, 0.28)',
+    backgroundColor: '#30363A',
+    borderColor: 'rgba(168, 221, 243, 0.30)',
     color: themePresets.dark.colors.text
   },
   inputFocused: {
@@ -3798,8 +3798,8 @@ export const styles = StyleSheet.create({
     gap: 10
   },
   dropdownButtonDark: {
-    backgroundColor: '#33383B',
-    borderColor: 'rgba(139, 201, 234, 0.28)'
+    backgroundColor: '#30363A',
+    borderColor: 'rgba(168, 221, 243, 0.30)'
   },
   dropdownButtonText: {
     color: palette.ink,
@@ -3823,8 +3823,8 @@ export const styles = StyleSheet.create({
     maxHeight: 250
   },
   dropdownListDark: {
-    backgroundColor: '#33383B',
-    borderColor: 'rgba(139, 201, 234, 0.28)'
+    backgroundColor: '#30363A',
+    borderColor: 'rgba(168, 221, 243, 0.30)'
   },
   dropdownItem: {
     minHeight: 42,
@@ -3849,7 +3849,7 @@ export const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.82)'
   },
   dropdownItemDark: {
-    borderBottomColor: 'rgba(139, 201, 234, 0.16)'
+    borderBottomColor: 'rgba(168, 221, 243, 0.16)'
   },
   dropdownItemText: {
     color: palette.ink,
@@ -3948,8 +3948,8 @@ export const styles = StyleSheet.create({
     ...ui.shadow.none
   },
   adminWorkspaceDark: {
-    backgroundColor: '#32373A',
-    borderColor: themePresets.dark.colors.border,
+    backgroundColor: '#303437',
+    borderColor: 'rgba(168, 221, 243, 0.20)',
     shadowColor: '#000'
   },
   adminStatusPill: {
