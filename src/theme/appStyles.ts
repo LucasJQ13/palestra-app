@@ -1812,11 +1812,15 @@ export const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 520,
     maxHeight: '88%',
+    flexShrink: 1,
     zIndex: 2
   },
   globalSearchPanel: {
-    maxHeight: '86%',
-    paddingTop: 22
+    width: '100%',
+    maxHeight: '100%',
+    minHeight: 260,
+    paddingTop: 22,
+    overflow: 'hidden'
   },
   globalSearchRow: {
     flexDirection: 'row',
@@ -1838,11 +1842,15 @@ export const styles = StyleSheet.create({
   },
   globalSearchResults: {
     gap: 10,
-    paddingBottom: 18
+    paddingTop: 2,
+    paddingBottom: 18,
+    flexGrow: 1
   },
   globalSearchResultsScroll: {
     width: '100%',
-    flexGrow: 0
+    maxHeight: 430,
+    minHeight: 86,
+    flexShrink: 1
   },
   externalNewsCard: {
     borderRadius: 22,

@@ -62,6 +62,8 @@ export function GlobalSearchModal({
               style={styles.globalSearchResultsScroll}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
               contentContainerStyle={styles.globalSearchResults}
             >
               {results.map((result) => (
