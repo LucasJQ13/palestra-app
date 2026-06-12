@@ -217,10 +217,9 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
     setSecretariatMessageTarget(null);
   }
 
-  function renderSecretariatMembers(scope: 'nacional' | 'provincia') {
+  function renderSecretariatMembers() {
     return (
       <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{scope === 'nacional' ? 'Secretariado Nacional' : 'Nuestro Secretariado'}</Text>
         {secretariatLoading ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Cargando secretariado...</Text> : null}
         {!secretariatLoading && secretariatMembers.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay integrantes cargados por ahora.</Text> : null}
         {secretariatMembers.map((member) => {
@@ -370,7 +369,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
               </View>
               <Ionicons name={secretariatScope === 'provincia' ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color={palette.red} />
             </TouchableOpacity>
-            {secretariatScope === 'provincia' ? renderSecretariatMembers('provincia') : null}
+            {secretariatScope === 'provincia' ? renderSecretariatMembers() : null}
           </View>
         ) : null}
         <Modal visible={Boolean(community)} transparent animationType="slide" onRequestClose={closeCommunityModal} statusBarTranslucent>
@@ -491,7 +490,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
             </View>
             <Ionicons name={secretariatScope === 'nacional' ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color={palette.red} />
           </TouchableOpacity>
-          {secretariatScope === 'nacional' ? renderSecretariatMembers('nacional') : null}
+          {secretariatScope === 'nacional' ? renderSecretariatMembers() : null}
         </View>
       ) : null}
       {nearbySearchEnabled ? (

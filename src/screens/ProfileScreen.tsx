@@ -5023,8 +5023,6 @@ export function ProfileScreen({
                 </View>
               </TouchableOpacity>
             <View style={[styles.adminPanel, isDark && styles.surfacePanelDark, !showLeadershipPanel && styles.collapsedPanel]}>
-              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{session.role === 'administrador' ? 'Administrador' : 'Dirigencia'}</Text>
-              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{leadershipPanelTitle(session)}</Text>
               {authMessage ? <Text style={styles.adminMessage}>{authMessage}</Text> : null}
               {adminConfigDraft.settings.maintenanceMode ? (
                 <View style={styles.adminStatusPill}>
