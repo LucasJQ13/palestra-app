@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { AppCommunityLocation } from '../../lib/remoteData';
 import { CommunityMember } from '../../lib/profiles';
 import { CommunityCapabilities } from '../../lib/community/types';
+import { CommunityNoticeDraft } from '../../lib/community/notices';
 import { CommunityNoticePreview } from './CommunityNoticesPreview';
 import { CommunityPanelHeader } from './panel/CommunityPanelHeader';
 import { CommunityDetailsEditor } from './panel/CommunityDetailsEditor';
@@ -19,21 +20,17 @@ export function CommunityPanelScreen({
   isDark,
   feedback,
   savingDetails,
-  noticeTitle,
-  noticeBody,
+  noticeDraft,
   noticeNotify,
   editingNoticeId,
-  editingNoticeTitle,
-  editingNoticeBody,
+  editingNoticeDraft,
   onBack,
   onSaveDetails,
-  onNoticeTitleChange,
-  onNoticeBodyChange,
+  onNoticeDraftChange,
   onNoticeNotifyChange,
   onPublishNotice,
   onStartEditNotice,
-  onEditingNoticeTitleChange,
-  onEditingNoticeBodyChange,
+  onEditingNoticeDraftChange,
   onSaveNotice,
   onCancelEditNotice,
   onArchiveNotice,
@@ -47,21 +44,17 @@ export function CommunityPanelScreen({
   isDark: boolean;
   feedback?: string;
   savingDetails: boolean;
-  noticeTitle: string;
-  noticeBody: string;
+  noticeDraft: CommunityNoticeDraft;
   noticeNotify: boolean;
   editingNoticeId?: string | null;
-  editingNoticeTitle: string;
-  editingNoticeBody: string;
+  editingNoticeDraft: CommunityNoticeDraft;
   onBack: () => void;
   onSaveDetails: (values: { description: string; imageAsset: ImagePicker.ImagePickerAsset | null; imageUrl: string | null }) => void;
-  onNoticeTitleChange: (value: string) => void;
-  onNoticeBodyChange: (value: string) => void;
+  onNoticeDraftChange: (value: CommunityNoticeDraft) => void;
   onNoticeNotifyChange: (value: boolean) => void;
   onPublishNotice: () => void;
   onStartEditNotice: (notice: CommunityNoticePreview) => void;
-  onEditingNoticeTitleChange: (value: string) => void;
-  onEditingNoticeBodyChange: (value: string) => void;
+  onEditingNoticeDraftChange: (value: CommunityNoticeDraft) => void;
   onSaveNotice: () => void;
   onCancelEditNotice: () => void;
   onArchiveNotice: (noticeId: string) => void;
@@ -86,20 +79,16 @@ export function CommunityPanelScreen({
         <CommunityNoticeManager
           notices={notices}
           isDark={isDark}
-          title={noticeTitle}
-          body={noticeBody}
+          draft={noticeDraft}
           notify={noticeNotify}
           canNotify={capabilities.canNotifyMembers}
           editingId={editingNoticeId}
-          editingTitle={editingNoticeTitle}
-          editingBody={editingNoticeBody}
-          onTitleChange={onNoticeTitleChange}
-          onBodyChange={onNoticeBodyChange}
+          editingDraft={editingNoticeDraft}
+          onDraftChange={onNoticeDraftChange}
           onNotifyChange={onNoticeNotifyChange}
           onPublish={onPublishNotice}
           onStartEdit={onStartEditNotice}
-          onEditingTitleChange={onEditingNoticeTitleChange}
-          onEditingBodyChange={onEditingNoticeBodyChange}
+          onEditingDraftChange={onEditingNoticeDraftChange}
           onSaveEdit={onSaveNotice}
           onCancelEdit={onCancelEditNotice}
           onArchive={onArchiveNotice}

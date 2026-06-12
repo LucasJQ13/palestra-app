@@ -1,27 +1,24 @@
 import React from 'react';
-import { Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { inputPlaceholderColor } from '../../../lib/constants';
+import { Switch, Text, View } from 'react-native';
+import { CommunityNoticeDraft } from '../../../lib/community/notices';
 import { CommunityNoticePreview } from '../CommunityNoticesPreview';
+import { CommunityNoticeCard } from '../notices/CommunityNoticeCard';
+import { CommunityNoticeEditor } from '../notices/CommunityNoticeEditor';
 import { communityPanelStyles as styles } from './communityPanelStyles';
 
 export function CommunityNoticeManager({
   notices,
   isDark,
-  title,
-  body,
+  draft,
   notify,
   canNotify,
   editingId,
-  editingTitle,
-  editingBody,
-  onTitleChange,
-  onBodyChange,
+  editingDraft,
+  onDraftChange,
   onNotifyChange,
   onPublish,
   onStartEdit,
-  onEditingTitleChange,
-  onEditingBodyChange,
+  onEditingDraftChange,
   onSaveEdit,
   onCancelEdit,
   onArchive,
@@ -29,20 +26,16 @@ export function CommunityNoticeManager({
 }: {
   notices: CommunityNoticePreview[];
   isDark: boolean;
-  title: string;
-  body: string;
+  draft: CommunityNoticeDraft;
   notify: boolean;
   canNotify: boolean;
   editingId?: string | null;
-  editingTitle: string;
-  editingBody: string;
-  onTitleChange: (value: string) => void;
-  onBodyChange: (value: string) => void;
+  editingDraft: CommunityNoticeDraft;
+  onDraftChange: (value: CommunityNoticeDraft) => void;
   onNotifyChange: (value: boolean) => void;
   onPublish: () => void;
   onStartEdit: (notice: CommunityNoticePreview) => void;
-  onEditingTitleChange: (value: string) => void;
-  onEditingBodyChange: (value: string) => void;
+  onEditingDraftChange: (value: CommunityNoticeDraft) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onArchive: (noticeId: string) => void;
@@ -50,9 +43,17 @@ export function CommunityNoticeManager({
 }) {
   return (
     <View style={[styles.panel, isDark && styles.panelDark]}>
-      <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>Avisos comunitarios</Text>
-      <TextInput style={[styles.input, isDark && styles.inputDark]} value={title} onChangeText={onTitleChange} placeholder="Título del aviso" placeholderTextColor={inputPlaceholderColor} />
-      <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} value={body} onChangeText={onBodyChange} placeholder="Mensaje para la comunidad" placeholderTextColor={inputPlaceholderColor} multiline />
+      <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>Nuevo aviso comunitario</Text>
+      <Text style={[styles.body, isDark && styles.bodyDark]}>
+        Publicá un comunicado oficial. Los miembros podrán leerlo, pero no responderlo.
+      </Text>
+      <CommunityNoticeEditor
+        value={draft}
+        isDark={isDark}
+        submitLabel="Publicar aviso"
+        onChange={onDraftChange}
+        onSubmit={onPublish}
+      />
       {canNotify ? (
         <View style={styles.memberRow}>
           <View style={styles.memberInfo}>
@@ -62,46 +63,37 @@ export function CommunityNoticeManager({
           <Switch value={notify} onValueChange={onNotifyChange} />
         </View>
       ) : null}
-      <TouchableOpacity style={styles.primaryButton} onPress={onPublish}>
-        <Ionicons name="send-outline" size={18} color="#FFFFFF" />
-        <Text style={styles.primaryButtonText}>Publicar aviso</Text>
-      </TouchableOpacity>
 
-      {notices.map((notice) => (
-        <View key={notice.id || notice.title} style={styles.notice}>
-          {editingId === notice.id ? (
-            <>
-              <TextInput style={[styles.input, isDark && styles.inputDark]} value={editingTitle} onChangeText={onEditingTitleChange} placeholder="Título" placeholderTextColor={inputPlaceholderColor} />
-              <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} value={editingBody} onChangeText={onEditingBodyChange} placeholder="Contenido" placeholderTextColor={inputPlaceholderColor} multiline />
-              <View style={styles.noticeActions}>
-                <TouchableOpacity style={styles.primaryButton} onPress={onSaveEdit}>
-                  <Text style={styles.primaryButtonText}>Guardar cambios</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryButton} onPress={onCancelEdit}>
-                  <Text style={styles.secondaryButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={[styles.noticeTitle, isDark && styles.titleDark]}>{notice.title}</Text>
-              <Text style={[styles.body, isDark && styles.bodyDark]} numberOfLines={4}>{notice.body}</Text>
-              {notice.id && canManageNotice(notice) ? (
-                <View style={styles.noticeActions}>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => onStartEdit(notice)}>
-                    <Ionicons name="create-outline" size={17} color="#2D8DC8" />
-                    <Text style={styles.secondaryButtonText}>Editar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => onArchive(notice.id as string)}>
-                    <Ionicons name="archive-outline" size={17} color="#2D8DC8" />
-                    <Text style={styles.secondaryButtonText}>Archivar</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-            </>
-          )}
-        </View>
-      ))}
+      {notices.length ? (
+        <>
+          <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>Avisos publicados</Text>
+          {notices.map((notice) => (
+            <View key={notice.id || notice.title} style={styles.notice}>
+              {editingId === notice.id ? (
+                <CommunityNoticeEditor
+                  value={editingDraft}
+                  isDark={isDark}
+                  submitLabel="Guardar cambios"
+                  onChange={onEditingDraftChange}
+                  onSubmit={onSaveEdit}
+                  onCancel={onCancelEdit}
+                />
+              ) : (
+                <CommunityNoticeCard
+                  notice={notice}
+                  roleLabel={notice.authorRole || 'Palestrista'}
+                  dateLabel={notice.createdAt ? new Date(notice.createdAt).toLocaleString('es-AR') : 'Fecha no disponible'}
+                  isDark={isDark}
+                  canManage={Boolean(notice.id && canManageNotice(notice))}
+                  isEditing={false}
+                  onEdit={() => onStartEdit(notice)}
+                  onDelete={() => notice.id && onArchive(notice.id)}
+                />
+              )}
+            </View>
+          ))}
+        </>
+      ) : null}
     </View>
   );
 }

@@ -353,6 +353,11 @@ export async function createCommunityPublication(values: {
   kind: 'aviso' | 'noticia' | 'fecha' | 'encuesta';
   title: string;
   body: string;
+  subtitle?: string | null;
+  bodyFormat?: 'normal' | 'bold' | 'underline';
+  imageUrl?: string | null;
+  linkLabel?: string | null;
+  linkUrl?: string | null;
   eventDate?: string | null;
   visibility: 'publica' | 'registrados' | 'sedimentadores';
   pollOptions?: string[];
@@ -362,6 +367,11 @@ export async function createCommunityPublication(values: {
       p_kind: values.kind,
       p_title: values.title,
       p_body: values.body,
+      p_subtitle: values.subtitle ?? null,
+      p_body_format: values.bodyFormat ?? 'normal',
+      p_image_url: values.imageUrl ?? null,
+      p_link_label: values.linkLabel ?? null,
+      p_link_url: values.linkUrl ?? null,
       p_event_date: values.eventDate ?? null,
       p_visibility: values.visibility,
       p_poll_options: values.pollOptions ?? null
@@ -380,6 +390,11 @@ export async function updateCommunityPublication(values: {
   publicationId: string;
   title: string;
   body: string;
+  subtitle?: string | null;
+  bodyFormat?: 'normal' | 'bold' | 'underline';
+  imageUrl?: string | null;
+  linkLabel?: string | null;
+  linkUrl?: string | null;
   status?: 'activo' | 'cerrado';
 }) {
   try {
@@ -387,6 +402,11 @@ export async function updateCommunityPublication(values: {
       p_publication_id: values.publicationId,
       p_title: values.title,
       p_body: values.body,
+      p_subtitle: values.subtitle ?? null,
+      p_body_format: values.bodyFormat ?? 'normal',
+      p_image_url: values.imageUrl ?? null,
+      p_link_label: values.linkLabel ?? null,
+      p_link_url: values.linkUrl ?? null,
       p_status: values.status ?? 'activo'
     });
   } catch (error) {
@@ -434,8 +454,12 @@ export async function fetchCommunityPublications(session?: Session | null) {
           authorRole: item.author_role ?? 'palestrista',
           scope: `${item.kind} - ${item.community_name ?? 'Comunidad'}`,
           title: item.title,
+          subtitle: item.subtitle ?? null,
           body: item.event_date ? `${String(item.event_date).slice(0, 10)} - ${item.body}` : item.body,
-          imageUrl: item.image_url || undefined
+          bodyFormat: item.body_format ?? 'normal',
+          imageUrl: item.image_url || undefined,
+          linkLabel: item.link_label ?? null,
+          linkUrl: item.link_url ?? null
         }));
       }
     } catch {
@@ -447,7 +471,7 @@ export async function fetchCommunityPublications(session?: Session | null) {
   try {
     result = await supabase
       .from('community_publications')
-      .select('id, kind, title, body, event_date, visibility, poll_options, poll_results, status, created_by, created_at, image_url, profiles(full_name, role), communities(name, provinces(name))')
+      .select('id, kind, title, subtitle, body, body_format, event_date, visibility, poll_options, poll_results, status, created_by, created_at, image_url, link_label, link_url, profiles(full_name, role), communities(name, provinces(name))')
       .is('archived_at', null)
       .order('created_at', { ascending: false })
       .limit(100);
@@ -508,8 +532,12 @@ export async function fetchCommunityPublications(session?: Session | null) {
       authorRole: item.profiles?.role ?? 'palestrista',
       scope: `${item.kind} - ${item.communities?.name ?? 'Comunidad'}`,
       title: item.title,
+      subtitle: item.subtitle ?? null,
       body: item.event_date ? `${String(item.event_date).slice(0, 10)} - ${item.body}` : item.body,
-      imageUrl: item.image_url || undefined
+      bodyFormat: item.body_format ?? 'normal',
+      imageUrl: item.image_url || undefined,
+      linkLabel: item.link_label ?? null,
+      linkUrl: item.link_url ?? null
     }));
 }
 

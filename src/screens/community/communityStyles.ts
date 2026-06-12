@@ -208,7 +208,13 @@ export const communityStyles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 7,
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  noticeBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5
   },
   noticeBadge: {
     color: palette.red,
@@ -233,24 +239,79 @@ export const communityStyles = StyleSheet.create({
   noticeTitleDark: {
     color: '#F4FAFC'
   },
+  noticeSubtitle: {
+    color: palette.ink,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '800'
+  },
+  noticeSubtitleDark: {
+    color: '#D8EAF1'
+  },
   noticeBody: {
     color: palette.inkMuted,
     fontSize: 14,
     lineHeight: 21
   },
+  noticeBodyBold: {
+    fontWeight: '800'
+  },
+  noticeBodyUnderline: {
+    textDecorationLine: 'underline'
+  },
   noticeBodyDark: {
     color: '#E5F0F4'
+  },
+  noticeInlineLink: {
+    color: palette.red,
+    fontWeight: '800',
+    textDecorationLine: 'underline'
   },
   noticeAuthor: {
     color: palette.inkMuted,
     fontSize: 12,
     fontWeight: '700'
   },
+  noticeFooter: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8
+  },
+  noticeNoReplies: {
+    color: palette.inkMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
   noticeImage: {
     width: '100%',
-    height: 180,
+    aspectRatio: 16 / 9,
     borderRadius: 8,
     marginTop: 4
+  },
+  noticeLinkButton: {
+    minHeight: 42,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.24)',
+    backgroundColor: '#F4FAFC',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
+  noticeLinkButtonDark: {
+    backgroundColor: '#343A3E',
+    borderColor: 'rgba(168, 221, 243, 0.22)'
+  },
+  noticeLinkText: {
+    color: palette.red,
+    fontSize: 13,
+    fontWeight: '900'
   },
   emptyState: {
     paddingVertical: 24,

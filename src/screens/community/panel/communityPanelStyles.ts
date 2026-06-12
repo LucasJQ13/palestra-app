@@ -138,6 +138,64 @@ export const communityPanelStyles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8
   },
+  editorStack: {
+    gap: 10
+  },
+  formatRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  formatButton: {
+    minHeight: 38,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 141, 200, 0.24)',
+    backgroundColor: '#F4FAFC',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6
+  },
+  formatButtonDark: {
+    backgroundColor: '#343A3E',
+    borderColor: 'rgba(168, 221, 243, 0.2)'
+  },
+  formatButtonActive: {
+    backgroundColor: '#2D8DC8',
+    borderColor: '#2D8DC8'
+  },
+  formatButtonText: {
+    color: '#2D8DC8',
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  formatButtonTextActive: {
+    color: '#FFFFFF'
+  },
+  editorBold: {
+    fontWeight: '800'
+  },
+  editorUnderline: {
+    textDecorationLine: 'underline'
+  },
+  mediaActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  editorImage: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: 8,
+    backgroundColor: '#DDEBF0'
+  },
+  secondaryButtonDark: {
+    backgroundColor: '#343A3E',
+    borderColor: 'rgba(168, 221, 243, 0.2)'
+  },
   membersList: {
     gap: 8,
     maxHeight: 300

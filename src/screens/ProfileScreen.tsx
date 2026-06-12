@@ -66,6 +66,7 @@ import { MyCommunityScreen } from './community/MyCommunityScreen';
 import { CommunityNoticePreview } from './community/CommunityNoticesPreview';
 import { CommunityPanelScreen } from './community/CommunityPanelScreen';
 import { canManageCommunityNotice, getCommunityCapabilities } from '../lib/community/permissions';
+import { CommunityNoticeDraft, emptyCommunityNoticeDraft, normalizeCommunityNoticeFormat, normalizeCommunityNoticeLink, validateCommunityNoticeDraft } from '../lib/community/notices';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -472,14 +473,12 @@ export function ProfileScreen({
   const [successorDropdownOpen, setSuccessorDropdownOpen] = useState(false);
   const [communityPostKind, setCommunityPostKind] = useState<'aviso' | 'noticia' | 'fecha' | 'encuesta'>('aviso');
   const [communityPostVisibility, setCommunityPostVisibility] = useState<'publica' | 'registrados' | 'sedimentadores'>('publica');
-  const [communityPostTitle, setCommunityPostTitle] = useState('');
-  const [communityPostBody, setCommunityPostBody] = useState('');
+  const [communityNoticeDraft, setCommunityNoticeDraft] = useState<CommunityNoticeDraft>(emptyCommunityNoticeDraft);
   const [communityPostDate, setCommunityPostDate] = useState('');
   const [communityPollOptions, setCommunityPollOptions] = useState('');
   const [communityPostNotify, setCommunityPostNotify] = useState(false);
   const [editingCommunityPublicationId, setEditingCommunityPublicationId] = useState<string | null>(null);
-  const [editingCommunityPublicationTitle, setEditingCommunityPublicationTitle] = useState('');
-  const [editingCommunityPublicationBody, setEditingCommunityPublicationBody] = useState('');
+  const [editingCommunityNoticeDraft, setEditingCommunityNoticeDraft] = useState<CommunityNoticeDraft>(emptyCommunityNoticeDraft);
   const [myCommunityPublications, setMyCommunityPublications] = useState<CommunityPublication[]>([]);
   const [communityPanelOpen, setCommunityPanelOpen] = useState(false);
   const [communityDetailsSaving, setCommunityDetailsSaving] = useState(false);
@@ -633,6 +632,10 @@ export function ProfileScreen({
     province: session?.province
   };
   const communityCapabilities = getCommunityCapabilities(session, myCommunityScope);
+  const myCommunityNotices = useMemo(
+    () => myCommunityPublications.filter((item) => item.kind === 'aviso'),
+    [myCommunityPublications]
+  );
   const canManageUsers = canManageUsersPanel(session);
   const canAdministrateCommunities = canCreateOrAdministrateCommunities(session);
   const canReviewLeadershipRequests = Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
@@ -3801,8 +3804,9 @@ export function ProfileScreen({
       setAuthMessage('No tenés permiso para publicar avisos en esta comunidad.');
       return;
     }
-    if (!communityPostBody.trim()) {
-      setAuthMessage('Completa el mensaje antes de publicar en tu comunidad.');
+    const validationMessage = validateCommunityNoticeDraft(communityNoticeDraft);
+    if (validationMessage) {
+      setAuthMessage(validationMessage);
       return;
     }
     if (communityPostKind === 'fecha' && !communityPostDate.trim()) {
@@ -3818,10 +3822,28 @@ export function ProfileScreen({
       setAuthMessage('Las encuestas necesitan al menos 2 opciones, una por linea.');
       return;
     }
+    let imageUrl = communityNoticeDraft.imageUrl.trim() || null;
+    try {
+      if (communityNoticeDraft.imageAsset) {
+        imageUrl = await uploadPickedImageToPublicUrl(
+          communityNoticeDraft.imageAsset,
+          `${currentCommunity?.id || 'community'}/notices`,
+          'community-images'
+        );
+      }
+    } catch (uploadError) {
+      setAuthMessage(uploadError instanceof Error ? uploadError.message : 'No se pudo subir la imagen del aviso.');
+      return;
+    }
     const { data: communityPublicationId, error } = await createCommunityPublication({
       kind: communityPostKind,
-      title: communityPostTitle.trim() || 'Aviso comunitario',
-      body: communityPostBody.trim(),
+      title: communityNoticeDraft.title.trim() || 'Aviso comunitario',
+      subtitle: communityNoticeDraft.subtitle.trim() || null,
+      body: communityNoticeDraft.body.trim(),
+      bodyFormat: communityNoticeDraft.bodyFormat,
+      imageUrl,
+      linkLabel: communityNoticeDraft.linkLabel.trim() || null,
+      linkUrl: normalizeCommunityNoticeLink(communityNoticeDraft.linkUrl),
       eventDate: communityPostKind === 'fecha' ? communityPostDate.trim() : null,
       visibility,
       pollOptions
@@ -3834,8 +3856,8 @@ export function ProfileScreen({
       communityCapabilities.canNotifyMembers && communityPostNotify,
       {
         notificationType: 'mensaje_comunidad',
-        title: communityPostTitle.trim() || 'Aviso comunitario',
-        body: communityPostBody.trim(),
+        title: communityNoticeDraft.title.trim() || 'Aviso comunitario',
+        body: communityNoticeDraft.body.trim(),
         targetKind: 'comunidad',
         targetValue: session.communityOfOrigin,
         targetScope: visibility,
@@ -3847,8 +3869,7 @@ export function ProfileScreen({
         sourceId: typeof communityPublicationId === 'string' ? communityPublicationId : null
       }
     );
-    setCommunityPostTitle('');
-    setCommunityPostBody('');
+    setCommunityNoticeDraft({ ...emptyCommunityNoticeDraft });
     setCommunityPostDate('');
     setCommunityPollOptions('');
     setCommunityPostNotify(false);
@@ -3863,22 +3884,49 @@ export function ProfileScreen({
 
   function startEditCommunityPublication(item: CommunityPublication) {
     setEditingCommunityPublicationId(item.id ?? null);
-    setEditingCommunityPublicationTitle(item.title);
-    setEditingCommunityPublicationBody(item.body);
+    setEditingCommunityNoticeDraft({
+      title: item.title,
+      subtitle: item.subtitle ?? '',
+      body: item.body,
+      bodyFormat: normalizeCommunityNoticeFormat(item.bodyFormat),
+      imageUrl: item.imageUrl ?? '',
+      imageAsset: null,
+      linkLabel: item.linkLabel ?? '',
+      linkUrl: item.linkUrl ?? ''
+    });
   }
 
   async function saveCommunityPublicationEdit(status: 'activo' | 'cerrado' = 'activo') {
     if (!editingCommunityPublicationId) {
       return;
     }
-    if (!editingCommunityPublicationTitle.trim() || !editingCommunityPublicationBody.trim()) {
-      setAuthMessage('Completa titulo y contenido del aviso.');
+    const validationMessage = validateCommunityNoticeDraft(editingCommunityNoticeDraft);
+    if (validationMessage) {
+      setAuthMessage(validationMessage);
+      return;
+    }
+    let imageUrl = editingCommunityNoticeDraft.imageUrl.trim() || null;
+    try {
+      if (editingCommunityNoticeDraft.imageAsset) {
+        imageUrl = await uploadPickedImageToPublicUrl(
+          editingCommunityNoticeDraft.imageAsset,
+          `${currentCommunity?.id || 'community'}/notices`,
+          'community-images'
+        );
+      }
+    } catch (uploadError) {
+      setAuthMessage(uploadError instanceof Error ? uploadError.message : 'No se pudo subir la imagen del aviso.');
       return;
     }
     const { error } = await updateCommunityPublication({
       publicationId: editingCommunityPublicationId,
-      title: editingCommunityPublicationTitle.trim(),
-      body: editingCommunityPublicationBody.trim(),
+      title: editingCommunityNoticeDraft.title.trim() || 'Aviso comunitario',
+      subtitle: editingCommunityNoticeDraft.subtitle.trim() || null,
+      body: editingCommunityNoticeDraft.body.trim(),
+      bodyFormat: editingCommunityNoticeDraft.bodyFormat,
+      imageUrl,
+      linkLabel: editingCommunityNoticeDraft.linkLabel.trim() || null,
+      linkUrl: normalizeCommunityNoticeLink(editingCommunityNoticeDraft.linkUrl),
       status
     });
     if (error) {
@@ -3886,8 +3934,7 @@ export function ProfileScreen({
       return;
     }
     setEditingCommunityPublicationId(null);
-    setEditingCommunityPublicationTitle('');
-    setEditingCommunityPublicationBody('');
+    setEditingCommunityNoticeDraft({ ...emptyCommunityNoticeDraft });
     setAuthMessage(changeDone(status === 'cerrado' ? 'Aviso cerrado.' : 'Aviso actualizado.'));
     await refreshCommunityForum();
   }
@@ -4123,26 +4170,22 @@ export function ProfileScreen({
           <CommunityPanelScreen
             community={currentCommunity}
             members={communityMembers}
-            notices={myCommunityPublications}
+            notices={myCommunityNotices}
             capabilities={communityCapabilities}
             isDark={isDark}
             feedback={authMessage}
             savingDetails={communityDetailsSaving}
-            noticeTitle={communityPostTitle}
-            noticeBody={communityPostBody}
+            noticeDraft={communityNoticeDraft}
             noticeNotify={communityPostNotify}
             editingNoticeId={editingCommunityPublicationId}
-            editingNoticeTitle={editingCommunityPublicationTitle}
-            editingNoticeBody={editingCommunityPublicationBody}
+            editingNoticeDraft={editingCommunityNoticeDraft}
             onBack={() => setCommunityPanelOpen(false)}
             onSaveDetails={saveMyCommunityDetails}
-            onNoticeTitleChange={setCommunityPostTitle}
-            onNoticeBodyChange={setCommunityPostBody}
+            onNoticeDraftChange={setCommunityNoticeDraft}
             onNoticeNotifyChange={setCommunityPostNotify}
             onPublishNotice={publishCommunityPost}
             onStartEditNotice={(notice) => startEditCommunityPublication(notice as CommunityPublication)}
-            onEditingNoticeTitleChange={setEditingCommunityPublicationTitle}
-            onEditingNoticeBodyChange={setEditingCommunityPublicationBody}
+            onEditingNoticeDraftChange={setEditingCommunityNoticeDraft}
             onSaveNotice={() => saveCommunityPublicationEdit('activo')}
             onCancelEditNotice={() => setEditingCommunityPublicationId(null)}
             onArchiveNotice={removeCommunityPublication}
@@ -4154,7 +4197,7 @@ export function ProfileScreen({
             session={session}
             community={currentCommunity}
             members={communityMembers}
-            notices={myCommunityPublications}
+            notices={myCommunityNotices}
             isDark={isDark}
             provinceRoleLabels={provinceRoleLabels}
             roleAliases={adminConfig.settings.roleAliases}
