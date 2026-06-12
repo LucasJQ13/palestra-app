@@ -11,7 +11,7 @@ import { Permission, PersonalPmType, Role, Session } from '../types/auth';
 import { getPermissionsForRole, rolePermissions } from '../lib/permissions';
 import { AppCommunity, PublicationComment, RemoteAgendaItem, adminCommunitiesFetchOptions, archiveAgendaEvent, archiveCommunityPublication, archiveNewsEntry, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchMotivadorPeriods, fetchNews, fetchNotilestra, fetchPublicationComments, reactToPublication, reportPublication, updateAgendaEvent, updateCommunityPublication, updateNewsEntry, voteCommunityPoll } from '../lib/remoteData';
 import { CommunityGroupType } from '../lib/communitySections';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, PublicUserDirectoryRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchPublicUserDirectory, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MotivadorPeriodRecord, NewsDraftRecord, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, PublicUserDirectoryRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserAgendaPreferenceRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createCommunityContactMessage, createEmailConfirmationRequest, createEvent, createNews, createLeadershipChangeRequest, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppContent, fetchAppMaterials, fetchAppTabs, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchPublicUserDirectory, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, fetchUserAgendaPreferences, markPrayerRemovalNoticesSeen, PendingProfile, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, setUserAgendaPreference, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyCommunityDetails, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, issueMyCredentialQr, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { supabase } from '../lib/supabase';
 import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -64,6 +64,7 @@ import { FormationPathAdminPanel } from './profile/FormationPathAdminPanel';
 import { MessageModerationAdminPanel } from './profile/MessageModerationAdminPanel';
 import { MyCommunityScreen } from './community/MyCommunityScreen';
 import { CommunityNoticePreview } from './community/CommunityNoticesPreview';
+import { CommunityPanelScreen } from './community/CommunityPanelScreen';
 import { canManageCommunityNotice, getCommunityCapabilities } from '../lib/community/permissions';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
@@ -480,6 +481,8 @@ export function ProfileScreen({
   const [editingCommunityPublicationTitle, setEditingCommunityPublicationTitle] = useState('');
   const [editingCommunityPublicationBody, setEditingCommunityPublicationBody] = useState('');
   const [myCommunityPublications, setMyCommunityPublications] = useState<CommunityPublication[]>([]);
+  const [communityPanelOpen, setCommunityPanelOpen] = useState(false);
+  const [communityDetailsSaving, setCommunityDetailsSaving] = useState(false);
   const [localPollVotes, setLocalPollVotes] = useState<Record<string, string>>({});
   const [forumComments, setForumComments] = useState<Record<string, PublicationComment[]>>({});
   const [forumCommentDrafts, setForumCommentDrafts] = useState<Record<string, string>>({});
@@ -3899,6 +3902,46 @@ export function ProfileScreen({
     await refreshCommunityForum();
   }
 
+  async function saveMyCommunityDetails(values: {
+    description: string;
+    imageAsset: ImagePicker.ImagePickerAsset | null;
+    imageUrl: string | null;
+  }) {
+    if (!session || !communityCapabilities.canEditCommunityDetails || !currentCommunity?.id) {
+      setAuthMessage('No tenés permiso para editar esta comunidad.');
+      return;
+    }
+
+    setCommunityDetailsSaving(true);
+    setAuthMessage('Guardando datos de la comunidad...');
+    try {
+      let imageUrl = values.imageUrl;
+      if (values.imageAsset) {
+        imageUrl = await uploadPickedImageToPublicUrl(
+          values.imageAsset,
+          currentCommunity.id,
+          'community-images'
+        );
+      }
+      const { error } = await updateMyCommunityDetails({
+        description: values.description,
+        imageUrl
+      });
+      if (error) {
+        setAuthMessage(error.message);
+        return;
+      }
+      setRegistrationCommunities(await fetchCommunities());
+      await onContentChanged();
+      setAuthMessage(changeDone('Datos de la comunidad actualizados.'));
+      showFeedbackMessage('Cambios guardados');
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : 'No se pudieron guardar los datos de la comunidad.');
+    } finally {
+      setCommunityDetailsSaving(false);
+    }
+  }
+
   async function votePoll(publication: CommunityPublication, option: string) {
     if (!publication.id) {
       return;
@@ -4066,70 +4109,6 @@ export function ProfileScreen({
   }
 
   if (session && profilePanel === 'comunidad') {
-    const canOpenCommunityManagement = communityCapabilities.canPublishNotices;
-    const communityManagementContent = (
-      <>
-        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Publicar aviso</Text>
-        <TextInput
-          style={[styles.input, isDark && styles.inputDark]}
-          placeholder="Título opcional del aviso"
-          value={communityPostTitle}
-          onChangeText={setCommunityPostTitle}
-          placeholderTextColor={inputPlaceholderColor}
-        />
-        <TextInput
-          style={[styles.input, styles.textArea, isDark && styles.inputDark]}
-          placeholder="Mensaje para la comunidad"
-          value={communityPostBody}
-          onChangeText={setCommunityPostBody}
-          multiline
-          placeholderTextColor={inputPlaceholderColor}
-        />
-        {communityCapabilities.canNotifyMembers ? (
-          <View style={styles.settingRow}>
-            <View style={styles.settingRowText}>
-              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Notificar a miembros</Text>
-              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Envía una notificación a los miembros alcanzados.</Text>
-            </View>
-            <Switch value={communityPostNotify} onValueChange={setCommunityPostNotify} />
-          </View>
-        ) : null}
-        <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
-          <Ionicons name="send-outline" size={17} color={palette.white} />
-          <Text style={styles.primaryButtonText}>Publicar aviso</Text>
-        </TouchableOpacity>
-        {editingCommunityPublicationId ? (
-          <View style={[styles.inlineEditorPanel, isDark && styles.surfaceRowDark]}>
-            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Editar aviso seleccionado</Text>
-            <TextInput
-              style={[styles.input, isDark && styles.inputDark]}
-              placeholder="Título del aviso"
-              value={editingCommunityPublicationTitle}
-              onChangeText={setEditingCommunityPublicationTitle}
-              placeholderTextColor={inputPlaceholderColor}
-            />
-            <TextInput
-              style={[styles.input, styles.textArea, isDark && styles.inputDark]}
-              placeholder="Contenido del aviso"
-              value={editingCommunityPublicationBody}
-              onChangeText={setEditingCommunityPublicationBody}
-              multiline
-              placeholderTextColor={inputPlaceholderColor}
-            />
-            <View style={styles.inlineActions}>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => saveCommunityPublicationEdit('activo')}>
-                <Text style={styles.primaryButtonText}>Guardar cambios</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => setEditingCommunityPublicationId(null)}>
-                <Text style={styles.secondaryButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : null}
-        {authMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{authMessage}</Text> : null}
-      </>
-    );
-
     return (
       <>
         <ProfilePublicProfileModal
@@ -4140,40 +4119,71 @@ export function ProfileScreen({
           roleAliases={adminConfig.settings.roleAliases}
           onClose={() => setSelectedPublicProfile(null)}
         />
-        <MyCommunityScreen
-          session={session}
-          community={currentCommunity}
-          members={communityMembers}
-          notices={myCommunityPublications}
-          isDark={isDark}
-          provinceRoleLabels={provinceRoleLabels}
-          roleAliases={adminConfig.settings.roleAliases}
-          canOpenManagement={canOpenCommunityManagement}
-          managementButtonLabel={communityCapabilities.canOpenPanel ? 'Abrir Panel de Comunidad' : 'Publicar aviso comunitario'}
-          managementContent={communityManagementContent}
-          editingNoticeId={editingCommunityPublicationId}
-          canManageNotice={(notice: CommunityNoticePreview) => Boolean(
-            notice.id
-            && canManageCommunityNotice(session, myCommunityScope, notice.createdBy)
-          )}
-          onBack={() => setProfilePanel('vista')}
-          onRefresh={async () => {
-            await Promise.all([
-              refreshCommunityForum(),
-              fetchMyCommunityMembers().then(setCommunityMembers)
-            ]);
-          }}
-          onViewProfile={openCommunityMemberProfile}
-          onMessage={messageCommunityMember}
-          onEditNotice={(notice) => {
-            if (editingCommunityPublicationId === notice.id) {
-              setEditingCommunityPublicationId(null);
-              return;
-            }
-            startEditCommunityPublication(notice as CommunityPublication);
-          }}
-          onDeleteNotice={removeCommunityPublication}
-        />
+        {communityPanelOpen ? (
+          <CommunityPanelScreen
+            community={currentCommunity}
+            members={communityMembers}
+            notices={myCommunityPublications}
+            capabilities={communityCapabilities}
+            isDark={isDark}
+            feedback={authMessage}
+            savingDetails={communityDetailsSaving}
+            noticeTitle={communityPostTitle}
+            noticeBody={communityPostBody}
+            noticeNotify={communityPostNotify}
+            editingNoticeId={editingCommunityPublicationId}
+            editingNoticeTitle={editingCommunityPublicationTitle}
+            editingNoticeBody={editingCommunityPublicationBody}
+            onBack={() => setCommunityPanelOpen(false)}
+            onSaveDetails={saveMyCommunityDetails}
+            onNoticeTitleChange={setCommunityPostTitle}
+            onNoticeBodyChange={setCommunityPostBody}
+            onNoticeNotifyChange={setCommunityPostNotify}
+            onPublishNotice={publishCommunityPost}
+            onStartEditNotice={(notice) => startEditCommunityPublication(notice as CommunityPublication)}
+            onEditingNoticeTitleChange={setEditingCommunityPublicationTitle}
+            onEditingNoticeBodyChange={setEditingCommunityPublicationBody}
+            onSaveNotice={() => saveCommunityPublicationEdit('activo')}
+            onCancelEditNotice={() => setEditingCommunityPublicationId(null)}
+            onArchiveNotice={removeCommunityPublication}
+            canManageNotice={(notice) => canManageCommunityNotice(session, myCommunityScope, notice.createdBy)}
+            onViewProfile={openCommunityMemberProfile}
+          />
+        ) : (
+          <MyCommunityScreen
+            session={session}
+            community={currentCommunity}
+            members={communityMembers}
+            notices={myCommunityPublications}
+            isDark={isDark}
+            provinceRoleLabels={provinceRoleLabels}
+            roleAliases={adminConfig.settings.roleAliases}
+            canAccessPanel={communityCapabilities.canOpenPanel}
+            editingNoticeId={editingCommunityPublicationId}
+            canManageNotice={(notice: CommunityNoticePreview) => Boolean(
+              notice.id
+              && canManageCommunityNotice(session, myCommunityScope, notice.createdBy)
+            )}
+            onBack={() => {
+              setCommunityPanelOpen(false);
+              setProfilePanel('vista');
+            }}
+            onRefresh={async () => {
+              await Promise.all([
+                refreshCommunityForum(),
+                fetchMyCommunityMembers().then(setCommunityMembers)
+              ]);
+            }}
+            onOpenPanel={() => setCommunityPanelOpen(true)}
+            onViewProfile={openCommunityMemberProfile}
+            onMessage={messageCommunityMember}
+            onEditNotice={(notice) => {
+              startEditCommunityPublication(notice as CommunityPublication);
+              setCommunityPanelOpen(true);
+            }}
+            onDeleteNotice={removeCommunityPublication}
+          />
+        )}
       </>
     );
   }
@@ -4206,7 +4216,7 @@ export function ProfileScreen({
               items={[
                 { icon: 'person-outline', label: 'Mi perfil', action: () => { setProfilePanel('vista'); setShowAccountMenu(false); } },
                 { icon: 'create-outline', label: 'Editar perfil', action: () => { setProfilePanel('editar'); setShowAccountMenu(false); } },
-                { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); refreshCommunityForum(); setShowAccountMenu(false); } },
+                { icon: 'people-outline', label: 'Mi comunidad', action: () => { setCommunityPanelOpen(false); setProfilePanel('comunidad'); refreshCommunityForum(); setShowAccountMenu(false); } },
                 ...(session.role === 'palestrista' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
                 { icon: 'flame-outline', label: 'Ver intenciones', action: () => { setProfilePanel('intenciones'); loadPrayerIntentionsPanel(); setShowAccountMenu(false); } },
                 { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowAccountMenu(false); } },

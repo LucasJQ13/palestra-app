@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useState } from 'react';
+import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppCommunityLocation } from '../../lib/remoteData';
@@ -20,13 +20,12 @@ export function MyCommunityScreen({
   isDark,
   provinceRoleLabels,
   roleAliases,
-  canOpenManagement,
-  managementButtonLabel,
-  managementContent,
+  canAccessPanel,
   editingNoticeId,
   canManageNotice,
   onBack,
   onRefresh,
+  onOpenPanel,
   onViewProfile,
   onMessage,
   onEditNotice,
@@ -39,26 +38,17 @@ export function MyCommunityScreen({
   isDark: boolean;
   provinceRoleLabels: ProvinceRoleLabelRecord[];
   roleAliases: RoleAliasConfig[];
-  canOpenManagement: boolean;
-  managementButtonLabel?: string;
-  managementContent?: ReactNode;
+  canAccessPanel: boolean;
   editingNoticeId?: string | null;
   canManageNotice: (notice: CommunityNoticePreview) => boolean;
   onBack: () => void;
   onRefresh: () => void;
+  onOpenPanel: () => void;
   onViewProfile: (member: CommunityMember) => void;
   onMessage: (member: CommunityMember) => void;
   onEditNotice: (notice: CommunityNoticePreview) => void;
   onDeleteNotice: (noticeId: string) => void;
 }) {
-  const [managementOpen, setManagementOpen] = useState(false);
-
-  useEffect(() => {
-    if (editingNoticeId) {
-      setManagementOpen(true);
-    }
-  }, [editingNoticeId]);
-
   return (
     <View style={communityStyles.screen}>
       <View style={communityStyles.topBar}>
@@ -73,20 +63,12 @@ export function MyCommunityScreen({
 
       <CommunityHeader community={community} province={session.province} />
 
-      {canOpenManagement ? (
-        <>
-          <TouchableOpacity style={communityStyles.managementButton} onPress={() => setManagementOpen((current) => !current)} activeOpacity={0.88}>
-            <Ionicons name={managementOpen ? 'close-outline' : 'settings-outline'} size={18} color="#FFFFFF" />
-            <Text style={communityStyles.managementButtonText}>
-              {managementOpen ? 'Cerrar herramientas' : (managementButtonLabel || 'Abrir Panel de Comunidad')}
-            </Text>
-          </TouchableOpacity>
-          {managementOpen ? (
-            <View style={[communityStyles.managementPanel, isDark && communityStyles.managementPanelDark]}>
-              {managementContent}
-            </View>
-          ) : null}
-        </>
+      {canAccessPanel ? (
+        <TouchableOpacity style={communityStyles.managementButton} onPress={onOpenPanel} activeOpacity={0.88}>
+          <Ionicons name="settings-outline" size={18} color="#FFFFFF" />
+          <Text style={communityStyles.managementButtonText}>Abrir Panel de Comunidad</Text>
+          <Ionicons name="chevron-forward-outline" size={18} color="#FFFFFF" />
+        </TouchableOpacity>
       ) : null}
 
       <CommunityLeaders

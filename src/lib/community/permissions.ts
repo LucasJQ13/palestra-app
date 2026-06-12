@@ -34,7 +34,7 @@ export function getCommunityCapabilities(
     canView: true,
     canViewMembers: true,
     canMessageMembers: true,
-    canOpenPanel: isAdministrator || isOperationalLeader,
+    canOpenPanel: isAdministrator || isOperationalLeader || isAdvisor,
     canPublishNotices: isAdministrator || isOperationalLeader || isAdvisor,
     canManageAllNotices: isAdministrator || isOperationalLeader,
     canManageOwnNotices: isAdministrator || isOperationalLeader || isAdvisor,

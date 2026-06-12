@@ -2071,6 +2071,20 @@ export async function updateCommunity(id: string, values: {
   }
 }
 
+export async function updateMyCommunityDetails(values: {
+  description: string;
+  imageUrl?: string | null;
+}) {
+  try {
+    return await supabase.rpc('update_my_community_details', {
+      p_description: values.description,
+      p_image_url: values.imageUrl ?? null
+    });
+  } catch (error) {
+    return networkError(error);
+  }
+}
+
 export async function createCommunity(values: {
   province: string;
   name: string;
