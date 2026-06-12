@@ -634,6 +634,7 @@ export function ProfileScreen({
     province: session?.province
   };
   const communityCapabilities = getCommunityCapabilities(session, myCommunityScope);
+  const canOpenPublicQueries = canAccessPublicQueries(session, myCommunityScope);
   const myCommunityNotices = useMemo(
     () => myCommunityPublications.filter((item) => item.kind === 'aviso'),
     [myCommunityPublications]
@@ -873,9 +874,15 @@ export function ProfileScreen({
 
   useEffect(() => {
     if (!isMissingProfileScope(session)) {
-      setProfilePanel(initialPanel);
+      setProfilePanel(initialPanel === 'consultas' && !canOpenPublicQueries ? 'vista' : initialPanel);
     }
-  }, [initialPanel]);
+  }, [initialPanel, canOpenPublicQueries]);
+
+  useEffect(() => {
+    if (profilePanel === 'consultas' && !canOpenPublicQueries) {
+      setProfilePanel('vista');
+    }
+  }, [profilePanel, canOpenPublicQueries]);
 
   useEffect(() => {
     if (!initialPublicProfile) {
@@ -4266,7 +4273,7 @@ export function ProfileScreen({
                 ...(session.role === 'palestrista' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
                 { icon: 'flame-outline', label: 'Ver intenciones', action: () => { setProfilePanel('intenciones'); loadPrayerIntentionsPanel(); setShowAccountMenu(false); } },
                 { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowAccountMenu(false); } },
-                ...(canAccessPublicQueries(session.role) ? [{ icon: 'file-tray-full-outline' as const, label: 'Consultas', action: () => { setProfilePanel('consultas'); setShowAccountMenu(false); } }] : []),
+                ...(canOpenPublicQueries ? [{ icon: 'file-tray-full-outline' as const, label: 'Consultas', action: () => { setProfilePanel('consultas'); setShowAccountMenu(false); } }] : []),
                 { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowAccountMenu(false); } }
               ]}
               onSignOut={signOutReal}
@@ -4533,7 +4540,7 @@ export function ProfileScreen({
               {...mailboxController}
             />
           ) : null}
-          {profilePanel === 'consultas' ? (
+          {profilePanel === 'consultas' && canOpenPublicQueries ? (
             <PublicQueriesInboxScreen isDark={isDark} onFeedback={setAuthMessage} />
           ) : null}
           {profilePanel === 'vista' ? (

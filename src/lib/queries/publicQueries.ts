@@ -1,17 +1,11 @@
-import { Role } from '../../types/auth';
+import { Session } from '../../types/auth';
+import { isCommunityOperationalLeader, resolveCommunityInternalRole } from '../community/roles';
+import { CommunityScope } from '../community/types';
 import { supabase } from '../supabase';
 import { PublicQueryRecord, PublicQueryStatus } from './types';
 
-export function canAccessPublicQueries(role?: Role | null) {
-  return Boolean(role && [
-    'animador_comunidad',
-    'coordinador_comunidad',
-    'vocal',
-    'coordinador_diocesano',
-    'vocal_nacional',
-    'coordinador_nacional',
-    'administrador'
-  ].includes(role));
+export function canAccessPublicQueries(session: Session | null, scope: CommunityScope) {
+  return isCommunityOperationalLeader(resolveCommunityInternalRole(session, scope));
 }
 
 export async function fetchPublicQueries(): Promise<PublicQueryRecord[]> {
