@@ -21,6 +21,7 @@ export function MyCommunityScreen({
   provinceRoleLabels,
   roleAliases,
   canAccessPanel,
+  canMessageMembers,
   editingNoticeId,
   canManageNotice,
   onBack,
@@ -39,6 +40,7 @@ export function MyCommunityScreen({
   provinceRoleLabels: ProvinceRoleLabelRecord[];
   roleAliases: RoleAliasConfig[];
   canAccessPanel: boolean;
+  canMessageMembers: boolean;
   editingNoticeId?: string | null;
   canManageNotice: (notice: CommunityNoticePreview) => boolean;
   onBack: () => void;
@@ -74,6 +76,7 @@ export function MyCommunityScreen({
       <CommunityLeaders
         members={members}
         viewerId={session.id}
+        canMessageMembers={canMessageMembers}
         isDark={isDark}
         provinceRoleLabels={provinceRoleLabels}
         roleAliases={roleAliases}
@@ -96,6 +99,7 @@ export function MyCommunityScreen({
       <CommunityMembersList
         members={members}
         viewerId={session.id}
+        canMessageMembers={canMessageMembers}
         isDark={isDark}
         provinceRoleLabels={provinceRoleLabels}
         roleAliases={roleAliases}

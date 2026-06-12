@@ -4202,6 +4202,7 @@ export function ProfileScreen({
             provinceRoleLabels={provinceRoleLabels}
             roleAliases={adminConfig.settings.roleAliases}
             canAccessPanel={communityCapabilities.canOpenPanel}
+            canMessageMembers={communityCapabilities.canMessageMembers}
             editingNoticeId={editingCommunityPublicationId}
             canManageNotice={(notice: CommunityNoticePreview) => Boolean(
               notice.id

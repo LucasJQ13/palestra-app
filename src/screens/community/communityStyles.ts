@@ -182,15 +182,22 @@ export const communityStyles = StyleSheet.create({
     color: '#C4D7DF'
   },
   messageButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    minHeight: 38,
+    borderRadius: 6,
+    paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
     backgroundColor: '#E6F3F5'
   },
   messageButtonDark: {
     backgroundColor: '#2B2B2B'
+  },
+  messageButtonText: {
+    color: palette.red,
+    fontSize: 12,
+    fontWeight: '800'
   },
   noticeList: {
     gap: 10

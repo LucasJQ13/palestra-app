@@ -23,6 +23,7 @@ import {
   setMailboxMessageStatus
 } from '../../lib/profiles';
 import { roleRank } from '../../lib/roles';
+import { findCommunityMemberConversation } from '../../lib/community/memberMessages';
 
 type UseMailboxControllerParams = {
   session: Session | null;
@@ -286,6 +287,17 @@ export function useMailboxController({
   }
 
   function composeToUser(userId: string, userName?: string | null) {
+    const existingConversation = findCommunityMemberConversation(messages, activeSession.id ?? '', userId);
+    if (existingConversation) {
+      setFilter(existingConversation.folder);
+      setSelectedConversationId(existingConversation.conversationId);
+      setConversationDraft('');
+      setShowComposer(false);
+      setUserDropdownOpen(false);
+      return;
+    }
+
+    setSelectedConversationId(null);
     setFilter('entrada');
     setTargetMode('user');
     setSelectedUserIds([userId]);

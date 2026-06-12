@@ -11,6 +11,7 @@ import { communityStyles } from './communityStyles';
 export function CommunityMembersList({
   members,
   viewerId,
+  canMessageMembers,
   isDark,
   provinceRoleLabels,
   roleAliases,
@@ -19,6 +20,7 @@ export function CommunityMembersList({
 }: {
   members: CommunityMember[];
   viewerId?: string | null;
+  canMessageMembers: boolean;
   isDark: boolean;
   provinceRoleLabels: ProvinceRoleLabelRecord[];
   roleAliases: RoleAliasConfig[];
@@ -70,7 +72,7 @@ export function CommunityMembersList({
                   {member.nickname ? <Text style={[communityStyles.personRole, isDark && communityStyles.personRoleDark]}>“{member.nickname}”</Text> : null}
                   <Text numberOfLines={1} style={[communityStyles.personRole, isDark && communityStyles.personRoleDark]}>{role}</Text>
                 </View>
-                {member.id !== viewerId ? (
+                {canMessageMembers && member.id !== viewerId ? (
                   <TouchableOpacity
                     style={[communityStyles.messageButton, isDark && communityStyles.messageButtonDark]}
                     onPress={(event) => {
@@ -80,6 +82,7 @@ export function CommunityMembersList({
                     accessibilityLabel={`Enviar mensaje a ${name}`}
                   >
                     <Ionicons name="chatbubble-outline" size={18} color={palette.red} />
+                    <Text style={communityStyles.messageButtonText}>Enviar mensaje</Text>
                   </TouchableOpacity>
                 ) : null}
               </TouchableOpacity>
