@@ -5,10 +5,9 @@ import { Role } from '../../types/auth';
 import { CommunityMember, ProvinceRoleLabelRecord } from '../../lib/profiles';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleLabelForProvince } from '../../lib/profileDisplay';
+import { isCommunityVisibleReferenceRole } from '../../lib/community/roles';
 import { palette } from '../../theme/palette';
 import { communityStyles } from './communityStyles';
-
-const visibleLeaderRoles = new Set(['animador_comunidad', 'coordinador_comunidad', 'asesor']);
 
 export function CommunityLeaders({
   members,
@@ -27,7 +26,7 @@ export function CommunityLeaders({
   onViewProfile: (member: CommunityMember) => void;
   onMessage: (member: CommunityMember) => void;
 }) {
-  const leaders = members.filter((member) => visibleLeaderRoles.has(member.role));
+  const leaders = members.filter((member) => isCommunityVisibleReferenceRole(member.role));
 
   return (
     <View style={communityStyles.section}>

@@ -64,6 +64,7 @@ import { FormationPathAdminPanel } from './profile/FormationPathAdminPanel';
 import { MessageModerationAdminPanel } from './profile/MessageModerationAdminPanel';
 import { MyCommunityScreen } from './community/MyCommunityScreen';
 import { CommunityNoticePreview } from './community/CommunityNoticesPreview';
+import { canManageCommunityNotice, getCommunityCapabilities } from '../lib/community/permissions';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -624,6 +625,11 @@ export function ProfileScreen({
     const province = registrationCommunities.find((item) => normalize(item.province) === normalize(session.province));
     return province?.locations.find((item) => normalize(item.name) === normalize(session.communityOfOrigin)) ?? null;
   }, [registrationCommunities, session?.province, session?.communityOfOrigin]);
+  const myCommunityScope = {
+    name: session?.communityOfOrigin,
+    province: session?.province
+  };
+  const communityCapabilities = getCommunityCapabilities(session, myCommunityScope);
   const canManageUsers = canManageUsersPanel(session);
   const canAdministrateCommunities = canCreateOrAdministrateCommunities(session);
   const canReviewLeadershipRequests = Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
@@ -3788,7 +3794,8 @@ export function ProfileScreen({
   }
 
   async function publishCommunityPost() {
-    if (!session || !isCommunityLeader) {
+    if (!session || !communityCapabilities.canPublishNotices) {
+      setAuthMessage('No tenés permiso para publicar avisos en esta comunidad.');
       return;
     }
     if (!communityPostBody.trim()) {
@@ -3820,20 +3827,23 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    const notificationWarning = await queueNotificationIfRequested(communityPostNotify, {
-      notificationType: 'mensaje_comunidad',
-      title: communityPostTitle.trim() || 'Aviso comunitario',
-      body: communityPostBody.trim(),
-      targetKind: 'comunidad',
-      targetValue: session.communityOfOrigin,
-      targetScope: visibility,
-      province: session.province,
-      community: session.communityOfOrigin,
-      minRole: visibility === 'sedimentadores' ? 'sedimentador' : 'palestrista',
-      tabKey: 'perfil',
-      sourceType: 'community_publication',
-      sourceId: typeof communityPublicationId === 'string' ? communityPublicationId : null
-    });
+    const notificationWarning = await queueNotificationIfRequested(
+      communityCapabilities.canNotifyMembers && communityPostNotify,
+      {
+        notificationType: 'mensaje_comunidad',
+        title: communityPostTitle.trim() || 'Aviso comunitario',
+        body: communityPostBody.trim(),
+        targetKind: 'comunidad',
+        targetValue: session.communityOfOrigin,
+        targetScope: visibility,
+        province: session.province,
+        community: session.communityOfOrigin,
+        minRole: visibility === 'sedimentadores' ? 'sedimentador' : 'palestrista',
+        tabKey: 'perfil',
+        sourceType: 'community_publication',
+        sourceId: typeof communityPublicationId === 'string' ? communityPublicationId : null
+      }
+    );
     setCommunityPostTitle('');
     setCommunityPostBody('');
     setCommunityPostDate('');
@@ -4056,7 +4066,7 @@ export function ProfileScreen({
   }
 
   if (session && profilePanel === 'comunidad') {
-    const canOpenCommunityManagement = isCommunityLeader;
+    const canOpenCommunityManagement = communityCapabilities.canPublishNotices;
     const communityManagementContent = (
       <>
         <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Publicar aviso</Text>
@@ -4075,13 +4085,15 @@ export function ProfileScreen({
           multiline
           placeholderTextColor={inputPlaceholderColor}
         />
-        <View style={styles.settingRow}>
-          <View style={styles.settingRowText}>
-            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Notificar a miembros</Text>
-            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Envía una notificación a los miembros alcanzados.</Text>
+        {communityCapabilities.canNotifyMembers ? (
+          <View style={styles.settingRow}>
+            <View style={styles.settingRowText}>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Notificar a miembros</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Envía una notificación a los miembros alcanzados.</Text>
+            </View>
+            <Switch value={communityPostNotify} onValueChange={setCommunityPostNotify} />
           </View>
-          <Switch value={communityPostNotify} onValueChange={setCommunityPostNotify} />
-        </View>
+        ) : null}
         <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
           <Ionicons name="send-outline" size={17} color={palette.white} />
           <Text style={styles.primaryButtonText}>Publicar aviso</Text>
@@ -4137,11 +4149,12 @@ export function ProfileScreen({
           provinceRoleLabels={provinceRoleLabels}
           roleAliases={adminConfig.settings.roleAliases}
           canOpenManagement={canOpenCommunityManagement}
+          managementButtonLabel={communityCapabilities.canOpenPanel ? 'Abrir Panel de Comunidad' : 'Publicar aviso comunitario'}
           managementContent={communityManagementContent}
           editingNoticeId={editingCommunityPublicationId}
           canManageNotice={(notice: CommunityNoticePreview) => Boolean(
             notice.id
-            && (notice.createdBy === session.id || roleRank(session.role) >= roleRank('vocal'))
+            && canManageCommunityNotice(session, myCommunityScope, notice.createdBy)
           )}
           onBack={() => setProfilePanel('vista')}
           onRefresh={async () => {

@@ -21,6 +21,7 @@ export function MyCommunityScreen({
   provinceRoleLabels,
   roleAliases,
   canOpenManagement,
+  managementButtonLabel,
   managementContent,
   editingNoticeId,
   canManageNotice,
@@ -39,6 +40,7 @@ export function MyCommunityScreen({
   provinceRoleLabels: ProvinceRoleLabelRecord[];
   roleAliases: RoleAliasConfig[];
   canOpenManagement: boolean;
+  managementButtonLabel?: string;
   managementContent?: ReactNode;
   editingNoticeId?: string | null;
   canManageNotice: (notice: CommunityNoticePreview) => boolean;
@@ -75,7 +77,9 @@ export function MyCommunityScreen({
         <>
           <TouchableOpacity style={communityStyles.managementButton} onPress={() => setManagementOpen((current) => !current)} activeOpacity={0.88}>
             <Ionicons name={managementOpen ? 'close-outline' : 'settings-outline'} size={18} color="#FFFFFF" />
-            <Text style={communityStyles.managementButtonText}>{managementOpen ? 'Cerrar Panel de Comunidad' : 'Abrir Panel de Comunidad'}</Text>
+            <Text style={communityStyles.managementButtonText}>
+              {managementOpen ? 'Cerrar herramientas' : (managementButtonLabel || 'Abrir Panel de Comunidad')}
+            </Text>
           </TouchableOpacity>
           {managementOpen ? (
             <View style={[communityStyles.managementPanel, isDark && communityStyles.managementPanelDark]}>
