@@ -3263,6 +3263,41 @@ export const styles = StyleSheet.create({
     padding: 12,
     gap: 12
   },
+  mailboxThreadScreen: {
+    flex: 1,
+    backgroundColor: ui.color.appBackground
+  },
+  mailboxThreadScreenDark: {
+    backgroundColor: themePresets.dark.colors.background
+  },
+  mailboxThreadFullscreenKeyboard: {
+    flex: 1
+  },
+  mailboxThreadFullscreenHeader: {
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: ui.color.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: ui.color.border
+  },
+  mailboxThreadFullscreenHeaderDark: {
+    backgroundColor: themePresets.dark.colors.surface,
+    borderBottomColor: themePresets.dark.colors.border
+  },
+  mailboxThreadFullscreenScroll: {
+    flex: 1
+  },
+  mailboxThreadFullscreenScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 12,
+    paddingTop: 16,
+    paddingBottom: 12
+  },
   mailboxThreadHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3312,6 +3347,25 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8
+  },
+  mailboxReplyBarFullscreen: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
+    backgroundColor: ui.color.surface,
+    borderTopWidth: 1,
+    borderTopColor: ui.color.border
+  },
+  mailboxReplyBarFullscreenDark: {
+    backgroundColor: themePresets.dark.colors.surface,
+    borderTopColor: themePresets.dark.colors.border
+  },
+  mailboxReplySendButton: {
+    minWidth: 82,
+    minHeight: 44
   },
   mailboxReplyInput: {
     flex: 1,

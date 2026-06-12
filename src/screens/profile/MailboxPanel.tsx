@@ -1,5 +1,6 @@
-import React from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Alert, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
@@ -193,6 +194,7 @@ export function MailboxPanel({
   onDeleteConversationForMe: (conversation: MailboxConversationRecord) => void;
   onRestoreForMe: (message: MailboxMessageRecord) => void;
 }) {
+  const conversationScrollRef = useRef<ScrollView | null>(null);
   const selectedCommunityId = targetCommunityId || communityOptions[0]?.id;
   const allConversationMessages = conversations.flatMap((conversation) => conversation.messages);
   const reportMessage = reportingMessageId ? allConversationMessages.find((message) => message.id === reportingMessageId) ?? null : null;
@@ -268,6 +270,22 @@ export function MailboxPanel({
       () => onDeleteConversationForMe(conversation)
     );
   };
+  const closeConversation = () => {
+    Keyboard.dismiss();
+    onCloseConversation();
+  };
+
+  useEffect(() => {
+    if (!selectedConversation) {
+      return undefined;
+    }
+    const scrollToLatest = () => {
+      requestAnimationFrame(() => conversationScrollRef.current?.scrollToEnd({ animated: true }));
+    };
+    scrollToLatest();
+    const keyboardSubscription = Keyboard.addListener('keyboardDidShow', scrollToLatest);
+    return () => keyboardSubscription.remove();
+  }, [selectedConversation?.id, selectedConversation?.messages.length]);
 
   return (
     <View style={[styles.mailboxShell, isDark && styles.surfacePanelDark]}>
@@ -447,67 +465,88 @@ export function MailboxPanel({
         ))}
       </View>
 
-      {selectedConversation ? (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 92 : 74}
-          style={[styles.mailboxThreadKeyboard, isDark && styles.surfacePanelDark]}
-        >
-          <View style={styles.mailboxThreadHeader}>
-            <TouchableOpacity style={styles.iconButtonGhost} onPress={onCloseConversation} activeOpacity={0.84}>
-              <Ionicons name="arrow-back-outline" size={18} color={palette.red} />
-            </TouchableOpacity>
-            <View style={styles.mailboxAvatar}>
-              <Text style={styles.mailboxAvatarText}>{selectedConversation.title.trim().charAt(0).toUpperCase() || 'P'}</Text>
-            </View>
-            <View style={styles.adminUserHeaderText}>
-              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedConversation.title}</Text>
-              {selectedConversation.subtitle ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{selectedConversation.subtitle}</Text> : null}
-            </View>
-            <TouchableOpacity style={styles.iconButtonGhost} onPress={() => openConversationActions(selectedConversation)} onLongPress={() => openConversationActions(selectedConversation)} activeOpacity={0.84}>
-              <Ionicons name="ellipsis-vertical" size={18} color={palette.red} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.mailboxThreadScroll} contentContainerStyle={styles.mailboxThreadScrollContent} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator>
-            {selectedConversation.messages.map((message) => {
-              const sentByMe = message.sender_id === session.id || (message.mailbox_folder ?? 'entrada') === 'enviados';
-              return (
-                <TouchableOpacity key={`${message.source}-${message.id}-${message.mailbox_folder}`} style={[styles.mailboxBubble, sentByMe ? styles.mailboxBubbleSent : styles.mailboxBubbleReceived, isDark && !sentByMe && styles.surfaceRowDark]} activeOpacity={0.86} onPress={() => onOpenMessage(message)} onLongPress={() => openMessageActions(message)}>
-                  <Text style={[styles.mailboxBubbleMeta, isDark && !sentByMe && styles.textDarkMuted, sentByMe && styles.mailboxBubbleTextSent]}>
-                    {sentByMe ? 'Enviado' : 'Recibido'} · {new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                  <Text style={[styles.mailboxBubbleText, sentByMe && styles.mailboxBubbleTextSent, isDark && !sentByMe && styles.textDarkBody]}>{message.message}</Text>
-                  {message.response ? (
-                    <View style={styles.notice}>
-                      <Ionicons name="return-up-forward-outline" size={16} color={palette.red} />
-                      <Text style={styles.noticeText}>{message.response}</Text>
-                    </View>
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-          <View style={styles.mailboxReplyBar}>
-            <TextInput
-              style={[styles.mailboxReplyInput, isDark && styles.inputDark]}
-              placeholder={selectedConversation.counterpartUserId ? 'Responder en esta conversacion' : 'Respuesta directa no disponible'}
-              value={conversationDraft}
-              onChangeText={(value) => onConversationDraftChange(value.slice(0, 500))}
-              editable={Boolean(selectedConversation.counterpartUserId) && !conversationSending}
-              multiline
-              placeholderTextColor={inputPlaceholderColor}
-            />
-            <TouchableOpacity
-              style={[styles.compactSquareButton, styles.compactSquareButtonActive, (!selectedConversation.counterpartUserId || conversationSending) && styles.disabledButton]}
-              onPress={onSendConversationReply}
-              disabled={!selectedConversation.counterpartUserId || conversationSending}
+      <Modal
+        visible={Boolean(selectedConversation)}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent={false}
+        navigationBarTranslucent={false}
+        onRequestClose={closeConversation}
+        onShow={() => requestAnimationFrame(() => conversationScrollRef.current?.scrollToEnd({ animated: false }))}
+      >
+        {selectedConversation ? (
+          <SafeAreaView edges={['top', 'bottom']} style={[styles.mailboxThreadScreen, isDark && styles.mailboxThreadScreenDark]}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={0}
+              style={styles.mailboxThreadFullscreenKeyboard}
             >
-              <Ionicons name="send-outline" size={17} color={palette.white} />
-              <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>{conversationSending ? '...' : 'Enviar'}</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      ) : null}
+              <View style={[styles.mailboxThreadFullscreenHeader, isDark && styles.mailboxThreadFullscreenHeaderDark]}>
+                <TouchableOpacity style={styles.iconButtonGhost} onPress={closeConversation} activeOpacity={0.84}>
+                  <Ionicons name="arrow-back-outline" size={20} color={palette.red} />
+                </TouchableOpacity>
+                <View style={styles.mailboxAvatar}>
+                  <Text style={styles.mailboxAvatarText}>{selectedConversation.title.trim().charAt(0).toUpperCase() || 'P'}</Text>
+                </View>
+                <View style={styles.adminUserHeaderText}>
+                  <Text numberOfLines={1} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedConversation.title}</Text>
+                  {selectedConversation.subtitle ? <Text numberOfLines={1} style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{selectedConversation.subtitle}</Text> : null}
+                </View>
+                <TouchableOpacity style={styles.iconButtonGhost} onPress={() => openConversationActions(selectedConversation)} onLongPress={() => openConversationActions(selectedConversation)} activeOpacity={0.84}>
+                  <Ionicons name="ellipsis-vertical" size={20} color={palette.red} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView
+                ref={conversationScrollRef}
+                style={styles.mailboxThreadFullscreenScroll}
+                contentContainerStyle={styles.mailboxThreadFullscreenScrollContent}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                showsVerticalScrollIndicator
+                onContentSizeChange={() => conversationScrollRef.current?.scrollToEnd({ animated: false })}
+              >
+                {selectedConversation.messages.map((message) => {
+                  const sentByMe = message.sender_id === session.id || (message.mailbox_folder ?? 'entrada') === 'enviados';
+                  return (
+                    <TouchableOpacity key={`${message.source}-${message.id}-${message.mailbox_folder}`} style={[styles.mailboxBubble, sentByMe ? styles.mailboxBubbleSent : styles.mailboxBubbleReceived, isDark && !sentByMe && styles.surfaceRowDark]} activeOpacity={0.86} onPress={() => onOpenMessage(message)} onLongPress={() => openMessageActions(message)}>
+                      <Text style={[styles.mailboxBubbleMeta, isDark && !sentByMe && styles.textDarkMuted, sentByMe && styles.mailboxBubbleTextSent]}>
+                        {sentByMe ? 'Enviado' : 'Recibido'} - {new Date(message.created_at).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                      <Text selectable style={[styles.mailboxBubbleText, sentByMe && styles.mailboxBubbleTextSent, isDark && !sentByMe && styles.textDarkBody]}>{message.message}</Text>
+                      {message.response ? (
+                        <View style={styles.notice}>
+                          <Ionicons name="return-up-forward-outline" size={16} color={palette.red} />
+                          <Text selectable style={styles.noticeText}>{message.response}</Text>
+                        </View>
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <View style={[styles.mailboxReplyBarFullscreen, isDark && styles.mailboxReplyBarFullscreenDark]}>
+                <TextInput
+                  style={[styles.mailboxReplyInput, isDark && styles.inputDark]}
+                  placeholder={selectedConversation.counterpartUserId ? 'Responder en esta conversacion' : 'Respuesta directa no disponible'}
+                  value={conversationDraft}
+                  onChangeText={(value) => onConversationDraftChange(value.slice(0, 500))}
+                  editable={Boolean(selectedConversation.counterpartUserId) && !conversationSending}
+                  multiline
+                  blurOnSubmit={false}
+                  placeholderTextColor={inputPlaceholderColor}
+                />
+                <TouchableOpacity
+                  style={[styles.compactSquareButton, styles.compactSquareButtonActive, styles.mailboxReplySendButton, (!selectedConversation.counterpartUserId || conversationSending) && styles.disabledButton]}
+                  onPress={onSendConversationReply}
+                  disabled={!selectedConversation.counterpartUserId || conversationSending}
+                >
+                  <Ionicons name="send-outline" size={18} color={palette.white} />
+                  <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>{conversationSending ? '...' : 'Enviar'}</Text>
+                </TouchableOpacity>
+              </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        ) : null}
+      </Modal>
 
       {!selectedConversation && conversations.length === 0 ? (
         <View style={[styles.card, isDark && styles.surfaceRowDark]}>

@@ -26,6 +26,7 @@
       "package": "org.palestra.argentina",
       "googleServicesFile": "./google-services.json",
       "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
       "intentFilters": [
         {
           "action": "VIEW",
