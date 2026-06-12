@@ -67,6 +67,8 @@ import { CommunityNoticePreview } from './community/CommunityNoticesPreview';
 import { CommunityPanelScreen } from './community/CommunityPanelScreen';
 import { canManageCommunityNotice, getCommunityCapabilities } from '../lib/community/permissions';
 import { CommunityNoticeDraft, emptyCommunityNoticeDraft, normalizeCommunityNoticeFormat, normalizeCommunityNoticeLink, validateCommunityNoticeDraft } from '../lib/community/notices';
+import { canAccessPublicQueries } from '../lib/queries/publicQueries';
+import { PublicQueriesInboxScreen } from './queries/PublicQueriesInboxScreen';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -4264,6 +4266,7 @@ export function ProfileScreen({
                 ...(session.role === 'palestrista' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
                 { icon: 'flame-outline', label: 'Ver intenciones', action: () => { setProfilePanel('intenciones'); loadPrayerIntentionsPanel(); setShowAccountMenu(false); } },
                 { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowAccountMenu(false); } },
+                ...(canAccessPublicQueries(session.role) ? [{ icon: 'file-tray-full-outline' as const, label: 'Consultas', action: () => { setProfilePanel('consultas'); setShowAccountMenu(false); } }] : []),
                 { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowAccountMenu(false); } }
               ]}
               onSignOut={signOutReal}
@@ -4529,6 +4532,9 @@ export function ProfileScreen({
               isDark={isDark}
               {...mailboxController}
             />
+          ) : null}
+          {profilePanel === 'consultas' ? (
+            <PublicQueriesInboxScreen isDark={isDark} onFeedback={setAuthMessage} />
           ) : null}
           {profilePanel === 'vista' ? (
             <>

@@ -3,7 +3,8 @@ import { BackHandler, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pre
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { AppCommunity, fetchCommunities } from '../lib/remoteData';
-import { AppContentBlock, SecretariatMemberRecord, createCommunityContactMessage, createSecretariatMessage, fetchSecretariatMembers } from '../lib/profiles';
+import { AppContentBlock, SecretariatMemberRecord, createCommunityContactMessage, fetchSecretariatMembers } from '../lib/profiles';
+import { createInstitutionalQuery } from '../lib/queries/publicQueries';
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor, provinceDisplayNames, provinceLogos } from '../lib/constants';
 import { changeDone } from '../lib/appMessages';
@@ -192,20 +193,26 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
   }
 
   async function sendSecretariatMessage(targetId: string) {
-    if (!session?.id || session.status !== 'aprobado') {
-      setSecretariatStatus('Necesitas iniciar sesion para enviar mensajes.');
+    if (!session && (!contactName.trim() || !contactInfoValue.trim())) {
+      setSecretariatStatus('Deja tu nombre y un contacto para que puedan responderte.');
       return;
     }
     if (!secretariatMessage.trim()) {
       setSecretariatStatus('Escribi un mensaje antes de enviarlo.');
       return;
     }
-    const { error } = await createSecretariatMessage({ targetUserId: targetId, message: secretariatMessage.trim() });
+    const { error } = await createInstitutionalQuery({
+      targetUserId: targetId,
+      senderName: contactName.trim() || session?.fullName || 'Consulta externa',
+      senderContact: contactInfoValue.trim() || session?.email || '',
+      message: secretariatMessage.trim(),
+      origin: secretariatScope === 'nacional' ? 'equipo_nacional' : 'equipo_diocesano'
+    });
     if (error) {
       setSecretariatStatus(error.message);
       return;
     }
-    setSecretariatStatus(changeDone('Mensaje enviado al Secretariado.'));
+    setSecretariatStatus(changeDone('Consulta enviada al Secretariado.'));
     setSecretariatMessage('');
     setSecretariatMessageTarget(null);
   }
@@ -224,27 +231,31 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, [], [], member.gender_preference ?? null)}</Text>
               {member.subrole_key ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{subroleLabel(member.subrole_key)}</Text> : null}
               <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{member.community_name ?? 'Sin comunidad'} - {member.province ?? 'Sin provincia'}</Text>
-              {session?.id ? (
-                <TouchableOpacity style={styles.actionPill} onPress={() => setSecretariatMessageTarget(expanded ? null : member.id)}>
-                  <Ionicons name={expanded ? 'close-outline' : 'mail-outline'} size={16} color={palette.red} />
-                  <Text style={styles.actionPillText}>{expanded ? 'Cerrar mensaje' : 'Enviar mensaje'}</Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Inicia sesion para enviar mensaje.</Text>
-              )}
+              <TouchableOpacity style={styles.actionPill} onPress={() => setSecretariatMessageTarget(expanded ? null : member.id)}>
+                <Ionicons name={expanded ? 'close-outline' : 'help-circle-outline'} size={16} color={palette.red} />
+                <Text style={styles.actionPillText}>{expanded ? 'Cerrar consulta' : 'Enviar consulta'}</Text>
+              </TouchableOpacity>
               {expanded ? (
                 <View style={styles.stackTight}>
+                  {!session ? (
+                    <>
+                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Nombre</Text>
+                      <TextInput style={[styles.input, isDark && styles.inputDark]} value={contactName} onChangeText={setContactName} placeholder="Nombre y apellido" placeholderTextColor={inputPlaceholderColor} />
+                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Contacto</Text>
+                      <TextInput style={[styles.input, isDark && styles.inputDark]} value={contactInfoValue} onChangeText={setContactInfoValue} placeholder="Email o telefono" placeholderTextColor={inputPlaceholderColor} />
+                    </>
+                  ) : null}
                   <TextInput
                     style={[styles.input, styles.textArea, isDark && styles.inputDark]}
                     value={secretariatMessage}
                     onChangeText={(value) => setSecretariatMessage(value.slice(0, 500))}
-                    placeholder="Escribi tu consulta para el Secretariado"
+                    placeholder="Escribe tu consulta para el Secretariado"
                     multiline
                     placeholderTextColor={inputPlaceholderColor}
                   />
                   <TouchableOpacity style={styles.primaryButton} onPress={() => sendSecretariatMessage(member.id)}>
                     <Ionicons name="send-outline" size={17} color={palette.white} />
-                    <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
+                    <Text style={styles.primaryButtonText}>Enviar consulta</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -307,7 +318,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
       setContactStatus(error.message);
       return;
     }
-    setContactStatus(changeDone('Mensaje enviado al buzon de la comunidad.'));
+    setContactStatus(changeDone('Consulta enviada a la bandeja de la comunidad.'));
     setContactMessage('');
   }
 
@@ -428,14 +439,14 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                       <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Mensaje</Text>
                       <TextInput
                         style={[styles.input, styles.textArea]}
-                        placeholder="Escribi tu consulta para la comunidad"
+                        placeholder="Escribe tu consulta para la comunidad"
                         value={contactMessage}
                         onChangeText={(value) => setContactMessage(value.slice(0, 500))}
                         onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)}
                         multiline placeholderTextColor={inputPlaceholderColor} />
                       <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{contactMessage.length}/500</Text>
                       <TouchableOpacity style={styles.primaryButton} onPress={sendCommunityContactMessage}>
-                        <Text style={styles.primaryButtonText}>Enviar mensaje</Text>
+                        <Text style={styles.primaryButtonText}>Enviar consulta</Text>
                       </TouchableOpacity>
                       {contactStatus ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{contactStatus}</Text> : null}
                     </View>

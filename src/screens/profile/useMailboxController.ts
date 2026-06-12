@@ -12,7 +12,6 @@ import {
   MailboxTargetMode,
   ProvinceRoleLabelRecord,
   PublicUserDirectoryRecord,
-  createMailboxMessage,
   deleteMailboxMessageForMe,
   fetchMailboxMessages,
   markMailboxMessageAsRead,
@@ -24,6 +23,7 @@ import {
 } from '../../lib/profiles';
 import { roleRank } from '../../lib/roles';
 import { findCommunityMemberConversation } from '../../lib/community/memberMessages';
+import { resolveMailboxRecipientIds } from '../../lib/mailbox/recipientSelection';
 
 type UseMailboxControllerParams = {
   session: Session | null;
@@ -185,6 +185,17 @@ export function useMailboxController({
     return 0;
   }, [communityOptions, selectedUserIds.length, activeSession.communityOfOrigin, activeSession.province, targetCommunityId, targetMode, targetProvince, targetRole, scopedUserOptions]);
 
+  const resolvedRecipientIds = useMemo(() => resolveMailboxRecipientIds({
+    mode: targetMode,
+    session: activeSession,
+    users: scopedUserOptions,
+    selectedUserIds,
+    targetRole,
+    targetProvince,
+    targetCommunityId,
+    communities: communityOptions
+  }), [activeSession, communityOptions, scopedUserOptions, selectedUserIds, targetCommunityId, targetMode, targetProvince, targetRole]);
+
   function userLabel(user?: AdminUser | PublicUserDirectoryRecord | null) {
     return user?.full_name?.trim() || user?.nickname?.trim() || 'Palestrista';
   }
@@ -320,7 +331,6 @@ export function useMailboxController({
     const mode = targetMode || defaultTargetModeForSession(activeSession);
     const fallbackCommunity = communityOptions[0];
     const communityId = mode === 'my_community' ? fallbackCommunity?.id : targetCommunityId || fallbackCommunity?.id;
-    const province = targetProvince || activeSession.province;
 
     if (['my_community', 'community'].includes(mode) && !communityId) {
       setAuthMessage('No hay responsables asignados para tu comunidad actualmente.');
@@ -340,31 +350,12 @@ export function useMailboxController({
       return;
     }
 
-    const errors: string[] = [];
-    if (mode === 'user') {
-      const { error } = await sendDirectMailboxMessage({
-        recipientIds: selectedUserIds,
-        message: draft.trim()
-      });
-      if (error) {
-        errors.push(error.message);
-      }
-    } else {
-      const { error } = await createMailboxMessage({
-        targetMode: mode,
-        message: draft.trim(),
-        communityId,
-        province,
-        role: targetRole,
-        userId: null
-      });
-      if (error) {
-        errors.push(error.message);
-      }
-    }
-
-    if (errors.length > 0) {
-      setAuthMessage(errors[0]);
+    const { error } = await sendDirectMailboxMessage({
+      recipientIds: resolvedRecipientIds,
+      message: draft.trim()
+    });
+    if (error) {
+      setAuthMessage(error.message);
       return;
     }
 

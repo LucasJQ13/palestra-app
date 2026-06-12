@@ -292,7 +292,7 @@ export function MailboxPanel({
       <View style={styles.mailboxHeaderBar}>
         <View style={styles.adminUserHeaderText}>
           <SectionTitle title="Buzon de mensajes" />
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Conversaciones directas y consultas comunitarias.</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Conversaciones privadas entre usuarios registrados.</Text>
         </View>
         <View style={styles.mailboxCountBadge}>
           <Text style={styles.mailboxCountValue}>{conversations.length}</Text>
