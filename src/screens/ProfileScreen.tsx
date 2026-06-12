@@ -62,6 +62,8 @@ import { CommunityAdminPanel } from './profile/CommunityAdminPanel';
 import { DownloadsAdminPanel } from './profile/DownloadsAdminPanel';
 import { FormationPathAdminPanel } from './profile/FormationPathAdminPanel';
 import { MessageModerationAdminPanel } from './profile/MessageModerationAdminPanel';
+import { MyCommunityScreen } from './community/MyCommunityScreen';
+import { CommunityNoticePreview } from './community/CommunityNoticesPreview';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -220,9 +222,6 @@ export function ProfileScreen({
   onInitialPublicProfileHandled?: () => void;
 }) {
   const isDark = appTheme.mode === 'dark';
-  const [showCommunity, setShowCommunity] = useState(false);
-  const [showCommunityManagement, setShowCommunityManagement] = useState(false);
-  const [showCommunityMembersList, setShowCommunityMembersList] = useState(false);
   const [showLeadershipUsersSummary, setShowLeadershipUsersSummary] = useState(false);
   const [showActiveCoordinations, setShowActiveCoordinations] = useState(false);
   const [showProfilePhoto, setShowProfilePhoto] = useState(false);
@@ -617,6 +616,14 @@ export function ProfileScreen({
   const tabLabel = (key: TabKey) => editableTabs.find((tab) => tab.key === key)?.label ?? defaultTabs.find((tab) => tab.key === key)?.label ?? key;
   const profileNews = session ? communityNews.filter((item) => item.community === session.communityOfOrigin) : [];
   const isCommunityLeader = isCommunityLeaderRole(session);
+  const currentCommunity = useMemo(() => {
+    if (!session) {
+      return null;
+    }
+    const normalize = (value?: string | null) => (value ?? '').trim().toLocaleLowerCase('es');
+    const province = registrationCommunities.find((item) => normalize(item.province) === normalize(session.province));
+    return province?.locations.find((item) => normalize(item.name) === normalize(session.communityOfOrigin)) ?? null;
+  }, [registrationCommunities, session?.province, session?.communityOfOrigin]);
   const canManageUsers = canManageUsersPanel(session);
   const canAdministrateCommunities = canCreateOrAdministrateCommunities(session);
   const canReviewLeadershipRequests = Boolean(session && ['vocal', 'coordinador_diocesano', 'administrador'].includes(session.role));
@@ -3970,6 +3977,25 @@ export function ProfileScreen({
     });
   }
 
+  function openCommunityMemberProfile(member: CommunityMember) {
+    openPublicProfile({
+      id: member.id,
+      fullName: member.full_name?.trim() || member.nickname?.trim() || 'Palestrista',
+      role: (member.role || 'palestrista') as Role,
+      province: member.province,
+      communityName: member.community_name,
+      contact: '',
+      avatarUrl: member.avatar_url,
+      genderPreference: member.gender_preference ?? null,
+      nickname: member.nickname ?? null
+    });
+  }
+
+  function messageCommunityMember(member: CommunityMember) {
+    mailboxController.onComposeToUser(member.id, member.full_name ?? member.nickname ?? 'Palestrista');
+    setProfilePanel('buzon');
+  }
+
   async function requestEmailConfirmationHelp() {
     if (!session) {
       return;
@@ -4029,6 +4055,116 @@ export function ProfileScreen({
     );
   }
 
+  if (session && profilePanel === 'comunidad') {
+    const canOpenCommunityManagement = isCommunityLeader;
+    const communityManagementContent = (
+      <>
+        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Publicar aviso</Text>
+        <TextInput
+          style={[styles.input, isDark && styles.inputDark]}
+          placeholder="Título opcional del aviso"
+          value={communityPostTitle}
+          onChangeText={setCommunityPostTitle}
+          placeholderTextColor={inputPlaceholderColor}
+        />
+        <TextInput
+          style={[styles.input, styles.textArea, isDark && styles.inputDark]}
+          placeholder="Mensaje para la comunidad"
+          value={communityPostBody}
+          onChangeText={setCommunityPostBody}
+          multiline
+          placeholderTextColor={inputPlaceholderColor}
+        />
+        <View style={styles.settingRow}>
+          <View style={styles.settingRowText}>
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Notificar a miembros</Text>
+            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Envía una notificación a los miembros alcanzados.</Text>
+          </View>
+          <Switch value={communityPostNotify} onValueChange={setCommunityPostNotify} />
+        </View>
+        <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
+          <Ionicons name="send-outline" size={17} color={palette.white} />
+          <Text style={styles.primaryButtonText}>Publicar aviso</Text>
+        </TouchableOpacity>
+        {editingCommunityPublicationId ? (
+          <View style={[styles.inlineEditorPanel, isDark && styles.surfaceRowDark]}>
+            <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Editar aviso seleccionado</Text>
+            <TextInput
+              style={[styles.input, isDark && styles.inputDark]}
+              placeholder="Título del aviso"
+              value={editingCommunityPublicationTitle}
+              onChangeText={setEditingCommunityPublicationTitle}
+              placeholderTextColor={inputPlaceholderColor}
+            />
+            <TextInput
+              style={[styles.input, styles.textArea, isDark && styles.inputDark]}
+              placeholder="Contenido del aviso"
+              value={editingCommunityPublicationBody}
+              onChangeText={setEditingCommunityPublicationBody}
+              multiline
+              placeholderTextColor={inputPlaceholderColor}
+            />
+            <View style={styles.inlineActions}>
+              <TouchableOpacity style={styles.primaryButton} onPress={() => saveCommunityPublicationEdit('activo')}>
+                <Text style={styles.primaryButtonText}>Guardar cambios</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryButton} onPress={() => setEditingCommunityPublicationId(null)}>
+                <Text style={styles.secondaryButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+        {authMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{authMessage}</Text> : null}
+      </>
+    );
+
+    return (
+      <>
+        <ProfilePublicProfileModal
+          profile={selectedPublicProfile}
+          viewerSession={session}
+          isDark={isDark}
+          provinceRoleLabels={provinceRoleLabels}
+          roleAliases={adminConfig.settings.roleAliases}
+          onClose={() => setSelectedPublicProfile(null)}
+        />
+        <MyCommunityScreen
+          session={session}
+          community={currentCommunity}
+          members={communityMembers}
+          notices={myCommunityPublications}
+          isDark={isDark}
+          provinceRoleLabels={provinceRoleLabels}
+          roleAliases={adminConfig.settings.roleAliases}
+          canOpenManagement={canOpenCommunityManagement}
+          managementContent={communityManagementContent}
+          editingNoticeId={editingCommunityPublicationId}
+          canManageNotice={(notice: CommunityNoticePreview) => Boolean(
+            notice.id
+            && (notice.createdBy === session.id || roleRank(session.role) >= roleRank('vocal'))
+          )}
+          onBack={() => setProfilePanel('vista')}
+          onRefresh={async () => {
+            await Promise.all([
+              refreshCommunityForum(),
+              fetchMyCommunityMembers().then(setCommunityMembers)
+            ]);
+          }}
+          onViewProfile={openCommunityMemberProfile}
+          onMessage={messageCommunityMember}
+          onEditNotice={(notice) => {
+            if (editingCommunityPublicationId === notice.id) {
+              setEditingCommunityPublicationId(null);
+              return;
+            }
+            startEditCommunityPublication(notice as CommunityPublication);
+          }}
+          onDeleteNotice={removeCommunityPublication}
+        />
+      </>
+    );
+  }
+
   return (
     <View style={styles.stack}>
       <SectionTitle title={`${tabLabel('perfil')} y acceso`} />
@@ -4055,13 +4191,13 @@ export function ProfileScreen({
               provinceRoleLabels={provinceRoleLabels}
               roleAliases={adminConfig.settings.roleAliases}
               items={[
-                { icon: 'person-outline', label: 'Mi perfil', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } },
-                { icon: 'create-outline', label: 'Editar perfil', action: () => { setProfilePanel('editar'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } },
-                { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); setShowCommunity(false); setShowCommunityManagement(false); refreshCommunityForum(); setShowAccountMenu(false); } },
-                ...(session.role === 'palestrista' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setShowCommunity(false); setShowCommunityManagement(false); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
-                { icon: 'flame-outline', label: 'Ver intenciones', action: () => { setProfilePanel('intenciones'); setShowCommunity(false); setShowCommunityManagement(false); loadPrayerIntentionsPanel(); setShowAccountMenu(false); } },
-                { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } },
-                { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowCommunity(false); setShowCommunityManagement(false); setShowAccountMenu(false); } }
+                { icon: 'person-outline', label: 'Mi perfil', action: () => { setProfilePanel('vista'); setShowAccountMenu(false); } },
+                { icon: 'create-outline', label: 'Editar perfil', action: () => { setProfilePanel('editar'); setShowAccountMenu(false); } },
+                { icon: 'people-outline', label: 'Mi comunidad', action: () => { setProfilePanel('comunidad'); refreshCommunityForum(); setShowAccountMenu(false); } },
+                ...(session.role === 'palestrista' ? [{ icon: 'mail-unread-outline' as const, label: 'Solicitudes', action: () => { setProfilePanel('vista'); setSelectedRequest('menu'); setShowSentRequests(true); loadMyRequests(); setShowAccountMenu(false); } }] : []),
+                { icon: 'flame-outline', label: 'Ver intenciones', action: () => { setProfilePanel('intenciones'); loadPrayerIntentionsPanel(); setShowAccountMenu(false); } },
+                { icon: 'mail-outline', label: 'Buzon', action: () => { setProfilePanel('buzon'); setShowAccountMenu(false); } },
+                { icon: 'settings-outline', label: 'Ajustes', action: () => { setProfilePanel('configuracion'); setShowAccountMenu(false); } }
               ]}
               onSignOut={signOutReal}
             />
@@ -4320,143 +4456,6 @@ export function ProfileScreen({
               onNewPasswordChange={setNewPassword}
               onSaveAccountSettings={saveAccountSettings}
             />
-          ) : null}
-          {profilePanel === 'comunidad' ? (
-            <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-              <Text style={[styles.communityProfileHeading, isDark && styles.textDarkStrong]}>Comunidad: {session.communityOfOrigin}</Text>
-              {isCommunityLeader ? (
-                <View style={[styles.inlineEditorPanel, isDark && styles.surfaceRowDark]}>
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo aviso comunitario</Text>
-                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo opcional del aviso" value={communityPostTitle} onChangeText={setCommunityPostTitle}  placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Mensaje para la comunidad" value={communityPostBody} onChangeText={setCommunityPostBody} multiline  placeholderTextColor={inputPlaceholderColor} />
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingRowText}>
-                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Notificar a miembros</Text>
-                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Preparar aviso push para los miembros alcanzados por este mensaje.</Text>
-                    </View>
-                    <Switch value={communityPostNotify} onValueChange={setCommunityPostNotify} />
-                  </View>
-                  <TouchableOpacity style={styles.primaryButton} onPress={publishCommunityPost}>
-                    <Text style={styles.primaryButtonText}>Enviar mensaje a comunidad</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-              <Text style={[styles.communityProfileSubheading, isDark && styles.textDarkStrong]}>Avisos</Text>
-              <View style={styles.communityActionRow}>
-                <TouchableOpacity style={styles.communityMiniButton} onPress={refreshCommunityForum} activeOpacity={0.85}>
-                  <Ionicons name="refresh-outline" size={15} color={palette.red} />
-                  <Text style={styles.communityMiniButtonText}>Mostrar avisos</Text>
-                </TouchableOpacity>
-              </View>
-              {myCommunityPublications.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay avisos para tu comunidad actualmente</Text> : null}
-              {myCommunityPublications.map((item, index) => (
-                <View key={`${item.id || item.title}-${index}`} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
-                  <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{item.visibility} - {item.status ?? 'activo'}</Text>
-                  {item.title ? <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.title}</Text> : null}
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.body}</Text>
-                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>
-                    Por {item.authorName ?? 'Palestrista'} - {roleLabelForProvince((item.authorRole || 'palestrista') as Role, session.province, provinceRoleLabels)}
-                  </Text>
-                  <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>
-                    {item.createdAt ? new Date(item.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Fecha no disponible'}
-                  </Text>
-                  {(item.id && (item.createdBy === session.id || roleRank(session.role) >= roleRank('vocal'))) ? (
-                    <View style={styles.inlineActions}>
-                      <TouchableOpacity style={styles.actionPill} onPress={() => startEditCommunityPublication(item)}>
-                        <Ionicons name="create-outline" size={16} color={palette.red} />
-                        <Text style={styles.actionPillText}>Editar</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.actionPill} onPress={() => removeCommunityPublication(item.id as string)}>
-                        <Ionicons name="trash-outline" size={16} color={palette.red} />
-                        <Text style={styles.actionPillText}>Eliminar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-                  {editingCommunityPublicationId === item.id ? (
-                    <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
-                      <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo del aviso" value={editingCommunityPublicationTitle} onChangeText={setEditingCommunityPublicationTitle}  placeholderTextColor={inputPlaceholderColor} />
-                      <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Contenido del aviso" value={editingCommunityPublicationBody} onChangeText={setEditingCommunityPublicationBody} multiline  placeholderTextColor={inputPlaceholderColor} />
-                      <View style={styles.inlineActions}>
-                        <TouchableOpacity style={styles.primaryButton} onPress={() => saveCommunityPublicationEdit('activo')}>
-                          <Text style={styles.primaryButtonText}>Guardar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.secondaryButton} onPress={() => saveCommunityPublicationEdit('cerrado')}>
-                          <Text style={styles.secondaryButtonText}>Cerrar aviso</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-              <View style={styles.communityLeadersHeader}>
-                <Text style={[styles.communityProfileSubheading, isDark && styles.textDarkStrong]}>Encargados</Text>
-                <TouchableOpacity
-                  style={[styles.communityMiniButton, styles.communityMembersToggle]}
-                  onPress={async () => {
-                    if (communityMembers.length === 0) {
-                      setCommunityMembers(await fetchMyCommunityMembers());
-                    }
-                    setShowCommunityMembersList((current) => !current);
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="people-outline" size={15} color={palette.red} />
-                  <Text style={styles.communityMiniButtonText}>Lista de miembros</Text>
-                  <Ionicons name={showCommunityMembersList ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={palette.red} />
-                </TouchableOpacity>
-              </View>
-              {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).length === 0 ? (
-                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Sin encargados cargados por el momento.</Text>
-              ) : null}
-              {communityMembers.filter((member) => ['animador_comunidad', 'coordinador_comunidad'].includes(member.role)).map((member) => (
-                <View key={`leader-${member.id}`} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{member.full_name ?? 'Palestrista'} - {roleLabelForProvince(member.role as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
-                  <TouchableOpacity
-                    style={styles.actionPill}
-                    onPress={() => openPublicProfile({
-                      id: member.id,
-                      fullName: member.full_name ?? 'Palestrista',
-                      role: member.role as Role,
-                      province: member.province,
-                      communityName: member.community_name,
-                      contact: '',
-                      avatarUrl: member.avatar_url,
-                      genderPreference: member.gender_preference ?? null
-                    })}
-                  >
-                    <Ionicons name="person-circle-outline" size={16} color={palette.red} />
-                    <Text style={styles.actionPillText}>Ver perfil</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {showCommunityMembersList ? (
-                <ScrollView style={styles.membersDropdownList} nestedScrollEnabled showsVerticalScrollIndicator>
-                  {communityMembers.map((member) => (
-                    <View key={member.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
-                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? 'Palestrista'}</Text>
-                      {member.nickname ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Apodo: {member.nickname}</Text> : null}
-                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, provinceRoleLabels, adminConfig.settings.roleAliases, member.gender_preference ?? null)}</Text>
-                      <TouchableOpacity
-                        style={styles.actionPill}
-                        onPress={() => openPublicProfile({
-                          id: member.id,
-                          fullName: member.full_name ?? 'Palestrista',
-                          role: (member.role || 'palestrista') as Role,
-                          province: member.province,
-                          communityName: member.community_name,
-                          contact: '',
-                          avatarUrl: member.avatar_url,
-                          genderPreference: member.gender_preference ?? null
-                        })}
-                      >
-                        <Ionicons name="person-circle-outline" size={16} color={palette.red} />
-                        <Text style={styles.actionPillText}>Ver credencial</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </ScrollView>
-              ) : null}
-            </View>
           ) : null}
           {profilePanel === 'buzon' ? (
             <MailboxPanel

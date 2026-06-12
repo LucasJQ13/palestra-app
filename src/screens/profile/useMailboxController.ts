@@ -285,6 +285,16 @@ export function useMailboxController({
       : [...current, userId]);
   }
 
+  function composeToUser(userId: string, userName?: string | null) {
+    setFilter('entrada');
+    setTargetMode('user');
+    setSelectedUserIds([userId]);
+    setRecipientSearch(userName?.trim() ?? '');
+    setDraft('');
+    setShowComposer(true);
+    setUserDropdownOpen(false);
+  }
+
   async function submitNewMessage() {
     if (activeSession.role === 'invitado') {
       setAuthMessage('Iniciá sesión para enviar mensajes.');
@@ -611,6 +621,7 @@ export function useMailboxController({
     onRecipientSearchChange: setRecipientSearch,
     onUserDropdownChange: setUserDropdownOpen,
     onToggleUser: toggleUser,
+    onComposeToUser: composeToUser,
     onDraftChange: setDraft,
     onSubmitNewMessage: submitNewMessage,
     onSaveDraft: saveDraft,
