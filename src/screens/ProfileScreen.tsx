@@ -44,6 +44,7 @@ import { ProfileSummary } from './profile/ProfileSummary';
 import { PendingEmailProfile } from './profile/PendingEmailProfile';
 import { GuestProfileAuthCard } from './profile/GuestProfileAuthCard';
 import { AdminOverviewPanel } from './profile/AdminOverviewPanel';
+import { ActiveCoordinationsModal } from './profile/ActiveCoordinationsModal';
 import { ProvinceCreateDropdown } from './profile/ProvinceAdminPanel';
 import { AdminUsersToolMenu } from './profile/AdminUsersToolMenu';
 import { IdentityAdminPanel } from './profile/IdentityAdminPanel';
@@ -679,13 +680,6 @@ export function ProfileScreen({
   const leadershipSummaryUsers = (session?.role === 'administrador' || canSeeAllProvinces(session))
     ? scopedAdminUsers
     : editableProvinceUsers;
-  const activeCoordinators = adminUsers
-    .filter((user) => ['coordinador_nacional', 'coordinador_diocesano'].includes(user.role) && user.status === 'aprobado')
-    .sort((a, b) => {
-      const rankA = a.role === 'coordinador_nacional' ? 0 : 1;
-      const rankB = b.role === 'coordinador_nacional' ? 0 : 1;
-      return rankA - rankB || (a.province ?? '').localeCompare(b.province ?? '') || (a.full_name ?? '').localeCompare(b.full_name ?? '');
-    });
   const existingProvinceNames = new Set(registrationCommunities.filter((item) => !item.archivedAt).map((item) => item.province));
   const missingArgentinaProvinces = argentinaProvinceDefinitions.filter((item) => !existingProvinceNames.has(item.name));
   const selectedNewProvinceDefinition = provinceDefinitionFor(newProvinceName) ?? missingArgentinaProvinces[0] ?? null;
@@ -5072,59 +5066,17 @@ export function ProfileScreen({
                 />
               ) : null}
 
-              <Modal visible={showActiveCoordinations} transparent animationType="fade" onRequestClose={() => setShowActiveCoordinations(false)} statusBarTranslucent>
-                <View style={styles.modalOverlay}>
-                  <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]}>
-                    <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowActiveCoordinations(false)} activeOpacity={0.8}>
-                      <Ionicons name="close-outline" size={22} color={palette.red} />
-                    </TouchableOpacity>
-                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Coordinaciones Activas</Text>
-                    <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Coordinadores nacionales y diocesanos</Text>
-                    <ScrollView style={styles.leadershipUsersList} nestedScrollEnabled showsVerticalScrollIndicator>
-                      {activeCoordinators.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay coordinadores activos cargados.</Text> : null}
-                      {activeCoordinators.map((user) => {
-                        const role = (user.role || 'palestrista') as Role;
-                        return (
-                          <TouchableOpacity
-                            key={`coord-${user.id}`}
-                            style={[styles.leadershipUserRow, isDark && styles.surfaceRowDark]}
-                            activeOpacity={0.86}
-                            onPress={() => {
-                              setShowActiveCoordinations(false);
-                              openPublicProfile({
-                                id: user.id,
-                                fullName: user.full_name ?? 'Usuario sin nombre',
-                                role,
-                                province: user.province,
-                                communityName: user.community_name,
-                                avatarUrl: user.avatar_url,
-                                contact: user.phone ?? '',
-                                displayRoleLabel: user.display_role_label ?? null,
-                                genderPreference: user.gender_preference ?? null,
-                                nickname: user.nickname ?? null,
-                                credentialNameMode: user.credential_name_mode ?? 'name',
-                                perseveranceStartYear: user.perseverance_start_year ?? null,
-                                personalPmType: user.personal_pm_type ?? null,
-                                personalPmNumber: user.personal_pm_number ?? null,
-                                personalPmProvince: user.personal_pm_province ?? null,
-                                personalPmMotto: user.personal_pm_motto ?? user.pm_motto ?? null,
-                                pmMotto: user.pm_motto ?? null
-                              });
-                            }}
-                          >
-                            <View style={styles.adminUserHeaderText}>
-                              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{user.full_name ?? 'Usuario sin nombre'}</Text>
-                              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{displayRoleLabel(role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)}</Text>
-                              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{user.province ?? 'Nacional'} - {user.community_name ?? 'Sin comunidad'}</Text>
-                            </View>
-                            <Ionicons name="id-card-outline" size={18} color={palette.red} />
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                </View>
-              </Modal>
+              <ActiveCoordinationsModal
+                visible={showActiveCoordinations}
+                isDark={isDark}
+                viewerProvince={session.province}
+                publicDirectory={publicUserDirectory}
+                adminUsers={adminUsers}
+                provinceRoleLabels={provinceRoleLabels}
+                roleAliases={adminConfig.settings.roleAliases}
+                onClose={() => setShowActiveCoordinations(false)}
+                onOpenPublicProfile={openPublicProfile}
+              />
 
               {adminModule === 'identidad' ? (
                 <IdentityAdminPanel
