@@ -1,6 +1,7 @@
 import React from 'react';
-import { Image, Linking, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { AppButton, ButtonGroup } from '../../../components/ui';
 import { LinkedSelectableText } from '../../../components/LinkedSelectableText';
 import { normalizeCommunityNoticeFormat, normalizeCommunityNoticeLink } from '../../../lib/community/notices';
 import { palette } from '../../../theme/palette';
@@ -54,10 +55,13 @@ export function CommunityNoticeCard({
       />
       {notice.imageUrl ? <Image source={{ uri: notice.imageUrl }} style={communityStyles.noticeImage} resizeMode="cover" /> : null}
       {linkUrl ? (
-        <TouchableOpacity style={[communityStyles.noticeLinkButton, isDark && communityStyles.noticeLinkButtonDark]} onPress={() => Linking.openURL(linkUrl)}>
-          <Ionicons name="open-outline" size={17} color={palette.red} />
-          <Text style={communityStyles.noticeLinkText}>{notice.linkLabel || 'Abrir enlace'}</Text>
-        </TouchableOpacity>
+        <AppButton
+          label={notice.linkLabel || 'Abrir enlace'}
+          icon="open-outline"
+          variant="secondary"
+          size="compact"
+          onPress={() => Linking.openURL(linkUrl)}
+        />
       ) : null}
       <View style={communityStyles.noticeFooter}>
         <Text style={[communityStyles.noticeAuthor, isDark && communityStyles.noticeDateDark]}>
@@ -66,16 +70,16 @@ export function CommunityNoticeCard({
         <Text style={[communityStyles.noticeNoReplies, isDark && communityStyles.noticeDateDark]}>Solo lectura</Text>
       </View>
       {notice.id && canManage ? (
-        <View style={communityStyles.noticeMeta}>
-          <TouchableOpacity style={[communityStyles.membersToggle, isDark && communityStyles.membersToggleDark]} onPress={onEdit}>
-            <Ionicons name={isEditing ? 'close-outline' : 'create-outline'} size={16} color={palette.red} />
-            <Text style={communityStyles.membersToggleText}>{isEditing ? 'Cerrar edición' : 'Editar'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[communityStyles.membersToggle, isDark && communityStyles.membersToggleDark]} onPress={onDelete}>
-            <Ionicons name="archive-outline" size={16} color={palette.red} />
-            <Text style={communityStyles.membersToggleText}>Archivar</Text>
-          </TouchableOpacity>
-        </View>
+        <ButtonGroup>
+          <AppButton
+            label={isEditing ? 'Cerrar edicion' : 'Editar'}
+            icon={isEditing ? 'close-outline' : 'create-outline'}
+            variant="ghost"
+            size="compact"
+            onPress={onEdit}
+          />
+          <AppButton label="Archivar" icon="archive-outline" variant="dangerGhost" size="compact" onPress={onDelete} />
+        </ButtonGroup>
       ) : null}
     </View>
   );

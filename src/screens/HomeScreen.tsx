@@ -21,6 +21,7 @@ import { EditableIntro } from '../components/EditableIntro';
 import { ExternalNewsCarousel } from '../components/ExternalNewsCarousel';
 import { LinkedSelectableText } from '../components/LinkedSelectableText';
 import { SectionTitle } from '../components/SectionTitle';
+import { AppButton, ButtonGroup, IconButton } from '../components/ui';
 import { useIsDarkTheme } from '../theme/ThemeContext';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
@@ -301,9 +302,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
       <Modal visible={gospelModalVisible} transparent animationType="fade" onRequestClose={() => setGospelModalVisible(false)} statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalPanel, styles.gospelModalPanel, isDark && styles.surfacePanelDark]}>
-            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setGospelModalVisible(false)}>
-              <Ionicons name="close-outline" size={22} color={palette.red} />
-            </TouchableOpacity>
+            <IconButton icon="close-outline" accessibilityLabel="Cerrar Evangelio del Dia" onPress={() => setGospelModalVisible(false)} />
             <ScrollView style={styles.gospelModalScroll} contentContainerStyle={styles.gospelModalContent} nestedScrollEnabled>
               <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Evangelio del Dia</Text>
               <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{dailyGospel?.title || adminConfig.gospel.title || 'Evangelio del Dia'}</Text>
@@ -318,10 +317,13 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
               {dailyGospelMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{dailyGospelMessage}</Text> : null}
               {dailyGospel?.reflection_text ? (
                 <>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => setGospelReflectionOpen((current) => !current)}>
-                    <Ionicons name={gospelReflectionOpen ? 'chevron-up-outline' : 'sparkles-outline'} size={17} color={palette.red} />
-                    <Text style={styles.secondaryButtonText}>{gospelReflectionOpen ? 'Ocultar reflexion' : 'Reflexion'}</Text>
-                  </TouchableOpacity>
+                  <AppButton
+                    label={gospelReflectionOpen ? 'Ocultar reflexion' : 'Reflexion'}
+                    icon={gospelReflectionOpen ? 'chevron-up-outline' : 'sparkles-outline'}
+                    variant="secondary"
+                    size="compact"
+                    onPress={() => setGospelReflectionOpen((current) => !current)}
+                  />
                   {gospelReflectionOpen ? (
                     <View style={[styles.gospelReflectionPanel, isDark && styles.surfaceRowDark]}>
                       <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{dailyGospel.reflection_title || 'Reflexion'}</Text>
@@ -330,18 +332,12 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
                   ) : null}
                 </>
               ) : null}
-              <View style={styles.compactToolRow}>
-                <TouchableOpacity style={styles.secondaryButton} onPress={() => loadDailyGospel(true)} disabled={dailyGospelLoading}>
-                  <Ionicons name="refresh-outline" size={17} color={palette.red} />
-                  <Text style={styles.secondaryButtonText}>{dailyGospelLoading ? 'Actualizando' : 'Actualizar'}</Text>
-                </TouchableOpacity>
+              <ButtonGroup>
+                <AppButton label="Actualizar" icon="refresh-outline" variant="secondary" size="compact" loading={dailyGospelLoading} onPress={() => loadDailyGospel(true)} />
                 {(dailyGospel?.source_url || adminConfig.gospel.sourceUrl) ? (
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(dailyGospel?.source_url || adminConfig.gospel.sourceUrl)}>
-                    <Ionicons name="open-outline" size={17} color={palette.red} />
-                    <Text style={styles.secondaryButtonText}>Fuente</Text>
-                  </TouchableOpacity>
+                  <AppButton label="Fuente" icon="open-outline" variant="ghost" size="compact" onPress={() => Linking.openURL(dailyGospel?.source_url || adminConfig.gospel.sourceUrl)} />
                 ) : null}
-              </View>
+              </ButtonGroup>
               <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Fuente: {dailyGospel?.source_name || 'Don Bosco Argentina'}</Text>
             </ScrollView>
           </View>
@@ -394,24 +390,14 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
               <TextInput style={[styles.input, styles.textArea]} placeholder="Contenido completo" value={homeEditBody} onChangeText={setHomeEditBody} multiline placeholderTextColor={inputPlaceholderColor} />
               <TextInput style={styles.input} placeholder="URL de imagen opcional" value={homeEditImage} onChangeText={setHomeEditImage} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
               {homeEditImage ? <Image source={{ uri: homeEditImage }} style={styles.cardImage} /> : null}
-              <View style={styles.inlineActions}>
-                <TouchableOpacity style={styles.secondaryButton} onPress={uploadHomeNewsImage}>
-                  <Ionicons name="image-outline" size={16} color={palette.red} />
-                  <Text style={styles.secondaryButtonText}>Subir imagen</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryButton} onPress={() => setHomeEditImage('')}>
-                  <Ionicons name="close-circle-outline" size={16} color={palette.red} />
-                  <Text style={styles.secondaryButtonText}>Quitar imagen</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.inlineActions}>
-                <TouchableOpacity style={styles.primaryButton} onPress={saveHomeNewsEdit}>
-                  <Text style={styles.primaryButtonText}>Guardar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.secondaryButton} onPress={() => { setHomeEditId(null); setHomeEditImage(''); }}>
-                  <Text style={styles.secondaryButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
+              <ButtonGroup>
+                <AppButton label="Subir imagen" icon="image-outline" variant="secondary" size="compact" onPress={uploadHomeNewsImage} />
+                <AppButton label="Quitar imagen" icon="close-circle-outline" variant="ghost" size="compact" onPress={() => setHomeEditImage('')} />
+              </ButtonGroup>
+              <ButtonGroup>
+                <AppButton label="Guardar" icon="save-outline" size="compact" onPress={saveHomeNewsEdit} />
+                <AppButton label="Cancelar" variant="ghost" size="compact" onPress={() => { setHomeEditId(null); setHomeEditImage(''); }} />
+              </ButtonGroup>
             </View>
           ) : (
             <>
@@ -426,16 +412,10 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
           )}
           {expandedNews === item.title && item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
           {canManageHomeEntries && isRemoteNewsItem(item) ? (
-            <View style={styles.inlineActions}>
-              <TouchableOpacity style={styles.actionPill} onPress={() => startHomeNewsEdit(item)}>
-                <Ionicons name="create-outline" size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>Editar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionPill} onPress={() => removeHomeNews(item)}>
-                <Ionicons name="trash-outline" size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>Eliminar</Text>
-              </TouchableOpacity>
-            </View>
+            <ButtonGroup>
+              <AppButton label="Editar" icon="create-outline" variant="ghost" size="compact" onPress={() => startHomeNewsEdit(item)} />
+              <AppButton label="Eliminar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => removeHomeNews(item)} />
+            </ButtonGroup>
           ) : null}
           <View style={styles.feedFooter}>
             <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>{expandedNews === item.title ? 'Tocar para contraer' : 'Tocar para leer mas'}</Text>

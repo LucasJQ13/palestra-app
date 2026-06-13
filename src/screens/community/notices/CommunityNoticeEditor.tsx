@@ -1,7 +1,8 @@
 import React from 'react';
-import { Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { AppButton, ButtonGroup, TabButton } from '../../../components/ui';
 import { inputPlaceholderColor } from '../../../lib/constants';
 import { CommunityNoticeBodyFormat, CommunityNoticeDraft } from '../../../lib/community/notices';
 import { communityPanelStyles as styles } from '../panel/communityPanelStyles';
@@ -83,33 +84,35 @@ export function CommunityNoticeEditor({
         {formatOptions.map((option) => {
           const selected = value.bodyFormat === option.value;
           return (
-            <TouchableOpacity
+            <TabButton
               key={option.value}
-              style={[styles.formatButton, isDark && styles.formatButtonDark, selected && styles.formatButtonActive]}
+              label={option.label}
+              icon={option.icon}
+              selected={selected}
               onPress={() => onChange({ ...value, bodyFormat: option.value })}
-            >
-              <Ionicons name={option.icon} size={16} color={selected ? '#FFFFFF' : '#2D8DC8'} />
-              <Text style={[styles.formatButtonText, selected && styles.formatButtonTextActive]}>{option.label}</Text>
-            </TouchableOpacity>
+            />
           );
         })}
       </View>
 
-      <View style={styles.mediaActions}>
-        <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={pickImage}>
-          <Ionicons name="image-outline" size={18} color="#2D8DC8" />
-          <Text style={styles.secondaryButtonText}>{previewUri ? 'Cambiar imagen' : 'Elegir imagen'}</Text>
-        </TouchableOpacity>
+      <ButtonGroup style={styles.mediaActions}>
+        <AppButton
+          label={previewUri ? 'Cambiar imagen' : 'Elegir imagen'}
+          icon="image-outline"
+          variant="secondary"
+          size="compact"
+          onPress={pickImage}
+        />
         {previewUri ? (
-          <TouchableOpacity
-            style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]}
+          <AppButton
+            label="Quitar"
+            icon="trash-outline"
+            variant="dangerGhost"
+            size="compact"
             onPress={() => onChange({ ...value, imageAsset: null, imageUrl: '' })}
-          >
-            <Ionicons name="trash-outline" size={18} color="#2D8DC8" />
-            <Text style={styles.secondaryButtonText}>Quitar</Text>
-          </TouchableOpacity>
+          />
         ) : null}
-      </View>
+      </ButtonGroup>
       <TextInput
         style={[styles.input, isDark && styles.inputDark]}
         value={value.imageUrl}
@@ -137,17 +140,12 @@ export function CommunityNoticeEditor({
         autoCapitalize="none"
       />
 
-      <View style={styles.noticeActions}>
-        <TouchableOpacity style={styles.primaryButton} onPress={onSubmit}>
-          <Ionicons name="megaphone-outline" size={18} color="#FFFFFF" />
-          <Text style={styles.primaryButtonText}>{submitLabel}</Text>
-        </TouchableOpacity>
+      <ButtonGroup style={styles.noticeActions}>
+        <AppButton label={submitLabel} icon="megaphone-outline" onPress={onSubmit} />
         {onCancel ? (
-          <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={onCancel}>
-            <Text style={styles.secondaryButtonText}>Cancelar</Text>
-          </TouchableOpacity>
+          <AppButton label="Cancelar" variant="ghost" onPress={onCancel} />
         ) : null}
-      </View>
+      </ButtonGroup>
     </View>
   );
 }

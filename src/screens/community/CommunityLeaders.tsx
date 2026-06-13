@@ -7,6 +7,7 @@ import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleLabelForProvince } from '../../lib/profileDisplay';
 import { isCommunityVisibleReferenceRole } from '../../lib/community/roles';
 import { palette } from '../../theme/palette';
+import { IconButton } from '../../components/ui';
 import { communityStyles } from './communityStyles';
 
 export function CommunityLeaders({
@@ -79,17 +80,16 @@ export function CommunityLeaders({
                   <Text numberOfLines={2} style={[communityStyles.personRole, isDark && communityStyles.personRoleDark]}>{role}</Text>
                 </View>
                 {canMessageMembers && member.id !== viewerId ? (
-                  <TouchableOpacity
-                    style={[communityStyles.messageButton, isDark && communityStyles.messageButtonDark]}
+                  <IconButton
+                    icon="chatbubble-outline"
+                    variant="ghost"
+                    size="sm"
                     onPress={(event) => {
                       event.stopPropagation();
                       onMessage(member);
                     }}
                     accessibilityLabel={`Enviar mensaje a ${name}`}
-                  >
-                    <Ionicons name="chatbubble-outline" size={18} color={palette.red} />
-                    <Text style={communityStyles.messageButtonText}>Enviar mensaje</Text>
-                  </TouchableOpacity>
+                  />
                 ) : null}
               </TouchableOpacity>
             );

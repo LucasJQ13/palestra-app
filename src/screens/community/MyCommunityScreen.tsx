@@ -1,11 +1,10 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Text, View } from 'react-native';
+import { AppButton, IconButton } from '../../components/ui';
 import { AppCommunityLocation } from '../../lib/remoteData';
 import { CommunityMember, ProvinceRoleLabelRecord } from '../../lib/profiles';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { Session } from '../../types/auth';
-import { palette } from '../../theme/palette';
 import { CommunityHeader } from './CommunityHeader';
 import { CommunityLeaders } from './CommunityLeaders';
 import { CommunityMembersList } from './CommunityMembersList';
@@ -56,23 +55,15 @@ export function MyCommunityScreen({
   return (
     <View style={communityStyles.screen}>
       <View style={communityStyles.topBar}>
-        <TouchableOpacity style={[communityStyles.iconButton, isDark && communityStyles.iconButtonDark]} onPress={onBack} accessibilityLabel="Volver a Mi Perfil">
-          <Ionicons name="arrow-back-outline" size={21} color={palette.red} />
-        </TouchableOpacity>
+        <IconButton icon="arrow-back-outline" onPress={onBack} accessibilityLabel="Volver a Mi Perfil" />
         <Text style={[communityStyles.topBarTitle, isDark && communityStyles.topBarTitleDark]}>Mi Comunidad</Text>
-        <TouchableOpacity style={[communityStyles.iconButton, isDark && communityStyles.iconButtonDark]} onPress={onRefresh} accessibilityLabel="Actualizar Mi Comunidad">
-          <Ionicons name="refresh-outline" size={20} color={palette.red} />
-        </TouchableOpacity>
+        <IconButton icon="refresh-outline" onPress={onRefresh} accessibilityLabel="Actualizar Mi Comunidad" />
       </View>
 
       <CommunityHeader community={community} province={session.province} />
 
       {canAccessPanel ? (
-        <TouchableOpacity style={communityStyles.managementButton} onPress={onOpenPanel} activeOpacity={0.88}>
-          <Ionicons name="settings-outline" size={18} color="#FFFFFF" />
-          <Text style={communityStyles.managementButtonText}>Abrir Panel de Comunidad</Text>
-          <Ionicons name="chevron-forward-outline" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <AppButton label="Abrir Panel de Comunidad" icon="settings-outline" onPress={onOpenPanel} fullWidth />
       ) : null}
 
       <CommunityLeaders

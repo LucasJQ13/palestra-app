@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
+import { GestureResponderEvent, Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../theme/ThemeContext';
 import type { ButtonIconName } from './AppButton';
@@ -8,7 +8,7 @@ import { buttonStyles, selectedTabColors } from './buttonStyles';
 export type TabButtonProps = {
   label: string;
   selected: boolean;
-  onPress: () => void;
+  onPress: (event: GestureResponderEvent) => void;
   icon?: ButtonIconName;
   badge?: number | string;
   disabled?: boolean;

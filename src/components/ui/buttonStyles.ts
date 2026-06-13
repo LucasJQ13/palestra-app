@@ -27,6 +27,7 @@ export const buttonStyles = StyleSheet.create({
   base: {
     maxWidth: '100%',
     borderWidth: 1,
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

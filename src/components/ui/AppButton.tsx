@@ -1,5 +1,5 @@
 import React, { ComponentProps } from 'react';
-import { ActivityIndicator, Pressable, StyleProp, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, GestureResponderEvent, Pressable, StyleProp, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../theme/ThemeContext';
 import {
@@ -15,7 +15,7 @@ export type ButtonIconName = ComponentProps<typeof Ionicons>['name'];
 
 export type AppButtonProps = {
   label: string;
-  onPress: () => void;
+  onPress: (event: GestureResponderEvent) => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: ButtonIconName;

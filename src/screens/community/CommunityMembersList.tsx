@@ -6,6 +6,7 @@ import { RoleAliasConfig } from '../../lib/appConfig';
 import { Role } from '../../types/auth';
 import { roleLabelForProvince } from '../../lib/profileDisplay';
 import { palette } from '../../theme/palette';
+import { AppButton, IconButton } from '../../components/ui';
 import { communityStyles } from './communityStyles';
 
 export function CommunityMembersList({
@@ -36,15 +37,13 @@ export function CommunityMembersList({
           <Text style={[communityStyles.sectionTitle, isDark && communityStyles.sectionTitleDark]}>Miembros</Text>
           <Text style={[communityStyles.sectionHint, isDark && communityStyles.sectionHintDark]}>{members.length} integrante/s</Text>
         </View>
-        <TouchableOpacity
-          style={[communityStyles.membersToggle, isDark && communityStyles.membersToggleDark]}
+        <AppButton
+          label={open ? 'Ocultar lista' : 'Ver miembros'}
+          icon={open ? 'chevron-up-outline' : 'people-outline'}
+          variant="secondary"
+          size="compact"
           onPress={() => setOpen((current) => !current)}
-          activeOpacity={0.86}
-        >
-          <Ionicons name="people-outline" size={16} color={palette.red} />
-          <Text style={communityStyles.membersToggleText}>{open ? 'Ocultar lista' : 'Ver miembros'}</Text>
-          <Ionicons name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={palette.red} />
-        </TouchableOpacity>
+        />
       </View>
       {open ? (
         <ScrollView style={communityStyles.membersList} nestedScrollEnabled showsVerticalScrollIndicator>
@@ -73,17 +72,16 @@ export function CommunityMembersList({
                   <Text numberOfLines={1} style={[communityStyles.personRole, isDark && communityStyles.personRoleDark]}>{role}</Text>
                 </View>
                 {canMessageMembers && member.id !== viewerId ? (
-                  <TouchableOpacity
-                    style={[communityStyles.messageButton, isDark && communityStyles.messageButtonDark]}
+                  <IconButton
+                    icon="chatbubble-outline"
+                    variant="ghost"
+                    size="sm"
                     onPress={(event) => {
                       event.stopPropagation();
                       onMessage(member);
                     }}
                     accessibilityLabel={`Enviar mensaje a ${name}`}
-                  >
-                    <Ionicons name="chatbubble-outline" size={18} color={palette.red} />
-                    <Text style={communityStyles.messageButtonText}>Enviar mensaje</Text>
-                  </TouchableOpacity>
+                  />
                 ) : null}
               </TouchableOpacity>
             );

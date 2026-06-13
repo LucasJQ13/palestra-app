@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase';
 import { EditableIntro } from '../components/EditableIntro';
 import { RoleDropdown } from '../components/RoleDropdown';
 import { SectionTitle } from '../components/SectionTitle';
+import { AppButton, ButtonGroup } from '../components/ui';
 import { useIsDarkTheme } from '../theme/ThemeContext';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
@@ -419,10 +420,7 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
       <SectionTitle title={title} />
       <EditableIntro content={content} editor={editor} />
       {canManagePublishedContent(session) ? (
-        <TouchableOpacity style={styles.primaryButton} onPress={() => setShowUpload(!showUpload)}>
-          <Ionicons name="cloud-upload-outline" size={17} color={palette.white} />
-          <Text style={styles.primaryButtonText}>Subir contenido</Text>
-        </TouchableOpacity>
+        <AppButton label={showUpload ? 'Cerrar carga' : 'Subir contenido'} icon={showUpload ? 'close-outline' : 'cloud-upload-outline'} onPress={() => setShowUpload(!showUpload)} />
       ) : null}
       {showUpload ? (
         <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
@@ -450,20 +448,14 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
               onSelect={setUploadRole}
             />
           ) : null}
-          <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={uploadPdfMaterial}>
-            <Ionicons name="document-attach-outline" size={17} color={palette.red} />
-            <Text style={styles.secondaryButtonText}>{uploadFileUrl ? 'Cambiar PDF cargado' : 'Elegir PDF max. 15Mb'}</Text>
-          </TouchableOpacity>
+          <AppButton label={uploadFileUrl ? 'Cambiar PDF cargado' : 'Elegir PDF max. 15Mb'} icon="document-attach-outline" variant="secondary" onPress={uploadPdfMaterial} />
           {uploadFileName ? (
             <View style={[styles.notice, isDark && styles.surfaceRowDark]}>
               <Ionicons name="checkmark-circle-outline" size={19} color={palette.red} />
               <Text style={[styles.noticeText, isDark && styles.textDarkBody]}>Archivo listo: {uploadFileName}</Text>
             </View>
           ) : null}
-          <TouchableOpacity style={[styles.primaryButton, !uploadFileUrl && styles.disabledButton]} onPress={finalizePdfMaterialUpload} disabled={!uploadFileUrl}>
-            <Ionicons name="cloud-done-outline" size={17} color={palette.white} />
-            <Text style={styles.primaryButtonText}>Finalizar subida</Text>
-          </TouchableOpacity>
+          <AppButton label="Finalizar subida" icon="cloud-done-outline" disabled={!uploadFileUrl} onPress={finalizePdfMaterialUpload} />
           {uploadMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{uploadMessage}</Text> : null}
         </View>
       ) : null}
@@ -471,13 +463,14 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
         <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Documentos de la Iglesia</Text>
         <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Textos oficiales y recursos externos seleccionados.</Text>
         {session?.role === 'administrador' ? (
-          <TouchableOpacity style={styles.primaryButton} onPress={() => {
-            setShowChurchDocumentAdmin((current) => !current);
-            reloadChurchDocuments(true);
-          }}>
-            <Ionicons name="add-circle-outline" size={17} color={palette.white} />
-            <Text style={styles.primaryButtonText}>Agregar boton</Text>
-          </TouchableOpacity>
+          <AppButton
+            label={showChurchDocumentAdmin ? 'Cerrar editor' : 'Agregar boton'}
+            icon={showChurchDocumentAdmin ? 'close-outline' : 'add-circle-outline'}
+            onPress={() => {
+              setShowChurchDocumentAdmin((current) => !current);
+              reloadChurchDocuments(true);
+            }}
+          />
         ) : null}
         {showChurchDocumentAdmin && session?.role === 'administrador' ? (
           <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
@@ -485,24 +478,17 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
             <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo visible" value={churchDocumentTitle} onChangeText={setChurchDocumentTitle} placeholderTextColor={inputPlaceholderColor} />
             <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Link destino https://..." value={churchDocumentTargetUrl} onChangeText={setChurchDocumentTargetUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
             <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Logo URL o subir imagen" value={churchDocumentLogoUrl} onChangeText={setChurchDocumentLogoUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
-            <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={uploadChurchDocumentLogoFromDownloads}>
-              <Ionicons name="image-outline" size={17} color={palette.red} />
-              <Text style={styles.secondaryButtonText}>Subir logo/imagen</Text>
-            </TouchableOpacity>
+            <AppButton label="Subir logo/imagen" icon="image-outline" variant="secondary" size="compact" onPress={uploadChurchDocumentLogoFromDownloads} />
             <View style={styles.inlineActions}>
               <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Orden" value={churchDocumentSortOrder} onChangeText={setChurchDocumentSortOrder} keyboardType="numeric" placeholderTextColor={inputPlaceholderColor} />
               <TouchableOpacity style={[styles.actionPill, churchDocumentEnabled && styles.actionPillActive]} onPress={() => setChurchDocumentEnabled((current) => !current)}>
                 <Text style={[styles.actionPillText, churchDocumentEnabled && styles.actionPillTextActive]}>{churchDocumentEnabled ? 'Habilitado' : 'Deshabilitado'}</Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.inlineActions}>
-              <TouchableOpacity style={styles.primaryButton} onPress={saveChurchDocumentFromDownloads}>
-                <Text style={styles.primaryButtonText}>{churchDocumentEditingId ? 'Guardar boton' : 'Crear boton'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={resetChurchDocumentForm}>
-                <Text style={styles.secondaryButtonText}>Limpiar</Text>
-              </TouchableOpacity>
-            </View>
+            <ButtonGroup>
+              <AppButton label={churchDocumentEditingId ? 'Guardar boton' : 'Crear boton'} icon="save-outline" size="compact" onPress={saveChurchDocumentFromDownloads} />
+              <AppButton label="Limpiar" icon="refresh-outline" variant="ghost" size="compact" onPress={resetChurchDocumentForm} />
+            </ButtonGroup>
             {churchDocuments.map((document) => (
               <View key={document.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark, !document.enabled && styles.lockedCard]}>
                 {document.logo_url ? <Image source={{ uri: document.logo_url }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="key-outline" size={18} color={palette.red} /></View>}
@@ -510,12 +496,12 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
                   <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{document.title}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Orden {document.sort_order} - {document.enabled ? 'activo' : 'inactivo'}</Text>
                 </View>
-                <View style={styles.inlineActions}>
-                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => editChurchDocument(document)}><Text style={styles.actionPillText}>Editar</Text></TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => duplicateChurchDocumentFromDownloads(document)}><Text style={styles.actionPillText}>Duplicar</Text></TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => toggleChurchDocumentFromDownloads(document)}><Text style={styles.actionPillText}>{document.enabled ? 'Ocultar' : 'Activar'}</Text></TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => deleteChurchDocumentFromDownloads(document.id)}><Text style={styles.actionPillText}>Borrar</Text></TouchableOpacity>
-                </View>
+                <ButtonGroup>
+                  <AppButton label="Editar" icon="create-outline" variant="ghost" size="compact" onPress={() => editChurchDocument(document)} />
+                  <AppButton label="Duplicar" icon="copy-outline" variant="ghost" size="compact" onPress={() => duplicateChurchDocumentFromDownloads(document)} />
+                  <AppButton label={document.enabled ? 'Ocultar' : 'Activar'} icon={document.enabled ? 'eye-off-outline' : 'eye-outline'} variant="secondary" size="compact" onPress={() => toggleChurchDocumentFromDownloads(document)} />
+                  <AppButton label="Borrar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => deleteChurchDocumentFromDownloads(document.id)} />
+                </ButtonGroup>
               </View>
             ))}
           </View>
@@ -572,14 +558,10 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
                       onSelect={setMaterialEditRole}
                     />
                   ) : null}
-                  <View style={styles.inlineActions}>
-                    <TouchableOpacity style={styles.primaryButton} onPress={() => saveEditedMaterial(material)}>
-                      <Text style={styles.primaryButtonText}>Guardar cambios</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={() => setEditingMaterialId(null)}>
-                      <Text style={styles.secondaryButtonText}>Cancelar</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <ButtonGroup>
+                    <AppButton label="Guardar cambios" icon="save-outline" size="compact" onPress={() => saveEditedMaterial(material)} />
+                    <AppButton label="Cancelar" variant="ghost" size="compact" onPress={() => setEditingMaterialId(null)} />
+                  </ButtonGroup>
                 </View>
               ) : (
                 <>
@@ -588,22 +570,20 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
                   {locked ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Requiere permiso: {material.permission}</Text> : null}
                   {!locked ? (
-                    <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={() => openMaterialFile(material)}>
-                      <Ionicons name="download-outline" size={16} color={palette.red} />
-                      <Text style={styles.secondaryButtonText}>{canDownloadMaterial(material) ? 'Descargar documento' : 'Archivo no disponible'}</Text>
-                    </TouchableOpacity>
+                    <AppButton
+                      label={canDownloadMaterial(material) ? 'Descargar documento' : 'Archivo no disponible'}
+                      icon="download-outline"
+                      variant="secondary"
+                      size="compact"
+                      disabled={!canDownloadMaterial(material)}
+                      onPress={() => openMaterialFile(material)}
+                    />
                   ) : null}
                   {canEditThisMaterial ? (
-                    <View style={styles.inlineActions}>
-                      <TouchableOpacity style={styles.rowActionButton} onPress={() => startEditMaterial(material)}>
-                        <Ionicons name="create-outline" size={14} color={palette.red} />
-                        <Text style={styles.rowActionButtonText}>Editar</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => deleteMaterial(material)}>
-                        <Ionicons name="trash-outline" size={14} color="#B93232" />
-                        <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar</Text>
-                      </TouchableOpacity>
-                    </View>
+                    <ButtonGroup>
+                      <AppButton label="Editar" icon="create-outline" variant="ghost" size="compact" onPress={() => startEditMaterial(material)} />
+                      <AppButton label="Eliminar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => deleteMaterial(material)} />
+                    </ButtonGroup>
                   ) : null}
                 </>
               )}

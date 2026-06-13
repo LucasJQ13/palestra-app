@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
+import { AppButton } from '../../../components/ui';
 import { inputPlaceholderColor } from '../../../lib/constants';
 import { communityPanelStyles as styles } from './communityPanelStyles';
 
@@ -46,10 +46,13 @@ export function CommunityDetailsEditor({
       <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>Identidad de la comunidad</Text>
       <Text style={[styles.body, isDark && styles.bodyDark]}>Actualizá la presentación y el banner de tu comunidad.</Text>
       {draftImageUrl ? <Image source={{ uri: draftImageUrl }} style={styles.image} resizeMode="cover" /> : null}
-      <TouchableOpacity style={styles.secondaryButton} onPress={pickImage}>
-        <Ionicons name="image-outline" size={18} color="#2D8DC8" />
-        <Text style={styles.secondaryButtonText}>{draftImageUrl ? 'Cambiar banner' : 'Agregar banner'}</Text>
-      </TouchableOpacity>
+      <AppButton
+        label={draftImageUrl ? 'Cambiar banner' : 'Agregar banner'}
+        icon="image-outline"
+        variant="secondary"
+        size="compact"
+        onPress={pickImage}
+      />
       <TextInput
         style={[styles.input, styles.textArea, isDark && styles.inputDark]}
         value={draftDescription}
@@ -59,18 +62,16 @@ export function CommunityDetailsEditor({
         multiline
         maxLength={1000}
       />
-      <TouchableOpacity
-        style={styles.primaryButton}
+      <AppButton
+        label="Guardar identidad"
+        icon="save-outline"
         onPress={() => onSave({
           description: draftDescription.trim(),
           imageAsset,
           imageUrl: draftImageUrl || null
         })}
-        disabled={saving}
-      >
-        <Ionicons name="save-outline" size={18} color="#FFFFFF" />
-        <Text style={styles.primaryButtonText}>{saving ? 'Guardando...' : 'Guardar identidad'}</Text>
-      </TouchableOpacity>
+        loading={saving}
+      />
     </View>
   );
 }

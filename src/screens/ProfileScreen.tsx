@@ -17,6 +17,7 @@ import { getMyProfileSession } from '../lib/authProfile';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
 import { ExternalCatholicNewsItem, fetchExternalCatholicNews } from '../lib/externalNews';
 import { ActionButton } from '../components/ActionButton';
+import { AppButton, ButtonGroup, IconButton } from '../components/ui';
 import { SectionTitle } from '../components/SectionTitle';
 import { RoleDropdown } from '../components/RoleDropdown';
 import { CredentialQrCode } from '../components/CredentialQrCode';
@@ -4353,10 +4354,7 @@ export function ProfileScreen({
             ) : null}
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tus datos personales pueden editarse normalmente. Provincia y comunidad solo pueden cambiarse cada {territorialProfileCooldownDays} dias.</Text>
             {!profileEditUnlocked ? (
-              <TouchableOpacity style={styles.primaryButton} onPress={() => setProfileEditUnlocked(true)}>
-                <Ionicons name="create-outline" size={18} color={palette.white} />
-                <Text style={styles.primaryButtonText}>Editar</Text>
-              </TouchableOpacity>
+              <AppButton label="Editar" icon="create-outline" onPress={() => setProfileEditUnlocked(true)} />
             ) : null}
             {territorialFieldsLocked ? (
               <View style={styles.completionNotice}>
@@ -4414,10 +4412,7 @@ export function ProfileScreen({
                 placeholderTextColor={inputPlaceholderColor}
               />
               {personalGreetingColorError(editPersonalGreetingColor) ? <Text style={[styles.cardText, { color: palette.red }]}>{personalGreetingColorError(editPersonalGreetingColor)}</Text> : null}
-              <TouchableOpacity style={[styles.actionPill, editFormLocked && { opacity: 0.62 }]} disabled={editFormLocked} onPress={() => setEditPersonalGreetingColor('')}>
-                <Ionicons name="refresh-outline" size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>Usar color institucional</Text>
-              </TouchableOpacity>
+              <AppButton label="Usar color institucional" icon="refresh-outline" variant="ghost" size="compact" disabled={editFormLocked} onPress={() => setEditPersonalGreetingColor('')} />
             </View>
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mostrar en credencial</Text>
             <View style={styles.filterRow}>
@@ -4533,15 +4528,12 @@ export function ProfileScreen({
                 </TouchableOpacity>
               );
             })}
-            {profileEditUnlocked ? <View style={styles.filterRow}>
-              <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={saveProfile}>
-                <Text style={styles.primaryButtonText}>Guardar perfil</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionPill} onPress={resetProfileDraft}>
-                <Ionicons name="close-outline" size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View> : null}
+            {profileEditUnlocked ? (
+              <ButtonGroup>
+                <AppButton label="Guardar perfil" icon="save-outline" onPress={saveProfile} />
+                <AppButton label="Cancelar" icon="close-outline" variant="ghost" onPress={resetProfileDraft} />
+              </ButtonGroup>
+            ) : null}
             {authMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{authMessage}</Text> : null}
           </View> : null}
           {profilePanel === 'configuracion' ? (
@@ -4615,28 +4607,18 @@ export function ProfileScreen({
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>QR verificable</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>ID: {credentialQr?.credential_id.slice(0, 8) ?? 'pendiente'} - v{credentialQr?.version ?? 1}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Generada: {credentialQr?.issued_at ? new Date(credentialQr.issued_at).toLocaleDateString('es-AR') : 'pendiente'}</Text>
-                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => setCredentialQrExpanded(true)}>
-                    <Ionicons name="expand-outline" size={16} color={palette.red} />
-                    <Text style={styles.actionPillText}>Ampliar QR</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => { setCredentialQrExpanded(false); setCredentialQrPayload(''); setCredentialQr(null); setCredentialQrMessage('QR cerrado. Puedes generarlo nuevamente cuando lo necesites.'); }}>
-                    <Ionicons name="close-outline" size={16} color={palette.red} />
-                    <Text style={styles.actionPillText}>Cerrar QR</Text>
-                  </TouchableOpacity>
+                  <ButtonGroup>
+                    <AppButton label="Ampliar QR" icon="expand-outline" variant="secondary" size="compact" onPress={() => setCredentialQrExpanded(true)} />
+                    <AppButton label="Cerrar QR" icon="close-outline" variant="ghost" size="compact" onPress={() => { setCredentialQrExpanded(false); setCredentialQrPayload(''); setCredentialQr(null); setCredentialQrMessage('QR cerrado. Puedes generarlo nuevamente cuando lo necesites.'); }} />
+                  </ButtonGroup>
                 </View>
               </View>
             ) : (
-              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={refreshCredentialQr}>
-                <Ionicons name="qr-code-outline" size={17} color={palette.red} />
-                <Text style={styles.secondaryButtonText}>Generar QR verificable</Text>
-              </TouchableOpacity>
+              <AppButton label="Generar QR verificable" icon="qr-code-outline" variant="secondary" onPress={refreshCredentialQr} />
             )}
             {credentialQrMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{credentialQrMessage}</Text> : null}
             {canScanCredentialQr(session) ? (
-              <TouchableOpacity style={styles.primaryButton} onPress={() => openQrScanner('credential')}>
-                <Ionicons name="scan-outline" size={17} color={palette.white} />
-                <Text style={styles.primaryButtonText}>Escanear QR</Text>
-              </TouchableOpacity>
+              <AppButton label="Escanear QR" icon="scan-outline" onPress={() => openQrScanner('credential')} />
             ) : null}
           </View>
           <Modal visible={credentialQrExpanded} transparent animationType="fade" onRequestClose={() => setCredentialQrExpanded(false)} statusBarTranslucent>
@@ -4648,10 +4630,7 @@ export function ProfileScreen({
                     <CredentialQrCode value={credentialQrPayload} size={260} province={session.province} role={session.role} />
                   </View>
                 ) : null}
-                <TouchableOpacity style={styles.primaryButton} onPress={() => setCredentialQrExpanded(false)}>
-                  <Ionicons name="close-outline" size={17} color={palette.white} />
-                  <Text style={styles.primaryButtonText}>Cerrar</Text>
-                </TouchableOpacity>
+                <AppButton label="Cerrar" icon="close-outline" onPress={() => setCredentialQrExpanded(false)} />
               </View>
             </View>
           </Modal>
@@ -4659,9 +4638,7 @@ export function ProfileScreen({
             <View style={styles.modalOverlay} pointerEvents="box-none">
               <TouchableOpacity style={styles.modalBackdropTouch} activeOpacity={1} onPress={() => { setQrScannerVisible(false); setQrScannerActive(false); }} />
               <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]} pointerEvents="auto">
-                <TouchableOpacity style={styles.modalCloseButton} onPress={() => { setQrScannerVisible(false); setQrScannerActive(false); }} activeOpacity={0.8}>
-                  <Ionicons name="close" size={22} color={palette.red} />
-                </TouchableOpacity>
+                <IconButton icon="close" accessibilityLabel="Cerrar escaner QR" onPress={() => { setQrScannerVisible(false); setQrScannerActive(false); }} />
                 <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Escanear QR</Text>
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{qrValidationMessage || 'Apunta la camara al QR de la credencial.'}</Text>
                 {qrScannerActive ? (
@@ -4689,10 +4666,7 @@ export function ProfileScreen({
                         <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{qrValidationResult.message || 'Credencial no valida'}</Text>
                       </>
                     )}
-                    <TouchableOpacity style={styles.secondaryButton} onPress={() => { setQrValidationResult(null); setQrValidationMessage(qrScannerMode === 'activity' ? 'Apunta la camara al QR para validar la lista.' : 'Apunta la camara al QR de la credencial.'); setQrScannerActive(true); }}>
-                      <Ionicons name="scan-outline" size={17} color={palette.red} />
-                      <Text style={styles.secondaryButtonText}>Escanear otra</Text>
-                    </TouchableOpacity>
+                    <AppButton label="Escanear otra" icon="scan-outline" variant="secondary" onPress={() => { setQrValidationResult(null); setQrValidationMessage(qrScannerMode === 'activity' ? 'Apunta la camara al QR para validar la lista.' : 'Apunta la camara al QR de la credencial.'); setQrScannerActive(true); }} />
                   </View>
                 ) : null}
               </View>

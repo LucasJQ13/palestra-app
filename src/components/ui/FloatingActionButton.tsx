@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleProp, Text, ViewStyle } from 'react-native';
+import { GestureResponderEvent, Pressable, StyleProp, Text, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../theme/ThemeContext';
 import type { ButtonIconName } from './AppButton';
@@ -7,7 +7,7 @@ import { buttonColors, buttonStyles } from './buttonStyles';
 
 export type FloatingActionButtonProps = {
   icon: ButtonIconName;
-  onPress: () => void;
+  onPress: (event: GestureResponderEvent) => void;
   accessibilityLabel: string;
   label?: string;
   disabled?: boolean;

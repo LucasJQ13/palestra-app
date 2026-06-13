@@ -11,6 +11,7 @@ import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleRank, visibleHierarchyFor } from '../../lib/roles';
 import { roleLabel, roleLabelForProvince } from '../../lib/profileDisplay';
 import { SectionTitle } from '../../components/SectionTitle';
+import { AppButton, ButtonGroup, IconButton, TabButton } from '../../components/ui';
 
 type MailboxCommunityOption = {
   id?: string | null;
@@ -299,16 +300,10 @@ export function MailboxPanel({
           <Text style={styles.mailboxCountLabel}>{filter}</Text>
         </View>
       </View>
-      <View style={styles.mailboxToolbar}>
-        <TouchableOpacity style={[styles.compactSquareButton, showComposer && styles.compactSquareButtonActive]} onPress={onToggleComposer}>
-          <Ionicons name="create-outline" size={17} color={showComposer ? palette.white : palette.red} />
-          <Text style={[styles.compactSquareButtonText, showComposer && styles.compactSquareButtonTextActive]}>Nuevo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.compactSquareButton} onPress={onRefresh}>
-          <Ionicons name="refresh-outline" size={17} color={palette.red} />
-          <Text style={styles.compactSquareButtonText}>Actualizar</Text>
-        </TouchableOpacity>
-      </View>
+      <ButtonGroup>
+        <AppButton label={showComposer ? 'Cerrar mensaje' : 'Nuevo'} icon={showComposer ? 'close-outline' : 'create-outline'} variant={showComposer ? 'secondary' : 'primary'} size="compact" onPress={onToggleComposer} />
+        <AppButton label="Actualizar" icon="refresh-outline" variant="ghost" size="compact" onPress={onRefresh} />
+      </ButtonGroup>
 
       {showComposer ? (
         <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
@@ -444,26 +439,18 @@ export function MailboxPanel({
             multiline
             placeholderTextColor={inputPlaceholderColor}
           />
-          <View style={styles.compactToolRow}>
-            <TouchableOpacity style={[styles.compactSquareButton, styles.compactSquareButtonActive]} onPress={onSubmitNewMessage}>
-              <Ionicons name="send-outline" size={17} color={palette.white} />
-              <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>Enviar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.compactSquareButton} onPress={onSaveDraft}>
-              <Ionicons name="save-outline" size={17} color={palette.red} />
-              <Text style={styles.compactSquareButtonText}>Borrador</Text>
-            </TouchableOpacity>
-          </View>
+          <ButtonGroup>
+            <AppButton label="Enviar" icon="send-outline" size="compact" onPress={onSubmitNewMessage} />
+            <AppButton label="Guardar borrador" icon="save-outline" variant="secondary" size="compact" onPress={onSaveDraft} />
+          </ButtonGroup>
         </View>
       ) : null}
 
-      <View style={styles.mailboxTabs}>
+      <ButtonGroup style={styles.mailboxTabs}>
         {(['entrada', 'enviados', 'eliminados'] as const).map((item) => (
-          <TouchableOpacity key={item} style={[styles.filterChip, filter === item && styles.filterChipActive]} onPress={() => onFilterChange(item)}>
-            <Text style={[styles.filterChipText, filter === item && styles.filterChipTextActive]}>{item}</Text>
-          </TouchableOpacity>
+          <TabButton key={item} label={item} selected={filter === item} onPress={() => onFilterChange(item)} />
         ))}
-      </View>
+      </ButtonGroup>
 
       <Modal
         visible={Boolean(selectedConversation)}
@@ -482,9 +469,7 @@ export function MailboxPanel({
               style={styles.mailboxThreadFullscreenKeyboard}
             >
               <View style={[styles.mailboxThreadFullscreenHeader, isDark && styles.mailboxThreadFullscreenHeaderDark]}>
-                <TouchableOpacity style={styles.iconButtonGhost} onPress={closeConversation} activeOpacity={0.84}>
-                  <Ionicons name="arrow-back-outline" size={20} color={palette.red} />
-                </TouchableOpacity>
+                <IconButton icon="arrow-back-outline" accessibilityLabel="Volver al buzon" variant="ghost" onPress={closeConversation} />
                 <View style={styles.mailboxAvatar}>
                   <Text style={styles.mailboxAvatarText}>{selectedConversation.title.trim().charAt(0).toUpperCase() || 'P'}</Text>
                 </View>
@@ -492,9 +477,7 @@ export function MailboxPanel({
                   <Text numberOfLines={1} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedConversation.title}</Text>
                   {selectedConversation.subtitle ? <Text numberOfLines={1} style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{selectedConversation.subtitle}</Text> : null}
                 </View>
-                <TouchableOpacity style={styles.iconButtonGhost} onPress={() => openConversationActions(selectedConversation)} onLongPress={() => openConversationActions(selectedConversation)} activeOpacity={0.84}>
-                  <Ionicons name="ellipsis-vertical" size={20} color={palette.red} />
-                </TouchableOpacity>
+                <IconButton icon="ellipsis-vertical" accessibilityLabel="Acciones de conversacion" variant="ghost" onPress={() => openConversationActions(selectedConversation)} />
               </View>
               <ScrollView
                 ref={conversationScrollRef}
@@ -534,14 +517,15 @@ export function MailboxPanel({
                   blurOnSubmit={false}
                   placeholderTextColor={inputPlaceholderColor}
                 />
-                <TouchableOpacity
-                  style={[styles.compactSquareButton, styles.compactSquareButtonActive, styles.mailboxReplySendButton, (!selectedConversation.counterpartUserId || conversationSending) && styles.disabledButton]}
+                <AppButton
+                  label="Enviar"
+                  icon="send-outline"
+                  size="compact"
+                  style={styles.mailboxReplySendButton}
+                  loading={conversationSending}
+                  disabled={!selectedConversation.counterpartUserId}
                   onPress={onSendConversationReply}
-                  disabled={!selectedConversation.counterpartUserId || conversationSending}
-                >
-                  <Ionicons name="send-outline" size={18} color={palette.white} />
-                  <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>{conversationSending ? '...' : 'Enviar'}</Text>
-                </TouchableOpacity>
+                />
               </View>
             </KeyboardAvoidingView>
           </SafeAreaView>
@@ -597,9 +581,7 @@ export function MailboxPanel({
                     Usuario reportado: {reportMessage?.sender_name || 'Usuario'}
                   </Text>
                 </View>
-                <TouchableOpacity style={styles.iconButtonGhost} onPress={() => onToggleReportMessage(null)} activeOpacity={0.84}>
-                  <Ionicons name="close-outline" size={20} color={palette.red} />
-                </TouchableOpacity>
+                <IconButton icon="close-outline" accessibilityLabel="Cerrar reporte" variant="ghost" onPress={() => onToggleReportMessage(null)} />
               </View>
 
               <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Motivo</Text>
@@ -622,16 +604,10 @@ export function MailboxPanel({
               />
               <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{reportComment.length}/300</Text>
 
-              <View style={styles.compactToolRow}>
-                <TouchableOpacity style={[styles.compactSquareButton, styles.compactSquareButtonActive, styles.flexButton]} onPress={() => reportMessage ? onSubmitMessageReport(reportMessage) : null} activeOpacity={0.86}>
-                  <Ionicons name="flag-outline" size={16} color={palette.white} />
-                  <Text style={[styles.compactSquareButtonText, styles.compactSquareButtonTextActive]}>Enviar reporte</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.compactSquareButton, styles.flexButton]} onPress={() => onToggleReportMessage(null)} activeOpacity={0.86}>
-                  <Ionicons name="close-outline" size={16} color={palette.red} />
-                  <Text style={styles.compactSquareButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
+              <ButtonGroup>
+                <AppButton label="Enviar reporte" icon="flag-outline" size="compact" onPress={() => reportMessage ? onSubmitMessageReport(reportMessage) : undefined} />
+                <AppButton label="Cancelar" icon="close-outline" variant="ghost" size="compact" onPress={() => onToggleReportMessage(null)} />
+              </ButtonGroup>
             </ScrollView>
           </KeyboardAvoidingView>
         </View>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleProp, ViewStyle } from 'react-native';
+import { GestureResponderEvent, Pressable, StyleProp, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../theme/ThemeContext';
 import type { ButtonIconName } from './AppButton';
@@ -8,7 +8,7 @@ import type { ButtonVariant, IconButtonSize } from './buttonStyles';
 
 export type IconButtonProps = {
   icon: ButtonIconName;
-  onPress: () => void;
+  onPress: (event: GestureResponderEvent) => void;
   accessibilityLabel: string;
   accessibilityHint?: string;
   variant?: ButtonVariant;
