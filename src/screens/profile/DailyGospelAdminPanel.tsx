@@ -5,6 +5,7 @@ import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig } from '../../lib/appConfig';
+import { AppButton } from '../../components/ui';
 
 export function DailyGospelAdminPanel({
   config,
@@ -70,9 +71,7 @@ export function DailyGospelAdminPanel({
         placeholder="Texto del evangelio..."
         placeholderTextColor={inputPlaceholderColor}
       />
-      <TouchableOpacity style={styles.primaryButton} onPress={onSave}>
-        <Text style={styles.primaryButtonText}>Guardar Evangelio</Text>
-      </TouchableOpacity>
+      <AppButton label="Guardar Evangelio" icon="save-outline" onPress={onSave} />
     </View>
   );
 }

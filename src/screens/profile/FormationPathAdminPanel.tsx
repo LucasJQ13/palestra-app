@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
+import { AppButton, ButtonGroup, IconButton } from '../../components/ui';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { uploadPickedImageToPublicUrl } from '../../lib/uploads';
 import { APP_MESSAGES } from '../../lib/appMessages';
@@ -210,9 +211,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
           <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Proceso Educativo</Text>
           <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Crea y ordena estaciones del camino formativo. El contenido queda guardado en Supabase.</Text>
         </View>
-        <TouchableOpacity style={styles.iconButtonGhost} onPress={load}>
-          <Ionicons name="refresh-outline" size={18} color={palette.red} />
-        </TouchableOpacity>
+        <IconButton icon="refresh-outline" accessibilityLabel="Actualizar estaciones" variant="ghost" onPress={load} />
       </View>
 
       {!canManage ? (
@@ -222,22 +221,17 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
         </View>
       ) : null}
 
-      <View style={styles.inlineActions}>
-        <TouchableOpacity
-          style={styles.primaryButton}
+      <ButtonGroup>
+        <AppButton
+          label="Crear estacion"
+          icon="add-circle-outline"
           onPress={() => {
             setDraft(emptyDraft(stations.length + 1));
             setShowEditor(true);
           }}
-        >
-          <Ionicons name="add-circle-outline" size={17} color={palette.white} />
-          <Text style={styles.primaryButtonText}>Crear estacion</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowEditor((current) => !current)}>
-          <Ionicons name={showEditor ? 'chevron-up-outline' : 'create-outline'} size={17} color={palette.red} />
-          <Text style={styles.secondaryButtonText}>{showEditor ? 'Cerrar editor' : 'Editar seleccion'}</Text>
-        </TouchableOpacity>
-      </View>
+        />
+        <AppButton label={showEditor ? 'Cerrar editor' : 'Editar seleccion'} icon={showEditor ? 'chevron-up-outline' : 'create-outline'} variant="secondary" onPress={() => setShowEditor((current) => !current)} />
+      </ButtonGroup>
 
       {showEditor ? (
         <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
@@ -273,10 +267,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
 
           <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Imagen opcional</Text>
           <View style={styles.inlineActions}>
-            <TouchableOpacity style={styles.smallActionButton} onPress={uploadImage}>
-              <Ionicons name="image-outline" size={16} color={palette.red} />
-              <Text style={styles.smallActionText}>Subir imagen</Text>
-            </TouchableOpacity>
+            <AppButton label="Subir imagen" icon="image-outline" variant="secondary" size="compact" onPress={uploadImage} />
           </View>
           <TextInput style={styles.input} placeholder="URL de imagen" value={draft.imageUrl} onChangeText={(value) => patch({ imageUrl: value })} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
           {draft.imageUrl.trim() ? <Image source={{ uri: draft.imageUrl.trim() }} style={styles.formationStationImage} /> : null}
@@ -301,10 +292,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
             ))}
           </ScrollView>
 
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowMaterials((current) => !current)}>
-            <Ionicons name={showMaterials ? 'chevron-up-outline' : 'folder-open-outline'} size={17} color={palette.red} />
-            <Text style={styles.secondaryButtonText}>Materiales vinculados ({draft.materialIds.length})</Text>
-          </TouchableOpacity>
+          <AppButton label={`Materiales vinculados (${draft.materialIds.length})`} icon={showMaterials ? 'chevron-up-outline' : 'folder-open-outline'} variant="secondary" onPress={() => setShowMaterials((current) => !current)} />
           {showMaterials ? (
             <View style={styles.profileCommunityPanel}>
               {materials.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay materiales cargados.</Text> : null}
@@ -323,10 +311,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
             </View>
           ) : null}
 
-          <TouchableOpacity style={styles.primaryButton} onPress={save}>
-            <Ionicons name="save-outline" size={17} color={palette.white} />
-            <Text style={styles.primaryButtonText}>Guardar estacion</Text>
-          </TouchableOpacity>
+          <AppButton label="Guardar estacion" icon="save-outline" onPress={save} />
         </View>
       ) : null}
 
@@ -344,17 +329,11 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{station.subtitle || station.short_description || 'Sin subtitulo'}</Text>
             <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{station.is_active ? 'Activa' : 'Inactiva'} - {(station.visible_roles ?? []).length || 'Todos'} roles - {(station.material_ids ?? []).length} materiales</Text>
           </View>
-          <View style={styles.inlineIconActions}>
-            <TouchableOpacity style={styles.iconButtonGhost} onPress={() => { setDraft(draftFromStation(station)); setShowEditor(true); }}>
-              <Ionicons name="create-outline" size={17} color={palette.red} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButtonGhost} onPress={() => toggleActive(station)}>
-              <Ionicons name={station.is_active ? 'eye-off-outline' : 'eye-outline'} size={17} color={palette.red} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButtonGhost} onPress={() => archiveStation(station)}>
-              <Ionicons name="trash-outline" size={17} color={palette.red} />
-            </TouchableOpacity>
-          </View>
+          <ButtonGroup style={styles.inlineIconActions}>
+            <IconButton icon="create-outline" size="sm" variant="ghost" accessibilityLabel={`Editar ${station.title}`} onPress={() => { setDraft(draftFromStation(station)); setShowEditor(true); }} />
+            <IconButton icon={station.is_active ? 'eye-off-outline' : 'eye-outline'} size="sm" variant="ghost" accessibilityLabel={station.is_active ? `Ocultar ${station.title}` : `Mostrar ${station.title}`} onPress={() => toggleActive(station)} />
+            <IconButton icon="trash-outline" size="sm" variant="dangerGhost" accessibilityLabel={`Eliminar ${station.title}`} onPress={() => archiveStation(station)} />
+          </ButtonGroup>
         </View>
       ))}
     </View>

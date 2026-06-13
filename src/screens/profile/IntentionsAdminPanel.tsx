@@ -1,11 +1,12 @@
 import React from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig } from '../../lib/appConfig';
 import { PrayerIntentionRecord } from '../../lib/profiles';
+import { AppButton, ButtonGroup } from '../../components/ui';
 
 export function IntentionsAdminPanel({
   config,
@@ -42,13 +43,10 @@ export function IntentionsAdminPanel({
         placeholder="60"
         placeholderTextColor={inputPlaceholderColor}
       />
-      <TouchableOpacity style={styles.primaryButton} onPress={onSave}>
-        <Text style={styles.primaryButtonText}>Guardar configuracion</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.secondaryButton} onPress={onLoad}>
-        <Ionicons name="list-outline" size={17} color={palette.red} />
-        <Text style={styles.secondaryButtonText}>Intenciones cargadas</Text>
-      </TouchableOpacity>
+      <ButtonGroup>
+        <AppButton label="Guardar configuracion" icon="save-outline" onPress={onSave} />
+        <AppButton label="Intenciones cargadas" icon="list-outline" variant="secondary" onPress={onLoad} />
+      </ButtonGroup>
       {message ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{message}</Text> : null}
       {intentions.map((item) => (
         <View key={item.id} style={styles.adminListRow}>
@@ -58,10 +56,7 @@ export function IntentionsAdminPanel({
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.body}</Text>
             <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{item.prayer_count} oraciones - {item.is_anonymous ? 'Subida como anonima' : 'Publica'}</Text>
           </View>
-          <TouchableOpacity style={styles.actionPill} onPress={() => onDelete(item)}>
-            <Ionicons name="trash-outline" size={16} color={palette.red} />
-            <Text style={styles.actionPillText}>Eliminar</Text>
-          </TouchableOpacity>
+          <AppButton label="Eliminar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => onDelete(item)} />
         </View>
       ))}
     </View>

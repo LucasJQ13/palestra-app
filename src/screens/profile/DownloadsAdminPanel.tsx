@@ -6,6 +6,7 @@ import { inputPlaceholderColor } from '../../lib/constants';
 import { Role } from '../../types/auth';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
+import { AppButton, ButtonGroup, IconButton } from '../../components/ui';
 
 type FallbackMaterial = {
   readonly type: string;
@@ -117,9 +118,7 @@ export function DownloadsAdminPanel({
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
       <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Descargas y materiales</Text>
       <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Biblioteca editable persistida en Supabase. Se puede guardar URL o ruta de archivo y definir visibilidad por rol.</Text>
-      <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={onLoadMaterials}>
-        <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Cargar materiales</Text>
-      </TouchableOpacity>
+      <AppButton label="Cargar materiales" icon="refresh-outline" variant="secondary" onPress={onLoadMaterials} />
       {sessionRole === 'administrador' ? (
         <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
           <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Documentos de la Iglesia</Text>
@@ -132,14 +131,14 @@ export function DownloadsAdminPanel({
                   <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{document.title}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Orden {document.sort_order} - {document.enabled ? 'activo' : 'inactivo'}</Text>
                 </View>
-                <View style={styles.inlineActions}>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => onEditChurchDocument(document)}><Text style={styles.actionPillText}>Editar</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => onMoveChurchDocument(document, -1)}><Ionicons name="arrow-up-outline" size={14} color={palette.red} /></TouchableOpacity>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => onMoveChurchDocument(document, 1)}><Ionicons name="arrow-down-outline" size={14} color={palette.red} /></TouchableOpacity>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => onDuplicateChurchDocument(document)}><Text style={styles.actionPillText}>Duplicar</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => onToggleChurchDocument(document)}><Text style={styles.actionPillText}>{document.enabled ? 'Ocultar' : 'Activar'}</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => onDeleteChurchDocument(document.id)}><Text style={styles.actionPillText}>Borrar</Text></TouchableOpacity>
-                </View>
+                <ButtonGroup>
+                  <AppButton label="Editar" icon="create-outline" variant="ghost" size="compact" onPress={() => onEditChurchDocument(document)} />
+                  <IconButton icon="arrow-up-outline" variant="ghost" size="sm" accessibilityLabel={`Subir ${document.title}`} onPress={() => onMoveChurchDocument(document, -1)} />
+                  <IconButton icon="arrow-down-outline" variant="ghost" size="sm" accessibilityLabel={`Bajar ${document.title}`} onPress={() => onMoveChurchDocument(document, 1)} />
+                  <AppButton label="Duplicar" icon="copy-outline" variant="ghost" size="compact" onPress={() => onDuplicateChurchDocument(document)} />
+                  <AppButton label={document.enabled ? 'Ocultar' : 'Activar'} icon={document.enabled ? 'eye-off-outline' : 'eye-outline'} variant="secondary" size="compact" onPress={() => onToggleChurchDocument(document)} />
+                  <AppButton label="Borrar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => onDeleteChurchDocument(document.id)} />
+                </ButtonGroup>
               </View>
             ))}
             {adminChurchDocuments.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Carga el listado para ver botones existentes.</Text> : null}
@@ -148,24 +147,17 @@ export function DownloadsAdminPanel({
           <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo visible" value={churchDocumentTitle} onChangeText={setChurchDocumentTitle} placeholderTextColor={inputPlaceholderColor} />
           <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Link destino https://..." value={churchDocumentTargetUrl} onChangeText={setChurchDocumentTargetUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
           <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Logo URL o subir imagen" value={churchDocumentLogoUrl} onChangeText={setChurchDocumentLogoUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
-          <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={onUploadChurchDocumentLogo}>
-            <Ionicons name="image-outline" size={17} color={palette.red} />
-            <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Subir logo/imagen</Text>
-          </TouchableOpacity>
+          <AppButton label="Subir logo/imagen" icon="image-outline" variant="secondary" size="compact" onPress={onUploadChurchDocumentLogo} />
           <View style={styles.inlineActions}>
             <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Orden" value={churchDocumentSortOrder} onChangeText={setChurchDocumentSortOrder} keyboardType="numeric" placeholderTextColor={inputPlaceholderColor} />
             <TouchableOpacity style={[styles.actionPill, churchDocumentEnabled && styles.actionPillActive]} onPress={() => setChurchDocumentEnabled(!churchDocumentEnabled)}>
               <Text style={[styles.actionPillText, churchDocumentEnabled && styles.actionPillTextActive]}>{churchDocumentEnabled ? 'Habilitado' : 'Deshabilitado'}</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.inlineActions}>
-            <TouchableOpacity style={styles.primaryButton} onPress={onSaveChurchDocumentDraft}>
-              <Text style={styles.primaryButtonText}>{churchDocumentEditingId ? 'Guardar boton' : 'Agregar boton'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={onResetChurchDocumentForm}>
-              <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Limpiar</Text>
-            </TouchableOpacity>
-          </View>
+          <ButtonGroup>
+            <AppButton label={churchDocumentEditingId ? 'Guardar boton' : 'Agregar boton'} icon="save-outline" onPress={onSaveChurchDocumentDraft} />
+            <AppButton label="Limpiar" icon="close-outline" variant="ghost" onPress={onResetChurchDocumentForm} />
+          </ButtonGroup>
         </View>
       ) : null}
       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Materiales actuales</Text>
@@ -177,9 +169,7 @@ export function DownloadsAdminPanel({
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{material.category ?? 'General'} - {material.visibility ?? 'interno'}{material.required_permission ? ` - ${material.required_permission}` : ''}</Text>
           </View>
           {!material.id.startsWith('fallback-') ? (
-            <TouchableOpacity onPress={() => onArchiveMaterial(material.id)}>
-              <Text style={styles.adminStateDraft}>Archivar</Text>
-            </TouchableOpacity>
+            <AppButton label="Archivar" icon="archive-outline" variant="dangerGhost" size="compact" onPress={() => onArchiveMaterial(material.id)} />
           ) : <Text style={styles.adminStateDraft}>Base</Text>}
         </View>
       ))}
@@ -196,9 +186,7 @@ export function DownloadsAdminPanel({
         ))}
       </View>
       <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Permiso requerido opcional. Ej: ver_materiales_internos" value={materialPermission} onChangeText={setMaterialPermission}  placeholderTextColor={inputPlaceholderColor} />
-      <TouchableOpacity style={styles.primaryButton} onPress={onSaveMaterial}>
-        <Text style={styles.primaryButtonText}>Guardar material</Text>
-      </TouchableOpacity>
+      <AppButton label="Guardar material" icon="save-outline" onPress={onSaveMaterial} />
     </View>
   );
 }

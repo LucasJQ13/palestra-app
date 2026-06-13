@@ -1,9 +1,10 @@
 import React from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig } from '../../lib/appConfig';
+import { AppButton } from '../../components/ui';
 
 export function IdentityAdminPanel({
   config,
@@ -55,9 +56,7 @@ export function IdentityAdminPanel({
           <Text style={styles.primaryButtonText}>Boton</Text>
         </View>
       </View>
-      <TouchableOpacity style={styles.primaryButton} onPress={onSave}>
-        <Text style={styles.primaryButtonText}>Guardar identidad</Text>
-      </TouchableOpacity>
+      <AppButton label="Guardar identidad" icon="save-outline" onPress={onSave} />
       <View style={styles.keyboardSafeSpacer} />
     </View>
   );

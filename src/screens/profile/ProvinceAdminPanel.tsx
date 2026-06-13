@@ -5,6 +5,7 @@ import { AppCommunity } from '../../lib/remoteData';
 import { ArgentinaProvinceDefinition } from '../../lib/argentinaProvinces';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
+import { AppButton, ButtonGroup } from '../../components/ui';
 
 export function ProvinceCreateDropdown({
   isDark,
@@ -96,14 +97,8 @@ export function ProvinceAdminPanel({
               <Text style={styles.cardText}>La región se asigna automáticamente y no es editable.</Text>
               {logoDrafts[selectedProvince.name] ? <Image source={{ uri: logoDrafts[selectedProvince.name] }} style={styles.adminDocumentThumb} /> : null}
               <View style={styles.inlineActions}>
-                <TouchableOpacity style={styles.secondaryButton} onPress={() => onPickLogo(selectedProvince.name)} disabled={logoUploading === selectedProvince.name}>
-                  <Ionicons name="image-outline" size={17} color={palette.red} />
-                  <Text style={styles.secondaryButtonText}>{logoUploading === selectedProvince.name ? 'Subiendo...' : 'Cargar logo'}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.primaryButton} onPress={onCreateProvince}>
-                  <Ionicons name="map-outline" size={17} color={palette.white} />
-                  <Text style={styles.primaryButtonText}>Crear provincia</Text>
-                </TouchableOpacity>
+                <AppButton label="Cargar logo" icon="image-outline" variant="secondary" loading={logoUploading === selectedProvince.name} onPress={() => onPickLogo(selectedProvince.name)} />
+                <AppButton label="Crear provincia" icon="map-outline" onPress={onCreateProvince} />
               </View>
             </View>
           ) : null}
@@ -124,20 +119,11 @@ export function ProvinceAdminPanel({
                 <Text style={styles.cardText}>{item.region} - {item.locations.length} comunidades - {active ? 'habilitada' : 'deshabilitada'}</Text>
               </View>
             </View>
-            <View style={styles.provinceAdminActions}>
-              <TouchableOpacity style={styles.rowActionButton} onPress={() => onPickLogo(item.province)} disabled={logoUploading === item.province}>
-                <Ionicons name="image-outline" size={14} color={palette.red} />
-                <Text style={styles.rowActionButtonText}>{logoUploading === item.province ? 'Subiendo...' : 'Logo'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.rowActionButton} onPress={() => onToggleProvince(item.province, !active)}>
-                <Ionicons name={active ? 'pause-circle-outline' : 'checkmark-circle-outline'} size={14} color={palette.red} />
-                <Text style={styles.rowActionButtonText}>{active ? 'Deshabilitar' : 'Habilitar'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => onArchiveProvince(item.province)}>
-                <Ionicons name="trash-outline" size={14} color="#B93232" />
-                <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar</Text>
-              </TouchableOpacity>
-            </View>
+            <ButtonGroup style={styles.provinceAdminActions}>
+              <AppButton label="Logo" icon="image-outline" variant="ghost" size="compact" loading={logoUploading === item.province} onPress={() => onPickLogo(item.province)} />
+              <AppButton label={active ? 'Deshabilitar' : 'Habilitar'} icon={active ? 'pause-circle-outline' : 'checkmark-circle-outline'} variant="secondary" size="compact" onPress={() => onToggleProvince(item.province, !active)} />
+              <AppButton label="Eliminar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => onArchiveProvince(item.province)} />
+            </ButtonGroup>
           </View>
         );
       })}

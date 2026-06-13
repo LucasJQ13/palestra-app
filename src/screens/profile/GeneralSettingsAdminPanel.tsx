@@ -5,6 +5,7 @@ import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig } from '../../lib/appConfig';
+import { AppButton } from '../../components/ui';
 
 const settingToggles: Array<{ key: keyof AppAdminConfig['settings']; label: string }> = [
   { key: 'maintenanceMode', label: 'Modo mantenimiento' },
@@ -47,9 +48,7 @@ export function GeneralSettingsAdminPanel({
       })}
       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Orden de navegación</Text>
       <Text style={[styles.cardText, isDark && styles.textDarkBody]}>El orden y visibilidad se administran desde Contenido.</Text>
-      <TouchableOpacity style={styles.primaryButton} onPress={onSave}>
-        <Text style={styles.primaryButtonText}>Guardar configuración</Text>
-      </TouchableOpacity>
+      <AppButton label="Guardar configuracion" icon="save-outline" onPress={onSave} />
     </View>
   );
 }

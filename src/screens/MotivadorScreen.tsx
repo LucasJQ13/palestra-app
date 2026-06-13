@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Linking, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { notilestra } from '../data/content';
 import { fetchMotivadorPeriods, fetchNotilestra } from '../lib/remoteData';
@@ -10,6 +10,7 @@ import { groupMotivadorFeedItems, AgendaItem } from '../lib/agendaHelpers';
 import { Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
+import { AppButton } from '../components/ui';
 import { useIsDarkTheme } from '../theme/ThemeContext';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
@@ -65,10 +66,7 @@ export function MotivadorScreen({ session, title, content, refreshKey, editor, a
           <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.body}</Text>
           {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.cardImage} /> : null}
           {item.mapUrl ? (
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => Linking.openURL(item.mapUrl as string)}>
-              <Ionicons name="map-outline" size={17} color={palette.red} />
-              <Text style={styles.secondaryButtonText}>Abrir mapa</Text>
-            </TouchableOpacity>
+            <AppButton label="Abrir mapa" icon="map-outline" variant="secondary" size="compact" onPress={() => Linking.openURL(item.mapUrl as string)} />
           ) : null}
         </View>
       ))}

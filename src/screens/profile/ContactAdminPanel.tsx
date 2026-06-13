@@ -6,6 +6,7 @@ import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig, ContactBlock, defaultAdminConfig } from '../../lib/appConfig';
 import { Session } from '../../types/auth';
+import { AppButton, ButtonGroup } from '../../components/ui';
 
 const contactBlockTypes: ContactBlock['type'][] = ['texto', 'telefono', 'email', 'imagen', 'direccion', 'enlace', 'boton', 'red_social'];
 
@@ -78,9 +79,7 @@ export function ContactAdminPanel({
         onChangeText={(value) => onPatch({ instagram: value })}
         placeholderTextColor={inputPlaceholderColor}
       />
-      <TouchableOpacity style={styles.primaryButton} onPress={onSaveInstagram}>
-        <Text style={styles.primaryButtonText}>Guardar Instagram</Text>
-      </TouchableOpacity>
+      <AppButton label="Guardar Instagram" icon="save-outline" onPress={onSaveInstagram} />
 
       {canManageFullContact ? (
         <>
@@ -139,19 +138,13 @@ export function ContactAdminPanel({
                 multiline
                 placeholderTextColor={inputPlaceholderColor}
               />
-              <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => removeBlock(block.id)}>
-                <Ionicons name="trash-outline" size={14} color="#B93232" />
-                <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar bloque</Text>
-              </TouchableOpacity>
+              <AppButton label="Eliminar bloque" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => removeBlock(block.id)} />
             </View>
           ))}
-          <TouchableOpacity style={styles.secondaryButton} onPress={addBlock}>
-            <Ionicons name="add-circle-outline" size={17} color={palette.red} />
-            <Text style={styles.secondaryButtonText}>Agregar bloque</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryButton} onPress={onSaveFullContact}>
-            <Text style={styles.primaryButtonText}>Guardar contacto completo</Text>
-          </TouchableOpacity>
+          <ButtonGroup>
+            <AppButton label="Agregar bloque" icon="add-circle-outline" variant="secondary" onPress={addBlock} />
+            <AppButton label="Guardar contacto completo" icon="save-outline" onPress={onSaveFullContact} />
+          </ButtonGroup>
         </>
       ) : null}
     </View>

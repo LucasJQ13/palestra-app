@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
+import { AppButton, ButtonGroup, IconButton } from '../components/ui';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
 import { useIsDarkTheme } from '../theme/ThemeContext';
@@ -164,10 +165,7 @@ export function LibrarySectionScreen({
     const stanzas = selectedItem.body.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
     return (
       <View style={styles.stack}>
-        <TouchableOpacity style={[styles.backButton, isDark && styles.darkSoftButton]} onPress={() => setSelectedItem(null)} activeOpacity={0.82}>
-          <Ionicons name="chevron-back" size={18} color={palette.red} />
-          <Text style={[styles.backButtonText, isDark && styles.textDarkAccent]}>Volver</Text>
-        </TouchableOpacity>
+        <AppButton label="Volver" icon="chevron-back" variant="ghost" size="compact" onPress={() => setSelectedItem(null)} />
         <View style={[variant === 'prayer' ? styles.prayerReader : styles.songReader, isDark && styles.libraryReaderDark]}>
           {variant === 'song' && selectedItem.image_url ? <Image source={{ uri: selectedItem.image_url }} style={styles.songHeroImage} resizeMode="cover" /> : null}
           <Text style={[variant === 'prayer' ? styles.prayerReaderTitle : styles.songReaderTitle, isDark && styles.textDarkStrong]}>{selectedItem.title}</Text>
@@ -198,9 +196,7 @@ export function LibrarySectionScreen({
             {librarySubtitle ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{librarySubtitle}</Text> : null}
           </View>
           {canCreateItems ? (
-            <TouchableOpacity style={styles.iconActionButton} onPress={() => resetDraft(null)} activeOpacity={0.82}>
-              <Ionicons name="add" size={22} color={palette.white} />
-            </TouchableOpacity>
+            <IconButton icon="add" onPress={() => resetDraft(null)} accessibilityLabel="Agregar contenido" variant="primary" />
           ) : null}
         </View>
         {message ? <Text style={styles.formErrorText}>{message}</Text> : null}
@@ -212,18 +208,14 @@ export function LibrarySectionScreen({
             {variant === 'song' ? (
               <>
                 <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="URL de portada o imagen" value={draftImageUrl} onChangeText={setDraftImageUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
-                <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={chooseLibraryImage}>
-                  <Text style={styles.secondaryButtonText}>Subir imagen</Text>
-                </TouchableOpacity>
+                <AppButton label="Subir imagen" icon="image-outline" variant="secondary" size="compact" onPress={chooseLibraryImage} />
               </>
             ) : null}
             <TextInput style={[styles.input, styles.textArea, styles.libraryBodyInput, isDark && styles.inputDark]} placeholder={variant === 'prayer' ? 'Texto de la oracion' : 'Letra separada por estrofas'} value={draftBody} onChangeText={setDraftBody} multiline placeholderTextColor={inputPlaceholderColor} />
-            <TouchableOpacity style={styles.primaryButton} onPress={submitItem}>
-              <Text style={styles.primaryButtonText}>Guardar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={() => setShowEditor(false)}>
-              <Text style={styles.secondaryButtonText}>Cancelar</Text>
-            </TouchableOpacity>
+            <ButtonGroup>
+              <AppButton label="Guardar" icon="save-outline" onPress={submitItem} />
+              <AppButton label="Cancelar" variant="ghost" onPress={() => setShowEditor(false)} />
+            </ButtonGroup>
           </View>
         ) : null}
         {items.length === 0 && (section !== 'himno' || session?.role === 'administrador') ? (
@@ -245,12 +237,26 @@ export function LibrarySectionScreen({
             </View>
             {canManageLibraryItem(item) ? (
               <View style={styles.libraryActions}>
-                <TouchableOpacity style={[styles.tinyIconButton, isDark && styles.tinyIconButtonDark]} onPress={() => resetDraft(item)}>
-                  <Ionicons name="create-outline" size={17} color={palette.red} />
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.tinyIconButton, isDark && styles.tinyIconButtonDark]} onPress={() => deleteItem(item)}>
-                  <Ionicons name="trash-outline" size={17} color="#B93232" />
-                </TouchableOpacity>
+                <IconButton
+                  icon="create-outline"
+                  variant="ghost"
+                  size="sm"
+                  accessibilityLabel={`Editar ${item.title}`}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    resetDraft(item);
+                  }}
+                />
+                <IconButton
+                  icon="trash-outline"
+                  variant="dangerGhost"
+                  size="sm"
+                  accessibilityLabel={`Eliminar ${item.title}`}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    deleteItem(item);
+                  }}
+                />
               </View>
             ) : (
               <Ionicons name="chevron-forward" size={18} color={palette.inkMuted} />

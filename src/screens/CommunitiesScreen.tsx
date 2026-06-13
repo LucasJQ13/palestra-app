@@ -13,6 +13,7 @@ import { Coordinates, NearestCommunityResult, findNearestCommunityDetails } from
 import { Role, Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
+import { AppButton, IconButton } from '../components/ui';
 import { roleLabelForProvince } from '../lib/profileDisplay';
 import { subroleLabel } from '../lib/subroles';
 import { useIsDarkTheme } from '../theme/ThemeContext';
@@ -230,10 +231,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, [], [], member.gender_preference ?? null)}</Text>
               {member.subrole_key ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{subroleLabel(member.subrole_key)}</Text> : null}
               <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{member.community_name ?? 'Sin comunidad'} - {member.province ?? 'Sin provincia'}</Text>
-              <TouchableOpacity style={styles.actionPill} onPress={() => setSecretariatMessageTarget(expanded ? null : member.id)}>
-                <Ionicons name={expanded ? 'close-outline' : 'help-circle-outline'} size={16} color={palette.red} />
-                <Text style={styles.actionPillText}>{expanded ? 'Cerrar consulta' : 'Enviar consulta'}</Text>
-              </TouchableOpacity>
+              <AppButton label={expanded ? 'Cerrar consulta' : 'Enviar consulta'} icon={expanded ? 'close-outline' : 'help-circle-outline'} variant="ghost" size="compact" onPress={() => setSecretariatMessageTarget(expanded ? null : member.id)} />
               {expanded ? (
                 <View style={styles.stackTight}>
                   {!session ? (
@@ -252,10 +250,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                     multiline
                     placeholderTextColor={inputPlaceholderColor}
                   />
-                  <TouchableOpacity style={styles.primaryButton} onPress={() => sendSecretariatMessage(member.id)}>
-                    <Ionicons name="send-outline" size={17} color={palette.white} />
-                    <Text style={styles.primaryButtonText}>Enviar consulta</Text>
-                  </TouchableOpacity>
+                  <AppButton label="Enviar consulta" icon="send-outline" onPress={() => sendSecretariatMessage(member.id)} />
                 </View>
               ) : null}
             </View>
@@ -342,10 +337,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
     const provinceLogo = provinceLogoSource(province);
     return (
       <View style={styles.stack}>
-        <TouchableOpacity style={styles.backButton} onPress={() => { setSelectedCommunity(null); setSelectedProvince(null); }} activeOpacity={0.8}>
-          <Ionicons name="chevron-back" size={18} color={palette.red} />
-          <Text style={styles.backButtonText}>Provincias</Text>
-        </TouchableOpacity>
+        <AppButton label="Provincias" icon="chevron-back" variant="ghost" size="compact" onPress={() => { setSelectedCommunity(null); setSelectedProvince(null); }} />
         <SectionTitle title={province.province} />
         <TouchableOpacity style={styles.provinceLogoLarge} onPress={() => setSelectedProvinceLogo(province)} activeOpacity={0.85}>
           {provinceLogo ? <Image source={provinceLogo} style={styles.provinceLogoImage} /> : <Text style={styles.provinceLogoText}>{provinceInitials}</Text>}
@@ -388,9 +380,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                 showsVerticalScrollIndicator
                 contentContainerStyle={styles.modalScrollContent}
               >
-              <TouchableOpacity style={styles.modalCloseButton} onPress={closeCommunityModal} activeOpacity={0.8}>
-                <Ionicons name="close" size={22} color={palette.red} />
-              </TouchableOpacity>
+              <IconButton icon="close" accessibilityLabel="Cerrar comunidad" variant="ghost" onPress={closeCommunityModal} />
               {community ? (
                 <>
                   <Image source={{ uri: community.imageUrl }} style={styles.communityModalImage} />
@@ -417,12 +407,8 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{community.address}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{community.description}</Text>
                   <View style={styles.inlineActions}>
-                    <TouchableOpacity style={styles.locationIconButton} onPress={() => openCommunityLocation(community)} accessibilityLabel="Abrir ubicacion">
-                      <Ionicons name="location-outline" size={22} color={palette.white} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.locationIconButton} onPress={() => { setShowContactBox(!showContactBox); setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 120); }} accessibilityLabel="Enviar mensaje">
-                      <Ionicons name="chatbubble-outline" size={22} color={palette.white} />
-                    </TouchableOpacity>
+                    <IconButton icon="location-outline" variant="primary" onPress={() => openCommunityLocation(community)} accessibilityLabel="Abrir ubicacion" />
+                    <IconButton icon="chatbubble-outline" variant="primary" onPress={() => { setShowContactBox(!showContactBox); setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 120); }} accessibilityLabel="Enviar mensaje" />
                   </View>
                   {showContactBox ? (
                     <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
@@ -444,9 +430,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                         onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)}
                         multiline placeholderTextColor={inputPlaceholderColor} />
                       <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{contactMessage.length}/500</Text>
-                      <TouchableOpacity style={styles.primaryButton} onPress={sendCommunityContactMessage}>
-                        <Text style={styles.primaryButtonText}>Enviar consulta</Text>
-                      </TouchableOpacity>
+                      <AppButton label="Enviar consulta" icon="send-outline" onPress={sendCommunityContactMessage} />
                       {contactStatus ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{contactStatus}</Text> : null}
                     </View>
                   ) : null}
@@ -497,9 +481,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
         <View style={[styles.card, isDark && styles.surfaceCardDark]}>
           <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Buscar Comunidad mas cercana</Text>
           <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Usa tu ubicacion actual y muestra comunidades con coordenadas validas dentro de 5 km.</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={searchNearestCommunity} disabled={nearestLoading} activeOpacity={0.86}>
-            <Text style={styles.primaryButtonText}>{nearestLoading ? 'Buscando...' : 'Buscar comunidad cercana'}</Text>
-          </TouchableOpacity>
+          <AppButton label="Buscar comunidad cercana" icon="navigate-outline" loading={nearestLoading} onPress={searchNearestCommunity} />
         </View>
       ) : null}
       {visibleCommunityData.map((community) => (
@@ -528,9 +510,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
           <Pressable style={styles.modalBackdropTouch} onPress={() => setNearestModalVisible(false)} />
           <View style={[styles.modalPanel, styles.communityModalPanel, styles.modalContentAboveBackdrop, isDark && styles.surfacePanelDark]} pointerEvents="auto">
             <ScrollView contentContainerStyle={styles.modalScrollContent}>
-              <TouchableOpacity style={styles.modalCloseButton} onPress={() => setNearestModalVisible(false)} activeOpacity={0.8}>
-                <Ionicons name="close" size={22} color={palette.red} />
-              </TouchableOpacity>
+              <IconButton icon="close" accessibilityLabel="Cerrar busqueda" variant="ghost" onPress={() => setNearestModalVisible(false)} />
               {nearestResult && nearestUserLocation ? (
                 <>
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{nearestResult.province}</Text>
@@ -556,9 +536,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                     <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Comunidad: {nearestResult.community.address}</Text>
                     <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>Tocar para abrir ruta interactiva</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.primaryButton} onPress={openNearestInMaps}>
-                    <Text style={styles.primaryButtonText}>Abrir en Google Maps</Text>
-                  </TouchableOpacity>
+                  <AppButton label="Abrir en Google Maps" icon="navigate-outline" onPress={openNearestInMaps} />
                 </>
               ) : (
                 <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{nearestMessage || 'No hemos encontrado una comunidad cerca de ti dentro de un radio de 5 km.'}</Text>

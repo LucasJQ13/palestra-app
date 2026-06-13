@@ -4699,9 +4699,7 @@ export function ProfileScreen({
                         multiline
                        placeholderTextColor={inputPlaceholderColor} />
                       <Text style={styles.cardText}>{userRequestText.length}/500</Text>
-                      <TouchableOpacity style={styles.primaryButton} onPress={() => submitUserRequest(selectedRequest)}>
-                        <Text style={styles.primaryButtonText}>Enviar solicitud</Text>
-                      </TouchableOpacity>
+                      <AppButton label="Enviar solicitud" icon="send-outline" onPress={() => submitUserRequest(selectedRequest)} />
                     </View>
                   ) : null}
                 </View>
@@ -4710,8 +4708,10 @@ export function ProfileScreen({
           ) : null}
           {profilePanel === 'vista' && session.role !== 'administrador' && showSentRequests ? (
             <View style={styles.profileCommunityPanel}>
-              <TouchableOpacity
-                style={styles.secondaryButton}
+              <AppButton
+                label="Solicitudes enviadas"
+                icon="mail-open-outline"
+                variant="secondary"
                 onPress={async () => {
                   const next = !showSentRequests;
                   setShowSentRequests(next);
@@ -4719,10 +4719,7 @@ export function ProfileScreen({
                     await loadMyRequests();
                   }
                 }}
-              >
-                <Ionicons name="mail-open-outline" size={18} color={palette.red} />
-                <Text style={styles.secondaryButtonText}>Solicitudes enviadas</Text>
-              </TouchableOpacity>
+              />
               {showSentRequests ? (
                 <View style={styles.profileCommunityPanel}>
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Historial de solicitudes</Text>
@@ -4742,9 +4739,7 @@ export function ProfileScreen({
                       <Text style={styles.cardText}>Fecha de resolucion: {item.resolvedAt ? new Date(item.resolvedAt).toLocaleString('es-AR') : 'Pendiente'}</Text>
                       <Text style={styles.cardText}>Mensaje: {item.message ?? 'Sin mensaje todavía'}</Text>
                       {['Propuesta Coordinador Diocesano', 'Propuesta Coordinador Nacional', 'Solicitud de Coordinación Diocesana', 'Solicitud de Coordinación Nacional', 'Solicitud de Coordinacion Diocesana', 'Solicitud de Coordinacion Nacional'].includes(item.title) && item.status === 'pendiente' && item.targetUserId === session.id ? (
-                        <TouchableOpacity style={styles.primaryButton} onPress={() => acceptDiocesanRequest(item.id)}>
-                          <Text style={styles.primaryButtonText}>Aceptar rango {roleLabel((item.targetRole ?? 'coordinador_diocesano') as Role)}</Text>
-                        </TouchableOpacity>
+                        <AppButton label={`Aceptar rango ${roleLabel((item.targetRole ?? 'coordinador_diocesano') as Role)}`} icon="checkmark-circle-outline" onPress={() => acceptDiocesanRequest(item.id)} />
                       ) : null}
                     </View>
                   ) : null}
@@ -5224,10 +5219,7 @@ export function ProfileScreen({
                   ) : null}
                   {canManageMotivadorPanel(session) ? (
                     <>
-                      <TouchableOpacity style={styles.primaryButton} onPress={() => setShowPmForm((current) => !current)}>
-                        <Ionicons name={showPmForm ? 'chevron-up-outline' : 'add-circle-outline'} size={17} color={palette.white} />
-                        <Text style={styles.primaryButtonText}>Cargar Nuevo PM</Text>
-                      </TouchableOpacity>
+                      <AppButton label={showPmForm ? 'Cerrar formulario PM' : 'Cargar Nuevo PM'} icon={showPmForm ? 'chevron-up-outline' : 'add-circle-outline'} onPress={() => setShowPmForm((current) => !current)} />
                       {showPmForm ? <View style={styles.inlineEditorPanel}>
                         <Text style={styles.cardEyebrow}>{pmEditingId ? 'Editar PM' : 'Nuevo PM'}</Text>
                         <View style={styles.filterRow}>
@@ -5251,10 +5243,7 @@ export function ProfileScreen({
                             </TouchableOpacity>
                           ))}
                         </View>
-                        <TouchableOpacity style={styles.secondaryButton} onPress={() => setPmCalendarOpen(!pmCalendarOpen)}>
-                          <Ionicons name="calendar-outline" size={17} color={palette.red} />
-                          <Text style={styles.secondaryButtonText}>Seleccionar fechas</Text>
-                        </TouchableOpacity>
+                        <AppButton label="Seleccionar fechas" icon="calendar-outline" variant="secondary" onPress={() => setPmCalendarOpen(!pmCalendarOpen)} />
                         <Text style={styles.cardText}>{selectedDatesSummary(pmSelectedDates)}</Text>
                         {pmCalendarOpen ? (
                           <View style={styles.pmCalendarPanel}>
@@ -5307,13 +5296,9 @@ export function ProfileScreen({
                             </TouchableOpacity>
                           ))}
                         </View>
-                        <TouchableOpacity style={styles.primaryButton} onPress={submitMotivadorPeriod}>
-                          <Text style={styles.primaryButtonText}>{pmEditingId ? 'Guardar cambios' : 'Crear PM'}</Text>
-                        </TouchableOpacity>
+                        <AppButton label={pmEditingId ? 'Guardar cambios' : 'Crear PM'} icon="save-outline" onPress={submitMotivadorPeriod} />
                         {pmEditingId ? (
-                          <TouchableOpacity style={styles.secondaryButton} onPress={resetMotivadorForm}>
-                            <Text style={styles.secondaryButtonText}>Cancelar edición</Text>
-                          </TouchableOpacity>
+                          <AppButton label="Cancelar edicion" variant="ghost" onPress={resetMotivadorForm} />
                         ) : null}
                       </View> : null}
                       <SectionTitle title="PM cargados" />
@@ -5377,20 +5362,11 @@ export function ProfileScreen({
                             <Text style={styles.cardText}>Casa: {period.retreat_house}. Dirección: {period.address}</Text>
                             <Text style={styles.cardText}>Apertura: {period.opening_time ?? 'Sin horario'} - Clausura: {period.closing_time ?? 'Sin horario'}</Text>
                             <Text style={styles.cardText}>Estado: {period.status}. Última edición: {period.updated_by_name ?? 'Sin registro'}</Text>
-                            <View style={styles.inlineActions}>
-                              <TouchableOpacity style={styles.rowActionButton} onPress={() => editMotivadorPeriod(period)}>
-                                <Ionicons name="create-outline" size={14} color={palette.red} />
-                                <Text style={styles.rowActionButtonText}>Editar</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity style={styles.rowActionButton} onPress={() => updateMotivadorStatus(period.id, period.status === 'activo' ? 'inactivo' : 'activo')}>
-                                <Ionicons name={period.status === 'activo' ? 'pause-circle-outline' : 'checkmark-circle-outline'} size={14} color={palette.red} />
-                                <Text style={styles.rowActionButtonText}>{period.status === 'activo' ? 'Inhabilitar' : 'Habilitar'}</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => updateMotivadorStatus(period.id, 'archivado')}>
-                                <Ionicons name="trash-outline" size={14} color="#B93232" />
-                                <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar</Text>
-                              </TouchableOpacity>
-                            </View>
+                            <ButtonGroup>
+                              <AppButton label="Editar" icon="create-outline" variant="ghost" size="compact" onPress={() => editMotivadorPeriod(period)} />
+                              <AppButton label={period.status === 'activo' ? 'Inhabilitar' : 'Habilitar'} icon={period.status === 'activo' ? 'pause-circle-outline' : 'checkmark-circle-outline'} variant="secondary" size="compact" onPress={() => updateMotivadorStatus(period.id, period.status === 'activo' ? 'inactivo' : 'activo')} />
+                              <AppButton label="Eliminar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => updateMotivadorStatus(period.id, 'archivado')} />
+                            </ButtonGroup>
                           </View>
                         </View>
                       ))}

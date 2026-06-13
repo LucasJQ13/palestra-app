@@ -7,6 +7,7 @@ import { Role } from '../../types/auth';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
+import { AppButton, ButtonGroup } from '../../components/ui';
 
 type CommunityAdminPanelProps = {
   isDark: boolean;
@@ -136,10 +137,7 @@ export function CommunityAdminPanel({
         </View>
       ) : null}
       {canAdministrateCommunities && selectedAdminProvince ? (
-        <TouchableOpacity style={styles.primaryButton} onPress={onToggleCreateCommunity}>
-          <Ionicons name={showAdminCommunityCreate ? 'chevron-up-outline' : 'add-circle-outline'} size={17} color={palette.white} />
-          <Text style={styles.primaryButtonText}>Crear Comunidad</Text>
-        </TouchableOpacity>
+        <AppButton label={showAdminCommunityCreate ? 'Cerrar creacion' : 'Crear Comunidad'} icon={showAdminCommunityCreate ? 'chevron-up-outline' : 'add-circle-outline'} onPress={onToggleCreateCommunity} />
       ) : null}
       {canAdministrateCommunities && selectedAdminProvince && showAdminCommunityCreate ? (
         <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
@@ -168,16 +166,11 @@ export function CommunityAdminPanel({
           <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Imagen</Text>
           <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Opcional. Podes guardar la comunidad sin imagen.</Text>
           {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
-          <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={onPickImage}>
-            <Ionicons name="image-outline" size={17} color={palette.red} />
-            <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>{adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'}</Text>
-          </TouchableOpacity>
+          <AppButton label={adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'} icon="image-outline" variant="secondary" onPress={onPickImage} />
           <TouchableOpacity style={[styles.filterChip, adminCommunityIsActive && styles.filterChipActive]} onPress={() => setAdminCommunityIsActive(!adminCommunityIsActive)}>
             <Text style={[styles.filterChipText, adminCommunityIsActive && styles.filterChipTextActive]}>{adminCommunityIsActive ? 'Activa' : 'Inactiva'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryButton} onPress={onCreateCommunity} disabled={adminCommunityImageUploading}>
-            <Text style={styles.primaryButtonText}>{adminCommunityImageUploading ? 'Subiendo imagen...' : 'Crear comunidad'}</Text>
-          </TouchableOpacity>
+          <AppButton label="Crear comunidad" icon="save-outline" loading={adminCommunityImageUploading} onPress={onCreateCommunity} />
         </View>
       ) : null}
       {selectedAdminProvince ? (
@@ -223,37 +216,23 @@ export function CommunityAdminPanel({
                           <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Latitud. Ej: -31.4167" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
                           <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Longitud. Ej: -64.1833" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
                         </View>
-                        <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityAddress}, ${adminCommunityProvince}, Argentina`)}`)}>
-                          <Ionicons name="map-outline" size={17} color={palette.red} />
-                          <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>Ver direccion en Maps</Text>
-                        </TouchableOpacity>
+                        <AppButton label="Ver direccion en Maps" icon="map-outline" variant="secondary" size="compact" onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityAddress}, ${adminCommunityProvince}, Argentina`)}`)} />
                       </View>
                       <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
                       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Imagen de comunidad</Text>
                       <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Imagen recomendada: 1200x600 px. La app abre recorte 2:1 para encuadrar antes de guardar.</Text>
                       {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
-                      <TouchableOpacity style={[styles.secondaryButton, isDark && styles.darkSoftButton]} onPress={onPickImage}>
-                        <Ionicons name="image-outline" size={17} color={palette.red} />
-                        <Text style={[styles.secondaryButtonText, isDark && styles.textDarkAccent]}>{adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'}</Text>
-                      </TouchableOpacity>
+                      <AppButton label={adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'} icon="image-outline" variant="secondary" onPress={onPickImage} />
                       {adminCommunityImageAsset ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Vista previa lista. Toca Guardar comunidad para subirla y asociarla.</Text> : null}
-                      <View style={styles.filterRow}>
+                      <ButtonGroup>
                         {canAdministrateCommunities ? (
-                          <TouchableOpacity style={styles.rowActionButton} onPress={() => onToggleCommunityStatus(itemKey, !isActive)}>
-                            <Ionicons name={isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'} size={14} color={palette.red} />
-                            <Text style={styles.rowActionButtonText}>{isActive ? 'Deshabilitar' : 'Habilitar'}</Text>
-                          </TouchableOpacity>
+                          <AppButton label={isActive ? 'Deshabilitar' : 'Habilitar'} icon={isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'} variant="secondary" size="compact" onPress={() => onToggleCommunityStatus(itemKey, !isActive)} />
                         ) : null}
                         {canAdministrateCommunities ? (
-                          <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => onArchiveCommunity(itemKey)}>
-                            <Ionicons name="trash-outline" size={14} color="#B93232" />
-                            <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Eliminar</Text>
-                          </TouchableOpacity>
+                          <AppButton label="Eliminar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => onArchiveCommunity(itemKey)} />
                         ) : null}
-                      </View>
-                      <TouchableOpacity style={styles.primaryButton} onPress={onSaveCommunity} disabled={adminCommunityImageUploading}>
-                        <Text style={styles.primaryButtonText}>{adminCommunityImageUploading ? 'Subiendo imagen...' : 'Guardar comunidad'}</Text>
-                      </TouchableOpacity>
+                      </ButtonGroup>
+                      <AppButton label="Guardar comunidad" icon="save-outline" loading={adminCommunityImageUploading} onPress={onSaveCommunity} />
                     </View>
                   ) : null}
                 </View>

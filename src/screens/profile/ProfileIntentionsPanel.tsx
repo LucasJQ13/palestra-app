@@ -1,9 +1,8 @@
 import React from 'react';
-import { Modal, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Modal, Text, View } from 'react-native';
 import { PrayerIntentionRecord, PrayerRemovalNoticeRecord } from '../../lib/profiles';
-import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
+import { AppButton } from '../../components/ui';
 
 type ProfileIntentionsPanelProps = {
   isAdmin: boolean;
@@ -37,9 +36,7 @@ export function ProfileIntentionsPanel({
             {notices.map((notice) => (
               <Text key={notice.id} style={[styles.cardText, isDark && styles.textDarkBody]}>{notice.message}</Text>
             ))}
-            <TouchableOpacity style={styles.primaryButton} onPress={onCloseNotice}>
-              <Text style={styles.primaryButtonText}>Entendido</Text>
-            </TouchableOpacity>
+            <AppButton label="Entendido" onPress={onCloseNotice} />
           </View>
         </View>
       </Modal>
@@ -48,10 +45,7 @@ export function ProfileIntentionsPanel({
           <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{isAdmin ? 'Todas las intenciones' : 'Mis intenciones'}</Text>
           <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{isAdmin ? 'Auditoria completa, incluyendo autores de intenciones anonimas.' : 'Revisa cuantas personas rezaron por cada intencion publicada.'}</Text>
         </View>
-        <TouchableOpacity style={styles.actionPill} onPress={onRefresh}>
-          <Ionicons name="refresh-outline" size={16} color={palette.red} />
-          <Text style={styles.actionPillText}>Actualizar</Text>
-        </TouchableOpacity>
+        <AppButton label="Actualizar" icon="refresh-outline" variant="ghost" size="compact" onPress={onRefresh} />
       </View>
       {message ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{message}</Text> : null}
       {intentions.map((item) => (
@@ -64,10 +58,7 @@ export function ProfileIntentionsPanel({
           <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{item.body}</Text>
           <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.prayer_count} personas rezaron por esta intencion</Text>
           {isAdmin ? (
-            <TouchableOpacity style={styles.actionPill} onPress={() => onDeleteIntention(item)}>
-              <Ionicons name="trash-outline" size={16} color={palette.red} />
-              <Text style={styles.actionPillText}>Eliminar</Text>
-            </TouchableOpacity>
+            <AppButton label="Eliminar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => onDeleteIntention(item)} />
           ) : null}
         </View>
       ))}

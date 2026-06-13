@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchModerationQueue, MessageModerationRecord, restrictUserMessaging, restoreUserMessaging, reviewMessageReport } from '../../lib/profiles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
+import { AppButton, ButtonGroup } from '../../components/ui';
 
 export function MessageModerationAdminPanel({ isDark, onMessage }: { isDark: boolean; onMessage: (message: string) => void }) {
   const [items, setItems] = useState<MessageModerationRecord[]>([]);
@@ -81,10 +82,7 @@ export function MessageModerationAdminPanel({ isDark, onMessage }: { isDark: boo
           <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Moderacion de mensajes</Text>
           <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Reportes, eventos del filtro preventivo y acciones de mensajeria.</Text>
         </View>
-        <TouchableOpacity style={styles.compactSquareButton} onPress={loadQueue} disabled={loading}>
-          <Ionicons name="refresh-outline" size={17} color={palette.red} />
-          <Text style={styles.compactSquareButtonText}>{loading ? '...' : 'Actualizar'}</Text>
-        </TouchableOpacity>
+        <AppButton label="Actualizar" icon="refresh-outline" variant="ghost" size="compact" loading={loading} onPress={loadQueue} />
       </View>
       <View style={styles.mailboxRulesNotice}>
         <Ionicons name="shield-checkmark-outline" size={18} color={palette.red} />
@@ -116,17 +114,11 @@ export function MessageModerationAdminPanel({ isDark, onMessage }: { isDark: boo
                 onChangeText={(value) => setActionNotes((current) => ({ ...current, [item.id]: value.slice(0, 300) }))}
                 placeholderTextColor={inputPlaceholderColor}
               />
-              <View style={styles.inlineActions}>
-                <TouchableOpacity style={styles.rowActionButton} onPress={() => review(item, 'en_revision')}>
-                  <Text style={styles.rowActionButtonText}>En revision</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.rowActionButton} onPress={() => review(item, 'resuelto')}>
-                  <Text style={styles.rowActionButtonText}>Resuelto</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.rowActionButton} onPress={() => review(item, 'descartado')}>
-                  <Text style={styles.rowActionButtonText}>Descartar</Text>
-                </TouchableOpacity>
-              </View>
+              <ButtonGroup>
+                <AppButton label="En revision" variant="secondary" size="compact" onPress={() => review(item, 'en_revision')} />
+                <AppButton label="Resuelto" variant="ghost" size="compact" onPress={() => review(item, 'resuelto')} />
+                <AppButton label="Descartar" variant="dangerGhost" size="compact" onPress={() => review(item, 'descartado')} />
+              </ButtonGroup>
               <View style={styles.inlineActions}>
                 <TextInput
                   style={[styles.input, styles.compactNumberInput, isDark && styles.inputDark]}
@@ -136,12 +128,8 @@ export function MessageModerationAdminPanel({ isDark, onMessage }: { isDark: boo
                   keyboardType="number-pad"
                   placeholderTextColor={inputPlaceholderColor}
                 />
-                <TouchableOpacity style={[styles.rowActionButton, styles.rowActionButtonDanger]} onPress={() => restrict(item)}>
-                  <Text style={[styles.rowActionButtonText, styles.rowActionButtonTextDanger]}>Restringir</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.rowActionButton} onPress={() => restore(item)}>
-                  <Text style={styles.rowActionButtonText}>Restaurar</Text>
-                </TouchableOpacity>
+                <AppButton label="Restringir" icon="ban-outline" variant="danger" size="compact" onPress={() => restrict(item)} />
+                <AppButton label="Restaurar" icon="refresh-outline" variant="ghost" size="compact" onPress={() => restore(item)} />
               </View>
             </View>
           </View>

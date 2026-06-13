@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Image, Modal, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { AppContentBlock, ContentEditorBlock, PrayerIntentionRecord, createPrayerIntention, deliverNotificationIntent, fetchRandomPrayerIntention, recordPrayerForIntention, updateAppContent, updateAppTab } from '../lib/profiles';
@@ -9,8 +9,8 @@ import { APP_MESSAGES, changeDone } from '../lib/appMessages';
 import { normalizeContentCards, prepareContentCardsForSave } from '../lib/contentBlocks';
 import { supabase } from '../lib/supabase';
 import { Session } from '../types/auth';
+import { AppButton, ButtonGroup, IconButton } from '../components/ui';
 import { useIsDarkTheme } from '../theme/ThemeContext';
-import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
 
 const defaultSpiritImage = require('../../assets/espiritu-santo.png');
@@ -247,25 +247,23 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
       </View>
       {editor?.isAdmin ? (
         <View style={styles.stackTight}>
-          <TouchableOpacity style={[styles.inlineEditButton, styles.intentionsOutlineButton, isDark && styles.intentionsOutlineButtonDark]} onPress={() => setHeroEditing((current) => !current)}>
-            <Ionicons name={heroEditing ? 'close-outline' : 'create-outline'} size={18} color="#f28a00" />
-            <Text style={[styles.inlineEditButtonText, styles.intentionsOutlineButtonText]}>{heroEditing ? 'Cerrar editor' : 'Editar pagina'}</Text>
-          </TouchableOpacity>
+          <AppButton
+            label={heroEditing ? 'Cerrar editor' : 'Editar pagina'}
+            icon={heroEditing ? 'close-outline' : 'create-outline'}
+            variant="secondary"
+            size="compact"
+            onPress={() => setHeroEditing((current) => !current)}
+          />
           {heroEditing ? (
             <View style={[styles.inlineEditorPanel, styles.intentionsPanel, isDark && styles.intentionsPanelDark]}>
               <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Texto principal</Text>
               <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} value={heroTitleDraft} onChangeText={setHeroTitleDraft} multiline placeholder="Deja tus intenciones..." placeholderTextColor={inputPlaceholderColor} />
               <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Imagen del Espiritu Santo</Text>
               <View style={styles.inlineActions}>
-                <TouchableOpacity style={[styles.smallActionButton, styles.intentionsSmallActionButton]} onPress={uploadHeroImage}>
-                  <Ionicons name="image-outline" size={16} color="#f28a00" />
-                  <Text style={[styles.smallActionText, styles.intentionsSmallActionText]}>Subir</Text>
-                </TouchableOpacity>
+                <AppButton label="Subir" icon="image-outline" variant="secondary" size="compact" onPress={uploadHeroImage} />
               </View>
               <TextInput style={[styles.input, isDark && styles.inputDark]} value={heroImageDraft} onChangeText={setHeroImageDraft} placeholder="URL de imagen" placeholderTextColor={inputPlaceholderColor} />
-              <TouchableOpacity style={[styles.primaryButton, styles.intentionsPrimaryButton]} onPress={saveHeroContent}>
-                <Text style={styles.primaryButtonText}>Guardar portada</Text>
-              </TouchableOpacity>
+              <AppButton label="Guardar portada" icon="save-outline" onPress={saveHeroContent} />
               {heroEditMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{heroEditMessage}</Text> : null}
             </View>
           ) : null}
@@ -280,14 +278,8 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
       ) : null}
 
       <View style={styles.intentionsMainActions}>
-        <TouchableOpacity style={[styles.intentionLargeButton, isDark && styles.intentionLargeButtonDark, showCreate && styles.intentionLargeButtonActive]} onPress={() => setShowCreate((current) => !current)}>
-          <Ionicons name="create-outline" size={24} color={showCreate ? palette.white : '#f28a00'} />
-          <Text style={[styles.intentionLargeButtonText, isDark && styles.intentionTextDark, showCreate && styles.intentionLargeButtonTextActive]}>Crear Intencion</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.intentionLargeButton, isDark && styles.intentionLargeButtonDark]} onPress={() => startPrayer()} disabled={isPraying}>
-          <Ionicons name="flame-outline" size={24} color="#f28a00" />
-          <Text style={[styles.intentionLargeButtonText, isDark && styles.intentionTextDark]}>Rezar por una Intencion</Text>
-        </TouchableOpacity>
+        <AppButton label="Crear Intencion" icon="create-outline" variant={showCreate ? 'primary' : 'secondary'} size="prominent" onPress={() => setShowCreate((current) => !current)} />
+        <AppButton label="Rezar por una Intencion" icon="flame-outline" size="prominent" onPress={() => startPrayer()} disabled={isPraying} />
       </View>
 
       {showCreate ? (
@@ -311,9 +303,7 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
             </View>
             <Switch value={isAnonymous} onValueChange={setIsAnonymous} trackColor={{ false: isDark ? '#55514a' : '#efdcc1', true: '#f28a00' }} thumbColor={isAnonymous ? '#fff4df' : '#ffffff'} />
           </View>
-          <TouchableOpacity style={[styles.primaryButton, styles.intentionsPrimaryButton]} onPress={saveIntention}>
-            <Text style={styles.primaryButtonText}>Guardar intencion</Text>
-          </TouchableOpacity>
+          <AppButton label="Guardar intencion" icon="save-outline" onPress={saveIntention} />
         </View>
       ) : null}
 
@@ -322,9 +312,7 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
       <Modal visible={prayerModalVisible} transparent animationType="fade" onRequestClose={closePrayerModal} statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalPanel, styles.intentionPrayerModal, isDark && styles.intentionPrayerModalDark]}>
-            <TouchableOpacity style={[styles.modalCloseButton, isDark && styles.surfaceRowDark]} onPress={closePrayerModal}>
-              <Ionicons name="close-outline" size={22} color={palette.red} />
-            </TouchableOpacity>
+            <IconButton icon="close-outline" accessibilityLabel="Cerrar oracion" variant="ghost" onPress={closePrayerModal} />
             <View style={styles.candleStage}>
               <Animated.View style={[styles.candleFlame, { opacity: flameOpacity, transform: [{ rotate: '45deg' }, { scale: flameScale }] }]} />
               <View style={styles.candleGlow} />
@@ -342,23 +330,15 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
               </>
             ) : null}
             {completedPrayer && !prayerAcknowledged ? (
-              <TouchableOpacity style={styles.intentionAmenButton} onPress={() => setPrayerAcknowledged(true)}>
-                <Text style={styles.primaryButtonText}>Amen</Text>
-              </TouchableOpacity>
+              <AppButton label="Amen" icon="flame-outline" onPress={() => setPrayerAcknowledged(true)} />
             ) : null}
             {prayerAcknowledged ? (
               <>
                 <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{prayerCount} personas oraron contigo</Text>
-                <View style={styles.intentionsMainActions}>
-                  <TouchableOpacity style={[styles.intentionLargeButton, isDark && styles.intentionLargeButtonDark]} onPress={() => { setPrayerModalVisible(false); setShowCreate(true); }}>
-                    <Ionicons name="create-outline" size={22} color="#f28a00" />
-                    <Text style={[styles.intentionLargeButtonText, isDark && styles.intentionTextDark]}>Crear Intencion</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.intentionLargeButton, isDark && styles.intentionLargeButtonDark]} onPress={() => startPrayer()}>
-                    <Ionicons name="flame-outline" size={22} color="#f28a00" />
-                    <Text style={[styles.intentionLargeButtonText, isDark && styles.intentionTextDark]}>Rezar otra</Text>
-                  </TouchableOpacity>
-                </View>
+                <ButtonGroup>
+                  <AppButton label="Crear Intencion" icon="create-outline" variant="secondary" onPress={() => { setPrayerModalVisible(false); setShowCreate(true); }} />
+                  <AppButton label="Rezar otra" icon="flame-outline" onPress={() => startPrayer()} />
+                </ButtonGroup>
               </>
             ) : null}
           </View>

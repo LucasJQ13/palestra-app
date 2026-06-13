@@ -1,9 +1,10 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { faqItems, movementHistory } from '../../data/content';
+import { AppButton } from '../../components/ui';
 
 export function HistoryAdminPanel({
   isDark,
@@ -30,9 +31,7 @@ export function HistoryAdminPanel({
           <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Editable desde Contenido General por ahora.</Text>
         </View>
       </View>
-      <TouchableOpacity style={styles.primaryButton} onPress={onOpenEditor}>
-        <Text style={styles.primaryButtonText}>Abrir editor de Historia</Text>
-      </TouchableOpacity>
+      <AppButton label="Abrir editor de Historia" icon="create-outline" onPress={onOpenEditor} />
     </View>
   );
 }

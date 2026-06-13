@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { calendarActivities, news, notilestra } from '../../data/content';
 import { fallbackContentKey } from '../../lib/contentBlocks';
 import { AppContentBlock } from '../../lib/profiles';
+import { AppButton } from '../../components/ui';
 
 type FallbackContentItem = {
   key: string;
@@ -46,9 +47,7 @@ export function PublishedContentAdminPanel({
             <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.title || item.tab_key}</Text>
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Origen: Supabase - pestana {item.tab_key}</Text>
           </View>
-          <TouchableOpacity style={styles.actionPill} onPress={() => onEditContent(item.tab_key)}>
-            <Text style={styles.actionPillText}>Editar</Text>
-          </TouchableOpacity>
+          <AppButton label="Editar" icon="create-outline" variant="ghost" size="compact" onPress={() => onEditContent(item.tab_key)} />
         </View>
       ))}
       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Contenido base / fallback</Text>
@@ -61,9 +60,7 @@ export function PublishedContentAdminPanel({
               <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.title}</Text>
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.section} - {item.origin} - {hidden ? 'oculto' : 'visible'}</Text>
             </View>
-            <TouchableOpacity style={styles.actionPill} onPress={() => onToggleFallback(item.key, !hidden)}>
-              <Text style={styles.actionPillText}>{hidden ? 'Mostrar' : 'Ocultar'}</Text>
-            </TouchableOpacity>
+            <AppButton label={hidden ? 'Mostrar' : 'Ocultar'} icon={hidden ? 'eye-outline' : 'eye-off-outline'} variant="ghost" size="compact" onPress={() => onToggleFallback(item.key, !hidden)} />
           </View>
         );
       })}

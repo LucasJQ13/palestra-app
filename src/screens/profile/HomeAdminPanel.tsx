@@ -4,6 +4,7 @@ import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig, defaultAdminConfig } from '../../lib/appConfig';
 import { renderGreetingTemplate } from '../../lib/profileDisplay';
+import { AppButton } from '../../components/ui';
 
 const visibleModuleOptions = ['noticias', 'comunidades', 'materiales', 'foro', 'perfil', 'agenda', 'actividad'];
 const quickAccessOptions = ['noticias', 'comunidades', 'materiales', 'foro', 'perfil'] as const;
@@ -59,9 +60,7 @@ export function HomeAdminPanel({
           placeholderTextColor={inputPlaceholderColor}
         />
       ))}
-      <TouchableOpacity style={styles.primaryButton} onPress={onSave}>
-        <Text style={styles.primaryButtonText}>Guardar Home</Text>
-      </TouchableOpacity>
+      <AppButton label="Guardar Home" icon="save-outline" onPress={onSave} />
     </View>
   );
 }
