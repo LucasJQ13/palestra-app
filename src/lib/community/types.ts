@@ -7,6 +7,7 @@ export type CommunityInternalRole =
 export type CommunityScope = {
   name?: string | null;
   province?: string | null;
+  advisorAssigned?: boolean;
 };
 
 export type CommunityCapabilities = {

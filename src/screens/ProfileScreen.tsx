@@ -67,9 +67,11 @@ import { MyCommunityScreen } from './community/MyCommunityScreen';
 import { CommunityNoticePreview } from './community/CommunityNoticesPreview';
 import { CommunityPanelScreen } from './community/CommunityPanelScreen';
 import { canManageCommunityNotice, getCommunityCapabilities } from '../lib/community/permissions';
+import { CommunityAdvisorAssignment, canManageCommunityAdvisors, fetchMyCommunityAdvisors } from '../lib/community/advisors';
 import { CommunityNoticeDraft, emptyCommunityNoticeDraft, normalizeCommunityNoticeFormat, normalizeCommunityNoticeLink, validateCommunityNoticeDraft } from '../lib/community/notices';
 import { canAccessPublicQueries } from '../lib/queries/publicQueries';
 import { PublicQueriesInboxScreen } from './queries/PublicQueriesInboxScreen';
+import { CommunityAdvisorsManager } from './profile/CommunityAdvisorsManager';
 
 type CommunityPublication = Awaited<ReturnType<typeof fetchCommunityPublications>>[number];
 
@@ -319,6 +321,7 @@ export function ProfileScreen({
   const [realPendingProfiles, setRealPendingProfiles] = useState<PendingProfile[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [publicUserDirectory, setPublicUserDirectory] = useState<PublicUserDirectoryRecord[]>([]);
+  const [myCommunityAdvisors, setMyCommunityAdvisors] = useState<CommunityAdvisorAssignment[]>([]);
   const [selectedAdminUserId, setSelectedAdminUserId] = useState('');
   const [adminUsersTool, setAdminUsersTool] = useState<AdminUsersTool>('listado');
   const [adminUsersToolMenuOpen, setAdminUsersToolMenuOpen] = useState(false);
@@ -632,7 +635,12 @@ export function ProfileScreen({
   }, [registrationCommunities, session?.province, session?.communityOfOrigin]);
   const myCommunityScope = {
     name: session?.communityOfOrigin,
-    province: session?.province
+    province: session?.province,
+    advisorAssigned: Boolean(session?.id && myCommunityAdvisors.some((assignment) => (
+      assignment.advisor_user_id === session.id
+      && assignment.community_name === session.communityOfOrigin
+      && assignment.province === session.province
+    )))
   };
   const communityCapabilities = getCommunityCapabilities(session, myCommunityScope);
   const canOpenPublicQueries = canAccessPublicQueries(session, myCommunityScope);
@@ -735,6 +743,9 @@ export function ProfileScreen({
     if (item.key === 'comunidades') {
       return canOpenCommunityAdmin;
     }
+    if (item.key === 'asesores_comunidad') {
+      return canManageCommunityAdvisors(session);
+    }
     if (item.key === 'descargas') {
       return session?.role === 'administrador';
     }
@@ -767,6 +778,9 @@ export function ProfileScreen({
       setAdminModule('resumen');
     }
     if (adminModule === 'moderacion' && !['administrador', 'coordinador_nacional', 'vocal_nacional', 'coordinador_diocesano'].includes(session?.role ?? 'invitado')) {
+      setAdminModule('resumen');
+    }
+    if (adminModule === 'asesores_comunidad' && !canManageCommunityAdvisors(session)) {
       setAdminModule('resumen');
     }
   }, [adminModule, canManageFormationPath, canManageRequests, session?.role]);
@@ -1848,6 +1862,18 @@ export function ProfileScreen({
       alive = false;
     };
   }, [session?.id, session?.role, session?.status]);
+
+  async function loadMyCommunityAdvisors() {
+    if (!session || session.status !== 'aprobado' || session.role === 'invitado') {
+      setMyCommunityAdvisors([]);
+      return;
+    }
+    setMyCommunityAdvisors(await fetchMyCommunityAdvisors());
+  }
+
+  useEffect(() => {
+    loadMyCommunityAdvisors();
+  }, [session?.id, session?.role, session?.status, session?.communityOfOrigin, session?.province]);
 
   async function loadRealProfile(userId: string, fallbackEmail: string) {
     const result = await getMyProfileSession(fallbackEmail);
@@ -4207,6 +4233,7 @@ export function ProfileScreen({
             session={session}
             community={currentCommunity}
             members={communityMembers}
+            advisorUserIds={myCommunityAdvisors.map((assignment) => assignment.advisor_user_id)}
             notices={myCommunityNotices}
             isDark={isDark}
             provinceRoleLabels={provinceRoleLabels}
@@ -4225,7 +4252,8 @@ export function ProfileScreen({
             onRefresh={async () => {
               await Promise.all([
                 refreshCommunityForum(),
-                fetchMyCommunityMembers().then(setCommunityMembers)
+                fetchMyCommunityMembers().then(setCommunityMembers),
+                fetchMyCommunityAdvisors().then(setMyCommunityAdvisors)
               ]);
             }}
             onOpenPanel={() => {
@@ -5098,6 +5126,17 @@ export function ProfileScreen({
                   isDark={isDark}
                   onPatch={(patch) => updateAdminConfigSection('identity', patch)}
                   onSave={() => saveAdminConfigDraft('Identidad')}
+                />
+              ) : null}
+
+              {adminModule === 'asesores_comunidad' && canManageCommunityAdvisors(session) ? (
+                <CommunityAdvisorsManager
+                  session={session}
+                  communities={registrationCommunities}
+                  users={publicUserDirectory.length > 0 ? publicUserDirectory : adminUsers}
+                  isDark={isDark}
+                  onFeedback={setAuthMessage}
+                  onAssignmentsChanged={loadMyCommunityAdvisors}
                 />
               ) : null}
 

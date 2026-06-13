@@ -11,6 +11,7 @@ import { communityStyles } from './communityStyles';
 
 export function CommunityLeaders({
   members,
+  advisorUserIds,
   viewerId,
   canMessageMembers,
   isDark,
@@ -20,6 +21,7 @@ export function CommunityLeaders({
   onMessage
 }: {
   members: CommunityMember[];
+  advisorUserIds: string[];
   viewerId?: string | null;
   canMessageMembers: boolean;
   isDark: boolean;
@@ -28,7 +30,11 @@ export function CommunityLeaders({
   onViewProfile: (member: CommunityMember) => void;
   onMessage: (member: CommunityMember) => void;
 }) {
-  const leaders = members.filter((member) => isCommunityVisibleReferenceRole(member.role));
+  const assignedAdvisorIds = new Set(advisorUserIds);
+  const leaders = members.filter((member) => (
+    isCommunityVisibleReferenceRole(member.role)
+    && (member.role !== 'asesor' || assignedAdvisorIds.has(member.id))
+  ));
 
   return (
     <View style={communityStyles.section}>

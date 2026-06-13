@@ -16,6 +16,7 @@ export function MyCommunityScreen({
   session,
   community,
   members,
+  advisorUserIds,
   notices,
   isDark,
   provinceRoleLabels,
@@ -35,6 +36,7 @@ export function MyCommunityScreen({
   session: Session;
   community?: AppCommunityLocation | null;
   members: CommunityMember[];
+  advisorUserIds: string[];
   notices: CommunityNoticePreview[];
   isDark: boolean;
   provinceRoleLabels: ProvinceRoleLabelRecord[];
@@ -75,6 +77,7 @@ export function MyCommunityScreen({
 
       <CommunityLeaders
         members={members}
+        advisorUserIds={advisorUserIds}
         viewerId={session.id}
         canMessageMembers={canMessageMembers}
         isDark={isDark}

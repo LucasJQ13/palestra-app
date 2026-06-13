@@ -37,6 +37,10 @@ export function resolveCommunityInternalRole(
     return null;
   }
 
+  if (session.role === 'asesor' && !scope.advisorAssigned) {
+    return null;
+  }
+
   return internalRoleByAppRole[session.role] ?? 'member';
 }
 
