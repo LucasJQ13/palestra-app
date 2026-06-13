@@ -1055,6 +1055,15 @@ export const styles = StyleSheet.create({
     backgroundColor: '#373D41',
     borderColor: 'rgba(168, 221, 243, 0.18)'
   },
+  heroDark: {
+    backgroundColor: themePresets.dark.colors.surface,
+    borderColor: themePresets.dark.colors.border,
+    shadowColor: '#000'
+  },
+  heroGlowDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    opacity: 0.72
+  },
   darkSoftButton: {
     backgroundColor: '#333B40',
     borderColor: 'rgba(168, 221, 243, 0.34)'
@@ -2069,6 +2078,11 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     gap: 4
   },
+  libraryPanelDark: {
+    backgroundColor: themePresets.dark.colors.surface,
+    borderColor: themePresets.dark.colors.border,
+    shadowColor: '#000'
+  },
   libraryVisualPanel: {
     backgroundColor: palette.white,
     borderWidth: 1,
@@ -2124,6 +2138,10 @@ export const styles = StyleSheet.create({
     marginTop: 10,
     backgroundColor: palette.whiteSoft
   },
+  libraryEditorDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border
+  },
   libraryBodyInput: {
     minHeight: 170
   },
@@ -2145,6 +2163,9 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingVertical: 12
+  },
+  libraryListRowDark: {
+    borderBottomColor: themePresets.dark.colors.border
   },
   prayerListTitle: {
     color: palette.ink,
@@ -2209,6 +2230,10 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  tinyIconButtonDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border
+  },
   prayerReader: {
     backgroundColor: palette.white,
     borderTopLeftRadius: 10,
@@ -2222,6 +2247,12 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.07,
     shadowRadius: 14,
     elevation: 2
+  },
+  libraryReaderDark: {
+    backgroundColor: themePresets.dark.colors.surface,
+    borderWidth: 1,
+    borderColor: themePresets.dark.colors.border,
+    shadowColor: '#000'
   },
   prayerReaderTitle: {
     color: palette.ink,
@@ -2244,6 +2275,9 @@ export const styles = StyleSheet.create({
     backgroundColor: 'rgba(23, 55, 71, 0.13)',
     alignSelf: 'center',
     marginVertical: 8
+  },
+  libraryDividerDark: {
+    backgroundColor: themePresets.dark.colors.border
   },
   prayerParagraph: {
     color: '#111827',
@@ -2644,6 +2678,10 @@ export const styles = StyleSheet.create({
     backgroundColor: ui.color.surfaceSoft,
     padding: 10
   },
+  credentialQrPanelDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border
+  },
   credentialQrImage: {
     width: 112,
     height: 112,
@@ -2832,6 +2870,10 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     backgroundColor: ui.color.surface
+  },
+  secondaryButtonDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border
   },
   secondaryButtonText: {
     color: palette.red,
@@ -3512,6 +3554,10 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginTop: 10,
     backgroundColor: ui.color.surface
+  },
+  actionPillDark: {
+    backgroundColor: themePresets.dark.colors.surfaceSoft,
+    borderColor: themePresets.dark.colors.border
   },
   actionPillActive: {
     backgroundColor: palette.red,
@@ -4772,6 +4818,9 @@ export const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
     zIndex: 2
+  },
+  intentionTextDark: {
+    color: themePresets.dark.colors.text
   },
   intentionsFlameCorner: {
     position: 'absolute',

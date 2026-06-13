@@ -282,11 +282,11 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
       <View style={styles.intentionsMainActions}>
         <TouchableOpacity style={[styles.intentionLargeButton, isDark && styles.intentionLargeButtonDark, showCreate && styles.intentionLargeButtonActive]} onPress={() => setShowCreate((current) => !current)}>
           <Ionicons name="create-outline" size={24} color={showCreate ? palette.white : '#f28a00'} />
-          <Text style={[styles.intentionLargeButtonText, showCreate && styles.intentionLargeButtonTextActive]}>Crear Intencion</Text>
+          <Text style={[styles.intentionLargeButtonText, isDark && styles.intentionTextDark, showCreate && styles.intentionLargeButtonTextActive]}>Crear Intencion</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.intentionLargeButton, isDark && styles.intentionLargeButtonDark]} onPress={() => startPrayer()} disabled={isPraying}>
           <Ionicons name="flame-outline" size={24} color="#f28a00" />
-          <Text style={styles.intentionLargeButtonText}>Rezar por una Intencion</Text>
+          <Text style={[styles.intentionLargeButtonText, isDark && styles.intentionTextDark]}>Rezar por una Intencion</Text>
         </TouchableOpacity>
       </View>
 
@@ -322,7 +322,7 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
       <Modal visible={prayerModalVisible} transparent animationType="fade" onRequestClose={closePrayerModal} statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalPanel, styles.intentionPrayerModal, isDark && styles.intentionPrayerModalDark]}>
-            <TouchableOpacity style={styles.modalCloseButton} onPress={closePrayerModal}>
+            <TouchableOpacity style={[styles.modalCloseButton, isDark && styles.surfaceRowDark]} onPress={closePrayerModal}>
               <Ionicons name="close-outline" size={22} color={palette.red} />
             </TouchableOpacity>
             <View style={styles.candleStage}>
@@ -352,11 +352,11 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
                 <View style={styles.intentionsMainActions}>
                   <TouchableOpacity style={[styles.intentionLargeButton, isDark && styles.intentionLargeButtonDark]} onPress={() => { setPrayerModalVisible(false); setShowCreate(true); }}>
                     <Ionicons name="create-outline" size={22} color="#f28a00" />
-                    <Text style={styles.intentionLargeButtonText}>Crear Intencion</Text>
+                    <Text style={[styles.intentionLargeButtonText, isDark && styles.intentionTextDark]}>Crear Intencion</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.intentionLargeButton, isDark && styles.intentionLargeButtonDark]} onPress={() => startPrayer()}>
                     <Ionicons name="flame-outline" size={22} color="#f28a00" />
-                    <Text style={styles.intentionLargeButtonText}>Rezar otra</Text>
+                    <Text style={[styles.intentionLargeButtonText, isDark && styles.intentionTextDark]}>Rezar otra</Text>
                   </TouchableOpacity>
                 </View>
               </>

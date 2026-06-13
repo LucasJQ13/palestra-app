@@ -223,10 +223,10 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
 
   return (
     <View style={styles.stack}>
-      <View style={styles.hero}>
-        <View style={styles.heroGlow} />
+      <View style={[styles.hero, isDark && styles.heroDark]}>
+        <View style={[styles.heroGlow, isDark && styles.heroGlowDark]} />
         <Text style={styles.kicker}>Argentina</Text>
-        <Text style={styles.heroTitle}>
+        <Text style={[styles.heroTitle, isDark && styles.textDarkStrong]}>
           {greeting && greetingName && greeting.includes(greetingName) ? (
             <>
               {greeting.split(greetingName)[0]}
@@ -235,14 +235,14 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
             </>
           ) : greeting || adminConfig.home.heroTitle}
         </Text>
-        <Text style={styles.heroText}>{adminConfig.home.heroText}</Text>
+        <Text style={[styles.heroText, isDark && styles.textDarkBody]}>{adminConfig.home.heroText}</Text>
         <View style={styles.homeHeroFooter}>
           <View style={styles.homeHeroStatus}>
             <Ionicons name={session ? 'shield-checkmark-outline' : 'person-add-outline'} size={17} color={palette.red} />
-            <Text style={styles.homeHeroStatusText}>{session ? roleLabel(session.role, session.genderPreference) : 'Ingresar a Palestra'}</Text>
+            <Text style={[styles.homeHeroStatusText, isDark && styles.textDarkStrong]}>{session ? roleLabel(session.role, session.genderPreference) : 'Ingresar a Palestra'}</Text>
           </View>
           {dashboardStats.length > 0 ? (
-            <Text style={styles.homeHeroMeta}>{dashboardStats.map((item) => `${item.value} ${item.label.toLowerCase()}`).join(' · ')}</Text>
+            <Text style={[styles.homeHeroMeta, isDark && styles.textDarkMuted]}>{dashboardStats.map((item) => `${item.value} ${item.label.toLowerCase()}`).join(' · ')}</Text>
           ) : null}
         </View>
       </View>

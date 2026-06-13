@@ -15,6 +15,7 @@ import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
+import { useIsDarkTheme } from '../theme/ThemeContext';
 
 export function LibrarySectionScreen({
   session,
@@ -31,6 +32,7 @@ export function LibrarySectionScreen({
   content?: AppContentBlock;
   editor?: PageEditorProps;
 }) {
+  const isDark = useIsDarkTheme();
   const [items, setItems] = useState<AppLibraryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<AppLibraryItem | null>(null);
   const [editingItem, setEditingItem] = useState<AppLibraryItem | null>(null);
@@ -162,17 +164,17 @@ export function LibrarySectionScreen({
     const stanzas = selectedItem.body.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
     return (
       <View style={styles.stack}>
-        <TouchableOpacity style={styles.backButton} onPress={() => setSelectedItem(null)} activeOpacity={0.82}>
+        <TouchableOpacity style={[styles.backButton, isDark && styles.darkSoftButton]} onPress={() => setSelectedItem(null)} activeOpacity={0.82}>
           <Ionicons name="chevron-back" size={18} color={palette.red} />
-          <Text style={styles.backButtonText}>Volver</Text>
+          <Text style={[styles.backButtonText, isDark && styles.textDarkAccent]}>Volver</Text>
         </TouchableOpacity>
-        <View style={variant === 'prayer' ? styles.prayerReader : styles.songReader}>
+        <View style={[variant === 'prayer' ? styles.prayerReader : styles.songReader, isDark && styles.libraryReaderDark]}>
           {variant === 'song' && selectedItem.image_url ? <Image source={{ uri: selectedItem.image_url }} style={styles.songHeroImage} resizeMode="cover" /> : null}
-          <Text style={variant === 'prayer' ? styles.prayerReaderTitle : styles.songReaderTitle}>{selectedItem.title}</Text>
-          {selectedItem.subtitle ? <Text style={variant === 'prayer' ? styles.prayerReaderSubtitle : styles.songReaderSubtitle}>{selectedItem.subtitle}</Text> : null}
-          <View style={variant === 'prayer' ? styles.prayerDivider : styles.songDivider} />
+          <Text style={[variant === 'prayer' ? styles.prayerReaderTitle : styles.songReaderTitle, isDark && styles.textDarkStrong]}>{selectedItem.title}</Text>
+          {selectedItem.subtitle ? <Text style={[variant === 'prayer' ? styles.prayerReaderSubtitle : styles.songReaderSubtitle, isDark && styles.textDarkMuted]}>{selectedItem.subtitle}</Text> : null}
+          <View style={[variant === 'prayer' ? styles.prayerDivider : styles.songDivider, isDark && styles.libraryDividerDark]} />
           {stanzas.map((stanza, index) => (
-            <Text key={`${selectedItem.id}-${index}`} style={variant === 'prayer' ? styles.prayerParagraph : styles.songStanza}>
+            <Text key={`${selectedItem.id}-${index}`} style={[variant === 'prayer' ? styles.prayerParagraph : styles.songStanza, isDark && styles.textDarkBody]}>
               {stanza}
             </Text>
           ))}
@@ -189,11 +191,11 @@ export function LibrarySectionScreen({
     <View style={styles.stack}>
       <SectionTitle title={title} />
       {section !== 'himno' ? <EditableIntro content={content} editor={editor} /> : null}
-      <View style={variant === 'prayer' ? styles.libraryPlainPanel : styles.libraryVisualPanel}>
+      <View style={[variant === 'prayer' ? styles.libraryPlainPanel : styles.libraryVisualPanel, isDark && styles.libraryPanelDark]}>
         <View style={styles.libraryHeaderRow}>
           <View style={styles.flexOne}>
-            <Text style={variant === 'prayer' ? styles.libraryPlainTitle : styles.libraryVisualTitle}>{libraryTitle}</Text>
-            {librarySubtitle ? <Text style={styles.cardText}>{librarySubtitle}</Text> : null}
+            <Text style={[variant === 'prayer' ? styles.libraryPlainTitle : styles.libraryVisualTitle, isDark && styles.textDarkStrong]}>{libraryTitle}</Text>
+            {librarySubtitle ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{librarySubtitle}</Text> : null}
           </View>
           {canCreateItems ? (
             <TouchableOpacity style={styles.iconActionButton} onPress={() => resetDraft(null)} activeOpacity={0.82}>
@@ -203,50 +205,50 @@ export function LibrarySectionScreen({
         </View>
         {message ? <Text style={styles.formErrorText}>{message}</Text> : null}
         {showEditor && canCreateItems ? (
-          <View style={styles.libraryEditor}>
-            <Text style={styles.cardTitle}>{editingItem ? 'Editar contenido' : 'Nuevo contenido'}</Text>
-            <TextInput style={styles.input} placeholder="Titulo" value={draftTitle} onChangeText={setDraftTitle} placeholderTextColor={inputPlaceholderColor} />
-            <TextInput style={styles.input} placeholder="Subtitulo opcional" value={draftSubtitle} onChangeText={setDraftSubtitle} placeholderTextColor={inputPlaceholderColor} />
+          <View style={[styles.libraryEditor, isDark && styles.libraryEditorDark]}>
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{editingItem ? 'Editar contenido' : 'Nuevo contenido'}</Text>
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo" value={draftTitle} onChangeText={setDraftTitle} placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Subtitulo opcional" value={draftSubtitle} onChangeText={setDraftSubtitle} placeholderTextColor={inputPlaceholderColor} />
             {variant === 'song' ? (
               <>
-                <TextInput style={styles.input} placeholder="URL de portada o imagen" value={draftImageUrl} onChangeText={setDraftImageUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
-                <TouchableOpacity style={styles.secondaryButton} onPress={chooseLibraryImage}>
+                <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="URL de portada o imagen" value={draftImageUrl} onChangeText={setDraftImageUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+                <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={chooseLibraryImage}>
                   <Text style={styles.secondaryButtonText}>Subir imagen</Text>
                 </TouchableOpacity>
               </>
             ) : null}
-            <TextInput style={[styles.input, styles.textArea, styles.libraryBodyInput]} placeholder={variant === 'prayer' ? 'Texto de la oracion' : 'Letra separada por estrofas'} value={draftBody} onChangeText={setDraftBody} multiline placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={[styles.input, styles.textArea, styles.libraryBodyInput, isDark && styles.inputDark]} placeholder={variant === 'prayer' ? 'Texto de la oracion' : 'Letra separada por estrofas'} value={draftBody} onChangeText={setDraftBody} multiline placeholderTextColor={inputPlaceholderColor} />
             <TouchableOpacity style={styles.primaryButton} onPress={submitItem}>
               <Text style={styles.primaryButtonText}>Guardar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowEditor(false)}>
+            <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={() => setShowEditor(false)}>
               <Text style={styles.secondaryButtonText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         ) : null}
         {items.length === 0 && (section !== 'himno' || session?.role === 'administrador') ? (
           <View style={styles.emptyLibraryState}>
-            <Text style={styles.cardTitle}>{emptyTitle}</Text>
-            {section !== 'himno' ? <Text style={styles.cardText}>Cuando se cargue contenido en Supabase, aparecera aca sin actualizar la APK.</Text> : null}
+            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{emptyTitle}</Text>
+            {section !== 'himno' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Cuando se cargue contenido en Supabase, aparecera aca sin actualizar la APK.</Text> : null}
           </View>
         ) : null}
         {items.map((item) => (
-          <TouchableOpacity key={item.id} style={variant === 'prayer' ? styles.prayerListRow : styles.songListRow} activeOpacity={0.84} onPress={() => setSelectedItem(item)}>
+          <TouchableOpacity key={item.id} style={[variant === 'prayer' ? styles.prayerListRow : styles.songListRow, isDark && styles.libraryListRowDark]} activeOpacity={0.84} onPress={() => setSelectedItem(item)}>
             {variant === 'song' ? (
               <View style={styles.songThumb}>
                 {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.songThumbImage} resizeMode="cover" /> : <Ionicons name="musical-notes-outline" size={22} color={palette.red} />}
               </View>
             ) : null}
             <View style={styles.flexOne}>
-              <Text style={variant === 'prayer' ? styles.prayerListTitle : styles.songListTitle}>{item.title}</Text>
-              {item.subtitle ? <Text style={styles.libraryMeta}>{item.subtitle}</Text> : null}
+              <Text style={[variant === 'prayer' ? styles.prayerListTitle : styles.songListTitle, isDark && styles.textDarkStrong]}>{item.title}</Text>
+              {item.subtitle ? <Text style={[styles.libraryMeta, isDark && styles.textDarkMuted]}>{item.subtitle}</Text> : null}
             </View>
             {canManageLibraryItem(item) ? (
               <View style={styles.libraryActions}>
-                <TouchableOpacity style={styles.tinyIconButton} onPress={() => resetDraft(item)}>
+                <TouchableOpacity style={[styles.tinyIconButton, isDark && styles.tinyIconButtonDark]} onPress={() => resetDraft(item)}>
                   <Ionicons name="create-outline" size={17} color={palette.red} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.tinyIconButton} onPress={() => deleteItem(item)}>
+                <TouchableOpacity style={[styles.tinyIconButton, isDark && styles.tinyIconButtonDark]} onPress={() => deleteItem(item)}>
                   <Ionicons name="trash-outline" size={17} color="#B93232" />
                 </TouchableOpacity>
               </View>

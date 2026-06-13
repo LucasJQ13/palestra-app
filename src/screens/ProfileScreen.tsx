@@ -4607,7 +4607,7 @@ export function ProfileScreen({
               </View>
             </View>
             {credentialQrPayload ? (
-              <View style={styles.credentialQrPanel}>
+              <View style={[styles.credentialQrPanel, isDark && styles.credentialQrPanelDark]}>
                 <TouchableOpacity style={styles.credentialQrImage} activeOpacity={0.86} onPress={() => setCredentialQrExpanded(true)}>
                   <CredentialQrCode value={credentialQrPayload} size={104} province={session.province} role={session.role} />
                 </TouchableOpacity>
@@ -4615,18 +4615,18 @@ export function ProfileScreen({
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>QR verificable</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>ID: {credentialQr?.credential_id.slice(0, 8) ?? 'pendiente'} - v{credentialQr?.version ?? 1}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Generada: {credentialQr?.issued_at ? new Date(credentialQr.issued_at).toLocaleDateString('es-AR') : 'pendiente'}</Text>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => setCredentialQrExpanded(true)}>
+                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => setCredentialQrExpanded(true)}>
                     <Ionicons name="expand-outline" size={16} color={palette.red} />
                     <Text style={styles.actionPillText}>Ampliar QR</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => { setCredentialQrExpanded(false); setCredentialQrPayload(''); setCredentialQr(null); setCredentialQrMessage('QR cerrado. Puedes generarlo nuevamente cuando lo necesites.'); }}>
+                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => { setCredentialQrExpanded(false); setCredentialQrPayload(''); setCredentialQr(null); setCredentialQrMessage('QR cerrado. Puedes generarlo nuevamente cuando lo necesites.'); }}>
                     <Ionicons name="close-outline" size={16} color={palette.red} />
                     <Text style={styles.actionPillText}>Cerrar QR</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : (
-              <TouchableOpacity style={styles.secondaryButton} onPress={refreshCredentialQr}>
+              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={refreshCredentialQr}>
                 <Ionicons name="qr-code-outline" size={17} color={palette.red} />
                 <Text style={styles.secondaryButtonText}>Generar QR verificable</Text>
               </TouchableOpacity>

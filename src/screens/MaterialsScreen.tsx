@@ -427,8 +427,8 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
       {showUpload ? (
         <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
           <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo PDF</Text>
-          <TextInput style={styles.input} placeholder="Titulo" value={uploadTitle} onChangeText={setUploadTitle} placeholderTextColor={inputPlaceholderColor} />
-          <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={uploadDescription} onChangeText={setUploadDescription} multiline placeholderTextColor={inputPlaceholderColor} />
+          <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo" value={uploadTitle} onChangeText={setUploadTitle} placeholderTextColor={inputPlaceholderColor} />
+          <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Descripcion" value={uploadDescription} onChangeText={setUploadDescription} multiline placeholderTextColor={inputPlaceholderColor} />
           <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Visibilidad</Text>
           <View style={styles.filterRow}>
             {[
@@ -450,7 +450,7 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
               onSelect={setUploadRole}
             />
           ) : null}
-          <TouchableOpacity style={styles.secondaryButton} onPress={uploadPdfMaterial}>
+          <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={uploadPdfMaterial}>
             <Ionicons name="document-attach-outline" size={17} color={palette.red} />
             <Text style={styles.secondaryButtonText}>{uploadFileUrl ? 'Cambiar PDF cargado' : 'Elegir PDF max. 15Mb'}</Text>
           </TouchableOpacity>
@@ -482,15 +482,15 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
         {showChurchDocumentAdmin && session?.role === 'administrador' ? (
           <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{churchDocumentEditingId ? 'Editar boton' : 'Nuevo boton'}</Text>
-            <TextInput style={styles.input} placeholder="Titulo visible" value={churchDocumentTitle} onChangeText={setChurchDocumentTitle} placeholderTextColor={inputPlaceholderColor} />
-            <TextInput style={styles.input} placeholder="Link destino https://..." value={churchDocumentTargetUrl} onChangeText={setChurchDocumentTargetUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
-            <TextInput style={styles.input} placeholder="Logo URL o subir imagen" value={churchDocumentLogoUrl} onChangeText={setChurchDocumentLogoUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
-            <TouchableOpacity style={styles.secondaryButton} onPress={uploadChurchDocumentLogoFromDownloads}>
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo visible" value={churchDocumentTitle} onChangeText={setChurchDocumentTitle} placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Link destino https://..." value={churchDocumentTargetUrl} onChangeText={setChurchDocumentTargetUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+            <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Logo URL o subir imagen" value={churchDocumentLogoUrl} onChangeText={setChurchDocumentLogoUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+            <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={uploadChurchDocumentLogoFromDownloads}>
               <Ionicons name="image-outline" size={17} color={palette.red} />
               <Text style={styles.secondaryButtonText}>Subir logo/imagen</Text>
             </TouchableOpacity>
             <View style={styles.inlineActions}>
-              <TextInput style={[styles.input, styles.colorInput]} placeholder="Orden" value={churchDocumentSortOrder} onChangeText={setChurchDocumentSortOrder} keyboardType="numeric" placeholderTextColor={inputPlaceholderColor} />
+              <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Orden" value={churchDocumentSortOrder} onChangeText={setChurchDocumentSortOrder} keyboardType="numeric" placeholderTextColor={inputPlaceholderColor} />
               <TouchableOpacity style={[styles.actionPill, churchDocumentEnabled && styles.actionPillActive]} onPress={() => setChurchDocumentEnabled((current) => !current)}>
                 <Text style={[styles.actionPillText, churchDocumentEnabled && styles.actionPillTextActive]}>{churchDocumentEnabled ? 'Habilitado' : 'Deshabilitado'}</Text>
               </TouchableOpacity>
@@ -499,22 +499,22 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
               <TouchableOpacity style={styles.primaryButton} onPress={saveChurchDocumentFromDownloads}>
                 <Text style={styles.primaryButtonText}>{churchDocumentEditingId ? 'Guardar boton' : 'Crear boton'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={resetChurchDocumentForm}>
+              <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={resetChurchDocumentForm}>
                 <Text style={styles.secondaryButtonText}>Limpiar</Text>
               </TouchableOpacity>
             </View>
             {churchDocuments.map((document) => (
-              <View key={document.id} style={[styles.adminListRow, !document.enabled && styles.lockedCard]}>
+              <View key={document.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark, !document.enabled && styles.lockedCard]}>
                 {document.logo_url ? <Image source={{ uri: document.logo_url }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="key-outline" size={18} color={palette.red} /></View>}
                 <View style={styles.adminUserHeaderText}>
                   <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{document.title}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Orden {document.sort_order} - {document.enabled ? 'activo' : 'inactivo'}</Text>
                 </View>
                 <View style={styles.inlineActions}>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => editChurchDocument(document)}><Text style={styles.actionPillText}>Editar</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => duplicateChurchDocumentFromDownloads(document)}><Text style={styles.actionPillText}>Duplicar</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => toggleChurchDocumentFromDownloads(document)}><Text style={styles.actionPillText}>{document.enabled ? 'Ocultar' : 'Activar'}</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.actionPill} onPress={() => deleteChurchDocumentFromDownloads(document.id)}><Text style={styles.actionPillText}>Borrar</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => editChurchDocument(document)}><Text style={styles.actionPillText}>Editar</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => duplicateChurchDocumentFromDownloads(document)}><Text style={styles.actionPillText}>Duplicar</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => toggleChurchDocumentFromDownloads(document)}><Text style={styles.actionPillText}>{document.enabled ? 'Ocultar' : 'Activar'}</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionPill, isDark && styles.actionPillDark]} onPress={() => deleteChurchDocumentFromDownloads(document.id)}><Text style={styles.actionPillText}>Borrar</Text></TouchableOpacity>
                 </View>
               </View>
             ))}
@@ -548,10 +548,10 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
             </View>
             <View style={styles.libraryBody}>
               {isEditingThisMaterial ? (
-                <View style={styles.profileCommunityPanel}>
+                <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
                   <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Editar material</Text>
-                  <TextInput style={styles.input} placeholder="Titulo" value={materialEditTitle} onChangeText={setMaterialEditTitle} placeholderTextColor={inputPlaceholderColor} />
-                  <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion" value={materialEditDescription} onChangeText={setMaterialEditDescription} multiline placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo" value={materialEditTitle} onChangeText={setMaterialEditTitle} placeholderTextColor={inputPlaceholderColor} />
+                  <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="Descripcion" value={materialEditDescription} onChangeText={setMaterialEditDescription} multiline placeholderTextColor={inputPlaceholderColor} />
                   <View style={styles.filterRow}>
                     {[
                       { key: 'publico', label: 'Todo publico' },
@@ -576,7 +576,7 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
                     <TouchableOpacity style={styles.primaryButton} onPress={() => saveEditedMaterial(material)}>
                       <Text style={styles.primaryButtonText}>Guardar cambios</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.secondaryButton} onPress={() => setEditingMaterialId(null)}>
+                    <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={() => setEditingMaterialId(null)}>
                       <Text style={styles.secondaryButtonText}>Cancelar</Text>
                     </TouchableOpacity>
                   </View>
@@ -588,7 +588,7 @@ export function MaterialsScreen({ session, title, content, refreshKey, editor }:
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{locked ? 'Material restringido por rango o permiso.' : material.description}</Text>
                   {locked ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Requiere permiso: {material.permission}</Text> : null}
                   {!locked ? (
-                    <TouchableOpacity style={styles.secondaryButton} onPress={() => openMaterialFile(material)}>
+                    <TouchableOpacity style={[styles.secondaryButton, isDark && styles.secondaryButtonDark]} onPress={() => openMaterialFile(material)}>
                       <Ionicons name="download-outline" size={16} color={palette.red} />
                       <Text style={styles.secondaryButtonText}>{canDownloadMaterial(material) ? 'Descargar documento' : 'Archivo no disponible'}</Text>
                     </TouchableOpacity>

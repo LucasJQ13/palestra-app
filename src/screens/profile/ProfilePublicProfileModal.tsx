@@ -38,8 +38,8 @@ export function ProfilePublicProfileModal({
   return (
     <Modal visible={Boolean(profile)} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalPanel}>
-          <TouchableOpacity style={styles.modalCloseButton} onPress={onClose} activeOpacity={0.8}>
+        <View style={[styles.modalPanel, isDark && styles.surfacePanelDark]}>
+          <TouchableOpacity style={[styles.modalCloseButton, isDark && styles.surfaceRowDark]} onPress={onClose} activeOpacity={0.8}>
             <Ionicons name="close" size={19} color={palette.red} />
           </TouchableOpacity>
           {profile ? (
