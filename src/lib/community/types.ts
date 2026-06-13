@@ -2,8 +2,7 @@ export type CommunityInternalRole =
   | 'member'
   | 'animator'
   | 'coordinator'
-  | 'advisor'
-  | 'administrator';
+  | 'advisor';
 
 export type CommunityScope = {
   name?: string | null;

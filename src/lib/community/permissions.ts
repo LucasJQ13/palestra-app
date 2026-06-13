@@ -25,7 +25,6 @@ export function getCommunityCapabilities(
     return noCommunityCapabilities;
   }
 
-  const isAdministrator = role === 'administrator';
   const isOperationalLeader = isCommunityOperationalLeader(role);
   const isAdvisor = role === 'advisor';
 
@@ -34,13 +33,13 @@ export function getCommunityCapabilities(
     canView: true,
     canViewMembers: true,
     canMessageMembers: true,
-    canOpenPanel: isAdministrator || isOperationalLeader || isAdvisor,
-    canPublishNotices: isAdministrator || isOperationalLeader || isAdvisor,
-    canManageAllNotices: isAdministrator || isOperationalLeader,
-    canManageOwnNotices: isAdministrator || isOperationalLeader || isAdvisor,
-    canEditCommunityDetails: isAdministrator || isOperationalLeader,
-    canManageMembers: isAdministrator || isOperationalLeader,
-    canNotifyMembers: isAdministrator || isOperationalLeader
+    canOpenPanel: isOperationalLeader || isAdvisor,
+    canPublishNotices: isOperationalLeader || isAdvisor,
+    canManageAllNotices: isOperationalLeader,
+    canManageOwnNotices: isOperationalLeader || isAdvisor,
+    canEditCommunityDetails: isOperationalLeader,
+    canManageMembers: isOperationalLeader,
+    canNotifyMembers: isOperationalLeader
   };
 }
 

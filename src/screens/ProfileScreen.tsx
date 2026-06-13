@@ -3900,7 +3900,10 @@ export function ProfileScreen({
   }
 
   async function saveCommunityPublicationEdit(status: 'activo' | 'cerrado' = 'activo') {
-    if (!editingCommunityPublicationId) {
+    if (!communityCapabilities.canOpenPanel || !editingCommunityPublicationId) {
+      if (!communityCapabilities.canOpenPanel) {
+        setAuthMessage('No tenés permiso para editar avisos de esta comunidad.');
+      }
       return;
     }
     const validationMessage = validateCommunityNoticeDraft(editingCommunityNoticeDraft);
@@ -3943,6 +3946,10 @@ export function ProfileScreen({
   }
 
   async function removeCommunityPublication(publicationId: string) {
+    if (!communityCapabilities.canOpenPanel) {
+      setAuthMessage('No tenés permiso para eliminar avisos de esta comunidad.');
+      return;
+    }
     const { error } = await archiveCommunityPublication(publicationId);
     if (error) {
       setAuthMessage(error.message);
@@ -4169,7 +4176,7 @@ export function ProfileScreen({
           roleAliases={adminConfig.settings.roleAliases}
           onClose={() => setSelectedPublicProfile(null)}
         />
-        {communityPanelOpen ? (
+        {communityPanelOpen && communityCapabilities.canOpenPanel ? (
           <CommunityPanelScreen
             community={currentCommunity}
             members={communityMembers}
@@ -4221,10 +4228,17 @@ export function ProfileScreen({
                 fetchMyCommunityMembers().then(setCommunityMembers)
               ]);
             }}
-            onOpenPanel={() => setCommunityPanelOpen(true)}
+            onOpenPanel={() => {
+              if (communityCapabilities.canOpenPanel) {
+                setCommunityPanelOpen(true);
+              }
+            }}
             onViewProfile={openCommunityMemberProfile}
             onMessage={messageCommunityMember}
             onEditNotice={(notice) => {
+              if (!communityCapabilities.canOpenPanel) {
+                return;
+              }
               startEditCommunityPublication(notice as CommunityPublication);
               setCommunityPanelOpen(true);
             }}

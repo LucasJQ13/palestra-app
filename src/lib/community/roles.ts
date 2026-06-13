@@ -4,8 +4,7 @@ import { CommunityInternalRole, CommunityScope } from './types';
 const internalRoleByAppRole: Partial<Record<Role, CommunityInternalRole>> = {
   animador_comunidad: 'animator',
   coordinador_comunidad: 'coordinator',
-  asesor: 'advisor',
-  administrador: 'administrator'
+  asesor: 'advisor'
 };
 
 function normalizeTerritory(value?: string | null) {
@@ -32,10 +31,6 @@ export function resolveCommunityInternalRole(
 ): CommunityInternalRole | null {
   if (!session || session.status !== 'aprobado' || session.role === 'invitado') {
     return null;
-  }
-
-  if (session.role === 'administrador') {
-    return 'administrator';
   }
 
   if (!belongsToCommunity(session, scope)) {
