@@ -2,145 +2,68 @@
 
 ## Estado
 
-Plantilla documental. No contiene SQL ejecutable.
+Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Supabase remoto esta pendiente de verificar.
 
-## Propósito
+> Esta ficha es documental. No es una migracion y no debe ejecutarse.
 
-Obtener el perfil extendido del usuario autenticado para construir la sesión interna de Palestra App.
+## Criticidad
 
-Esta RPC es crítica porque alimenta:
+**Critico**.
 
-- login,
-- sesión persistente,
-- perfil,
-- rol,
-- permisos,
-- provincia,
-- comunidad,
-- navegación privada,
-- estado pendiente/aprobado/bloqueado.
+## Proposito
 
-## Módulos afectados
+Obtener el perfil normalizado de la sesion autenticada.
 
-- `src/lib/authProfile.ts`
-- `App.tsx`
-- `src/screens/auth/AuthFlow.tsx`
-- `src/screens/ProfileScreen.tsx`
-- permisos y navegación privada
+## Uso desde frontend
 
-## Parámetros esperados
+- `src/lib/authProfile.ts:33`
 
-Pendiente de confirmar contra SQL real vigente.
+## Parametros enviados por el frontend
 
-Posibles formas usadas históricamente:
+- Sin parametros en las llamadas detectadas.
 
-- sin parámetros, usando `auth.uid()`.
-- con email como parámetro.
-- con datos derivados del usuario autenticado.
+Contrato documentado previamente:
 
-## Retorno esperado por frontend
+- Parametros: sin parametros.
 
-Debe devolver una sesión/perfil compatible con `Session` en `src/types/auth.ts`.
+## Respuesta esperada
 
-Campos funcionales esperados:
+Registro de sesion/perfil normalizado
 
-- `id` o `user_id`.
-- `email`.
-- `fullName` / `full_name`.
-- `avatarUrl` / `avatar_url`.
-- `role`.
-- `permissions`.
-- `status`.
-- `province`.
-- `communityName` / `community_name`.
-- `genderPreference` / `gender_preference`.
-- `nickname`.
-- `useNicknameInGreetings`.
-- `credentialNameMode`.
-- `perseveranceStartYear`.
-- `personalPmType`.
-- `personalPmNumber`.
-- `personalPmProvince`.
-- `personalPmMotto`.
-- `displayRoleLabel`.
-- `subroleKey`.
+## Tablas afectadas o consultadas
 
-## Tablas relacionadas
+- `profiles` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
 
-- `profiles`.
-- `role_permissions`.
-- `provinces`.
-- `communities`.
-- tablas de etiquetas/alias de roles si aplican.
+## Referencias SQL versionadas
 
-## Permisos esperados
+- `supabase/migrations/20260606020000_personal_greeting_color.sql:15`
+- `supabase/migrations/20260606030000_profile_territory_cooldown.sql:24`
+- `supabase/patch_auth_onboarding_profile_fields.sql:72`
+- `supabase/patch_community_images_dynamic_roles.sql:326`
+- `supabase/patch_email_confirmation_and_personal_pm.sql:23`
+- `supabase/patch_emergency_profile_qr_recovery.sql:26`
+- `supabase/patch_get_my_profile_rpc.sql:1`
+- `supabase/patch_news_scope_email_requests_community_coords.sql:9`
+- `supabase/patch_profile_perseverance_preferences.sql:120`
+- `supabase/patch_profile_photos.sql:40`
 
-Debe permitir que un usuario autenticado lea únicamente su propio perfil extendido.
+Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 
-No debe permitir:
+## Validaciones que deben confirmarse
 
-- leer perfil privado de otro usuario,
-- elevar rol desde cliente,
-- devolver permisos no vigentes,
-- devolver usuarios bloqueados como activos.
+- Usuario autenticado cuando la operacion no sea publica.
+- Estado aprobado cuando accede a datos internos.
+- Rol o permiso suficiente.
+- Alcance de comunidad/provincia cuando corresponda.
+- `security definer` y `set search_path = public` si eleva privilegios.
+- Grants limitados a los roles necesarios.
+- Retorno y errores compatibles con el frontend.
 
-## Validaciones internas recomendadas
+## Pendiente de verificacion remota
 
-La función debería validar:
-
-1. `auth.uid()` existe.
-2. Hay fila en `profiles` asociada.
-3. Estado del usuario.
-4. Rol vigente.
-5. Permisos vigentes.
-6. Normalización de provincia/comunidad.
-
-## Riesgo
-
-Crítico.
-
-Si esta RPC falla o cambia de forma, pueden romperse:
-
-- login,
-- recuperación de sesión,
-- acceso a contenido privado,
-- panel dirigencial,
-- perfil,
-- redirecciones.
-
-## Historial / parches relacionados
-
-Según auditoría previa, esta función fue redefinida varias veces.
-
-Patches mencionados:
-
-- `patch_auth_onboarding_profile_fields.sql`
-- `patch_profile_photos.sql`
-- `patch_profile_perseverance_preferences.sql`
-- `patch_get_my_profile_rpc.sql`
-- `patch_news_scope_email_requests_community_coords.sql`
-- `patch_email_confirmation_and_personal_pm.sql`
-- `patch_community_images_dynamic_roles.sql`
-
-Versión a respetar según auditoría actual:
-
-- `patch_email_confirmation_and_personal_pm.sql`, salvo que se cree un patch específico nuevo de perfil.
-
-## Pruebas manuales mínimas
-
-1. Iniciar sesión con usuario aprobado.
-2. Iniciar sesión con usuario pendiente.
-3. Intentar sesión con usuario bloqueado.
-4. Confirmar que el rol visible coincide con Supabase.
-5. Confirmar que provincia y comunidad aparecen bien.
-6. Confirmar que la app no queda en bucle de perfil incompleto.
-7. Confirmar que panel dirigencial aparece solo si corresponde.
-
-## Pendiente de completar
-
-- Copiar SQL real vigente desde Supabase.
-- Confirmar firma exacta.
-- Confirmar retorno exacto.
-- Confirmar si usa `security definer`.
-- Confirmar `set search_path = public`.
-- Confirmar grants/permisos.
+- Firma SQL exacta desplegada.
+- Cuerpo SQL vigente.
+- Grants y propietario de la funcion.
+- Policies y tablas relacionadas.
+- Pruebas positivas y negativas por rol.

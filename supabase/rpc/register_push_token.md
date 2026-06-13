@@ -2,109 +2,64 @@
 
 ## Estado
 
-Plantilla documental. No contiene SQL ejecutable.
+Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Supabase remoto esta pendiente de verificar.
 
-## Propósito
+> Esta ficha es documental. No es una migracion y no debe ejecutarse.
 
-Registrar o actualizar el token push de un dispositivo asociado a un usuario autenticado.
+## Criticidad
 
-Esta RPC permite que la app guarde tokens de Expo Push Notifications para posteriores envíos remotos.
+**Alto**.
 
-## Módulos afectados
+## Proposito
 
-- `src/lib/notificationHelpers.ts`
-- `src/lib/profiles.ts`
-- Panel de notificaciones
-- Edge Function `send-push-notifications`
-- Edge Function `debug-push-notification`
+Registrar o actualizar el token push del dispositivo autenticado.
 
-## Parámetros esperados
+## Uso desde frontend
 
-Pendiente de confirmar contra SQL real vigente.
+- `src/lib/profiles.ts:1194`
 
-Parámetros funcionales esperados:
+## Parametros enviados por el frontend
 
-- token push.
-- plataforma.
-- device id.
-- nombre de dispositivo.
-- versión de app.
-- estado activo.
+- `p_app_version`
+- `p_device_id`
+- `p_device_name`
+- `p_expo_push_token`
+- `p_is_active`
+- `p_platform`
 
-## Retorno esperado por frontend
+Contrato documentado previamente:
 
-Debe devolver éxito/error.
+- Parametros: `p_expo_push_token`, `p_platform`, `p_device_id`, `p_device_name`, `p_app_version`, `p_is_active`.
 
-Idealmente:
+## Respuesta esperada
 
-- token registrado.
-- device id.
-- estado activo.
-- mensaje de error si falla.
+Mutacion
 
-## Tablas relacionadas
+## Tablas afectadas o consultadas
 
-- `device_push_tokens`.
-- `profiles`.
-- posibles tablas de auditoría o logs de notificaciones.
+- `device_push_tokens` (detectada en SQL versionado).
 
-## Permisos esperados
+## Referencias SQL versionadas
 
-Reglas esperadas:
+- `supabase/patch_beta_mobile_persistence_notifications.sql:74`
+- `supabase/patch_push_notification_delivery_foundation.sql:12`
 
-- Usuario autenticado puede registrar token propio.
-- Usuario no puede registrar token para otro usuario.
-- Usuario bloqueado no debería quedar activo para push.
-- Visitante no registra token persistente.
+Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 
-## Validaciones internas recomendadas
+## Validaciones que deben confirmarse
 
-1. `auth.uid()` existe.
-2. Perfil existe.
-3. Usuario no está bloqueado.
-4. Token tiene formato razonable.
-5. Device id existe.
-6. Upsert por `user_id + device_id` o por token según diseño vigente.
-7. Marcar tokens antiguos como inactivos si corresponde.
+- Usuario autenticado cuando la operacion no sea publica.
+- Estado aprobado cuando accede a datos internos.
+- Rol o permiso suficiente.
+- Alcance de comunidad/provincia cuando corresponda.
+- `security definer` y `set search_path = public` si eleva privilegios.
+- Grants limitados a los roles necesarios.
+- Retorno y errores compatibles con el frontend.
 
-## Riesgo
+## Pendiente de verificacion remota
 
-Medio/alto.
-
-Errores posibles:
-
-- tokens duplicados,
-- notificaciones a usuarios bloqueados,
-- token asociado a usuario equivocado,
-- pérdida de token al reinstalar,
-- éxito visual sin capacidad real de enviar push.
-
-## Historial / parches relacionados
-
-Patches mencionados:
-
-- `patch_beta_mobile_persistence_notifications.sql`
-- `patch_push_notification_delivery_foundation.sql`
-
-Versión a respetar según auditoría:
-
-- `patch_push_notification_delivery_foundation.sql`.
-
-## Pruebas manuales mínimas
-
-1. Usuario aprobado activa notificaciones.
-2. Android solicita permiso correctamente.
-3. Token se genera y se guarda.
-4. Reabrir app no duplica tokens innecesariamente.
-5. Cerrar sesión y entrar con otro usuario no mezcla tokens.
-6. Usuario bloqueado no debería recibir notificaciones.
-7. Prueba push admin/debug si existe.
-
-## Pendiente de completar
-
-- Copiar SQL real vigente desde Supabase.
-- Confirmar firma exacta.
-- Confirmar constraint de upsert.
-- Confirmar manejo de tokens inactivos.
-- Confirmar si usa `security definer`.
-- Confirmar `set search_path = public`.
+- Firma SQL exacta desplegada.
+- Cuerpo SQL vigente.
+- Grants y propietario de la funcion.
+- Policies y tablas relacionadas.
+- Pruebas positivas y negativas por rol.

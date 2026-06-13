@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: admin_upsert_motivador_period
 
 ## Estado
 
@@ -12,44 +12,46 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Operacion administrativa: upsert motivador period.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/profiles.ts:1944`
 
 ## Parametros enviados por el frontend
 
-- `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
+- `p_address`
+- `p_closing_time`
+- `p_description`
+- `p_flyer_url`
+- `p_gender`
+- `p_id`
+- `p_opening_time`
+- `p_place_photo_url`
+- `p_pm_number`
 - `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
-- `p_title`
+- `p_retreat_house`
+- `p_selected_dates`
+- `p_status`
+- `p_visible_to_lower_roles`
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: `p_id`, `p_province`, `p_gender`, `p_pm_number`, `p_selected_dates`, `p_retreat_house`, `p_address`, `p_opening_time`, `p_closing_time`, `p_description`, `p_place_photo_url`, `p_flyer_url`, `p_visible_to_lower_roles`, `p_status`.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Mutacion
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
-- `profiles` (detectada en SQL versionado).
+- `audit_logs` (detectada en SQL versionado).
+- `motivador_periods` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/patch_motivador_management.sql:142`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

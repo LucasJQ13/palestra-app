@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: update_my_profile
 
 ## Estado
 
@@ -8,48 +8,47 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Criticidad
 
-**Alto**.
+**Critico**.
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Actualizar my profile.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/profiles.ts:1033`
 
 ## Parametros enviados por el frontend
 
-- `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
+- `p_community_name`
+- `p_full_name`
+- `p_gender_preference`
+- `p_phone`
 - `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
-- `p_title`
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: `p_full_name`, `p_phone`, `p_province`, `p_community_name`, `p_gender_preference`.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Mutacion
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
+- `audit_logs` (detectada en SQL versionado).
 - `profiles` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/migrations/20260606030000_profile_territory_cooldown.sql:91`
+- `supabase/patch_auth_onboarding_profile_fields.sql:110`
+- `supabase/patch_beta_functional_stability.sql:107`
+- `supabase/patch_emergency_profile_qr_recovery.sql:88`
+- `supabase/patch_profile_completion_admin_users_downgrade.sql:26`
+- `supabase/patch_profile_cooldown_and_blocks.sql:7`
+- `supabase/patch_profile_rpc_fix.sql:1`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

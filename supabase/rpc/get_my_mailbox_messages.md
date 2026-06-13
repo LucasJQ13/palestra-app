@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: get_my_mailbox_messages
 
 ## Estado
 
@@ -8,48 +8,44 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Criticidad
 
-**Alto**.
+**Moderado**.
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Consultar my mailbox messages.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/profiles.ts:925`
 
 ## Parametros enviados por el frontend
 
-- `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
-- `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
-- `p_title`
+- Sin parametros en las llamadas detectadas.
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: sin parametros.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Lista `MailboxMessageRecord`
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
+- `communities` (detectada en SQL versionado).
+- `community_contact_messages` (detectada en SQL versionado).
+- `direct_message_recipients` (detectada en SQL versionado).
+- `direct_messages` (detectada en SQL versionado).
 - `profiles` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/migrations/20260606010000_direct_user_messaging.sql:143`
+- `supabase/migrations/20260607133000_mailbox_conversation_rows.sql:1`
+- `supabase/migrations/20260612210000_public_queries_inbox.sql:391`
+- `supabase/patch_beta_functional_stability.sql:704`
+- `supabase/patch_community_mailbox.sql:126`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

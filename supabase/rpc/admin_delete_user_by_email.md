@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: admin_delete_user_by_email
 
 ## Estado
 
@@ -8,48 +8,42 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Criticidad
 
-**Alto**.
+**Critico**.
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Operacion administrativa: delete user by email.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/profiles.ts:1136`
 
 ## Parametros enviados por el frontend
 
-- `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
-- `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
-- `p_title`
+- `p_email`
+- `p_reason`
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: `p_email`, `p_reason`.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Mutacion
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
+- `admin_backup_and_delete_user_ids` (detectada en SQL versionado).
+- `audit_logs` (detectada en SQL versionado).
 - `profiles` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
+- `user_deletion_backups` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/patch_safe_user_delete_diagnostics.sql:254`
+- `supabase/patch_user_auth_cleanup_v2.sql:307`
+- `supabase/patch_user_delete_foreign_keys.sql:66`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

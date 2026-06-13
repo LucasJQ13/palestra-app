@@ -2,139 +2,78 @@
 
 ## Estado
 
-Plantilla documental. No contiene SQL ejecutable.
+Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Supabase remoto esta pendiente de verificar.
 
-## Propósito
+> Esta ficha es documental. No es una migracion y no debe ejecutarse.
 
-Actualizar datos administrativos de un usuario: rol, estado, provincia, comunidad, etiquetas o datos de perfil según permisos del operador.
+## Criticidad
 
-Es una de las RPC más sensibles del proyecto porque puede cambiar accesos reales dentro de la app.
+**Critico**.
 
-## Módulos afectados
+## Proposito
 
-- `src/lib/profiles.ts`
-- `src/screens/ProfileScreen.tsx`
-- Panel dirigencial
-- Gestión de usuarios
-- Roles y permisos
-- Comunidades y provincias
+Actualizar datos, estado y rango de un usuario dentro del alcance permitido.
 
-## Parámetros esperados
+## Uso desde frontend
 
-Pendiente de confirmar contra SQL real vigente.
+- `src/lib/profiles.ts:574`
 
-Posibles parámetros funcionales:
+## Parametros enviados por el frontend
 
-- id del usuario objetivo.
-- nuevo estado.
-- nuevo rol.
-- provincia.
-- comunidad.
-- subrol o etiqueta visible.
-- datos de perfil editables.
-- motivo o comentario administrativo.
+- `p_community_name`
+- `p_display_role_label`
+- `p_email`
+- `p_full_name`
+- `p_password`
+- `p_phone`
+- `p_profile_id`
+- `p_province`
+- `p_role`
+- `p_status`
 
-## Retorno esperado por frontend
+Contrato documentado previamente:
 
-Resultado de actualización.
+- Parametros: `p_profile_id`, `p_email`, `p_password`, `p_full_name`, `p_phone`, `p_province`, `p_community_name`, `p_status`, `p_role`, `p_display_role_label`.
 
-Idealmente debería devolver:
+## Respuesta esperada
 
-- éxito/error.
-- usuario actualizado.
-- mensaje legible.
-- datos mínimos para refrescar panel.
+Mutacion
 
-## Tablas relacionadas
+## Tablas afectadas o consultadas
 
-- `profiles`.
-- `role_permissions`.
-- `provinces`.
-- `communities`.
-- posibles tablas de auditoría.
-- `auth.users` solo si la función toca datos de Auth, lo cual debe estar extremadamente controlado.
+- `audit_logs` (detectada en SQL versionado).
+- `profiles` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
 
-## Permisos esperados
+## Referencias SQL versionadas
 
-Debe validar internamente:
+- `supabase/migrations/20260606110000_safe_admin_user_edit.sql:173`
+- `supabase/patch_admin_users.sql:37`
+- `supabase/patch_beta_functional_stability.sql:315`
+- `supabase/patch_beta_user_role_management.sql:127`
+- `supabase/patch_community_images_dynamic_roles.sql:452`
+- `supabase/patch_critical_role_hierarchy.sql:270`
+- `supabase/patch_mobile_errors_and_request_roles.sql:81`
+- `supabase/patch_national_coordinator_replacement.sql:182`
+- `supabase/patch_requests_and_admin_auth.sql:148`
+- `supabase/patch_structural_admin_coherence.sql:71`
 
-- quién llama,
-- qué rol tiene,
-- qué alcance territorial tiene,
-- qué rol intenta modificar,
-- si intenta editar a alguien superior,
-- si intenta editarse a sí mismo,
-- si intenta asignar un rol no permitido.
+Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 
-Reglas esperadas:
+## Validaciones que deben confirmarse
 
-- Administrador puede modificar con mayor alcance, salvo restricciones internas definidas.
-- Dirigente nacional puede modificar dentro de alcance nacional si tiene permiso.
-- Dirigente provincial solo dentro de su provincia.
-- Dirigente comunitario solo dentro de su comunidad si aplica.
-- Usuario común no puede modificar usuarios.
+- Usuario autenticado cuando la operacion no sea publica.
+- Estado aprobado cuando accede a datos internos.
+- Rol o permiso suficiente.
+- Alcance de comunidad/provincia cuando corresponda.
+- `security definer` y `set search_path = public` si eleva privilegios.
+- Grants limitados a los roles necesarios.
+- Retorno y errores compatibles con el frontend.
 
-## Validaciones internas recomendadas
+## Pendiente de verificacion remota
 
-1. `auth.uid()` existe.
-2. Perfil del actor existe y está aprobado.
-3. Actor tiene permiso administrativo.
-4. Usuario objetivo existe.
-5. Actor no modifica rol superior sin permiso.
-6. Actor no asigna rol fuera de su alcance.
-7. Provincia/comunidad destino existen y están activas.
-8. Cambio queda registrado en auditoría.
-
-## Riesgo
-
-Crítico.
-
-Errores posibles:
-
-- escalamiento indebido de rol,
-- dirigente editando otra provincia,
-- usuario común accediendo por RPC,
-- pérdida de comunidad/provincia,
-- bloqueo accidental de administradores,
-- inconsistencia entre Auth y `profiles`.
-
-## Historial / parches relacionados
-
-Según auditoría previa, esta RPC fue redefinida muchas veces.
-
-Patches mencionados:
-
-- `patch_admin_users.sql`
-- `patch_beta_functional_stability.sql`
-- `patch_critical_role_hierarchy.sql`
-- `patch_beta_user_role_management.sql`
-- `patch_national_coordinator_replacement.sql`
-- `patch_structural_admin_coherence.sql`
-- `patch_requests_and_admin_auth.sql`
-- `patch_mobile_errors_and_request_roles.sql`
-- `patch_community_images_dynamic_roles.sql`
-
-Versión actual:
-
-- Revisar antes de tocar. Es candidata principal a consolidación en un patch único futuro.
-
-## Pruebas manuales mínimas
-
-1. Admin cambia estado de un usuario pendiente a aprobado.
-2. Admin cambia rol de usuario común a rol dirigencial.
-3. Dirigente provincial intenta editar usuario de su provincia.
-4. Dirigente provincial intenta editar usuario de otra provincia y debe fallar.
-5. Usuario común no puede acceder a esta acción.
-6. No se puede degradar/eliminar administrador accidentalmente.
-7. Cambios se reflejan al cerrar e iniciar sesión.
-8. Panel refresca datos correctamente.
-
-## Pendiente de completar
-
-- Copiar SQL real vigente desde Supabase.
-- Confirmar firma exacta.
-- Confirmar validaciones internas.
-- Confirmar jerarquía de roles aplicada.
-- Confirmar auditoría.
-- Confirmar si usa `security definer`.
-- Confirmar `set search_path = public`.
+- Firma SQL exacta desplegada.
+- Cuerpo SQL vigente.
+- Grants y propietario de la funcion.
+- Policies y tablas relacionadas.
+- Pruebas positivas y negativas por rol.

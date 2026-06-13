@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: admin_get_requests
 
 ## Estado
 
@@ -12,44 +12,38 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Consultar requests.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/profiles.ts:657`
 
 ## Parametros enviados por el frontend
 
-- `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
-- `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
-- `p_title`
+- Sin parametros en las llamadas detectadas.
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: sin parametros.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Lista `UserRequestRecord`
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
+- `communities` (detectada en SQL versionado).
 - `profiles` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
+- `user_requests` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/migrations/20260607093000_restrict_admin_tool_permissions.sql:279`
+- `supabase/patch_community_leadership_flow.sql:284`
+- `supabase/patch_mobile_errors_and_request_roles.sql:42`
+- `supabase/patch_news_scope_email_requests_community_coords.sql:230`
+- `supabase/patch_requests_and_admin_auth.sql:67`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

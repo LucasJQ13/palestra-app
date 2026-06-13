@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: get_my_community_publications
 
 ## Estado
 
@@ -8,48 +8,39 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Criticidad
 
-**Alto**.
+**Moderado**.
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Consultar my community publications.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/remoteData.ts:440`
 
 ## Parametros enviados por el frontend
 
-- `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
-- `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
-- `p_title`
+- Sin parametros en las llamadas detectadas.
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: sin parametros.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Lista de publicaciones comunitarias
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
+- `communities` (detectada en SQL versionado).
+- `community_publications` (detectada en SQL versionado).
 - `profiles` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/migrations/20260612193000_enriched_community_notices.sql:313`
+- `supabase/patch_community_sync_push_delivery.sql:44`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

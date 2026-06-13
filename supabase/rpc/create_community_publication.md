@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: create_community_publication
 
 ## Estado
 
@@ -12,44 +12,49 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Crear community publication.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/remoteData.ts:366`
 
 ## Parametros enviados por el frontend
 
 - `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
-- `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
+- `p_body_format`
+- `p_event_date`
+- `p_image_url`
+- `p_kind`
+- `p_link_label`
+- `p_link_url`
+- `p_poll_options`
+- `p_subtitle`
 - `p_title`
+- `p_visibility`
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: `p_kind`, `p_title`, `p_body`, `p_subtitle`, `p_body_format`, `p_image_url`, `p_link_label`, `p_link_url`, `p_event_date`, `p_visibility`, `p_poll_options`.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Mutacion
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
+- `audit_logs` (detectada en SQL versionado).
+- `communities` (detectada en SQL versionado).
+- `community_publications` (detectada en SQL versionado).
 - `profiles` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/migrations/20260612143000_community_internal_permissions.sql:68`
+- `supabase/migrations/20260612193000_enriched_community_notices.sql:105`
+- `supabase/migrations/20260612235900_restrict_community_panel_to_linked_leaders.sql:60`
+- `supabase/patch_community_leadership_flow.sql:135`
+- `supabase/patch_community_management_scope.sql:263`
+- `supabase/patch_community_polls_visibility.sql:93`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

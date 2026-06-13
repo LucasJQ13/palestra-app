@@ -2,128 +2,72 @@
 
 ## Estado
 
-Plantilla documental. No contiene SQL ejecutable.
+Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Supabase remoto esta pendiente de verificar.
 
-## Propósito
+> Esta ficha es documental. No es una migracion y no debe ejecutarse.
 
-Crear o actualizar materiales descargables o consultables dentro de Palestra App.
+## Criticidad
 
-Esta RPC sostiene la sección de Materiales/Descargas y puede afectar recursos públicos, internos o exclusivos por rol.
+**Alto**.
 
-## Módulos afectados
+## Proposito
 
-- `src/lib/profiles.ts`
-- `src/screens/MaterialsScreen.tsx`
-- `src/screens/ProfileScreen.tsx`
-- Storage bucket `materials`
-- permisos de descarga y administración
+Operacion administrativa: upsert material.
 
-## Parámetros esperados
+## Uso desde frontend
 
-Pendiente de confirmar contra SQL real vigente.
+- `src/lib/profiles.ts:1825`
 
-Posibles parámetros funcionales:
+## Parametros enviados por el frontend
 
-- id de material, si se actualiza.
-- título.
-- descripción.
-- categoría.
-- visibilidad.
-- permiso requerido.
-- URL o path de archivo.
-- imagen opcional.
-- orden.
-- provincia/comunidad si aplica.
-- estado activo/archivado.
+- `p_category`
+- `p_description`
+- `p_file_path`
+- `p_file_url`
+- `p_id`
+- `p_required_permission`
+- `p_sort_order`
+- `p_title`
+- `p_visibility`
 
-## Retorno esperado por frontend
+Contrato documentado previamente:
 
-Debe devolver resultado de creación/actualización y, si es posible, el material actualizado.
+- Parametros: `p_id`, `p_title`, `p_description`, `p_category`, `p_visibility`, `p_required_permission`, `p_file_url`, `p_file_path`, `p_sort_order`.
 
-Campos funcionales esperados:
+## Respuesta esperada
 
-- `id`.
-- `title`.
-- `description`.
-- `category`.
-- `visibility`.
-- `required_permission`.
-- `file_url` o `storage_path`.
-- `image_url`.
-- `sort_order`.
-- `archived_at`.
+Mutacion
 
-## Tablas relacionadas
+## Tablas afectadas o consultadas
 
-- `materials`.
-- posibles tablas de auditoría.
-- Storage `materials`.
+- `audit_logs` (detectada en SQL versionado).
+- `materials` (detectada en SQL versionado).
+- `profiles` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
 
-## Permisos esperados
+## Referencias SQL versionadas
 
-Reglas esperadas:
+- `supabase/patch_admin_persistence_config_materials_drafts.sql:140`
+- `supabase/patch_beta_baseline.sql:120`
+- `supabase/patch_material_author_editing.sql:23`
+- `supabase/patch_material_upload_permissions_fix.sql:122`
 
-- Administrador puede crear/editar todos los materiales.
-- Dirigente nacional puede gestionar materiales si tiene permiso.
-- Dirigente provincial puede gestionar materiales de su alcance si está permitido.
-- Dirigente comunitario solo si hay permiso específico.
-- Usuario común no puede crear ni editar materiales.
-- Visitante no puede crear ni editar materiales.
+Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 
-## Validaciones internas recomendadas
+## Validaciones que deben confirmarse
 
-1. Usuario autenticado.
-2. Perfil aprobado.
-3. Permiso para gestionar contenido/materiales.
-4. Validar visibilidad permitida.
-5. Validar que archivo o URL sea coherente.
-6. Validar alcance territorial si aplica.
-7. Registrar auditoría.
+- Usuario autenticado cuando la operacion no sea publica.
+- Estado aprobado cuando accede a datos internos.
+- Rol o permiso suficiente.
+- Alcance de comunidad/provincia cuando corresponda.
+- `security definer` y `set search_path = public` si eleva privilegios.
+- Grants limitados a los roles necesarios.
+- Retorno y errores compatibles con el frontend.
 
-## Riesgo
+## Pendiente de verificacion remota
 
-Alto.
-
-Errores posibles:
-
-- exposición de material interno a visitantes,
-- bloqueo de materiales para usuarios correctos,
-- subida de archivo aceptada por UI pero rechazada por Storage,
-- pérdida de referencias a archivos,
-- materiales archivados visibles,
-- permisos distintos entre tabla y bucket.
-
-## Historial / parches relacionados
-
-Patches mencionados:
-
-- `patch_beta_baseline.sql`
-- `patch_admin_persistence_config_materials_drafts.sql`
-- `patch_material_author_editing.sql`
-- `patch_material_upload_permissions_fix.sql`
-
-Versión a respetar según auditoría:
-
-- `patch_material_upload_permissions_fix.sql`.
-
-## Pruebas manuales mínimas
-
-1. Admin crea material público.
-2. Visitante puede ver solo material público.
-3. Usuario interno ve material permitido.
-4. Admin crea material interno/exclusivo.
-5. Usuario sin permiso no ve material restringido.
-6. Subida/descarga de archivo funciona en Android real.
-7. Archivado oculta material.
-8. No aparece mensaje de éxito falso si Storage falla.
-
-## Pendiente de completar
-
-- Copiar SQL real vigente desde Supabase.
-- Confirmar firma exacta.
-- Confirmar retorno exacto.
-- Confirmar relación con Storage.
-- Confirmar policies de bucket `materials`.
-- Confirmar auditoría.
-- Confirmar si usa `security definer`.
-- Confirmar `set search_path = public`.
+- Firma SQL exacta desplegada.
+- Cuerpo SQL vigente.
+- Grants y propietario de la funcion.
+- Policies y tablas relacionadas.
+- Pruebas positivas y negativas por rol.

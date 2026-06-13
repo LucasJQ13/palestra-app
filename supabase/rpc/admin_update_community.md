@@ -2,138 +2,68 @@
 
 ## Estado
 
-Plantilla documental. No contiene SQL ejecutable.
+Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Supabase remoto esta pendiente de verificar.
 
-## Propósito
+> Esta ficha es documental. No es una migracion y no debe ejecutarse.
 
-Actualizar datos de una comunidad existente: nombre, provincia, grupo, dirección, contacto, horario, descripción, imagen, coordenadas, estado y datos visibles en la pantalla de Comunidades.
+## Criticidad
 
-## Módulos afectados
+**Alto**.
 
-- `src/lib/profiles.ts`
-- `src/lib/remoteData.ts`
-- `src/screens/ProfileScreen.tsx`
-- Pantalla Comunidades
-- Registro/onboarding
-- Perfil/Mi Comunidad
-- Panel dirigencial
+## Proposito
 
-## Parámetros esperados
+Actualizar community.
 
-Pendiente de confirmar contra SQL real vigente.
+## Uso desde frontend
 
-Posibles parámetros funcionales:
+- `src/lib/profiles.ts:2063`
+- `src/lib/profiles.ts:2066`
 
-- id de comunidad.
-- nombre.
-- provincia o `province_id`.
-- grupo/tipo de comunidad.
-- dirección.
-- teléfono/contacto.
-- día de reunión.
-- horario.
-- descripción.
-- imagen.
-- latitud.
-- longitud.
-- estado activo/inactivo.
+## Parametros enviados por el frontend
 
-## Retorno esperado por frontend
+- `[payload dinamico: legacyPayload]`
+- `[payload dinamico: payload]`
 
-Debe devolver resultado de actualización y, si es posible, la comunidad actualizada.
+Contrato documentado previamente:
 
-Campos funcionales esperados:
+- Parametros: `p_community_id`, `p_name`, `p_address`, `p_phone`, `p_meeting_day`, `p_meeting_time`, `p_description`, `p_image_url`, `p_latitude`, `p_longitude`, `p_group_type`.
 
-- `id`.
-- `name`.
-- `province` o `province_id`.
-- `group_type`.
-- `address`.
-- `phone`.
-- `meeting_day`.
-- `meeting_time`.
-- `description`.
-- `image_url`.
-- `latitude`.
-- `longitude`.
-- `is_active`.
-- `archived_at`.
+## Respuesta esperada
 
-## Tablas relacionadas
+Mutacion
 
-- `communities`.
-- `provinces`.
-- `province_community_sections`.
-- posibles tablas de auditoría.
+## Tablas afectadas o consultadas
 
-## Permisos esperados
+- `audit_logs` (detectada en SQL versionado).
+- `communities` (detectada en SQL versionado).
+- `profiles` (detectada en SQL versionado).
 
-Reglas esperadas:
+## Referencias SQL versionadas
 
-- Administrador puede editar todas las comunidades.
-- Dirigente nacional puede editar según permisos nacionales.
-- Dirigente provincial puede editar comunidades de su provincia.
-- Dirigente comunitario puede editar solo su comunidad si está permitido.
-- Usuario común no puede editar comunidades.
-- Visitante no puede editar comunidades.
+- `supabase/patch_admin_community_rpc.sql:1`
+- `supabase/patch_community_images_dynamic_roles.sql:139`
+- `supabase/patch_community_management_scope.sql:168`
+- `supabase/patch_community_subsections.sql:230`
+- `supabase/patch_news_scope_email_requests_community_coords.sql:50`
+- `supabase/patch_profile_cooldown_and_blocks.sql:58`
+- `supabase/patch_restore_communities_admin_management.sql:6`
 
-## Validaciones internas recomendadas
+Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 
-1. Usuario autenticado.
-2. Perfil aprobado.
-3. Rol o permiso suficiente.
-4. Comunidad objetivo existe.
-5. Provincia destino existe y está activa.
-6. Actor tiene alcance sobre la provincia/comunidad.
-7. No permitir duplicados peligrosos de nombre dentro de la misma provincia/grupo.
-8. Registrar auditoría del cambio.
+## Validaciones que deben confirmarse
 
-## Riesgo
+- Usuario autenticado cuando la operacion no sea publica.
+- Estado aprobado cuando accede a datos internos.
+- Rol o permiso suficiente.
+- Alcance de comunidad/provincia cuando corresponda.
+- `security definer` y `set search_path = public` si eleva privilegios.
+- Grants limitados a los roles necesarios.
+- Retorno y errores compatibles con el frontend.
 
-Alto.
+## Pendiente de verificacion remota
 
-Errores posibles:
-
-- comunidad movida a provincia incorrecta,
-- usuario pierde Mi Comunidad,
-- registro deja de listar comunidades,
-- pantalla Comunidades queda incompleta,
-- coordenadas o contacto se pierden,
-- dirigente edita comunidad fuera de alcance.
-
-## Historial / parches relacionados
-
-Patches mencionados en auditoría:
-
-- `patch_admin_community_rpc.sql`
-- `patch_community_management_scope.sql`
-- `patch_profile_cooldown_and_blocks.sql`
-- `patch_news_scope_email_requests_community_coords.sql`
-- `patch_community_images_dynamic_roles.sql`
-- `patch_restore_communities_admin_management.sql`
-
-Versión a respetar según auditoría:
-
-- `patch_restore_communities_admin_management.sql` si la herramienta de Comunidades vuelve a fallar.
-
-## Pruebas manuales mínimas
-
-1. Admin edita comunidad y se refleja en pantalla pública.
-2. Editar dirección/contacto/horario.
-3. Editar imagen de comunidad.
-4. Editar coordenadas y probar botón Maps si aplica.
-5. Dirigente provincial edita comunidad de su provincia.
-6. Dirigente provincial no puede editar otra provincia.
-7. Usuario común no accede a edición.
-8. Registro sigue listando provincia/comunidad correctamente.
-9. Mi Comunidad sigue resolviendo la comunidad del usuario.
-
-## Pendiente de completar
-
-- Copiar SQL real vigente desde Supabase.
-- Confirmar firma exacta.
-- Confirmar retorno exacto.
-- Confirmar validación territorial.
-- Confirmar auditoría.
-- Confirmar si usa `security definer`.
-- Confirmar `set search_path = public`.
+- Firma SQL exacta desplegada.
+- Cuerpo SQL vigente.
+- Grants y propietario de la funcion.
+- Policies y tablas relacionadas.
+- Pruebas positivas y negativas por rol.

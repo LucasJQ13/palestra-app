@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: get_forum_comments
 
 ## Estado
 
@@ -8,48 +8,36 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Criticidad
 
-**Alto**.
+**Moderado**.
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Consultar forum comments.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/forum.ts:139`
 
 ## Parametros enviados por el frontend
 
-- `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
-- `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
-- `p_title`
+- `p_topic_id`
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: `p_topic_id`.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Lista `ForumComment`
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
+- `forum_comments` (detectada en SQL versionado).
 - `profiles` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/patch_beta_functional_stability.sql:74`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

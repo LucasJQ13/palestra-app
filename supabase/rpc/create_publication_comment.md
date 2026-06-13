@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: create_publication_comment
 
 ## Estado
 
@@ -12,44 +12,34 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Crear publication comment.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/remoteData.ts:600`
 
 ## Parametros enviados por el frontend
 
 - `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
-- `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
-- `p_title`
+- `p_publication_id`
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: `p_publication_id`, `p_body`.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Mutacion
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
-- `profiles` (detectada en SQL versionado).
+- `community_publications` (detectada en SQL versionado).
+- `publication_comments` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/migrations/20260612193000_enriched_community_notices.sql:468`
+- `supabase/patch_forum_comments_reactions.sql:223`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

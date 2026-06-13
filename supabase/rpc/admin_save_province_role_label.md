@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: admin_save_province_role_label
 
 ## Estado
 
@@ -8,48 +8,41 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Criticidad
 
-**Alto**.
+**Critico**.
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Operacion administrativa: save province role label.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/profiles.ts:1450`
 
 ## Parametros enviados por el frontend
 
-- `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
+- `p_description`
+- `p_display_label`
+- `p_is_active`
 - `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
-- `p_title`
+- `p_role_key`
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: `p_province`, `p_role_key`, `p_display_label`, `p_description`, `p_is_active`.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Mutacion
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
-- `profiles` (detectada en SQL versionado).
+- `audit_logs` (detectada en SQL versionado).
+- `province_role_labels` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/patch_beta_province_role_labels.sql:60`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

@@ -1,4 +1,4 @@
-# RPC: create_notification_intent
+# RPC: admin_upsert_library_item
 
 ## Estado
 
@@ -12,44 +12,44 @@ Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Su
 
 ## Proposito
 
-Crear una intencion persistida para entrega de notificaciones.
+Operacion administrativa: upsert library item.
 
 ## Uso desde frontend
 
-- `src/lib/profiles.ts:1222`
+- `src/lib/library.ts:65`
 
 ## Parametros enviados por el frontend
 
 - `p_body`
-- `p_community`
-- `p_min_role`
-- `p_notification_type`
-- `p_province`
-- `p_source_id`
-- `p_source_type`
-- `p_tab_key`
-- `p_target_kind`
-- `p_target_scope`
-- `p_target_value`
+- `p_category`
+- `p_id`
+- `p_image_url`
+- `p_item_date`
+- `p_section`
+- `p_sort_order`
+- `p_source`
+- `p_status`
+- `p_subtitle`
 - `p_title`
 
 Contrato documentado previamente:
 
-- Parametros: `p_notification_type`, `p_title`, `p_body`, `p_target_kind`, `p_target_value`, `p_target_scope`, `p_province`, `p_community`, `p_min_role`, `p_tab_key`, `p_source_type`, `p_source_id`.
+- Parametros: `p_id`, `p_section`, `p_title`, `p_subtitle`, `p_body`, `p_image_url`, `p_category`, `p_source`, `p_item_date`, `p_status`, `p_sort_order`.
 
 ## Respuesta esperada
 
-Registro con identificador de intencion; forma pendiente
+Mutacion
 
 ## Tablas afectadas o consultadas
 
-- `notification_intents` (detectada en SQL versionado).
+- `app_library_items` (detectada en SQL versionado).
+- `audit_logs` (detectada en SQL versionado).
 - `profiles` (detectada en SQL versionado).
 
 ## Referencias SQL versionadas
 
-- `supabase/patch_notification_intents.sql:51`
-- `supabase/patch_push_notification_delivery_foundation.sql:79`
+- `supabase/patch_library_items.sql:116`
+- `supabase/patch_library_publish_permissions_fix.sql:72`
 
 Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 

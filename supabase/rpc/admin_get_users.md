@@ -2,132 +2,68 @@
 
 ## Estado
 
-Plantilla documental. No contiene SQL ejecutable.
+Hay definiciones SQL candidatas versionadas en el repositorio. Su vigencia en Supabase remoto esta pendiente de verificar.
 
-## Propósito
+> Esta ficha es documental. No es una migracion y no debe ejecutarse.
 
-Obtener listado administrativo de usuarios para el panel dirigencial o administrador.
+## Criticidad
 
-Esta RPC es crítica porque permite revisar usuarios, estados, roles, comunidad, provincia y datos necesarios para gestión interna.
+**Critico**.
 
-## Módulos afectados
+## Proposito
 
-- `src/lib/profiles.ts`
-- `src/screens/ProfileScreen.tsx`
-- Panel dirigencial
-- Gestión de usuarios
-- Solicitudes y aprobaciones
+Listar usuarios que el actor puede administrar.
 
-## Parámetros esperados
+## Uso desde frontend
 
-Pendiente de confirmar contra SQL real vigente.
+- `src/lib/profiles.ts:521`
 
-Posibles parámetros funcionales:
+## Parametros enviados por el frontend
 
-- filtros de búsqueda.
-- provincia.
-- comunidad.
-- estado.
-- rol.
-- paginación.
-- alcance según usuario autenticado.
+- Sin parametros en las llamadas detectadas.
 
-## Retorno esperado por frontend
+Contrato documentado previamente:
 
-Listado de usuarios con campos administrativos.
+- Parametros: sin parametros.
 
-Campos funcionales esperados:
+## Respuesta esperada
 
-- `id` / `user_id`.
-- `email`.
-- `full_name`.
-- `avatar_url`.
-- `phone`.
-- `province`.
-- `community_name`.
-- `status`.
-- `role`.
-- `subrole_key`.
-- `display_role_label`.
-- `gender_preference`.
-- `email_confirmed_at`.
-- `created_at`.
-- campos PM/personales si el panel los muestra.
+Lista `AdminUser`
 
-## Tablas relacionadas
+## Tablas afectadas o consultadas
 
-- `profiles`.
-- `auth.users`, si la función cruza datos de autenticación.
-- `provinces`.
-- `communities`.
-- `role_permissions`.
-- tablas de alias/etiquetas de rol si aplican.
+- `profiles` (detectada en SQL versionado).
+- `provinces` (detectada en SQL versionado).
 
-## Permisos esperados
+## Referencias SQL versionadas
 
-Debe validar internamente que quien llama tiene permiso para listar usuarios.
+- `supabase/migrations/20260606110000_safe_admin_user_edit.sql:108`
+- `supabase/patch_admin_users.sql:1`
+- `supabase/patch_beta_user_role_management.sql:77`
+- `supabase/patch_community_images_dynamic_roles.sql:389`
+- `supabase/patch_email_confirmation_and_personal_pm.sql:249`
+- `supabase/patch_leadership_user_search_global.sql:6`
+- `supabase/patch_profile_perseverance_preferences.sql:275`
+- `supabase/patch_profile_photos.sql:92`
+- `supabase/patch_public_profile_gender_labels.sql:82`
+- `supabase/patch_user_auth_cleanup_v2.sql:26`
 
-Reglas esperadas:
+Estas referencias pueden representar versiones historicas distintas. No se copia un cuerpo como canonico porque el repositorio no certifica cual esta desplegado actualmente.
 
-- Administrador: puede listar todos.
-- Coordinador nacional / vocal nacional: puede listar alcance nacional si su rol lo permite.
-- Coordinador diocesano / vocal / asesor: puede listar su provincia si corresponde.
-- Coordinador o animador de comunidad: como máximo su comunidad si corresponde.
-- Usuario común: no debería listar usuarios.
-- Visitante: no debería acceder.
+## Validaciones que deben confirmarse
 
-## Validaciones internas recomendadas
+- Usuario autenticado cuando la operacion no sea publica.
+- Estado aprobado cuando accede a datos internos.
+- Rol o permiso suficiente.
+- Alcance de comunidad/provincia cuando corresponda.
+- `security definer` y `set search_path = public` si eleva privilegios.
+- Grants limitados a los roles necesarios.
+- Retorno y errores compatibles con el frontend.
 
-1. Usuario autenticado.
-2. Perfil aprobado.
-3. Rol suficiente.
-4. Alcance territorial.
-5. No exponer datos sensibles innecesarios.
-6. No devolver usuarios eliminados salvo que sea un modo diagnóstico explícito.
+## Pendiente de verificacion remota
 
-## Riesgo
-
-Crítico.
-
-Puede exponer datos personales si las reglas de acceso están mal definidas.
-
-También puede romper el panel dirigencial si el retorno cambia.
-
-## Historial / parches relacionados
-
-Según auditoría previa, esta RPC fue redefinida varias veces.
-
-Patches mencionados:
-
-- `patch_admin_users.sql`
-- `patch_beta_user_role_management.sql`
-- `patch_profile_photos.sql`
-- `patch_user_auth_cleanup_v2.sql`
-- `patch_profile_perseverance_preferences.sql`
-- `patch_public_profile_gender_labels.sql`
-- `patch_email_confirmation_and_personal_pm.sql`
-- `patch_community_images_dynamic_roles.sql`
-
-Versión a respetar según auditoría actual:
-
-- `patch_email_confirmation_and_personal_pm.sql`, cuidando no perder campos de imagen/comunidad.
-
-## Pruebas manuales mínimas
-
-1. Entrar como administrador y listar usuarios.
-2. Entrar como dirigente provincial y verificar alcance limitado.
-3. Entrar como dirigente comunitario y verificar alcance limitado.
-4. Entrar como usuario común y confirmar que no accede al listado.
-5. Verificar usuarios pendientes, aprobados y bloqueados.
-6. Verificar que emails y nombres se ven correctamente.
-7. Verificar que no se exponen datos técnicos innecesarios.
-
-## Pendiente de completar
-
-- Copiar SQL real vigente desde Supabase.
-- Confirmar firma exacta.
-- Confirmar retorno exacto.
-- Confirmar paginación si existe.
-- Confirmar validación de alcance territorial.
-- Confirmar si usa `security definer`.
-- Confirmar `set search_path = public`.
+- Firma SQL exacta desplegada.
+- Cuerpo SQL vigente.
+- Grants y propietario de la funcion.
+- Policies y tablas relacionadas.
+- Pruebas positivas y negativas por rol.
