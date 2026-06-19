@@ -14,7 +14,11 @@ Esto evita que una provincia de prueba archivada, inhabilitada o sin comunidades
 
 ## Administracion
 
-El panel administrativo de Comunidades/Provincias usa una carga ampliada para poder ver provincias sin comunidades o deshabilitadas y gestionarlas. Esa carga no se usa para Home ni para selectores publicos.
+El panel de Provincias usa un inventario ampliado para poder ver provincias sin comunidades o deshabilitadas y rehabilitarlas. Ese inventario se mantiene separado de la lista vigente usada por Home, Registro, Perfil, QR y los selectores comunes.
+
+Gestion de Comunidades solo permite seleccionar provincias vigentes. Si una provincia se archiva o deshabilita, sus comunidades asociadas se conservan en Supabase para mantener la integridad historica, pero dejan de aparecer en los selectores y conteos comunes. La app no mezcla el inventario administrativo con el fallback local ni borra registros hijos automaticamente.
+
+Si una comunidad queda sin relacion a una fila de `provinces`, se considera huerfana y tampoco se publica como una provincia ficticia `Sin provincia`. El registro permanece intacto para diagnostico o reparacion administrativa.
 
 ## Diagnostico Supabase
 

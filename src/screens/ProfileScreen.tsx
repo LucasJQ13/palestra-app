@@ -8,7 +8,7 @@ import { CredentialQrCode } from '../components/CredentialQrCode';
 import { SectionTitle } from '../components/SectionTitle';
 import { AppButton, ButtonGroup, IconButton } from '../components/ui';
 import { PasswordInput } from '../components/auth';
-import { communities, communityNews, materials, roleDefinitions } from '../data/content';
+import { communityNews, materials, roleDefinitions } from '../data/content';
 import { AppAdminConfig, normalizeAdminConfig } from '../lib/appConfig';
 import { APP_MESSAGES, blockedProfileMessage, changeDone, communityDowngradesRole, friendlyUploadError, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError } from '../lib/appMessages';
 import { argentinaProvinceDefinitions, provinceDefinitionFor } from '../lib/argentinaProvinces';
@@ -27,7 +27,7 @@ import { rolePermissions } from '../lib/permissions';
 import { credentialDisplayName, displayRoleLabel, genderNarratives, homeGreetingName, perseveranceLabel, personalPmSummary, personalPmTypeLabel, roleLabel, roleLabelForProvince, roleShortLabel } from '../lib/profileDisplay';
 import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MotivadorPeriodRecord, NewsDraftRecord, PendingProfile, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, PublicUserDirectoryRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createEmailConfirmationRequest, createEvent, createLeadershipChangeRequest, createNews, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppMaterials, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchPublicUserDirectory, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, issueMyCredentialQr, markPrayerRemovalNoticesSeen, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyCommunityDetails, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { canAccessPublicQueries } from '../lib/queries/publicQueries';
-import { AppCommunity, PublicationComment, adminCommunitiesFetchOptions, archiveCommunityPublication, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchPublicationComments, reactToPublication, reportPublication, updateCommunityPublication, voteCommunityPoll } from '../lib/remoteData';
+import { AppCommunity, PublicationComment, activeCommunityData, adminCommunitiesFetchOptions, archiveCommunityPublication, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchPublicationComments, reactToPublication, reportPublication, updateCommunityPublication, voteCommunityPoll } from '../lib/remoteData';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
 import { AppRuntimeConfig, CatholicNewsSourceKey, saveAppRuntimeConfig } from '../lib/runtimeConfig';
 import { canCreateOrAdministrateCommunities, canEditAdminUser, canEditStaticInstitutionalPage, canManageFormationPathAdmin, canManageGlobalInstagram, canManageMotivadorPanel, canManageNewsContent, canManagePublishedContent, canManageRequestsPanel, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from '../lib/sessionAccess';
@@ -290,7 +290,8 @@ export function ProfileScreen({
   const [registerProvince, setRegisterProvince] = useState('');
   const [registerCommunity, setRegisterCommunity] = useState('');
   const [registerPerseveranceStartYear, setRegisterPerseveranceStartYear] = useState('');
-  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>(communities);
+  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>([]);
+  const [adminCommunityInventory, setAdminCommunityInventory] = useState<AppCommunity[]>([]);
   const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
   const [communityDropdownOpen, setCommunityDropdownOpen] = useState(false);
   const [registerPerseveranceYearDropdownOpen, setRegisterPerseveranceYearDropdownOpen] = useState(false);
@@ -514,12 +515,13 @@ export function ProfileScreen({
   const selectedRegistrationProvince = registrationCommunities.find((item) => item.province === registerProvince);
   const selectedEditProvince = registrationCommunities.find((item) => item.province === editProvince);
   const visibleRegistrationCommunities = useMemo(() => registrationCommunities.filter((item) => item.isActive !== false && !item.archivedAt && canAccessProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
-  const manageableCommunities = useMemo(() => registrationCommunities
+  const manageableCommunities = useMemo(() => adminCommunityInventory
+    .filter((province) => province.isActive !== false && !province.archivedAt)
     .map((province) => ({
       ...province,
       locations: province.locations.filter((community) => canEditCommunity(session, province.province, community.name))
     }))
-    .filter((province) => province.locations.length > 0 || canManageProvince(session, province.province) || canSeeAllProvinces(session)), [registrationCommunities, session?.province, session?.role, session?.communityOfOrigin]);
+    .filter((province) => province.locations.length > 0 || canManageProvince(session, province.province) || canSeeAllProvinces(session)), [adminCommunityInventory, session?.province, session?.role, session?.communityOfOrigin]);
   const motivadorProvinceOptions = useMemo(() => {
     if (session?.role === 'administrador') {
       return registrationCommunities.map((item) => item.province);
@@ -684,7 +686,7 @@ export function ProfileScreen({
   const leadershipSummaryUsers = (session?.role === 'administrador' || canSeeAllProvinces(session))
     ? scopedAdminUsers
     : editableProvinceUsers;
-  const existingProvinceNames = new Set(registrationCommunities.filter((item) => !item.archivedAt).map((item) => item.province));
+  const existingProvinceNames = new Set(adminCommunityInventory.filter((item) => !item.archivedAt).map((item) => item.province));
   const missingArgentinaProvinces = argentinaProvinceDefinitions.filter((item) => !existingProvinceNames.has(item.name));
   const selectedNewProvinceDefinition = provinceDefinitionFor(newProvinceName) ?? missingArgentinaProvinces[0] ?? null;
   const motivadorYearOptions = Array.from(new Set(adminMotivadorPeriods.map((period) => String(new Date(`${period.starts_on}T00:00:00`).getFullYear()))))
@@ -1221,13 +1223,24 @@ export function ProfileScreen({
     let alive = true;
     fetchCommunities().then((items) => {
       if (alive) {
-        setRegistrationCommunities(items);
+        setRegistrationCommunities(activeCommunityData(items));
       }
     });
     return () => {
       alive = false;
     };
   }, []);
+
+  function applyAdminCommunityInventory(items: AppCommunity[]) {
+    setAdminCommunityInventory(items);
+    setRegistrationCommunities(activeCommunityData(items));
+  }
+
+  async function refreshCommunityInventory() {
+    const items = await fetchCommunities(adminCommunitiesFetchOptions);
+    applyAdminCommunityInventory(items);
+    return items;
+  }
 
   useEffect(() => {
     if (adminModule === 'periodo_motivador') {
@@ -1250,17 +1263,19 @@ export function ProfileScreen({
 
   useEffect(() => {
     let alive = true;
-    if (adminModule === 'comunidades' && canOpenCommunityAdmin) {
+    const shouldLoadInventory = (adminModule === 'comunidades' && canOpenCommunityAdmin)
+      || (adminModule === 'crear_provincia' && session?.role === 'administrador');
+    if (shouldLoadInventory) {
       fetchCommunities(adminCommunitiesFetchOptions).then((items) => {
         if (alive) {
-          setRegistrationCommunities(items);
+          applyAdminCommunityInventory(items);
         }
       });
     }
     return () => {
       alive = false;
     };
-  }, [adminModule, canOpenCommunityAdmin]);
+  }, [adminModule, canOpenCommunityAdmin, session?.role]);
 
   useEffect(() => {
     if (!canManageNewsContent(session)) {
@@ -3277,7 +3292,7 @@ export function ProfileScreen({
           setAuthMessage(error.message);
           return;
         }
-        setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+        await refreshCommunityInventory();
         await onContentChanged();
         setAuthMessage(changeDone('Logo de provincia actualizado.'));
         return;
@@ -3395,8 +3410,7 @@ export function ProfileScreen({
       return;
     }
 
-    const items = await fetchCommunities(adminCommunitiesFetchOptions);
-    setRegistrationCommunities(items);
+    await refreshCommunityInventory();
     setAdminCommunityId('');
     setAdminCommunityImageAsset(null);
     setAdminCommunityImageUrl(imageUrl);
@@ -3459,8 +3473,7 @@ export function ProfileScreen({
         return;
       }
     }
-    const items = await fetchCommunities(adminCommunitiesFetchOptions);
-    setRegistrationCommunities(items);
+    await refreshCommunityInventory();
     setAdminCommunityName('');
     setAdminCommunityAddress('');
     setAdminCommunityPhone('');
@@ -3496,8 +3509,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    const items = await fetchCommunities(adminCommunitiesFetchOptions);
-    setRegistrationCommunities(items);
+    await refreshCommunityInventory();
     setAuthMessage(changeDone('Cambios guardados.'));
     await onContentChanged();
   }
@@ -3522,8 +3534,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    const items = await fetchCommunities(adminCommunitiesFetchOptions);
-    setRegistrationCommunities(items);
+    await refreshCommunityInventory();
     setAdminCommunityProvince(definition.name);
     setAdminCommunityId('');
     setNewProvinceName('');
@@ -3537,7 +3548,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+    await refreshCommunityInventory();
     setAuthMessage(changeDone(isActive ? 'Provincia habilitada.' : 'Provincia deshabilitada.'));
     await onContentChanged();
   }
@@ -3558,7 +3569,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+    await refreshCommunityInventory();
     setAuthMessage(changeDone('Provincia eliminada.'));
     await onContentChanged();
   }
@@ -3569,7 +3580,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+    await refreshCommunityInventory();
     setAuthMessage(changeDone(isActive ? 'Comunidad habilitada.' : 'Comunidad deshabilitada.'));
   }
 
@@ -3589,7 +3600,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+    await refreshCommunityInventory();
     setAdminCommunityId('');
     setAuthMessage(changeDone('Comunidad eliminada.'));
   }
@@ -6361,7 +6372,7 @@ export function ProfileScreen({
                     <Text style={styles.cardText}>Todas las provincias argentinas ya están cargadas.</Text>
                   )}
                   <Text style={styles.cardEyebrow}>Provincias cargadas</Text>
-                  {registrationCommunities.filter((item) => !item.archivedAt).map((item) => {
+                  {adminCommunityInventory.filter((item) => !item.archivedAt).map((item) => {
                     const active = item.isActive !== false;
                     const logoUrl = provinceLogoDrafts[item.province] ?? item.logoUrl ?? null;
                     return (

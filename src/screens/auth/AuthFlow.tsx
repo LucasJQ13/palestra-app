@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { communities } from '../../data/content';
 import { checkRegistrationEmailAvailable, createEmailConfirmationRequest } from '../../lib/profiles';
 import { AppCommunity, fetchCommunities } from '../../lib/remoteData';
 import { getMyProfileSession } from '../../lib/authProfile';
@@ -305,16 +304,14 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
     password: '',
     genderPreference: null
   });
-  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>(communities);
+  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>([]);
   const [loading, setLoading] = useState(false);
   const fade = useRef(new Animated.Value(1)).current;
   const selectedProvince = registrationCommunities.find((item) => item.province === draft.province);
 
   useEffect(() => {
     fetchCommunities().then((items) => {
-      if (items.length > 0) {
-        setRegistrationCommunities(items);
-      }
+      setRegistrationCommunities(items);
     });
   }, []);
 
