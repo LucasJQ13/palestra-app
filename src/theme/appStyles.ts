@@ -3100,8 +3100,10 @@ export const styles = StyleSheet.create({
     gap: 10
   },
   adminUserHeaderText: {
-    flex: 1,
-    minWidth: 0
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 180,
+    minWidth: 150
   },
   mailboxRecipientItem: {
     minHeight: 58,
@@ -4190,6 +4192,7 @@ export const styles = StyleSheet.create({
   },
   adminListRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 10,
     borderWidth: 1,
@@ -4225,6 +4228,12 @@ export const styles = StyleSheet.create({
   adminListRowActive: {
     backgroundColor: '#EFF8FB',
     borderColor: ui.color.borderStrong
+  },
+  adminEditableRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 10
   },
   qrActivityListRow: {
     flexDirection: 'row',

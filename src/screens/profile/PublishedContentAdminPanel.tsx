@@ -45,7 +45,7 @@ export function PublishedContentAdminPanel({
         <View key={item.tab_key} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
           <Ionicons name="document-text-outline" size={20} color={palette.red} />
           <View style={styles.adminUserHeaderText}>
-            <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.title || item.tab_key}</Text>
+            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.title?.trim() || item.tab_key?.trim() || APP_MESSAGES.adminPanels.content.unnamedPage}</Text>
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.content.sourceTab(item.tab_key)}</Text>
           </View>
           <AppButton label="Editar" icon="create-outline" variant="ghost" size="compact" onPress={() => onEditContent(item.tab_key)} />
@@ -58,7 +58,7 @@ export function PublishedContentAdminPanel({
           <View key={item.key} style={[styles.adminListRow, isDark && styles.surfaceRowDark, hidden && styles.lockedCard]}>
             <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
             <View style={styles.adminUserHeaderText}>
-              <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.title}</Text>
+              <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.title?.trim() || APP_MESSAGES.adminPanels.content.unnamedPage}</Text>
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.section} - {item.origin} - {hidden ? APP_MESSAGES.adminPanels.content.hidden : APP_MESSAGES.adminPanels.content.visible}</Text>
             </View>
             <AppButton label={hidden ? 'Mostrar' : 'Ocultar'} icon={hidden ? 'eye-outline' : 'eye-off-outline'} variant="ghost" size="compact" onPress={() => onToggleFallback(item.key, !hidden)} />

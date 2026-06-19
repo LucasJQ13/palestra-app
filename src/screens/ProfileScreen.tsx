@@ -4859,7 +4859,7 @@ export function ProfileScreen({
                           return (
                             <TouchableOpacity key={`preview-dedicated-${tab.key}`} style={[styles.navPreviewItem, !draft.isVisible && styles.navPreviewItemHidden, selected && styles.navPreviewItemSelected]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
                               <Ionicons name={iconName} size={18} color={selected ? palette.white : draft.isVisible ? palette.red : palette.inkMuted} />
-                              <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label || tab.label}</Text>
+                              <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label?.trim() || tab.label?.trim() || 'Seccion sin nombre'}</Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -4874,7 +4874,7 @@ export function ProfileScreen({
                         return (
                           <TouchableOpacity key={`rail-dedicated-${tab.key}`} style={[styles.navigationRailItem, selected && styles.navigationRailItemActive]} onPress={() => { setSelectedNavigationTabKey(tab.key); setNavigationRolesDropdownOpen(false); }} activeOpacity={0.85}>
                             <Ionicons name={iconName} size={20} color={selected ? palette.white : palette.red} />
-                            <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label || tab.label}</Text>
+                            <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label?.trim() || tab.label?.trim() || 'Seccion sin nombre'}</Text>
                             <Text style={[styles.navigationRailMeta, selected && styles.navigationRailTextActive]}>#{index + 1}</Text>
                           </TouchableOpacity>
                         );
@@ -4888,7 +4888,7 @@ export function ProfileScreen({
                             <Ionicons name={isIoniconName(selectedNavigationDraft.iconName) ? selectedNavigationDraft.iconName : 'help-circle-outline'} size={28} color={palette.red} />
                           </View>
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.navigationFocusTitle}>{selectedNavigationDraft.label || selectedNavigationTab.label}</Text>
+                            <Text numberOfLines={2} style={styles.navigationFocusTitle}>{selectedNavigationDraft.label?.trim() || selectedNavigationTab.label?.trim() || 'Seccion sin nombre'}</Text>
                             <Text style={styles.feedMeta}>Clave interna: {selectedNavigationTab.key}</Text>
                             <Text style={styles.feedMeta}>Orden actual: {selectedNavigationTab.sortOrder}</Text>
                           </View>
@@ -5398,14 +5398,14 @@ export function ProfileScreen({
                       </View>
                       {filteredMotivadorPeriods.length === 0 ? <Text style={styles.cardText}>No hay PM cargados para los filtros seleccionados.</Text> : null}
                       {filteredMotivadorPeriods.map((period) => (
-                        <View key={period.id} style={styles.adminListRow}>
+                        <View key={period.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                           <Ionicons name="flame-outline" size={20} color={palette.red} />
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.cardTitle}>PM {period.gender === 'femenino' ? 'Femenino' : 'Masculino'} {period.pm_number} - {period.province}</Text>
-                            <Text style={styles.cardText}>Fechas: {selectedDatesSummary(period.selected_dates?.map((date) => String(date).slice(0, 10)) ?? [period.starts_on, period.ends_on])}</Text>
-                            <Text style={styles.cardText}>Casa: {period.retreat_house}. Dirección: {period.address}</Text>
-                            <Text style={styles.cardText}>Apertura: {period.opening_time ?? 'Sin horario'} - Clausura: {period.closing_time ?? 'Sin horario'}</Text>
-                            <Text style={styles.cardText}>Estado: {period.status}. Última edición: {period.updated_by_name ?? 'Sin registro'}</Text>
+                            <Text numberOfLines={2} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>PM {period.gender === 'femenino' ? 'Femenino' : 'Masculino'} {period.pm_number || 'sin numero'} - {period.province?.trim() || 'Sin provincia'}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Fechas: {selectedDatesSummary(period.selected_dates?.map((date) => String(date).slice(0, 10)) ?? [period.starts_on, period.ends_on])}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Casa: {period.retreat_house?.trim() || 'Sin casa'}. Dirección: {period.address?.trim() || 'Sin direccion'}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Apertura: {period.opening_time ?? 'Sin horario'} - Clausura: {period.closing_time ?? 'Sin horario'}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Estado: {period.status}. Última edición: {period.updated_by_name ?? 'Sin registro'}</Text>
                             <ButtonGroup>
                               <AppButton label="Editar" icon="create-outline" variant="ghost" size="compact" onPress={() => editMotivadorPeriod(period)} />
                               <AppButton label={period.status === 'activo' ? 'Inhabilitar' : 'Habilitar'} icon={period.status === 'activo' ? 'pause-circle-outline' : 'checkmark-circle-outline'} variant="secondary" size="compact" onPress={() => updateMotivadorStatus(period.id, period.status === 'activo' ? 'inactivo' : 'activo')} />
@@ -5531,11 +5531,11 @@ export function ProfileScreen({
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Etiquetas cargadas</Text>
                       {provinceRoleLabels.map((item) => (
-                        <View key={item.id} style={styles.adminListRow}>
+                        <View key={item.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                           <Ionicons name={item.is_active ? 'pricetag-outline' : 'eye-off-outline'} size={20} color={palette.red} />
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{item.province} - {roleLabel(item.role_key as Role)}</Text>
-                            <Text style={styles.cardText}>{item.display_label}{item.is_active ? '' : ' (inactiva)'}</Text>
+                            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.province?.trim() || 'Sin provincia'} - {roleLabel(item.role_key as Role)}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.display_label?.trim() || 'Etiqueta sin nombre'}{item.is_active ? '' : ' (inactiva)'}</Text>
                           </View>
                         </View>
                       ))}
@@ -5605,11 +5605,11 @@ export function ProfileScreen({
                   <Text style={styles.cardEyebrow}>Alias guardados</Text>
                   {roleAliases.length === 0 ? <Text style={styles.cardText}>No hay alias cargados.</Text> : null}
                   {roleAliases.map((alias) => (
-                    <View key={alias.id} style={[styles.adminListRow, !alias.is_active && styles.lockedCard]}>
+                    <View key={alias.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark, !alias.is_active && styles.lockedCard]}>
                       <Ionicons name="copy-outline" size={20} color={palette.red} />
                       <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.adminQuickText}>{alias.display_label}</Text>
-                        <Text style={styles.cardText}>Base: {roleLabel(alias.base_role as Role)} - {alias.province ?? 'Global'} - {alias.is_active ? 'activo' : 'inactivo'}</Text>
+                        <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{alias.display_label?.trim() || 'Alias sin nombre'}</Text>
+                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Base: {roleLabel(alias.base_role as Role)} - {alias.province ?? 'Global'} - {alias.is_active ? 'activo' : 'inactivo'}</Text>
                       </View>
                       <TouchableOpacity style={styles.actionPill} onPress={() => toggleSavedRoleAlias(alias.id, !alias.is_active)}>
                         <Text style={styles.actionPillText}>{alias.is_active ? 'Desactivar' : 'Activar'}</Text>
@@ -5833,25 +5833,25 @@ export function ProfileScreen({
                         const canEditThisUser = canEditAdminUser(session, user);
                         return (
                           <View key={user.id}>
-                            <View style={[styles.innerNewsCard, !canEditThisUser && styles.lockedCard]}>
+                            <View style={[styles.innerNewsCard, isDark && styles.surfaceCardDark, !canEditThisUser && styles.lockedCard]}>
                               <View style={styles.adminUserHeader}>
                                 <View style={styles.adminUserAvatar}>
                                   {user.avatar_url ? <Image source={{ uri: user.avatar_url }} style={styles.adminUserAvatarImage} /> : <Ionicons name="person-outline" size={20} color={palette.red} />}
                                 </View>
                                 <View style={styles.adminUserHeaderText}>
-                                  <Text style={styles.cardTitle}>{user.full_name ?? 'Usuario sin nombre'}</Text>
-                                  <Text style={styles.cardText}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - {user.community_name ?? 'Sin comunidad'}</Text>
-                                  {user.subrole_key ? <Text style={styles.feedMeta}>Subrango: {subroleLabel(user.subrole_key, user.gender_preference ?? null)}</Text> : null}
-                                  {perseveranceLabel(user.perseverance_start_year) ? <Text style={styles.feedMeta}>{perseveranceLabel(user.perseverance_start_year)}</Text> : null}
-                                  {session.role === 'administrador' ? <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text> : null}
+                                  <Text numberOfLines={2} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{userListDisplayName(user)}</Text>
+                                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  {user.subrole_key ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Subrango: {subroleLabel(user.subrole_key, user.gender_preference ?? null)}</Text> : null}
+                                  {perseveranceLabel(user.perseverance_start_year) ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{perseveranceLabel(user.perseverance_start_year)}</Text> : null}
+                                  {session.role === 'administrador' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{user.email ?? 'Sin email'}</Text> : null}
                                 </View>
                               </View>
-                              {session.role === 'administrador' ? <Text style={styles.cardText}>Email: {user.email_confirmed_at ? 'confirmado' : 'sin confirmar'}</Text> : null}
+                              {session.role === 'administrador' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Email: {user.email_confirmed_at ? 'confirmado' : 'sin confirmar'}</Text> : null}
                               <TouchableOpacity
                                 style={styles.actionPill}
                                 onPress={() => openPublicProfile({
                                   id: user.id,
-                                  fullName: user.full_name ?? 'Usuario sin nombre',
+                                  fullName: userListDisplayName(user),
                                   role: (user.role || 'palestrista') as Role,
                                   province: user.province,
                                   communityName: user.community_name,
@@ -6052,7 +6052,7 @@ export function ProfileScreen({
                                           setAdminUserDisplayRoleLabel(alias.display_label);
                                           setAdminUserRoleAliasDropdownOpen(false);
                                         }}>
-                                          <Text style={styles.dropdownItemText}>{alias.display_label} ({roleLabel(alias.base_role as Role)})</Text>
+                                          <Text style={styles.dropdownItemText}>{alias.display_label?.trim() || 'Alias sin nombre'} ({roleLabel(alias.base_role as Role)})</Text>
                                         </TouchableOpacity>
                                       ))}
                                   </ScrollView>
@@ -6256,11 +6256,11 @@ export function ProfileScreen({
                     <Text style={styles.secondaryButtonText}>Cargar borradores</Text>
                   </TouchableOpacity>
                   {newsDrafts.map((draft) => (
-                    <View key={draft.id} style={styles.adminListRow}>
+                    <View key={draft.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                       <Ionicons name={draft.status === 'borrador' ? 'document-outline' : 'checkmark-circle-outline'} size={19} color={palette.red} />
                       <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.cardTitle}>{draft.title}</Text>
-                        <Text style={styles.cardText}>{draft.category} - {draft.status}{draft.is_featured ? ' - destacada' : ''}</Text>
+                        <Text numberOfLines={2} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{draft.title?.trim() || APP_MESSAGES.adminPanels.news.unnamedDraft}</Text>
+                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{draft.category} - {draft.status}{draft.is_featured ? ' - destacada' : ''}</Text>
                       </View>
                     </View>
                   ))}
@@ -6577,10 +6577,10 @@ export function ProfileScreen({
                       </View>
                       {qrActivityLists.length === 0 ? <Text style={styles.cardText}>No hay listas QR visibles para tu rango.</Text> : null}
                       {qrActivityLists.map((list) => (
-                        <TouchableOpacity key={list.id} style={[styles.qrActivityListRow, selectedQrActivityListId === list.id && styles.qrActivityListRowActive]} onPress={() => setSelectedQrActivityListId(selectedQrActivityListId === list.id ? '' : list.id)}>
+                        <TouchableOpacity key={list.id} style={[styles.qrActivityListRow, selectedQrActivityListId === list.id && styles.qrActivityListRowActive, isDark && styles.surfaceRowDark]} onPress={() => setSelectedQrActivityListId(selectedQrActivityListId === list.id ? '' : list.id)}>
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{list.title}</Text>
-                            <Text style={styles.cardText}>{list.province ?? 'Todas las provincias'} - {list.community_name ?? 'Todas las comunidades'}</Text>
+                            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{list.title?.trim() || APP_MESSAGES.adminPanels.qr.unnamedList}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{list.province ?? 'Todas las provincias'} - {list.community_name ?? 'Todas las comunidades'}</Text>
                           </View>
                           <View style={styles.inlineActions}>
                             <TouchableOpacity style={styles.actionPill} onPress={() => setSelectedQrActivityListId(list.id)}>
@@ -6597,7 +6597,7 @@ export function ProfileScreen({
                   {showQrActivityListsMenu && selectedQrActivityList ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>{selectedQrActivityList.province ?? 'Todas las provincias'} - {selectedQrActivityList.community_name ?? 'Todas las comunidades'}</Text>
-                      <Text style={styles.cardTitle}>{selectedQrActivityList.title}</Text>
+                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedQrActivityList.title?.trim() || APP_MESSAGES.adminPanels.qr.unnamedList}</Text>
                       <Text style={styles.cardEyebrow}>Editar lista</Text>
                       <TextInput style={styles.input} placeholder="Nombre de la lista" value={qrActivityEditTitle} onChangeText={setQrActivityEditTitle} placeholderTextColor={inputPlaceholderColor} />
                       <View style={styles.inlineActions}>
@@ -6702,10 +6702,10 @@ export function ProfileScreen({
                       </View>
                       <Text style={styles.cardEyebrow}>Miembros cargados ({qrActivityMembers.length})</Text>
                       {qrActivityMembers.map((member) => (
-                        <View key={member.id} style={styles.adminListRow}>
+                        <View key={member.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{userListDisplayName(member)}</Text>
-                            <Text style={styles.cardText}>{member.community_name ?? 'Sin comunidad'}</Text>
+                            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{userListDisplayName(member)}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{member.community_name ?? 'Sin comunidad'}</Text>
                           </View>
                           <TouchableOpacity style={styles.actionPill} onPress={() => removeUserFromQrActivity(member.user_id)}>
                             <Ionicons name="trash-outline" size={16} color={palette.red} />
@@ -6715,11 +6715,11 @@ export function ProfileScreen({
                       ))}
                       <Text style={styles.cardEyebrow}>Validados por QR ({qrActivityAttendance.length})</Text>
                       {qrActivityAttendance.map((item) => (
-                        <View key={item.id} style={styles.adminListRow}>
+                        <View key={item.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                           <Ionicons name="checkmark-circle-outline" size={20} color={palette.green} />
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{userListDisplayName(item)}</Text>
-                            <Text style={styles.cardText}>{item.community_name ?? 'Sin comunidad'} - {item.validated_at ? new Date(item.validated_at).toLocaleString('es-AR') : ''}</Text>
+                            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{userListDisplayName(item)}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.community_name ?? 'Sin comunidad'} - {item.validated_at ? new Date(item.validated_at).toLocaleString('es-AR') : ''}</Text>
                           </View>
                         </View>
                       ))}
@@ -6776,7 +6776,7 @@ export function ProfileScreen({
                         return (
                           <TouchableOpacity key={`preview-${tab.key}`} style={[styles.navPreviewItem, !draft.isVisible && styles.navPreviewItemHidden, selected && styles.navPreviewItemSelected]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
                             <Ionicons name={iconName} size={18} color={selected ? palette.white : draft.isVisible ? palette.red : palette.inkMuted} />
-                            <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label || tab.label}</Text>
+                            <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label?.trim() || tab.label?.trim() || 'Seccion sin nombre'}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -6791,7 +6791,7 @@ export function ProfileScreen({
                       return (
                         <TouchableOpacity key={`rail-${tab.key}`} style={[styles.navigationRailItem, selected && styles.navigationRailItemActive]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
                           <Ionicons name={iconName} size={20} color={selected ? palette.white : palette.red} />
-                          <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label || tab.label}</Text>
+                          <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label?.trim() || tab.label?.trim() || 'Seccion sin nombre'}</Text>
                           <Text style={[styles.navigationRailMeta, selected && styles.navigationRailTextActive]}>#{index + 1}</Text>
                         </TouchableOpacity>
                       );
@@ -6805,7 +6805,7 @@ export function ProfileScreen({
                           <Ionicons name={isIoniconName(selectedNavigationDraft.iconName) ? selectedNavigationDraft.iconName : 'help-circle-outline'} size={28} color={palette.red} />
                         </View>
                         <View style={styles.adminUserHeaderText}>
-                          <Text style={styles.navigationFocusTitle}>{selectedNavigationDraft.label || selectedNavigationTab.label}</Text>
+                          <Text numberOfLines={2} style={styles.navigationFocusTitle}>{selectedNavigationDraft.label?.trim() || selectedNavigationTab.label?.trim() || 'Seccion sin nombre'}</Text>
                           <Text style={styles.feedMeta}>Clave interna: {selectedNavigationTab.key}</Text>
                           <Text style={styles.feedMeta}>Orden actual: {selectedNavigationTab.sortOrder}</Text>
                         </View>

@@ -185,18 +185,19 @@ export function CommunityAdminPanel({
           <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
             {selectedAdminProvince.locations.map((item) => {
               const itemKey = item.id ?? item.name;
+              const itemName = item.name?.trim() || APP_MESSAGES.community.unnamedCommunity;
               const selected = adminCommunityId === itemKey;
               const isActive = !('isActive' in item) || Boolean(item.isActive);
               return (
                 <TouchableOpacity
                   key={itemKey}
                   accessibilityRole="button"
-                  accessibilityLabel={`Editar comunidad ${item.name}`}
-                  style={[styles.dropdownItem, isDark && styles.dropdownItemDark, selected && styles.communityChoiceActive]}
+                  accessibilityLabel={`Editar comunidad ${itemName}`}
+                  style={[styles.dropdownItem, styles.adminEditableRow, isDark && styles.dropdownItemDark, selected && styles.communityChoiceActive]}
                   onPress={() => onSelectCommunity(itemKey)}
                 >
                   <View style={styles.adminUserHeaderText}>
-                    <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark, selected && styles.filterChipTextActive]}>{item.name}</Text>
+                    <Text numberOfLines={2} style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark, selected && styles.filterChipTextActive]}>{itemName}</Text>
                     <Text style={[styles.feedMeta, isDark && styles.textDarkMuted, selected && styles.filterChipTextActive]}>{isActive ? 'Habilitada' : 'Deshabilitada'} · Editar</Text>
                   </View>
                   <Ionicons name="create-outline" size={18} color={selected ? palette.white : palette.red} />

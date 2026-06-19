@@ -231,6 +231,7 @@ export const APP_MESSAGES = {
     createCommunity: 'Crear comunidad',
     closeCreation: 'Cerrar creacion',
     communityNamePlaceholder: 'Nombre de comunidad',
+    unnamedCommunity: 'Comunidad sin nombre',
     optionalImageHelp: 'La imagen es opcional. Recomendamos 1200x800 px en proporcion 3:2.',
     existingCommunities: 'Comunidades existentes',
     locationTitle: 'Ubicacion',
@@ -559,6 +560,8 @@ export const APP_MESSAGES = {
       newMaterial: 'Nuevo material',
       saveMaterial: 'Guardar material',
       materialEmpty: 'Todavia no hay materiales cargados.',
+      unnamedDocument: 'Documento sin titulo',
+      unnamedMaterial: 'Material sin nombre',
       logoAdminOnly: 'Solo Administrador puede subir logos de documentos.',
       uploadingLogo: 'Subiendo logo...',
       logoUploaded: 'Logo cargado.',
@@ -591,6 +594,7 @@ export const APP_MESSAGES = {
       save: 'Guardar estacion',
       loadedStations: 'Estaciones cargadas',
       noStations: 'Todavia no hay estaciones cargadas.',
+      unnamedStation: 'Estacion sin titulo',
       visibleForAll: 'Si no seleccionas rangos, queda visible para todos.'
     },
     content: {
@@ -602,6 +606,7 @@ export const APP_MESSAGES = {
       fallbackTitle: 'Contenido base / fallback',
       visible: 'visible',
       hidden: 'oculto',
+      unnamedPage: 'Contenido sin titulo',
       titleAndBodyRequired: 'Completa titulo y texto antes de guardar el contenido.',
       saving: 'Guardando contenido...',
       saved: 'Contenido actualizado.'
@@ -615,6 +620,7 @@ export const APP_MESSAGES = {
       createdWithNotification: 'Noticia creada y notificacion preparada.',
       draftsLoaded: 'Borradores cargados.',
       draftsEmpty: 'No hay borradores guardados.',
+      unnamedDraft: 'Noticia sin titulo',
       cannotUploadImage: 'Tu rango no puede cargar imagenes de noticias.',
       uploadingImage: 'Subiendo imagen...',
       imageUploaded: 'Imagen cargada. La noticia se publica al tocar Publicar noticia.',
@@ -655,6 +661,7 @@ export const APP_MESSAGES = {
       validatingCredential: 'Validando credencial...',
       cannotCreateLists: 'Tu rango no puede crear listas QR.',
       listNameRequired: 'Completa el nombre de la lista.',
+      unnamedList: 'Lista QR sin nombre',
       usersRequired: 'Selecciona al menos un usuario para crear la lista.',
       listCreated: 'Lista QR creada.',
       listShared: 'Lista compartida.',
