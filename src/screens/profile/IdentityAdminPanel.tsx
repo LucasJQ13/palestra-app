@@ -55,6 +55,7 @@ export function IdentityAdminPanel({
       </View>
       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{copy.partnerTitle}</Text>
       <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{copy.partnerHelp}</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{copy.partnerFileHelp}</Text>
       <TextInput
         style={[styles.input, isDark && styles.inputDark]}
         placeholder={copy.partnerLogoPlaceholder}

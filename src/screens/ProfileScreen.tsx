@@ -9,7 +9,7 @@ import { SectionTitle } from '../components/SectionTitle';
 import { AppButton, ButtonGroup, IconButton } from '../components/ui';
 import { PasswordInput } from '../components/auth';
 import { communities, communityNews, materials, roleDefinitions } from '../data/content';
-import { AppAdminConfig } from '../lib/appConfig';
+import { AppAdminConfig, normalizeAdminConfig } from '../lib/appConfig';
 import { APP_MESSAGES, blockedProfileMessage, changeDone, communityDowngradesRole, friendlyUploadError, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError } from '../lib/appMessages';
 import { argentinaProvinceDefinitions, provinceDefinitionFor } from '../lib/argentinaProvinces';
 import { getMyProfileSession } from '../lib/authProfile';
@@ -25,7 +25,7 @@ import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, req
 import { permissionOptions } from '../lib/permissionLabels';
 import { rolePermissions } from '../lib/permissions';
 import { credentialDisplayName, displayRoleLabel, genderNarratives, homeGreetingName, perseveranceLabel, personalPmSummary, personalPmTypeLabel, roleLabel, roleLabelForProvince, roleShortLabel } from '../lib/profileDisplay';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MotivadorPeriodRecord, NewsDraftRecord, PendingProfile, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, PublicUserDirectoryRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createEmailConfirmationRequest, createEvent, createLeadershipChangeRequest, createNews, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppMaterials, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchPublicUserDirectory, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, issueMyCredentialQr, markPrayerRemovalNoticesSeen, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyCommunityDetails, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MotivadorPeriodRecord, NewsDraftRecord, PendingProfile, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, PublicUserDirectoryRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createEmailConfirmationRequest, createEvent, createLeadershipChangeRequest, createNews, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppMaterials, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchPublicUserDirectory, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, issueMyCredentialQr, markPrayerRemovalNoticesSeen, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyCommunityDetails, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { canAccessPublicQueries } from '../lib/queries/publicQueries';
 import { AppCommunity, PublicationComment, adminCommunitiesFetchOptions, archiveCommunityPublication, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchPublicationComments, reactToPublication, reportPublication, updateCommunityPublication, voteCommunityPoll } from '../lib/remoteData';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
@@ -33,7 +33,7 @@ import { AppRuntimeConfig, CatholicNewsSourceKey, saveAppRuntimeConfig } from '.
 import { canCreateOrAdministrateCommunities, canEditAdminUser, canEditStaticInstitutionalPage, canManageFormationPathAdmin, canManageGlobalInstagram, canManageMotivadorPanel, canManageNewsContent, canManagePublishedContent, canManageRequestsPanel, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from '../lib/sessionAccess';
 import { subroleLabel, subrolesForRole } from '../lib/subroles';
 import { supabase } from '../lib/supabase';
-import { uploadPickedImageToPublicUrl } from '../lib/uploads';
+import { PARTNER_BRANDING_BUCKET, PARTNER_LOGO_MAX_UPLOAD_BYTES, uploadPickedImageToPublicUrl } from '../lib/uploads';
 import { styles } from '../theme/appStyles';
 import { palette } from '../theme/palette';
 import { AppTheme, ThemeName } from '../theme/themes';
@@ -981,12 +981,24 @@ export function ProfileScreen({
       return;
     }
     setAuthMessage(`Guardando ${scope}...`);
-    const { error } = await saveAdminConfig(adminConfigDraft);
+    const requestedConfig = normalizeAdminConfig(adminConfigDraft);
+    const { error } = await saveAdminConfig(requestedConfig);
     if (error) {
       setAuthMessage(error.message);
       return;
     }
-    onAdminConfigChange(adminConfigDraft);
+    const persistedRecord = await fetchAdminConfig();
+    if (!persistedRecord) {
+      setAuthMessage(APP_MESSAGES.adminPanels.identity.saveVerificationFailed);
+      return;
+    }
+    const persistedConfig = normalizeAdminConfig(persistedRecord as Partial<AppAdminConfig>);
+    setAdminConfigDraft(persistedConfig);
+    onAdminConfigChange(persistedConfig);
+    if (scope === 'Identidad' && JSON.stringify(persistedConfig.identity) !== JSON.stringify(requestedConfig.identity)) {
+      setAuthMessage(APP_MESSAGES.adminPanels.identity.saveVerificationFailed);
+      return;
+    }
     setAuthMessage(changeDone(APP_MESSAGES.adminPanels.settings.sectionSaved(scope)));
   }
 
@@ -3296,11 +3308,16 @@ export function ProfileScreen({
     if (result.canceled || !result.assets[0]) {
       return;
     }
+    const asset = result.assets[0];
+    if (asset.fileSize && asset.fileSize > PARTNER_LOGO_MAX_UPLOAD_BYTES) {
+      setAuthMessage(APP_MESSAGES.adminPanels.identity.partnerFileTooLarge);
+      return;
+    }
     setIdentityPartnerLogoUploading(true);
     try {
-      const publicUrl = await uploadPickedImageToPublicUrl(result.assets[0], 'identity/partner-logo');
+      const publicUrl = await uploadPickedImageToPublicUrl(asset, 'partner-logo', PARTNER_BRANDING_BUCKET);
       updateAdminConfigSection('identity', { partnerLogoUrl: publicUrl, partnerLogoVisible: true });
-      setAuthMessage('Logo listo. Guarda Identidad para publicarlo.');
+      setAuthMessage(APP_MESSAGES.adminPanels.identity.partnerReady);
     } catch (error) {
       setAuthMessage(friendlyUploadError(error instanceof Error ? error.message : 'No se pudo subir el logo.'));
     } finally {
