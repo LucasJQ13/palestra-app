@@ -10,6 +10,7 @@ import {
   fetchCommunityAdvisorAssignments,
   removeCommunityAdvisor
 } from '../../lib/community/advisors';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { Session } from '../../types/auth';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
@@ -110,7 +111,7 @@ export function CommunityAdvisorsManager({
       onFeedback(error.message);
       return;
     }
-    onFeedback('Asesor asignado a la comunidad.');
+    onFeedback(APP_MESSAGES.community.advisorAssigned);
     await refreshAssignments();
     onAssignmentsChanged();
   }
@@ -126,7 +127,7 @@ export function CommunityAdvisorsManager({
       onFeedback(error.message);
       return;
     }
-    onFeedback('Asignacion de asesor eliminada.');
+    onFeedback(APP_MESSAGES.community.advisorRemoved);
     await refreshAssignments();
     onAssignmentsChanged();
   }
@@ -137,9 +138,9 @@ export function CommunityAdvisorsManager({
 
   return (
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Asesores de comunidad</Text>
+      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.advisorTitle}</Text>
       <Text style={[styles.cardText, isDark && styles.textDarkBody]}>
-        Vincula asesores oficiales con una comunidad y administra sus reemplazos.
+        {APP_MESSAGES.community.advisorHelp}
       </Text>
 
       {communityGroups.length > 1 ? (
@@ -181,7 +182,7 @@ export function CommunityAdvisorsManager({
 
       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Asesores asignados</Text>
       {assignments.length === 0 ? (
-        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay asesores vinculados a esta comunidad.</Text>
+        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.advisorEmpty}</Text>
       ) : null}
       {assignments.map((assignment) => (
         <View key={assignment.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>

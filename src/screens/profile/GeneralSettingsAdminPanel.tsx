@@ -5,6 +5,7 @@ import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig } from '../../lib/appConfig';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { AppButton } from '../../components/ui';
 
 const settingToggles: Array<{ key: keyof AppAdminConfig['settings']; label: string }> = [
@@ -27,11 +28,11 @@ export function GeneralSettingsAdminPanel({
 }) {
   return (
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Configuración general</Text>
-      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Base para mantenimiento, aviso global, permisos, módulos activos, foro y chat.</Text>
+      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.adminPanels.settings.title}</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.settings.help}</Text>
       <TextInput
         style={[styles.input, styles.textArea, isDark && styles.inputDark]}
-        placeholder="Mensaje visible durante mantenimiento"
+        placeholder={APP_MESSAGES.adminPanels.settings.maintenancePlaceholder}
         value={config.settings.globalMessage}
         onChangeText={(value) => onPatch({ globalMessage: value })}
         multiline
@@ -46,9 +47,9 @@ export function GeneralSettingsAdminPanel({
           </TouchableOpacity>
         );
       })}
-      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Orden de navegación</Text>
-      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>El orden y visibilidad se administran desde Contenido.</Text>
-      <AppButton label="Guardar configuracion" icon="save-outline" onPress={onSave} />
+      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.settings.navigationOrder}</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.settings.navigationOrderHelp}</Text>
+      <AppButton label={APP_MESSAGES.adminPanels.settings.save} icon="save-outline" onPress={onSave} />
     </View>
   );
 }

@@ -6,6 +6,7 @@ import { CommunityMember, ProvinceRoleLabelRecord } from '../../lib/profiles';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleLabelForProvince } from '../../lib/profileDisplay';
 import { isCommunityVisibleReferenceRole } from '../../lib/community/roles';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { palette } from '../../theme/palette';
 import { IconButton } from '../../components/ui';
 import { communityStyles } from './communityStyles';
@@ -40,15 +41,15 @@ export function CommunityLeaders({
   return (
     <View style={communityStyles.section}>
       <View>
-        <Text style={[communityStyles.sectionTitle, isDark && communityStyles.sectionTitleDark]}>Encargados y acompañamiento</Text>
+        <Text style={[communityStyles.sectionTitle, isDark && communityStyles.sectionTitleDark]}>{APP_MESSAGES.community.leadersTitle}</Text>
         <Text style={[communityStyles.sectionHint, isDark && communityStyles.sectionHintDark]}>
-          Animación, coordinación y asesoría vinculadas a la comunidad.
+          {APP_MESSAGES.community.leadersHint}
         </Text>
       </View>
       {leaders.length === 0 ? (
         <View style={communityStyles.emptyState}>
           <Ionicons name="people-outline" size={26} color={palette.red} />
-          <Text style={[communityStyles.emptyText, isDark && communityStyles.emptyTextDark]}>No hay encargados cargados por el momento.</Text>
+          <Text style={[communityStyles.emptyText, isDark && communityStyles.emptyTextDark]}>{APP_MESSAGES.community.leadersEmpty}</Text>
         </View>
       ) : (
         <View style={communityStyles.peopleGrid}>

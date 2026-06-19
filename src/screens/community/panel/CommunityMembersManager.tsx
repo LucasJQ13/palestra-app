@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CommunityMember } from '../../../lib/profiles';
+import { APP_MESSAGES } from '../../../lib/appMessages';
 import { communityPanelStyles as styles } from './communityPanelStyles';
 
 export function CommunityMembersManager({
@@ -15,10 +16,10 @@ export function CommunityMembersManager({
 }) {
   return (
     <View style={[styles.panel, isDark && styles.panelDark]}>
-      <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>Miembros</Text>
-      <Text style={[styles.body, isDark && styles.bodyDark]}>{members.length} personas vinculadas a la comunidad.</Text>
+      <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>{APP_MESSAGES.community.membersTitle}</Text>
+      <Text style={[styles.body, isDark && styles.bodyDark]}>{APP_MESSAGES.community.membersCount(members.length)}</Text>
       {members.length === 0 ? (
-        <Text style={styles.empty}>No hay miembros cargados.</Text>
+        <Text style={styles.empty}>{APP_MESSAGES.community.membersEmpty}</Text>
       ) : (
         <ScrollView style={styles.membersList} nestedScrollEnabled>
           {members.map((member) => (

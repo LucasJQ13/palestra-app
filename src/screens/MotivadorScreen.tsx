@@ -7,6 +7,7 @@ import { AppContentBlock } from '../lib/profiles';
 import { PageEditorProps } from '../lib/navigationConstants';
 import { AppAdminConfig } from '../lib/appConfig';
 import { groupMotivadorFeedItems, AgendaItem } from '../lib/agendaHelpers';
+import { APP_MESSAGES } from '../lib/appMessages';
 import { Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
 import { SectionTitle } from '../components/SectionTitle';
@@ -47,8 +48,8 @@ export function MotivadorScreen({ session, title, content, refreshKey, editor, a
       <SectionTitle title="Agenda de PM" />
       {items.length === 0 ? (
         <View style={[styles.card, isDark && styles.surfaceCardDark]}>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>No hay PM activos</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Cuando se carguen PM reales y activos en Supabase, apareceran aca.</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.home.motivadorEmptyTitle}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.home.motivadorEmptyText}</Text>
         </View>
       ) : null}
       {items.map((item, index) => (

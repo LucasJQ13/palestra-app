@@ -3,7 +3,8 @@ import { Image, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } f
 import { AppButton, ButtonGroup } from '../../../components/ui';
 import { FullScreenEditor } from '../../../components/layout';
 import { CommunityGroupType, communityGroupLabel, communitySectionOptions } from '../../../lib/communitySections';
-import { COMMUNITY_IMAGE_ASPECT_RATIO, COMMUNITY_IMAGE_RECOMMENDATION, inputPlaceholderColor } from '../../../lib/constants';
+import { COMMUNITY_IMAGE_ASPECT_RATIO, inputPlaceholderColor } from '../../../lib/constants';
+import { APP_MESSAGES } from '../../../lib/appMessages';
 import { AppCommunityLocation } from '../../../lib/remoteData';
 import { styles } from '../../../theme/appStyles';
 import { useAppTheme } from '../../../theme/ThemeContext';
@@ -99,7 +100,7 @@ export function CommunityEditorFullScreen({
             onPress={onCancel}
           />
           <AppButton
-            label="Guardar comunidad"
+            label={APP_MESSAGES.community.saveCommunity}
             icon="save-outline"
             loading={imageUploading}
             style={editorStyles.footerButton}
@@ -146,7 +147,7 @@ export function CommunityEditorFullScreen({
 
       <View style={editorStyles.section}>
         <Text style={[editorStyles.sectionTitle, { color: theme.colors.text }]}>Ubicación</Text>
-        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Cargar coordenadas habilita Buscar Comunidad Cercana. Podés copiarlas desde Google Maps.</Text>
+        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.coordinatesHelp}</Text>
         <TextInput
           style={[styles.input, isDark && styles.inputDark]}
           placeholder="Latitud. Ej: -31.4167"
@@ -185,11 +186,11 @@ export function CommunityEditorFullScreen({
           multiline
           placeholderTextColor={inputPlaceholderColor}
         />
-        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Imagen de comunidad</Text>
-        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Imagen recomendada: {COMMUNITY_IMAGE_RECOMMENDATION}. La app conserva esa proporción antes de guardar.</Text>
+        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.imageTitle}</Text>
+        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.imageHelp}</Text>
         {imagePreview ? <Image source={{ uri: imagePreview }} style={editorStyles.image} resizeMode="cover" /> : null}
         <AppButton label={imagePreview ? 'Cambiar imagen' : 'Subir imagen'} icon="image-outline" variant="secondary" onPress={onPickImage} />
-        {imageAsset ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Vista previa lista. Guardá la comunidad para subirla y asociarla.</Text> : null}
+        {imageAsset ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.imagePreviewReady}</Text> : null}
       </View>
 
       {canAdministrate && communityId ? (

@@ -5,6 +5,7 @@ import { AppCommunity } from '../../lib/remoteData';
 import { CommunityGroupType, communitySectionOptions, resolveCommunitySectionVisibility } from '../../lib/communitySections';
 import { Role } from '../../types/auth';
 import { inputPlaceholderColor } from '../../lib/constants';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { AppButton } from '../../components/ui';
@@ -103,8 +104,8 @@ export function CommunityAdminPanel({
 
   return (
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Gestionar comunidades</Text>
-      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Crear, editar, habilitar, deshabilitar o archivar comunidades segun tu jurisdiccion.</Text>
+      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.adminTitle}</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.adminHelp}</Text>
       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Provincia</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
         {manageableCommunities.map((item) => (
@@ -117,18 +118,18 @@ export function CommunityAdminPanel({
           </TouchableOpacity>
         ))}
       </ScrollView>
-      {manageableCommunities.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tu rango no tiene comunidades editables.</Text> : null}
+      {manageableCommunities.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.adminNoEditable}</Text> : null}
       {sessionRole === 'administrador' && selectedAdminProvince ? (
         <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Subsecciones visibles</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Activar o desactivar secciones para {selectedAdminProvince.province}.</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.visibleSubsections}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.visibleSubsectionsHelp(selectedAdminProvince.province)}</Text>
           {communitySectionOptions.map((item) => {
             const visibility = resolveCommunitySectionVisibility(selectedAdminProvince.province, selectedAdminProvince.sectionVisibility);
             return (
               <View key={item.key} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                 <View style={styles.adminUserHeaderText}>
                   <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.label}</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{visibility[item.key] ? 'Visible en Comunidades' : 'Oculta para usuarios'}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{visibility[item.key] ? APP_MESSAGES.community.visibleInCommunities : APP_MESSAGES.community.hiddenForUsers}</Text>
                 </View>
                 <Switch
                   value={visibility[item.key]}
@@ -142,12 +143,12 @@ export function CommunityAdminPanel({
         </View>
       ) : null}
       {canAdministrateCommunities && selectedAdminProvince ? (
-        <AppButton label={showAdminCommunityCreate ? 'Cerrar creacion' : 'Crear Comunidad'} icon={showAdminCommunityCreate ? 'chevron-up-outline' : 'add-circle-outline'} onPress={onToggleCreateCommunity} />
+        <AppButton label={showAdminCommunityCreate ? APP_MESSAGES.community.closeCreation : APP_MESSAGES.community.createCommunity} icon={showAdminCommunityCreate ? 'chevron-up-outline' : 'add-circle-outline'} onPress={onToggleCreateCommunity} />
       ) : null}
       {canAdministrateCommunities && selectedAdminProvince && showAdminCommunityCreate ? (
         <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Crear comunidad</Text>
-          <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre de comunidad" value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { onResetSelectedCommunity(); setAdminCommunityName(value); }}  placeholderTextColor={inputPlaceholderColor} />
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.createCommunity}</Text>
+          <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder={APP_MESSAGES.community.communityNamePlaceholder} value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { onResetSelectedCommunity(); setAdminCommunityName(value); }}  placeholderTextColor={inputPlaceholderColor} />
           <View style={styles.filterRow}>
             {communitySectionOptions.map((item) => (
               <TouchableOpacity key={item.key} style={[styles.filterChip, isDark && styles.surfaceRowDark, adminCommunityGroupType === item.key && styles.filterChipActive]} onPress={() => setAdminCommunityGroupType(item.key)}>
@@ -169,18 +170,18 @@ export function CommunityAdminPanel({
           </View>
           <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="descripcion" value={adminCommunityId ? '' : adminCommunityDescription} onChangeText={(value) => { onResetSelectedCommunity(); setAdminCommunityDescription(value); }} multiline  placeholderTextColor={inputPlaceholderColor} />
           <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Imagen</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Opcional. Recomendamos 1200 × 800 px (proporción 3:2). Podés guardar la comunidad sin imagen.</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.optionalImageHelp}</Text>
           {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
           <AppButton label={adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'} icon="image-outline" variant="secondary" onPress={onPickImage} />
           <TouchableOpacity style={[styles.filterChip, adminCommunityIsActive && styles.filterChipActive]} onPress={() => setAdminCommunityIsActive(!adminCommunityIsActive)}>
             <Text style={[styles.filterChipText, adminCommunityIsActive && styles.filterChipTextActive]}>{adminCommunityIsActive ? 'Activa' : 'Inactiva'}</Text>
           </TouchableOpacity>
-          <AppButton label="Crear comunidad" icon="save-outline" loading={adminCommunityImageUploading} onPress={onCreateCommunity} />
+          <AppButton label={APP_MESSAGES.community.createCommunity} icon="save-outline" loading={adminCommunityImageUploading} onPress={onCreateCommunity} />
         </View>
       ) : null}
       {selectedAdminProvince ? (
         <>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Comunidades existentes</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.existingCommunities}</Text>
           <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
             {selectedAdminProvince.locations.map((item) => {
               const itemKey = item.id ?? item.name;

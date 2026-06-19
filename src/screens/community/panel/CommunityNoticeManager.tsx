@@ -4,6 +4,7 @@ import { CommunityNoticeDraft } from '../../../lib/community/notices';
 import { CommunityNoticePreview } from '../CommunityNoticesPreview';
 import { CommunityNoticeCard } from '../notices/CommunityNoticeCard';
 import { CommunityNoticeEditor } from '../notices/CommunityNoticeEditor';
+import { APP_MESSAGES } from '../../../lib/appMessages';
 import { communityPanelStyles as styles } from './communityPanelStyles';
 
 export function CommunityNoticeManager({
@@ -43,22 +44,22 @@ export function CommunityNoticeManager({
 }) {
   return (
     <View style={[styles.panel, isDark && styles.panelDark]}>
-      <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>Nuevo aviso comunitario</Text>
+      <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>{APP_MESSAGES.community.noticePublishTitle}</Text>
       <Text style={[styles.body, isDark && styles.bodyDark]}>
-        Publicá un comunicado oficial. Los miembros podrán leerlo, pero no responderlo.
+        {APP_MESSAGES.community.noticePublishHelp}
       </Text>
       <CommunityNoticeEditor
         value={draft}
         isDark={isDark}
-        submitLabel="Publicar aviso"
+        submitLabel={APP_MESSAGES.community.noticePublishButton}
         onChange={onDraftChange}
         onSubmit={onPublish}
       />
       {canNotify ? (
         <View style={styles.memberRow}>
           <View style={styles.memberInfo}>
-            <Text style={[styles.noticeTitle, isDark && styles.titleDark]}>Notificar a miembros</Text>
-            <Text style={[styles.body, isDark && styles.bodyDark]}>Además de publicar, genera una notificación para la comunidad.</Text>
+            <Text style={[styles.noticeTitle, isDark && styles.titleDark]}>{APP_MESSAGES.community.noticeNotifyTitle}</Text>
+            <Text style={[styles.body, isDark && styles.bodyDark]}>{APP_MESSAGES.community.noticeNotifyHelp}</Text>
           </View>
           <Switch value={notify} onValueChange={onNotifyChange} />
         </View>
@@ -66,14 +67,14 @@ export function CommunityNoticeManager({
 
       {notices.length ? (
         <>
-          <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>Avisos publicados</Text>
+          <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>{APP_MESSAGES.community.noticePublishedTitle}</Text>
           {notices.map((notice) => (
             <View key={notice.id || notice.title} style={styles.notice}>
               {editingId === notice.id ? (
                 <CommunityNoticeEditor
                   value={editingDraft}
                   isDark={isDark}
-                  submitLabel="Guardar cambios"
+                  submitLabel={APP_MESSAGES.community.noticeSaveChanges}
                   onChange={onEditingDraftChange}
                   onSubmit={onSaveEdit}
                   onCancel={onCancelEdit}

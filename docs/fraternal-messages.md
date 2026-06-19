@@ -1,69 +1,33 @@
-# Mensajes fraternos
+# Sistema central de copy fraterno
 
-La base reutilizable vive en `src/lib/fraternalMessages.ts`. Su propósito es mantener una voz breve y consistente sin repetir condicionales de género en cada pantalla.
+El modulo principal es `src/lib/appMessages.ts`. Su objetivo es evitar frases largas duplicadas y mantener tres tonos claros:
 
-## Narrativa
+- `functional`: errores, permisos y acciones criticas.
+- `fraternal`: confirmaciones frecuentes y mensajes breves de acompanamiento.
+- `pastoral`: bienvenida, perfil pendiente, comunidad y momentos sensibles.
 
-El módulo usa `Session['genderPreference']`, la misma preferencia que ya alimenta saludos y nombres de roles:
-
-- `male`: hermano y formas masculinas.
-- `female`: hermana y formas femeninas.
-- `null` o `undefined`: redacción neutral, sin inferir género ni usar barras como “bienvenido/a”.
-
-Las funciones aceptan una sesión, un objeto con `genderPreference` o la preferencia directamente.
+## Helpers principales
 
 ```ts
-fraternalMessages.approvedWelcome(session);
-fraternalMessages.registrationReceived(profile.genderPreference);
-fraternalMessages.inboxEmpty();
+fraternalTreatment(session.genderPreference);
+fraternalWelcomeMessage(session, 'pastoral');
+accountStatusMessage(session.status, session.genderPreference, 'fraternal');
+pendingProfileMessage(session.genderPreference, 'pastoral');
+blockedProfileMessage(session.genderPreference, 'functional');
+emptyStateMessage('community', session.genderPreference, 'fraternal');
+accessRequiredMessage('qr', session.genderPreference, 'functional');
+actionDoneMessage('Perfil guardado', session.genderPreference, 'fraternal');
 ```
 
-Para un caso nuevo que necesite narrativa, se puede reutilizar el selector de variantes:
+## Ejemplos de uso
 
 ```ts
-narrativeMessage(session, {
-  male: 'Te esperamos, hermano.',
-  female: 'Te esperamos, hermana.',
-  neutral: 'Te esperamos.'
-});
+setAuthMessage(APP_MESSAGES.auth.invalidEmail);
+setAuthMessage(blockedProfileMessage(session.genderPreference, 'pastoral'));
+setMessage(emptyStateMessage('mailbox', session.genderPreference, 'functional'));
+setStatus(actionDoneMessage('Cambios guardados', session.genderPreference, 'fraternal'));
 ```
 
-## Catálogo inicial
+## Regla practica
 
-| Función | Caso |
-| --- | --- |
-| `loginWelcome` | Bienvenida neutral antes de conocer la narrativa. |
-| `approvedWelcome` | Bienvenida después de la aprobación del perfil. |
-| `approvalConfirmed` | Confirmación para quien aprueba un perfil. |
-| `profilePending` | Perfil todavía en revisión. |
-| `profilePendingTitle` | Título breve y neutral para el estado pendiente. |
-| `profileBlocked` | Acceso pausado con orientación para pedir ayuda. |
-| `registrationReceived` | Registro recibido y confirmación de correo pendiente. |
-| `mailConfirmed` | Correo confirmado. |
-| `mailConfirmationFailed` | Enlace de confirmación inválido o vencido. |
-| `privateAccessRequired` | Intento de entrar a un espacio privado; acepta una acción breve opcional. |
-| `communityEmpty` | Comunidad sin novedades publicadas. |
-| `inboxEmpty` | Buzón sin conversaciones. |
-| `pastoralSupport` | Acompañamiento breve en momentos sensibles. |
-
-## Reglas de uso
-
-- Usar narrativa solo cuando la preferencia esté disponible; el fallback siempre debe ser neutral.
-- Reservar hermano/hermana para bienvenida, aprobación, acompañamiento y oración.
-- Mantener fuera de este catálogo los errores técnicos, límites de archivo y estados de seguridad que necesitan precisión específica.
-- No concatenar frases largas alrededor del resultado. Cada mensaje debe funcionar por sí mismo.
-- Agregar al catálogo únicamente textos compartidos o sensibles a narrativa. Las etiquetas exclusivas de una pantalla pueden permanecer junto a esa pantalla.
-
-## Pilotos implementados
-
-- Cuenta bloqueada en `AuthFlow`: usa `profileBlocked` con la sesión recuperada.
-- Registro recibido en `AuthFlow`: usa `registrationReceived` con la narrativa elegida en el registro.
-
-## Adopción de prioridad alta
-
-- Login y confirmación de correo.
-- Perfil pendiente, bloqueado y aprobación administrativa.
-- Accesos privados de Intenciones y Foro.
-- Estados vacíos de avisos comunitarios y Buzón.
-
-El resto del catálogo queda listo para adopción gradual según el plan de `docs/ux-copy-audit.md`; esta issue no realiza una reescritura masiva.
+Si el texto se usa en mas de una pantalla, debe vivir en `APP_MESSAGES` o en un helper de este modulo. Si el texto depende de genero, estado de cuenta o tono pastoral, debe pasar por un helper y no escribirse directo en el componente.

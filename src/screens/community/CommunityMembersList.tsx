@@ -5,6 +5,7 @@ import { CommunityMember, ProvinceRoleLabelRecord } from '../../lib/profiles';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { Role } from '../../types/auth';
 import { roleLabelForProvince } from '../../lib/profileDisplay';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { palette } from '../../theme/palette';
 import { AppButton, IconButton } from '../../components/ui';
 import { communityStyles } from './communityStyles';
@@ -34,11 +35,11 @@ export function CommunityMembersList({
     <View style={communityStyles.section}>
       <View style={communityStyles.sectionHeader}>
         <View>
-          <Text style={[communityStyles.sectionTitle, isDark && communityStyles.sectionTitleDark]}>Miembros</Text>
-          <Text style={[communityStyles.sectionHint, isDark && communityStyles.sectionHintDark]}>{members.length} integrante/s</Text>
+          <Text style={[communityStyles.sectionTitle, isDark && communityStyles.sectionTitleDark]}>{APP_MESSAGES.community.membersTitle}</Text>
+          <Text style={[communityStyles.sectionHint, isDark && communityStyles.sectionHintDark]}>{APP_MESSAGES.community.membersCount(members.length)}</Text>
         </View>
         <AppButton
-          label={open ? 'Ocultar lista' : 'Ver miembros'}
+          label={open ? APP_MESSAGES.community.membersHide : APP_MESSAGES.community.membersShow}
           icon={open ? 'chevron-up-outline' : 'people-outline'}
           variant="secondary"
           size="compact"
@@ -68,7 +69,7 @@ export function CommunityMembersList({
                 </View>
                 <View style={communityStyles.personInfo}>
                   <Text numberOfLines={1} style={[communityStyles.personName, isDark && communityStyles.personNameDark]}>{name}</Text>
-                  {member.nickname ? <Text style={[communityStyles.personRole, isDark && communityStyles.personRoleDark]}>“{member.nickname}”</Text> : null}
+                  {member.nickname ? <Text style={[communityStyles.personRole, isDark && communityStyles.personRoleDark]}>"{member.nickname}"</Text> : null}
                   <Text numberOfLines={1} style={[communityStyles.personRole, isDark && communityStyles.personRoleDark]}>{role}</Text>
                 </View>
                 {canMessageMembers && member.id !== viewerId ? (

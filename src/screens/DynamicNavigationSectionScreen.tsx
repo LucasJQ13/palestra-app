@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppContentBlock } from '../lib/profiles';
 import { AppTabDisplay, PageEditorProps, defaultTabByKey } from '../lib/navigationConstants';
 import { splitConfigValue, tabLabelFromKey } from '../lib/contentBlocks';
+import { APP_MESSAGES } from '../lib/appMessages';
 import { normalizeExternalUrl } from '../lib/urls';
 import { Session } from '../types/auth';
 import { TabKey } from '../types/appUi';
@@ -58,7 +59,7 @@ export function DynamicNavigationSectionScreen({ session, tab, title, content, e
             </TouchableOpacity>
           );
         })}
-        {links.length === 0 ? <Text style={styles.cardText}>No hay enlaces cargados.</Text> : null}
+        {links.length === 0 ? <Text style={styles.cardText}>{APP_MESSAGES.home.linksEmpty}</Text> : null}
       </View>
     );
   }

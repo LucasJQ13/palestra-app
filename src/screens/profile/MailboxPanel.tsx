@@ -10,7 +10,7 @@ import { Role, Session } from '../../types/auth';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleRank, visibleHierarchyFor } from '../../lib/roles';
 import { roleLabel, roleLabelForProvince } from '../../lib/profileDisplay';
-import { fraternalMessages } from '../../lib/fraternalMessages';
+import { emptyStateMessage } from '../../lib/appMessages';
 import { SectionTitle } from '../../components/SectionTitle';
 import { AppButton, ButtonGroup, IconButton, TabButton } from '../../components/ui';
 
@@ -535,7 +535,7 @@ export function MailboxPanel({
 
       {!selectedConversation && conversations.length === 0 ? (
         <View style={[styles.card, isDark && styles.surfaceRowDark]}>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{fraternalMessages.inboxEmpty()}</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{emptyStateMessage('mailbox', session.genderPreference, 'pastoral')}</Text>
         </View>
       ) : null}
 

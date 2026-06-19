@@ -121,28 +121,28 @@ export function homeGreeting(session: Session | null, homeConfig: AppAdminConfig
   const name = homeGreetingName(session);
   const role = roleLabel(session.role, session.genderPreference);
   if (session.genderPreference === 'male') {
-    const fallback = `Bienvenido hno. en Cristo ${name}, Oh Bella Ciao!`;
+    const fallback = `Bienvenido hermano ${name}. Caminemos juntos en Cristo.`;
     return renderGreetingTemplate(homeConfig.greetingTemplateMale, {
       nombre: name,
-      tratamiento: 'hno.',
+      tratamiento: 'hermano',
       genero_bienvenida: 'Bienvenido',
       rango: role
     }, fallback);
   }
   if (session.genderPreference === 'female') {
-    const fallback = `Bienvenida hna. en Cristo ${name}, Oh Bella Ciao!`;
+    const fallback = `Bienvenida hermana ${name}. Caminemos juntas en Cristo.`;
     return renderGreetingTemplate(homeConfig.greetingTemplateFemale, {
       nombre: name,
-      tratamiento: 'hna.',
+      tratamiento: 'hermana',
       genero_bienvenida: 'Bienvenida',
       rango: role
     }, fallback);
   }
-  const fallback = `Te damos la bienvenida a Palestra, ${name}. Oh Bella Ciao!`;
+  const fallback = `Bienvenido/a ${name}. Caminemos juntos en Cristo.`;
   return renderGreetingTemplate(homeConfig.greetingTemplateNeutral, {
     nombre: name,
-    tratamiento: 'hno./hna.',
-    genero_bienvenida: 'Te damos la bienvenida',
+    tratamiento: 'hermano/a',
+    genero_bienvenida: 'Bienvenido/a',
     rango: role
   }, fallback);
 }

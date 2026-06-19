@@ -5,7 +5,7 @@ import { Role } from '../../types/auth';
 import { ProvinceRoleLabelRecord } from '../../lib/profiles';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleLabelForProvince } from '../../lib/profileDisplay';
-import { fraternalMessages } from '../../lib/fraternalMessages';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { palette } from '../../theme/palette';
 import { communityStyles } from './communityStyles';
 import { CommunityNoticeCard } from './notices/CommunityNoticeCard';
@@ -52,13 +52,13 @@ export function CommunityNoticesPreview({
   return (
     <View style={communityStyles.section}>
       <View>
-        <Text style={[communityStyles.sectionTitle, isDark && communityStyles.sectionTitleDark]}>Avisos comunitarios</Text>
-        <Text style={[communityStyles.sectionHint, isDark && communityStyles.sectionHintDark]}>Comunicados oficiales de tu comunidad.</Text>
+        <Text style={[communityStyles.sectionTitle, isDark && communityStyles.sectionTitleDark]}>{APP_MESSAGES.community.noticesTitle}</Text>
+        <Text style={[communityStyles.sectionHint, isDark && communityStyles.sectionHintDark]}>{APP_MESSAGES.community.noticesHint}</Text>
       </View>
       {notices.length === 0 ? (
         <View style={communityStyles.emptyState}>
           <Ionicons name="megaphone-outline" size={26} color={palette.red} />
-          <Text style={[communityStyles.emptyText, isDark && communityStyles.emptyTextDark]}>{fraternalMessages.communityEmpty()}</Text>
+          <Text style={[communityStyles.emptyText, isDark && communityStyles.emptyTextDark]}>{APP_MESSAGES.community.noticesEmpty}</Text>
         </View>
       ) : (
         <View style={communityStyles.noticeList}>

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppButton, ButtonGroup, TabButton } from '../../../components/ui';
 import { inputPlaceholderColor } from '../../../lib/constants';
 import { CommunityNoticeBodyFormat, CommunityNoticeDraft } from '../../../lib/community/notices';
+import { APP_MESSAGES } from '../../../lib/appMessages';
 import { communityPanelStyles as styles } from '../panel/communityPanelStyles';
 
 const formatOptions: Array<{ value: CommunityNoticeBodyFormat; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
@@ -52,7 +53,7 @@ export function CommunityNoticeEditor({
         style={[styles.input, isDark && styles.inputDark]}
         value={value.title}
         onChangeText={(title) => onChange({ ...value, title })}
-        placeholder="Título del aviso"
+        placeholder={APP_MESSAGES.community.noticeTitlePlaceholder}
         placeholderTextColor={inputPlaceholderColor}
         maxLength={120}
       />
@@ -60,7 +61,7 @@ export function CommunityNoticeEditor({
         style={[styles.input, isDark && styles.inputDark]}
         value={value.subtitle}
         onChangeText={(subtitle) => onChange({ ...value, subtitle })}
-        placeholder="Subtítulo opcional"
+        placeholder={APP_MESSAGES.community.noticeSubtitlePlaceholder}
         placeholderTextColor={inputPlaceholderColor}
         maxLength={160}
       />
@@ -74,7 +75,7 @@ export function CommunityNoticeEditor({
         ]}
         value={value.body}
         onChangeText={(body) => onChange({ ...value, body })}
-        placeholder="Comunicado para la comunidad"
+        placeholder={APP_MESSAGES.community.noticeBodyPlaceholder}
         placeholderTextColor={inputPlaceholderColor}
         multiline
         maxLength={4000}
@@ -117,7 +118,7 @@ export function CommunityNoticeEditor({
         style={[styles.input, isDark && styles.inputDark]}
         value={value.imageUrl}
         onChangeText={(imageUrl) => onChange({ ...value, imageUrl, imageAsset: null })}
-        placeholder="O pegá un enlace https:// de imagen"
+        placeholder={APP_MESSAGES.community.noticeImageUrlPlaceholder}
         placeholderTextColor={inputPlaceholderColor}
         autoCapitalize="none"
       />
@@ -127,7 +128,7 @@ export function CommunityNoticeEditor({
         style={[styles.input, isDark && styles.inputDark]}
         value={value.linkLabel}
         onChangeText={(linkLabel) => onChange({ ...value, linkLabel })}
-        placeholder="Texto del botón, por ejemplo: Ver inscripción"
+        placeholder={APP_MESSAGES.community.noticeLinkLabelPlaceholder}
         placeholderTextColor={inputPlaceholderColor}
         maxLength={80}
       />
@@ -135,7 +136,7 @@ export function CommunityNoticeEditor({
         style={[styles.input, isDark && styles.inputDark]}
         value={value.linkUrl}
         onChangeText={(linkUrl) => onChange({ ...value, linkUrl })}
-        placeholder="Enlace opcional https://"
+        placeholder={APP_MESSAGES.community.noticeLinkUrlPlaceholder}
         placeholderTextColor={inputPlaceholderColor}
         autoCapitalize="none"
       />
