@@ -10,7 +10,7 @@ import { Role, Session } from '../../types/auth';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleRank, visibleHierarchyFor } from '../../lib/roles';
 import { roleLabel, roleLabelForProvince } from '../../lib/profileDisplay';
-import { emptyStateMessage } from '../../lib/appMessages';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { SectionTitle } from '../../components/SectionTitle';
 import { AppButton, ButtonGroup, IconButton, TabButton } from '../../components/ui';
 
@@ -20,29 +20,29 @@ type MailboxCommunityOption = {
 };
 
 const adminTargetModes: [MailboxTargetMode, string][] = [
-  ['user', 'Usuario'],
-  ['role', 'Rango'],
-  ['province', 'Provincia'],
-  ['role_province', 'Rango + provincia'],
-  ['all', 'Todos']
+  ['user', APP_MESSAGES.communications.mailbox.targetUser],
+  ['role', APP_MESSAGES.communications.mailbox.targetRole],
+  ['province', APP_MESSAGES.communications.mailbox.targetProvince],
+  ['role_province', APP_MESSAGES.communications.mailbox.targetRoleProvince],
+  ['all', APP_MESSAGES.communications.mailbox.targetAll]
 ];
 
 const nationalTargetModes: [MailboxTargetMode, string][] = [
-  ['user', 'Usuario'],
-  ['role', 'Rango'],
-  ['diocesan_leadership', 'Dirigencia diocesana']
+  ['user', APP_MESSAGES.communications.mailbox.targetUser],
+  ['role', APP_MESSAGES.communications.mailbox.targetRole],
+  ['diocesan_leadership', APP_MESSAGES.communications.mailbox.targetDiocesanLeadership]
 ];
 
 const diocesanTargetModes: [MailboxTargetMode, string][] = [
-  ['user', 'Usuario'],
-  ['role', 'Rango'],
-  ['community', 'Comunidad'],
-  ['province_communities', 'Todas de mi provincia']
+  ['user', APP_MESSAGES.communications.mailbox.targetUser],
+  ['role', APP_MESSAGES.communications.mailbox.targetRole],
+  ['community', APP_MESSAGES.communications.mailbox.targetCommunity],
+  ['province_communities', APP_MESSAGES.communications.mailbox.targetProvinceCommunities]
 ];
 
 const communityTargetModes: [MailboxTargetMode, string][] = [
-  ['user', 'Usuario'],
-  ['my_community', 'Responsables']
+  ['user', APP_MESSAGES.communications.mailbox.targetUser],
+  ['my_community', APP_MESSAGES.communications.mailbox.targetMyCommunity]
 ];
 
 const reportReasons = [
@@ -254,21 +254,21 @@ export function MailboxPanel({
       return;
     }
     if (Platform.OS !== 'web') {
-      Alert.alert('Acciones de la conversacion', 'Elegi que hacer con esta conversacion.', [
+      Alert.alert(APP_MESSAGES.communications.mailbox.actionsTitle, APP_MESSAGES.communications.mailbox.actionsHelp, [
         { text: 'Cancelar', style: 'cancel' },
-        ...(reportableMessage ? [{ text: 'Reportar conversacion', onPress: () => startReport(reportableMessage) }] : []),
+        ...(reportableMessage ? [{ text: APP_MESSAGES.communications.mailbox.reportConversation, onPress: () => startReport(reportableMessage) }] : []),
         {
-          text: 'Eliminar conversacion',
+          text: APP_MESSAGES.communications.mailbox.deleteConversation,
           style: 'destructive',
-          onPress: () => confirmAction('Eliminar conversacion', 'Esta conversacion se eliminara solo de tu vista. Deseas continuar?', 'Eliminar conversacion', () => onDeleteConversationForMe(conversation))
+          onPress: () => confirmAction(APP_MESSAGES.communications.mailbox.deleteConversation, APP_MESSAGES.communications.mailbox.deleteConversationHelp, APP_MESSAGES.communications.mailbox.deleteConversation, () => onDeleteConversationForMe(conversation))
         }
       ]);
       return;
     }
     confirmAction(
-      'Eliminar conversación',
-      'Esta conversación se eliminará solo de tu vista. ¿Deseás continuar?',
-      'Eliminar conversación',
+      APP_MESSAGES.communications.mailbox.deleteConversation,
+      APP_MESSAGES.communications.mailbox.deleteConversationHelp,
+      APP_MESSAGES.communications.mailbox.deleteConversation,
       () => onDeleteConversationForMe(conversation)
     );
   };
@@ -293,8 +293,8 @@ export function MailboxPanel({
     <View style={[styles.mailboxShell, isDark && styles.surfacePanelDark]}>
       <View style={styles.mailboxHeaderBar}>
         <View style={styles.adminUserHeaderText}>
-          <SectionTitle title="Buzon de mensajes" />
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Conversaciones privadas entre usuarios registrados.</Text>
+          <SectionTitle title={APP_MESSAGES.communications.mailbox.title} />
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.communications.mailbox.help}</Text>
         </View>
         <View style={styles.mailboxCountBadge}>
           <Text style={styles.mailboxCountValue}>{conversations.length}</Text>
@@ -302,20 +302,20 @@ export function MailboxPanel({
         </View>
       </View>
       <ButtonGroup>
-        <AppButton label={showComposer ? 'Cerrar mensaje' : 'Nuevo'} icon={showComposer ? 'close-outline' : 'create-outline'} variant={showComposer ? 'secondary' : 'primary'} size="compact" onPress={onToggleComposer} />
-        <AppButton label="Actualizar" icon="refresh-outline" variant="ghost" size="compact" onPress={onRefresh} />
+        <AppButton label={showComposer ? APP_MESSAGES.communications.mailbox.closeComposer : APP_MESSAGES.communications.mailbox.newAction} icon={showComposer ? 'close-outline' : 'create-outline'} variant={showComposer ? 'secondary' : 'primary'} size="compact" onPress={onToggleComposer} />
+        <AppButton label={APP_MESSAGES.communications.mailbox.refresh} icon="refresh-outline" variant="ghost" size="compact" onPress={onRefresh} />
       </ButtonGroup>
 
       {showComposer ? (
         <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo mensaje</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.communications.mailbox.composerTitle}</Text>
           <View style={styles.mailboxRulesNotice}>
             <Ionicons name="shield-checkmark-outline" size={18} color={palette.red} />
             <Text style={[styles.noticeText, isDark && styles.textDarkBody]}>
-              Usa lenguaje respetuoso. No se permiten insultos, amenazas, acoso ni contenido sexual. Los mensajes pueden ser reportados y revisados por moderadores autorizados.
+              {APP_MESSAGES.communications.mailbox.conductHelp}
             </Text>
           </View>
-          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Destino</Text>
+          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.communications.mailbox.destinationLabel}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
             {targetModesForSession(session).map(([mode, label]) => (
               <TouchableOpacity key={mode} style={[styles.filterChip, targetMode === mode && styles.filterChipActive]} onPress={() => onTargetModeChange(mode)}>
@@ -336,16 +336,16 @@ export function MailboxPanel({
 
           {['province', 'role_province', 'diocesan_leadership'].includes(targetMode) && (session.role === 'administrador' || ['vocal_nacional', 'coordinador_nacional'].includes(session.role)) ? (
             <>
-              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Provincia</Text>
+              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.communications.mailbox.provinceLabel}</Text>
               <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => onProvinceDropdownChange(!provinceDropdownOpen)}>
-                <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{targetProvince || 'Todas / seleccionar provincia'}</Text>
+                <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{targetProvince || APP_MESSAGES.communications.mailbox.selectProvince}</Text>
                 <Ionicons name={provinceDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
               </TouchableOpacity>
               {provinceDropdownOpen ? (
                 <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
                   {targetMode === 'diocesan_leadership' ? (
                     <TouchableOpacity style={[styles.dropdownItem, isDark && styles.dropdownItemDark]} onPress={() => { onTargetProvinceChange(''); onProvinceDropdownChange(false); }}>
-                      <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>Todas las provincias</Text>
+                      <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{APP_MESSAGES.communications.mailbox.allProvinces}</Text>
                     </TouchableOpacity>
                   ) : null}
                   {provinceOptions.map((province) => (
@@ -360,7 +360,7 @@ export function MailboxPanel({
 
           {['role', 'role_province'].includes(targetMode) ? (
             <>
-              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Rango</Text>
+              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.communications.mailbox.roleLabel}</Text>
               <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => onRoleDropdownChange(!roleDropdownOpen)}>
                 <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{roleLabel(targetRole)}</Text>
                 <Ionicons name={roleDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
@@ -379,28 +379,28 @@ export function MailboxPanel({
 
           {targetMode === 'user' ? (
             <View style={[styles.profileCommunityPanel, isDark && styles.surfaceRowDark]}>
-              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Buscar usuario</Text>
+              <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.communications.mailbox.userSearchLabel}</Text>
               <TextInput
                 style={[styles.input, isDark && styles.inputDark]}
-                placeholder="Buscar por nombre, provincia, comunidad o rango"
+                placeholder={APP_MESSAGES.communications.mailbox.userSearchPlaceholder}
                 value={recipientSearch}
                 onChangeText={onRecipientSearchChange}
                 placeholderTextColor={inputPlaceholderColor}
               />
               <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={() => onUserDropdownChange(!userDropdownOpen)}>
-                <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{selectedUserIds.length} usuario/s seleccionado/s</Text>
+                <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{APP_MESSAGES.communications.mailbox.selectedUsers(selectedUserIds.length)}</Text>
                 <Ionicons name={userDropdownOpen ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />
               </TouchableOpacity>
               {userDropdownOpen ? (
                 <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
-                  {filteredUserOptions.length === 0 ? <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>Sin resultados</Text> : null}
+                  {filteredUserOptions.length === 0 ? <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark]}>{APP_MESSAGES.communications.mailbox.noUserResults}</Text> : null}
                   {filteredUserOptions.slice(0, 60).map((user) => {
                     const selectedUser = selectedUserIds.includes(user.id);
-                    const userName = user.full_name?.trim() || user.nickname?.trim() || 'Usuario sin nombre';
+                    const userName = user.full_name?.trim() || user.nickname?.trim() || APP_MESSAGES.communications.mailbox.unnamedUser;
                     const userMeta = [
                       roleLabelForProvince((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, roleAliases, user.gender_preference ?? null),
-                      user.community_name || 'Sin comunidad',
-                      user.province || 'Sin provincia'
+                      user.community_name || APP_MESSAGES.communications.mailbox.noCommunity,
+                      user.province || APP_MESSAGES.communications.mailbox.noProvince
                     ].filter(Boolean).join(' - ');
                     return (
                       <TouchableOpacity key={user.id} style={[styles.mailboxRecipientItem, selectedUser && styles.mailboxRecipientItemSelected, isDark && styles.mailboxRecipientItemDark]} onPress={() => onToggleUser(user.id)}>
@@ -418,10 +418,10 @@ export function MailboxPanel({
                 <View style={styles.chipRow}>
                   {selectedUsers.slice(0, 8).map((user) => (
                     <TouchableOpacity key={user.id} style={[styles.filterChip, styles.filterChipActive]} onPress={() => onToggleUser(user.id)}>
-                      <Text style={[styles.filterChipText, styles.filterChipTextActive]}>{user.full_name ?? 'Usuario'}</Text>
+                      <Text style={[styles.filterChipText, styles.filterChipTextActive]}>{user.full_name ?? APP_MESSAGES.communications.mailbox.userFallback}</Text>
                     </TouchableOpacity>
                   ))}
-                  {selectedUsers.length > 8 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>+{selectedUsers.length - 8} mas</Text> : null}
+                  {selectedUsers.length > 8 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.communications.mailbox.moreSelected(selectedUsers.length - 8)}</Text> : null}
                 </View>
               ) : null}
             </View>
@@ -429,27 +429,27 @@ export function MailboxPanel({
 
           <View style={styles.notice}>
             <Ionicons name="people-outline" size={18} color={palette.red} />
-            <Text style={styles.noticeText}>Destinatarios estimados: {estimatedRecipients}</Text>
+            <Text style={styles.noticeText}>{APP_MESSAGES.communications.mailbox.estimatedRecipients(estimatedRecipients)}</Text>
           </View>
-          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Mensaje</Text>
+          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.communications.mailbox.messageLabel}</Text>
           <TextInput
             style={[styles.input, styles.textArea, isDark && styles.inputDark]}
-            placeholder="Escribe el mensaje para el buzon"
+            placeholder={APP_MESSAGES.communications.mailbox.messagePlaceholder}
             value={draft}
             onChangeText={(value) => onDraftChange(value.slice(0, 500))}
             multiline
             placeholderTextColor={inputPlaceholderColor}
           />
           <ButtonGroup>
-            <AppButton label="Enviar" icon="send-outline" size="compact" onPress={onSubmitNewMessage} />
-            <AppButton label="Guardar borrador" icon="save-outline" variant="secondary" size="compact" onPress={onSaveDraft} />
+            <AppButton label={APP_MESSAGES.communications.mailbox.send} icon="send-outline" size="compact" onPress={onSubmitNewMessage} />
+            <AppButton label={APP_MESSAGES.communications.mailbox.saveDraft} icon="save-outline" variant="secondary" size="compact" onPress={onSaveDraft} />
           </ButtonGroup>
         </View>
       ) : null}
 
       <ButtonGroup style={styles.mailboxTabs}>
         {(['entrada', 'enviados', 'eliminados'] as const).map((item) => (
-          <TabButton key={item} label={item} selected={filter === item} onPress={() => onFilterChange(item)} />
+          <TabButton key={item} label={APP_MESSAGES.communications.mailbox.folders[item]} selected={filter === item} onPress={() => onFilterChange(item)} />
         ))}
       </ButtonGroup>
 
@@ -478,7 +478,7 @@ export function MailboxPanel({
                   <Text numberOfLines={1} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedConversation.title}</Text>
                   {selectedConversation.subtitle ? <Text numberOfLines={1} style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{selectedConversation.subtitle}</Text> : null}
                 </View>
-                <IconButton icon="ellipsis-vertical" accessibilityLabel="Acciones de conversacion" variant="ghost" onPress={() => openConversationActions(selectedConversation)} />
+                <IconButton icon="ellipsis-vertical" accessibilityLabel={APP_MESSAGES.communications.mailbox.actionsTitle} variant="ghost" onPress={() => openConversationActions(selectedConversation)} />
               </View>
               <ScrollView
                 ref={conversationScrollRef}
@@ -510,7 +510,7 @@ export function MailboxPanel({
               <View style={[styles.mailboxReplyBarFullscreen, isDark && styles.mailboxReplyBarFullscreenDark]}>
                 <TextInput
                   style={[styles.mailboxReplyInput, isDark && styles.inputDark]}
-                  placeholder={selectedConversation.counterpartUserId ? 'Responder en esta conversacion' : 'Respuesta directa no disponible'}
+                  placeholder={selectedConversation.counterpartUserId ? APP_MESSAGES.communications.mailbox.replyPlaceholder : APP_MESSAGES.communications.mailbox.replyUnavailable}
                   value={conversationDraft}
                   onChangeText={(value) => onConversationDraftChange(value.slice(0, 500))}
                   editable={Boolean(selectedConversation.counterpartUserId) && !conversationSending}
@@ -519,7 +519,7 @@ export function MailboxPanel({
                   placeholderTextColor={inputPlaceholderColor}
                 />
                 <AppButton
-                  label="Enviar"
+                  label={APP_MESSAGES.communications.mailbox.send}
                   icon="send-outline"
                   size="compact"
                   style={styles.mailboxReplySendButton}
@@ -535,14 +535,20 @@ export function MailboxPanel({
 
       {!selectedConversation && conversations.length === 0 ? (
         <View style={[styles.card, isDark && styles.surfaceRowDark]}>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{emptyStateMessage('mailbox', session.genderPreference, 'pastoral')}</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.communications.mailbox.empty}</Text>
         </View>
       ) : null}
 
       {!selectedConversation && conversations.map((conversation) => {
         const preview = conversation.lastMessage.length > 96 ? `${conversation.lastMessage.slice(0, 96)}...` : conversation.lastMessage;
         const selected = selectedConversationId === conversation.id;
-        const statusLabel = conversation.unreadCount > 0 ? 'Nuevo' : conversation.lastDirection === 'sent' ? 'Enviado' : conversation.hasSent && conversation.hasReceived ? 'Conversacion' : 'Recibido';
+        const statusLabel = conversation.unreadCount > 0
+          ? APP_MESSAGES.communications.mailbox.statusNew
+          : conversation.lastDirection === 'sent'
+            ? APP_MESSAGES.communications.mailbox.statusSent
+            : conversation.hasSent && conversation.hasReceived
+              ? APP_MESSAGES.communications.mailbox.statusConversation
+              : APP_MESSAGES.communications.mailbox.statusReceived;
         return (
           <TouchableOpacity key={conversation.id} style={[styles.mailboxConversationRow, selected && styles.mailboxConversationRowActive, isDark && styles.surfaceRowDark]} onPress={() => onOpenConversation(conversation.id)} onLongPress={() => openConversationActions(conversation)} activeOpacity={0.86}>
             <View style={styles.mailboxAvatar}>
@@ -555,7 +561,7 @@ export function MailboxPanel({
               </View>
               {conversation.subtitle ? <Text numberOfLines={1} style={[styles.mailboxRecipientMeta, isDark && styles.mailboxRecipientMetaDark]}>{conversation.subtitle}</Text> : null}
               <Text numberOfLines={2} style={[styles.cardText, isDark && styles.textDarkBody]}>
-                {conversation.lastDirection === 'sent' ? 'Enviado: ' : 'Recibido: '}{preview}
+                {conversation.lastDirection === 'sent' ? APP_MESSAGES.communications.mailbox.sentPrefix : APP_MESSAGES.communications.mailbox.receivedPrefix}{preview}
               </Text>
             </View>
             <View style={styles.mailboxConversationBadges}>
@@ -579,7 +585,7 @@ export function MailboxPanel({
                 <View style={styles.adminUserHeaderText}>
                   <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Reportar mensaje</Text>
                   <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>
-                    Usuario reportado: {reportMessage?.sender_name || 'Usuario'}
+                    Usuario reportado: {reportMessage?.sender_name || APP_MESSAGES.communications.mailbox.userFallback}
                   </Text>
                 </View>
                 <IconButton icon="close-outline" accessibilityLabel="Cerrar reporte" variant="ghost" onPress={() => onToggleReportMessage(null)} />

@@ -236,10 +236,10 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                 <View style={styles.stackTight}>
                   {!session ? (
                     <>
-                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Nombre</Text>
-                      <TextInput style={[styles.input, isDark && styles.inputDark]} value={contactName} onChangeText={setContactName} placeholder="Nombre y apellido" placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Contacto</Text>
-                      <TextInput style={[styles.input, isDark && styles.inputDark]} value={contactInfoValue} onChangeText={setContactInfoValue} placeholder="Email o telefono" placeholderTextColor={inputPlaceholderColor} />
+                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.contactNameLabel}</Text>
+                      <TextInput style={[styles.input, isDark && styles.inputDark]} value={contactName} onChangeText={setContactName} placeholder={APP_MESSAGES.community.contactNamePlaceholder} placeholderTextColor={inputPlaceholderColor} />
+                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.contactMethodLabel}</Text>
+                      <TextInput style={[styles.input, isDark && styles.inputDark]} value={contactInfoValue} onChangeText={setContactInfoValue} placeholder={APP_MESSAGES.community.contactPlaceholder} placeholderTextColor={inputPlaceholderColor} />
                     </>
                   ) : null}
                   <TextInput
@@ -415,13 +415,13 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.messageToLeaders}</Text>
                       {!session ? (
                         <>
-                          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Nombre</Text>
-                          <TextInput style={styles.input} placeholder="Ej: Juan Perez" value={contactName} onChangeText={setContactName} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
-                          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Contacto</Text>
+                          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.contactNameLabel}</Text>
+                          <TextInput style={styles.input} placeholder={APP_MESSAGES.community.contactNamePlaceholder} value={contactName} onChangeText={setContactName} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
+                          <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.contactMethodLabel}</Text>
                           <TextInput style={styles.input} placeholder={APP_MESSAGES.community.contactPlaceholder} value={contactInfoValue} onChangeText={setContactInfoValue} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
                         </>
                       ) : null}
-                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Mensaje</Text>
+                      <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.queryMessageLabel}</Text>
                       <TextInput
                         style={[styles.input, styles.textArea]}
                         placeholder={APP_MESSAGES.community.communityMessagePlaceholder}
