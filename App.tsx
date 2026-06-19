@@ -208,7 +208,7 @@ export default function App() {
     setAuthConfirmationOpen,
     setAuthScreenOpen,
     setSession,
-    onMailConfirmed: () => showToastSuccess('Mail confirmado correctamente.'),
+    onMailConfirmed: () => showToastSuccess(APP_MESSAGES.auth.emailConfirmationSuccessToast),
     reloadAdminConfig,
     reloadAppContent,
     reloadRuntimeConfig,

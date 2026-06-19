@@ -2,6 +2,7 @@ import { Dispatch, SetStateAction, useCallback, useEffect } from 'react';
 import { Linking } from 'react-native';
 import { authDeepLinkBaseUrl } from '../lib/constants';
 import { getMyProfileSession } from '../lib/authProfile';
+import { APP_MESSAGES } from '../lib/appMessages';
 import { supabase } from '../lib/supabase';
 import { Session } from '../types/auth';
 
@@ -66,7 +67,7 @@ export function useAppSessionLinks({
         ?? parsed.searchParams.get('error')
         ?? hashParams.get('error');
       if (callbackError) {
-        setAuthConfirmationError('No pudimos confirmar tu correo. Pedí un nuevo mail de confirmación e intentá nuevamente.');
+        setAuthConfirmationError(APP_MESSAGES.auth.emailConfirmationFailed);
         setAuthConfirmationOpen(true);
         setAuthScreenOpen(false);
         return;
@@ -76,7 +77,7 @@ export function useAppSessionLinks({
         setAuthConfirmationOpen(false);
         setActiveTab('perfil');
         setAuthScreenOpen(true);
-        setAppMessage('Link de recuperacion recibido. Inicia sesion o actualiza tu contrasena desde Mi Perfil.');
+        setAppMessage(APP_MESSAGES.auth.passwordRecoveryReceived);
         return;
       }
       const code = parsed.searchParams.get('code');
@@ -95,7 +96,7 @@ export function useAppSessionLinks({
       setAuthScreenOpen(false);
       onMailConfirmed();
     } catch (error) {
-      setAuthConfirmationError('No pudimos procesar el link de confirmación. Abrí Palestra APP e intentá iniciar sesión.');
+      setAuthConfirmationError(APP_MESSAGES.auth.emailConfirmationLinkFailed);
       setAuthConfirmationOpen(true);
       console.error('auth callback link', error);
     }

@@ -37,6 +37,13 @@ export const APP_MESSAGES = {
   chooseImagePermission: 'Necesitamos permiso para elegir una imagen.',
   profileReadFailed: 'No pudimos preparar tu perfil. Intenta nuevamente en unos minutos.',
   auth: {
+    brandSubtitle: 'Movimiento Catolico',
+    loginTitle: 'Bienvenido/a, volvemos a encontrarnos?',
+    loginHelp: 'Que alegria seguir caminando juntos en Palestra.',
+    emailLabel: 'Mail',
+    emailPlaceholder: 'tu.mail@email.com',
+    passwordLabel: 'Contrasena',
+    passwordPlaceholder: 'Ingresa tu contrasena',
     invalidEmail: 'Revisa el mail: necesitamos una direccion valida para seguir.',
     passwordRequired: 'Ingresa tu contrasena para continuar.',
     loginLoading: 'Estamos preparando tu ingreso...',
@@ -50,15 +57,43 @@ export const APP_MESSAGES = {
     recoveryBack: 'Volver al inicio de sesion',
     loginSubmit: 'Iniciar sesion',
     loginLoadingShort: 'Ingresando...',
+    registerLink: 'Quiero registrarme',
+    forgotPassword: 'Olvide mi contrasena',
+    enterButton: 'Ingresar',
+    sendingHelpRequest: 'Estamos avisando a un dirigente...',
+    backToLogin: 'Volver al inicio de sesion',
     registerSubmit: 'Unirme a Palestra',
     registerLoading: 'Estamos preparando tu registro...',
+    registerLoadingShort: 'Registrando...',
+    continueButton: 'Continuar',
     emailConfirmationSent: 'Correo de confirmacion enviado. Revisa tu bandeja para activar tu cuenta.',
     emailConfirmationErrorTitle: 'No pudimos confirmar tu correo todavia',
     emailConfirmationSuccessTitle: 'Correo confirmado',
     emailConfirmationSuccessText: 'Tu correo fue confirmado. Ya podes ingresar a Palestra APP.',
+    emailConfirmationFailed: 'No pudimos confirmar tu correo. Pedi un nuevo mail de confirmacion e intenta nuevamente.',
+    emailConfirmationLinkFailed: 'No pudimos procesar el link de confirmacion. Abri Palestra APP e intenta iniciar sesion.',
+    emailConfirmationSuccessToast: 'Correo confirmado correctamente.',
     pendingProfileTitle: 'Tu perfil esta en camino',
     pendingProfileSubtitle: 'Revisa tu correo para confirmar tu cuenta',
+    pendingEmailEyebrow: 'Correo pendiente de confirmacion',
+    pendingEmailHelp: 'Revisa tu correo para confirmar tu cuenta. Mientras tanto, esta vista queda disponible para pedir ayuda si la necesitas.',
     requestLeaderHelp: 'Si no llega el correo, avisale a un dirigente',
+    requestLeaderHelpDone: 'Mensaje enviado. Un dirigente podra revisar tu confirmacion.',
+    passwordRecoveryReceived: 'Recibimos tu link de recuperacion. Inicia sesion o actualiza tu contrasena desde Mi Perfil.',
+    signOut: 'Cerrar sesion',
+    back: 'Atras',
+    pageLabel: 'Pagina',
+    firstNameLabel: 'Nombre',
+    lastNameLabel: 'Apellido',
+    lastNamePending: 'Pendiente',
+    provinceLabel: 'Provincia',
+    contactLabel: 'Contacto',
+    communityLabel: 'Comunidad',
+    nicknameLabel: 'Apodo',
+    startYearLabel: 'Ano de inicio en el Movimiento',
+    selectProvince: 'Selecciona tu provincia',
+    selectCommunity: 'Selecciona tu comunidad',
+    selectStartYear: 'Seleccionar ano',
     nameRequired: 'Necesitamos tu nombre y apellido para crear tu perfil.',
     aboutRequired: 'Agrega tu fecha de nacimiento y un contacto para que tu comunidad pueda acompanarte.',
     communityRequired: 'Elegi provincia, comunidad y ano de inicio para ubicarte dentro de Palestra.',
@@ -82,6 +117,10 @@ export const APP_MESSAGES = {
     return `Esta accion esta reservada para administradores: ${action}.`;
   }
 } as const;
+
+export function authStepProgressLabel(step: number, total: number) {
+  return `${APP_MESSAGES.auth.pageLabel} ${step} de ${total}`;
+}
 
 export function fraternalTreatment(genderPreference?: MessageGenderPreference): Treatment {
   if (genderPreference === 'male') {

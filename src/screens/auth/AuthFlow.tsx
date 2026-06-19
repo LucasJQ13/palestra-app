@@ -7,7 +7,7 @@ import { checkRegistrationEmailAvailable, createEmailConfirmationRequest } from 
 import { AppCommunity, fetchCommunities } from '../../lib/remoteData';
 import { getMyProfileSession } from '../../lib/authProfile';
 import { supabase } from '../../lib/supabase';
-import { APP_MESSAGES, accountStatusMessage, blockedProfileMessage, hasPlausibleEmailDomain, isValidEmail, pendingProfileMessage, safeAuthError, verifyEmailDomainExists } from '../../lib/appMessages';
+import { APP_MESSAGES, accountStatusMessage, authStepProgressLabel, blockedProfileMessage, hasPlausibleEmailDomain, isValidEmail, pendingProfileMessage, safeAuthError, verifyEmailDomainExists } from '../../lib/appMessages';
 import { genderNarratives } from '../../lib/profileDisplay';
 import { authDeepLinkBaseUrl, authPasswordResetUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames } from '../../lib/constants';
 import { Session } from '../../types/auth';
@@ -172,17 +172,17 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
       <View style={styles.authBrandHeader}>
         <Image source={palestraLogo} style={styles.authLogo} />
         <Text style={styles.authBrandTitle}>Palestra</Text>
-        <Text style={styles.authBrandSubtitle}>Movimiento Católico</Text>
+        <Text style={styles.authBrandSubtitle}>{APP_MESSAGES.auth.brandSubtitle}</Text>
       </View>
-      <Text style={styles.authHeroTitle}>Bienvenido/a, ¿iniciamos sesión?</Text>
-      <Text style={styles.authHeroText}>Qué alegría volver a encontrarte en este camino.</Text>
+      <Text style={styles.authHeroTitle}>{APP_MESSAGES.auth.loginTitle}</Text>
+      <Text style={styles.authHeroText}>{APP_MESSAGES.auth.loginHelp}</Text>
 
       <View style={styles.authFormPanel}>
         {showRecoveryForm ? (
           <>
             <Text style={styles.authInputLabel}>{APP_MESSAGES.auth.recoveryTitle}</Text>
             <Text style={styles.authHeroText}>{APP_MESSAGES.auth.recoveryHelp}</Text>
-            <AuthTextInput label="Mail" placeholder="tu.mail@email.com" value={recoveryEmail} onChangeText={setRecoveryEmail} keyboardType="email-address" autoCapitalize="none" />
+            <AuthTextInput label={APP_MESSAGES.auth.emailLabel} placeholder={APP_MESSAGES.auth.emailPlaceholder} value={recoveryEmail} onChangeText={setRecoveryEmail} keyboardType="email-address" autoCapitalize="none" />
             <TouchableOpacity style={styles.authPrimaryButton} onPress={recoverPassword} disabled={recoveryLoading} activeOpacity={0.86}>
               <Text style={styles.authPrimaryText}>{recoveryLoading ? 'Enviando...' : APP_MESSAGES.auth.recoverySubmit}</Text>
             </TouchableOpacity>
@@ -200,13 +200,13 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
           </>
         ) : (
           <>
-        <AuthTextInput label="Mail" placeholder="tu.mail@email.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+        <AuthTextInput label={APP_MESSAGES.auth.emailLabel} placeholder={APP_MESSAGES.auth.emailPlaceholder} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
         <View>
-          <Text style={styles.authInputLabel}>Contraseña</Text>
+          <Text style={styles.authInputLabel}>{APP_MESSAGES.auth.passwordLabel}</Text>
           <View style={styles.authPasswordWrap}>
             <TextInput
               style={styles.authInputPassword}
-              placeholder="Ingresá tu contraseña"
+              placeholder={APP_MESSAGES.auth.passwordPlaceholder}
               placeholderTextColor="rgba(230,243,245,0.62)"
               value={password}
               onChangeText={setPassword}
@@ -222,10 +222,10 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
           <Text style={styles.authPrimaryText}>{loading ? APP_MESSAGES.auth.loginLoadingShort : APP_MESSAGES.auth.loginSubmit}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.authGhostButton} onPress={onRegister} activeOpacity={0.86}>
-          <Text style={styles.authGhostText}>Registrarme</Text>
+          <Text style={styles.authGhostText}>{APP_MESSAGES.auth.registerLink}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={openRecoveryForm} activeOpacity={0.75}>
-          <Text style={styles.authLinkText}>Olvidé mi contraseña</Text>
+          <Text style={styles.authLinkText}>{APP_MESSAGES.auth.forgotPassword}</Text>
         </TouchableOpacity>
           </>
         )}
@@ -245,7 +245,7 @@ export function MailConfirmedScreen({ onEnter, message, isError = false }: { onE
         <Text style={styles.authConfirmTitle}>{isError ? APP_MESSAGES.auth.emailConfirmationErrorTitle : APP_MESSAGES.auth.emailConfirmationSuccessTitle}</Text>
         <Text style={styles.authConfirmText}>{message ?? APP_MESSAGES.auth.emailConfirmationSuccessText}</Text>
         <TouchableOpacity style={styles.primaryButton} onPress={onEnter} activeOpacity={0.86}>
-          <Text style={styles.primaryButtonText}>Ingresar</Text>
+          <Text style={styles.primaryButtonText}>{APP_MESSAGES.auth.enterButton}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -256,7 +256,7 @@ export const AuthConfirmationScreen = MailConfirmedScreen;
 
 function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: { profile: PendingRegistrationProfile; message: string; onMessage: (message: string) => void; onBackToLogin: () => void }) {
   async function requestAdminHelp() {
-    onMessage('Enviando mensaje...');
+    onMessage(APP_MESSAGES.auth.sendingHelpRequest);
     const { error } = await createEmailConfirmationRequest({
       userId: profile.userId,
       email: profile.email,
@@ -265,7 +265,7 @@ function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: {
       communityName: profile.community,
       contact: profile.contact
     });
-    onMessage(error ? error.message : APP_MESSAGES.messageSent);
+    onMessage(error ? error.message : APP_MESSAGES.auth.requestLeaderHelpDone);
   }
 
   return (
@@ -277,21 +277,21 @@ function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: {
       </View>
       <View style={styles.authFormPanel}>
         <Text style={styles.authHeroText}>{pendingProfileMessage(profile.genderPreference, 'pastoral')}</Text>
-        <Text style={styles.authInputLabel}>Nombre</Text>
+        <Text style={styles.authInputLabel}>{APP_MESSAGES.auth.firstNameLabel}</Text>
         <Text style={styles.authHeroText}>{profile.firstName}</Text>
-        <Text style={styles.authInputLabel}>Apellido</Text>
+        <Text style={styles.authInputLabel}>{APP_MESSAGES.auth.lastNameLabel}</Text>
         <Text style={styles.authHeroText}>{profile.lastName}</Text>
-        <Text style={styles.authInputLabel}>Provincia</Text>
+        <Text style={styles.authInputLabel}>{APP_MESSAGES.auth.provinceLabel}</Text>
         <Text style={styles.authHeroText}>{profile.province}</Text>
-        <Text style={styles.authInputLabel}>Contacto</Text>
+        <Text style={styles.authInputLabel}>{APP_MESSAGES.auth.contactLabel}</Text>
         <Text style={styles.authHeroText}>{profile.contact}</Text>
-        <Text style={styles.authInputLabel}>Comunidad</Text>
+        <Text style={styles.authInputLabel}>{APP_MESSAGES.auth.communityLabel}</Text>
         <Text style={styles.authHeroText}>{profile.community}</Text>
         <TouchableOpacity style={styles.authPrimaryButton} onPress={requestAdminHelp} activeOpacity={0.86}>
           <Text style={styles.authPrimaryText}>{APP_MESSAGES.auth.requestLeaderHelp}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.authGhostButton} onPress={onBackToLogin} activeOpacity={0.86}>
-          <Text style={styles.authGhostText}>Volver al inicio de sesión</Text>
+          <Text style={styles.authGhostText}>{APP_MESSAGES.auth.backToLogin}</Text>
         </TouchableOpacity>
         {message ? <Text style={styles.authMessage}>{message}</Text> : null}
       </View>
@@ -449,9 +449,9 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
       <View style={styles.authWizardTop}>
         <TouchableOpacity style={styles.authBackButton} onPress={step === 0 ? onBackToLogin : () => setStep((current) => Math.max(0, current - 1))}>
           <Ionicons name="arrow-back-outline" size={20} color={palette.white} />
-          <Text style={styles.authBackText}>{step === 0 ? 'Iniciar sesión' : 'Atrás'}</Text>
+          <Text style={styles.authBackText}>{step === 0 ? APP_MESSAGES.auth.loginSubmit : APP_MESSAGES.auth.back}</Text>
         </TouchableOpacity>
-        <Text style={styles.authProgressText}>Página {step + 1} de 4</Text>
+        <Text style={styles.authProgressText}>{authStepProgressLabel(step + 1, 4)}</Text>
       </View>
       <Animated.View style={[styles.authWizardCard, { opacity: fade }]}>
         {step === 0 ? <RegisterStepName draft={draft} onChange={patchDraft} /> : null}
@@ -461,7 +461,7 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
       </Animated.View>
       {message ? <Text style={styles.authMessage}>{message}</Text> : null}
       <TouchableOpacity style={styles.authPrimaryButton} onPress={nextStep} disabled={loading} activeOpacity={0.86}>
-        <Text style={styles.authPrimaryText}>{step === 3 ? (loading ? 'Registrando...' : APP_MESSAGES.auth.registerSubmit) : 'Continuar'}</Text>
+        <Text style={styles.authPrimaryText}>{step === 3 ? (loading ? APP_MESSAGES.auth.registerLoadingShort : APP_MESSAGES.auth.registerSubmit) : APP_MESSAGES.auth.continueButton}</Text>
       </TouchableOpacity>
       <View style={styles.authStepDots}>
         {[0, 1, 2, 3].map((item) => <View key={item} style={[styles.authStepDot, item === step && styles.authStepDotActive]} />)}
@@ -476,8 +476,8 @@ function RegisterStepName({ draft, onChange }: { draft: RegisterDraft; onChange:
     <View style={styles.authStepContent}>
       <Text style={styles.authHeroTitle}>{APP_MESSAGES.auth.wizardNameTitle}</Text>
       <Text style={styles.authHeroText}>{APP_MESSAGES.auth.wizardNameHelp}</Text>
-      <AuthTextInput label="Nombre" value={draft.firstName} onChangeText={(value) => onChange({ firstName: value })} />
-      <AuthTextInput label="Apellido" value={draft.lastName} onChangeText={(value) => onChange({ lastName: value })} />
+      <AuthTextInput label={APP_MESSAGES.auth.firstNameLabel} value={draft.firstName} onChangeText={(value) => onChange({ firstName: value })} />
+      <AuthTextInput label={APP_MESSAGES.auth.lastNameLabel} value={draft.lastName} onChangeText={(value) => onChange({ lastName: value })} />
     </View>
   );
 }
@@ -488,8 +488,8 @@ function RegisterStepAbout({ draft, onChange }: { draft: RegisterDraft; onChange
       <Text style={styles.authHeroTitle}>{APP_MESSAGES.auth.wizardAboutTitle}</Text>
       <Text style={styles.authHeroText}>{APP_MESSAGES.auth.wizardAboutHelp}</Text>
       <BirthDatePicker value={draft.birthDate} onChange={(birthDate) => onChange({ birthDate })} />
-      <AuthTextInput label="Apodo" value={draft.nickname} onChangeText={(value) => onChange({ nickname: value })} />
-      <AuthTextInput label="Contacto" value={draft.contact} onChangeText={(value) => onChange({ contact: value })} keyboardType="phone-pad" />
+      <AuthTextInput label={APP_MESSAGES.auth.nicknameLabel} value={draft.nickname} onChangeText={(value) => onChange({ nickname: value })} />
+      <AuthTextInput label={APP_MESSAGES.auth.contactLabel} value={draft.contact} onChangeText={(value) => onChange({ contact: value })} keyboardType="phone-pad" />
     </View>
   );
 }
@@ -502,7 +502,7 @@ function RegisterStepCommunity({ draft, onChange, provinces, selectedProvince }:
     <View style={styles.authStepContent}>
       <Text style={styles.authHeroTitle}>{APP_MESSAGES.auth.wizardCommunityTitle}</Text>
       <Text style={styles.authHeroText}>{APP_MESSAGES.auth.wizardCommunityHelp}</Text>
-      <AuthSelect label="Provincia" value={draft.province || 'Seleccioná tu provincia'} open={provinceOpen} onToggle={() => setProvinceOpen(!provinceOpen)}>
+      <AuthSelect label={APP_MESSAGES.auth.provinceLabel} value={draft.province || APP_MESSAGES.auth.selectProvince} open={provinceOpen} onToggle={() => setProvinceOpen(!provinceOpen)}>
         {provinces.map((item) => (
           <TouchableOpacity key={item.province} style={styles.authSelectItem} onPress={() => { onChange({ province: item.province, community: '' }); setProvinceOpen(false); setCommunityOpen(false); }}>
             <Text style={styles.authSelectItemText}>{provinceDisplayNames[item.province] ?? item.province}</Text>
@@ -510,7 +510,7 @@ function RegisterStepCommunity({ draft, onChange, provinces, selectedProvince }:
         ))}
       </AuthSelect>
       {selectedProvince ? (
-        <AuthSelect label="Comunidad" value={draft.community || 'Seleccioná tu comunidad'} open={communityOpen} onToggle={() => setCommunityOpen(!communityOpen)}>
+        <AuthSelect label={APP_MESSAGES.auth.communityLabel} value={draft.community || APP_MESSAGES.auth.selectCommunity} open={communityOpen} onToggle={() => setCommunityOpen(!communityOpen)}>
           {selectedProvince.locations.map((item) => (
             <TouchableOpacity key={item.name} style={styles.authSelectItem} onPress={() => { onChange({ community: item.name }); setCommunityOpen(false); }}>
               <Text style={styles.authSelectItemText}>{item.name}</Text>
@@ -518,15 +518,15 @@ function RegisterStepCommunity({ draft, onChange, provinces, selectedProvince }:
           ))}
         </AuthSelect>
       ) : null}
-      <AuthSelect label="Año de inicio en el Movimiento" value={draft.perseveranceStartYear || 'Seleccionar año'} open={perseveranceYearOpen} onToggle={() => setPerseveranceYearOpen(!perseveranceYearOpen)}>
+      <AuthSelect label={APP_MESSAGES.auth.startYearLabel} value={draft.perseveranceStartYear || APP_MESSAGES.auth.selectStartYear} open={perseveranceYearOpen} onToggle={() => setPerseveranceYearOpen(!perseveranceYearOpen)}>
         {perseveranceStartYears.map((year) => (
           <TouchableOpacity key={year} style={styles.authSelectItem} onPress={() => { onChange({ perseveranceStartYear: year }); setPerseveranceYearOpen(false); }}>
             <Text style={styles.authSelectItemText}>{year}</Text>
           </TouchableOpacity>
         ))}
       </AuthSelect>
-      <AuthTextInput label="Mail" value={draft.email} onChangeText={(value) => onChange({ email: value })} keyboardType="email-address" autoCapitalize="none" />
-      <AuthTextInput label="Contraseña" value={draft.password} onChangeText={(value) => onChange({ password: value })} secureTextEntry autoCapitalize="none" />
+      <AuthTextInput label={APP_MESSAGES.auth.emailLabel} value={draft.email} onChangeText={(value) => onChange({ email: value })} keyboardType="email-address" autoCapitalize="none" />
+      <AuthTextInput label={APP_MESSAGES.auth.passwordLabel} value={draft.password} onChangeText={(value) => onChange({ password: value })} secureTextEntry autoCapitalize="none" />
     </View>
   );
 }
