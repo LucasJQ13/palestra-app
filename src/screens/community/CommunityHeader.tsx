@@ -2,6 +2,7 @@ import React from 'react';
 import { ImageBackground, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppCommunityLocation } from '../../lib/remoteData';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { communityStyles } from './communityStyles';
 
 export function CommunityHeader({
@@ -14,12 +15,12 @@ export function CommunityHeader({
   const content = (
     <View style={communityStyles.heroOverlay}>
       <Text style={communityStyles.heroEyebrow}>{province || 'Palestra Argentina'}</Text>
-      <Text style={communityStyles.heroTitle}>{community?.name || 'Mi Comunidad'}</Text>
+      <Text style={communityStyles.heroTitle}>{community?.name || APP_MESSAGES.community.myCommunityTitle}</Text>
       {community?.description ? <Text style={communityStyles.heroDescription}>{community.description}</Text> : null}
       <View style={communityStyles.heroMeta}>
         <View style={communityStyles.heroMetaItem}>
           <Ionicons name="location-outline" size={15} color="#FFFFFF" />
-          <Text style={communityStyles.heroMetaText}>{province || 'Provincia sin asignar'}</Text>
+          <Text style={communityStyles.heroMetaText}>{province || APP_MESSAGES.community.provinceFallback}</Text>
         </View>
         {community?.meetingDay || community?.meetingTime ? (
           <View style={communityStyles.heroMetaItem}>

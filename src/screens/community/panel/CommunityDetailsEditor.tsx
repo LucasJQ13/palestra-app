@@ -3,6 +3,7 @@ import { Image, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { AppButton } from '../../../components/ui';
 import { inputPlaceholderColor } from '../../../lib/constants';
+import { APP_MESSAGES } from '../../../lib/appMessages';
 import { communityPanelStyles as styles } from './communityPanelStyles';
 
 export function CommunityDetailsEditor({
@@ -43,11 +44,11 @@ export function CommunityDetailsEditor({
 
   return (
     <View style={[styles.panel, isDark && styles.panelDark]}>
-      <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>Identidad de la comunidad</Text>
-      <Text style={[styles.body, isDark && styles.bodyDark]}>Actualizá la presentación y el banner de tu comunidad.</Text>
+      <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>{APP_MESSAGES.community.detailsTitle}</Text>
+      <Text style={[styles.body, isDark && styles.bodyDark]}>{APP_MESSAGES.community.detailsHelp}</Text>
       {draftImageUrl ? <Image source={{ uri: draftImageUrl }} style={styles.image} resizeMode="cover" /> : null}
       <AppButton
-        label={draftImageUrl ? 'Cambiar banner' : 'Agregar banner'}
+        label={draftImageUrl ? APP_MESSAGES.community.bannerChange : APP_MESSAGES.community.bannerAdd}
         icon="image-outline"
         variant="secondary"
         size="compact"
@@ -57,13 +58,13 @@ export function CommunityDetailsEditor({
         style={[styles.input, styles.textArea, isDark && styles.inputDark]}
         value={draftDescription}
         onChangeText={setDraftDescription}
-        placeholder="Descripción, frase o lema de la comunidad"
+        placeholder={APP_MESSAGES.community.detailsPlaceholder}
         placeholderTextColor={inputPlaceholderColor}
         multiline
         maxLength={1000}
       />
       <AppButton
-        label="Guardar identidad"
+        label={APP_MESSAGES.community.detailsSave}
         icon="save-outline"
         onPress={() => onSave({
           description: draftDescription.trim(),

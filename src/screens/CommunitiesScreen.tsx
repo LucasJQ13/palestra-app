@@ -7,7 +7,7 @@ import { AppContentBlock, SecretariatMemberRecord, createCommunityContactMessage
 import { createInstitutionalQuery } from '../lib/queries/publicQueries';
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor, provinceDisplayNames, provinceLogos } from '../lib/constants';
-import { changeDone } from '../lib/appMessages';
+import { APP_MESSAGES, changeDone } from '../lib/appMessages';
 import { communitySectionOptions, normalizeCommunityGroup, resolveCommunitySectionVisibility } from '../lib/communitySections';
 import { Coordinates, NearestCommunityResult, findNearestCommunityDetails } from '../lib/nearestCommunity';
 import { Role, Session } from '../types/auth';
@@ -85,14 +85,14 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
 
   async function searchNearestCommunity() {
     setNearestLoading(true);
-    setNearestMessage('Buscando tu ubicacion...');
+    setNearestMessage(APP_MESSAGES.community.findingLocation);
     setNearestResult(null);
     setNearestUserLocation(null);
     setNearestUserAddress('');
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== 'granted') {
-        setNearestMessage('No pude acceder a tu ubicacion. Activa el permiso para buscar comunidades cercanas.');
+        setNearestMessage(APP_MESSAGES.community.locationPermissionDenied);
         setNearestModalVisible(true);
         return;
       }
@@ -119,13 +119,13 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
       setNearestMessage(result
         ? ''
         : search.communitiesWithCoordinates === 0
-          ? 'No hay comunidades con coordenadas validas cargadas para calcular distancia.'
+          ? APP_MESSAGES.community.noCoordinates
           : search.nearestAnyDistance
-            ? `No hemos encontrado una comunidad cerca de ti dentro de un radio de 5 km. La mas cercana cargada es ${search.nearestAnyDistance.community.name}, a ${search.nearestAnyDistance.distanceKm.toFixed(2)} km.`
-            : 'No hemos encontrado una comunidad cerca de ti dentro de un radio de 5 km.');
+            ? APP_MESSAGES.community.noNearbyWithNearest(search.nearestAnyDistance.community.name, search.nearestAnyDistance.distanceKm)
+            : APP_MESSAGES.community.noNearby);
       setNearestModalVisible(true);
     } catch (error) {
-      setNearestMessage(error instanceof Error ? error.message : 'No pude obtener tu ubicacion actual.');
+      setNearestMessage(error instanceof Error ? error.message : APP_MESSAGES.community.locationFailed);
       setNearestModalVisible(true);
     } finally {
       setNearestLoading(false);
@@ -195,11 +195,11 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
 
   async function sendSecretariatMessage(targetId: string) {
     if (!session && (!contactName.trim() || !contactInfoValue.trim())) {
-      setSecretariatStatus('Deja tu nombre y un contacto para que puedan responderte.');
+      setSecretariatStatus(APP_MESSAGES.community.nameAndContactRequired);
       return;
     }
     if (!secretariatMessage.trim()) {
-      setSecretariatStatus('Escribi un mensaje antes de enviarlo.');
+      setSecretariatStatus(APP_MESSAGES.community.messageRequired);
       return;
     }
     const { error } = await createInstitutionalQuery({
@@ -213,7 +213,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
       setSecretariatStatus(error.message);
       return;
     }
-    setSecretariatStatus(changeDone('Consulta enviada al Secretariado.'));
+    setSecretariatStatus(changeDone(APP_MESSAGES.community.secretariatSent));
     setSecretariatMessage('');
     setSecretariatMessageTarget(null);
   }
@@ -221,8 +221,8 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
   function renderSecretariatMembers() {
     return (
       <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-        {secretariatLoading ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Cargando secretariado...</Text> : null}
-        {!secretariatLoading && secretariatMembers.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay integrantes cargados por ahora.</Text> : null}
+        {secretariatLoading ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.secretariatLoading}</Text> : null}
+        {!secretariatLoading && secretariatMembers.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.secretariatEmpty}</Text> : null}
         {secretariatMembers.map((member) => {
           const expanded = secretariatMessageTarget === member.id;
           return (
@@ -230,8 +230,8 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
               <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{member.full_name ?? 'Palestrista'}</Text>
               <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{roleLabelForProvince((member.role || 'palestrista') as Role, member.province, [], [], member.gender_preference ?? null)}</Text>
               {member.subrole_key ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{subroleLabel(member.subrole_key)}</Text> : null}
-              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{member.community_name ?? 'Sin comunidad'} - {member.province ?? 'Sin provincia'}</Text>
-              <AppButton label={expanded ? 'Cerrar consulta' : 'Enviar consulta'} icon={expanded ? 'close-outline' : 'help-circle-outline'} variant="ghost" size="compact" onPress={() => setSecretariatMessageTarget(expanded ? null : member.id)} />
+              <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{member.community_name ?? APP_MESSAGES.community.myCommunityFallback} - {member.province ?? APP_MESSAGES.community.provinceFallback}</Text>
+              <AppButton label={expanded ? APP_MESSAGES.community.closeQuery : APP_MESSAGES.community.sendQuery} icon={expanded ? 'close-outline' : 'help-circle-outline'} variant="ghost" size="compact" onPress={() => setSecretariatMessageTarget(expanded ? null : member.id)} />
               {expanded ? (
                 <View style={styles.stackTight}>
                   {!session ? (
@@ -246,11 +246,11 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                     style={[styles.input, styles.textArea, isDark && styles.inputDark]}
                     value={secretariatMessage}
                     onChangeText={(value) => setSecretariatMessage(value.slice(0, 500))}
-                    placeholder="Escribe tu consulta para el Secretariado"
+                    placeholder={APP_MESSAGES.community.secretariatMessagePlaceholder}
                     multiline
                     placeholderTextColor={inputPlaceholderColor}
                   />
-                  <AppButton label="Enviar consulta" icon="send-outline" onPress={() => sendSecretariatMessage(member.id)} />
+                  <AppButton label={APP_MESSAGES.community.sendQuery} icon="send-outline" onPress={() => sendSecretariatMessage(member.id)} />
                 </View>
               ) : null}
             </View>
@@ -270,7 +270,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{location.address}</Text>
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Contacto: {location.phone}</Text>
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Reunion: {location.meetingDay} - {location.meetingTime}</Text>
-            <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>Tocar para ver presentacion</Text>
+            <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.presentationHint}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -291,15 +291,15 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
 
   async function sendCommunityContactMessage() {
     if (!community?.id) {
-      setContactStatus('No se encontro la comunidad seleccionada.');
+      setContactStatus(APP_MESSAGES.community.selectedCommunityMissing);
       return;
     }
     if (!contactMessage.trim()) {
-      setContactStatus('Escribi un mensaje antes de enviarlo.');
+      setContactStatus(APP_MESSAGES.community.messageRequired);
       return;
     }
     if (!session && (!contactName.trim() || !contactInfoValue.trim())) {
-      setContactStatus('Deja tu nombre y un contacto para que puedan responderte.');
+      setContactStatus(APP_MESSAGES.community.nameAndContactRequired);
       return;
     }
     const { error } = await createCommunityContactMessage({
@@ -312,7 +312,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
       setContactStatus(error.message);
       return;
     }
-    setContactStatus(changeDone('Consulta enviada a la bandeja de la comunidad.'));
+    setContactStatus(changeDone(APP_MESSAGES.community.contactSent));
     setContactMessage('');
   }
 
@@ -355,9 +355,9 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
           <View style={styles.stackTight}>
             <TouchableOpacity style={[styles.card, styles.provinceCard, isDark && styles.surfaceCardDark]} onPress={() => openSecretariat('provincia', province.province)} activeOpacity={0.86}>
               <View style={styles.provinceBody}>
-                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Secretariados</Text>
-                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Nuestro Secretariado</Text>
-                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Vocales y Coordinacion Diocesana vinculados a {province.province}.</Text>
+                <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.secretariats}</Text>
+                <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.diocesanSecretariat}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.diocesanSecretariatHelp(province.province)}</Text>
               </View>
               <Ionicons name={secretariatScope === 'provincia' ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color={palette.red} />
             </TouchableOpacity>
@@ -380,7 +380,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                 showsVerticalScrollIndicator
                 contentContainerStyle={styles.modalScrollContent}
               >
-              <IconButton icon="close" accessibilityLabel="Cerrar comunidad" variant="ghost" onPress={closeCommunityModal} />
+              <IconButton icon="close" accessibilityLabel={APP_MESSAGES.community.closeCommunity} variant="ghost" onPress={closeCommunityModal} />
               {community ? (
                 <>
                   <Image source={{ uri: community.imageUrl }} style={styles.communityModalImage} />
@@ -393,7 +393,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                     </View>
                     <View style={styles.communityModalMetaItem}>
                       <Ionicons name="people-outline" size={17} color={palette.red} />
-                      <Text style={[styles.communityModalMetaText, isDark && styles.textDarkBody]}>{province.locations.length} comunidades activas</Text>
+                      <Text style={[styles.communityModalMetaText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.activeCommunities(province.locations.length)}</Text>
                     </View>
                     <View style={styles.communityModalMetaItem}>
                       <Ionicons name="call-outline" size={17} color={palette.red} />
@@ -407,30 +407,30 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{community.address}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{community.description}</Text>
                   <View style={styles.inlineActions}>
-                    <IconButton icon="location-outline" variant="primary" onPress={() => openCommunityLocation(community)} accessibilityLabel="Abrir ubicacion" />
-                    <IconButton icon="chatbubble-outline" variant="primary" onPress={() => { setShowContactBox(!showContactBox); setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 120); }} accessibilityLabel="Enviar mensaje" />
+                    <IconButton icon="location-outline" variant="primary" onPress={() => openCommunityLocation(community)} accessibilityLabel={APP_MESSAGES.community.openLocation} />
+                    <IconButton icon="chatbubble-outline" variant="primary" onPress={() => { setShowContactBox(!showContactBox); setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 120); }} accessibilityLabel={APP_MESSAGES.community.sendMessage} />
                   </View>
                   {showContactBox ? (
                     <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
-                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mensaje a animación/coordinación</Text>
+                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.messageToLeaders}</Text>
                       {!session ? (
                         <>
                           <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Nombre</Text>
                           <TextInput style={styles.input} placeholder="Ej: Juan Perez" value={contactName} onChangeText={setContactName} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
                           <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Contacto</Text>
-                          <TextInput style={styles.input} placeholder="Ej: nombre@email.com o telefono" value={contactInfoValue} onChangeText={setContactInfoValue} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
+                          <TextInput style={styles.input} placeholder={APP_MESSAGES.community.contactPlaceholder} value={contactInfoValue} onChangeText={setContactInfoValue} onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)} placeholderTextColor={inputPlaceholderColor} />
                         </>
                       ) : null}
                       <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Mensaje</Text>
                       <TextInput
                         style={[styles.input, styles.textArea]}
-                        placeholder="Escribe tu consulta para la comunidad"
+                        placeholder={APP_MESSAGES.community.communityMessagePlaceholder}
                         value={contactMessage}
                         onChangeText={(value) => setContactMessage(value.slice(0, 500))}
                         onFocus={() => setTimeout(() => contactScrollRef.current?.scrollToEnd({ animated: true }), 160)}
                         multiline placeholderTextColor={inputPlaceholderColor} />
                       <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{contactMessage.length}/500</Text>
-                      <AppButton label="Enviar consulta" icon="send-outline" onPress={sendCommunityContactMessage} />
+                      <AppButton label={APP_MESSAGES.community.sendQuery} icon="send-outline" onPress={sendCommunityContactMessage} />
                       {contactStatus ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{contactStatus}</Text> : null}
                     </View>
                   ) : null}
@@ -451,7 +451,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
           );
         })}
         {activeProvinceSections.length === 0 ? (
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay subsecciones habilitadas para esta provincia por ahora.</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.noSubsections}</Text>
         ) : null}
       </View>
     );
@@ -468,9 +468,9 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
               <Image source={nationalSecretariatLogo} style={styles.provinceLogoMiniImage} />
             </TouchableOpacity>
             <View style={styles.provinceBody}>
-              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Secretariados</Text>
-              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Secretariado Nacional</Text>
-              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Referentes nacionales del movimiento.</Text>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.secretariats}</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.nationalSecretariat}</Text>
+              <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.nationalSecretariatHelp}</Text>
             </View>
             <Ionicons name={secretariatScope === 'nacional' ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color={palette.red} />
           </TouchableOpacity>
@@ -479,9 +479,9 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
       ) : null}
       {nearbySearchEnabled ? (
         <View style={[styles.card, isDark && styles.surfaceCardDark]}>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Buscar Comunidad mas cercana</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Usa tu ubicacion actual y muestra comunidades con coordenadas validas dentro de 5 km.</Text>
-          <AppButton label="Buscar comunidad cercana" icon="navigate-outline" loading={nearestLoading} onPress={searchNearestCommunity} />
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.findNearestTitle}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.findNearestHelp}</Text>
+          <AppButton label={APP_MESSAGES.community.findNearestButton} icon="navigate-outline" loading={nearestLoading} onPress={searchNearestCommunity} />
         </View>
       ) : null}
       {visibleCommunityData.map((community) => (
@@ -493,7 +493,7 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
             <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{community.region}</Text>
             <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{community.province}</Text>
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{community.description}</Text>
-            <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>{community.locations.length} comunidades activas</Text>
+            <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.activeCommunities(community.locations.length)}</Text>
           </View>
         </TouchableOpacity>
       ))}
@@ -531,15 +531,15 @@ export function CommunitiesScreen({ session, title, content, refreshKey, nearbyS
                     </View>
                   </View>
                   <TouchableOpacity style={[styles.card, isDark && styles.surfaceCardDark]} onPress={openNearestInMaps} activeOpacity={0.86}>
-                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mapa interactivo</Text>
-                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tu ubicacion: cerca de {nearestUserAddress || 'tu posicion actual'}</Text>
-                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Comunidad: {nearestResult.community.address}</Text>
-                    <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>Tocar para abrir ruta interactiva</Text>
+                    <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.mapTitle}</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.nearestUserLocation(nearestUserAddress)}</Text>
+                    <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.nearestCommunityLocation(nearestResult.community.address)}</Text>
+                    <Text style={[styles.expandHint, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.routeHint}</Text>
                   </TouchableOpacity>
-                  <AppButton label="Abrir en Google Maps" icon="navigate-outline" onPress={openNearestInMaps} />
+                  <AppButton label={APP_MESSAGES.community.openGoogleMaps} icon="navigate-outline" onPress={openNearestInMaps} />
                 </>
               ) : (
-                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{nearestMessage || 'No hemos encontrado una comunidad cerca de ti dentro de un radio de 5 km.'}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{nearestMessage || APP_MESSAGES.community.noNearby}</Text>
               )}
             </ScrollView>
           </View>

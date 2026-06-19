@@ -4,6 +4,7 @@ import { AppButton, IconButton } from '../../components/ui';
 import { AppCommunityLocation } from '../../lib/remoteData';
 import { CommunityMember, ProvinceRoleLabelRecord } from '../../lib/profiles';
 import { RoleAliasConfig } from '../../lib/appConfig';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { Session } from '../../types/auth';
 import { CommunityHeader } from './CommunityHeader';
 import { CommunityLeaders } from './CommunityLeaders';
@@ -56,14 +57,14 @@ export function MyCommunityScreen({
     <View style={communityStyles.screen}>
       <View style={communityStyles.topBar}>
         <IconButton icon="arrow-back-outline" onPress={onBack} accessibilityLabel="Volver a Mi Perfil" />
-        <Text style={[communityStyles.topBarTitle, isDark && communityStyles.topBarTitleDark]}>Mi Comunidad</Text>
-        <IconButton icon="refresh-outline" onPress={onRefresh} accessibilityLabel="Actualizar Mi Comunidad" />
+        <Text style={[communityStyles.topBarTitle, isDark && communityStyles.topBarTitleDark]}>{APP_MESSAGES.community.myCommunityTitle}</Text>
+        <IconButton icon="refresh-outline" onPress={onRefresh} accessibilityLabel={APP_MESSAGES.community.refreshMyCommunity} />
       </View>
 
       <CommunityHeader community={community} province={session.province} />
 
       {canAccessPanel ? (
-        <AppButton label="Abrir Panel de Comunidad" icon="settings-outline" onPress={onOpenPanel} fullWidth />
+        <AppButton label={APP_MESSAGES.community.openCommunityPanel} icon="settings-outline" onPress={onOpenPanel} fullWidth />
       ) : null}
 
       <CommunityLeaders

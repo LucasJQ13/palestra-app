@@ -5,6 +5,7 @@ import { AppCommunity } from '../../lib/remoteData';
 import { CommunityGroupType, communityGroupLabel, communitySectionOptions, resolveCommunitySectionVisibility } from '../../lib/communitySections';
 import { Role } from '../../types/auth';
 import { inputPlaceholderColor } from '../../lib/constants';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { AppButton, ButtonGroup } from '../../components/ui';
@@ -98,8 +99,8 @@ export function CommunityAdminPanel({
 }: CommunityAdminPanelProps) {
   return (
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Gestionar comunidades</Text>
-      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Crear, editar, habilitar, deshabilitar o archivar comunidades segun tu jurisdiccion.</Text>
+      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.adminTitle}</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.adminHelp}</Text>
       <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Provincia</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
         {manageableCommunities.map((item) => (
@@ -112,18 +113,18 @@ export function CommunityAdminPanel({
           </TouchableOpacity>
         ))}
       </ScrollView>
-      {manageableCommunities.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Tu rango no tiene comunidades editables.</Text> : null}
+      {manageableCommunities.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.adminNoEditable}</Text> : null}
       {sessionRole === 'administrador' && selectedAdminProvince ? (
         <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Subsecciones visibles</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Activar o desactivar secciones para {selectedAdminProvince.province}.</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.visibleSubsections}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.visibleSubsectionsHelp(selectedAdminProvince.province)}</Text>
           {communitySectionOptions.map((item) => {
             const visibility = resolveCommunitySectionVisibility(selectedAdminProvince.province, selectedAdminProvince.sectionVisibility);
             return (
               <View key={item.key} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                 <View style={styles.adminUserHeaderText}>
                   <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.label}</Text>
-                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{visibility[item.key] ? 'Visible en Comunidades' : 'Oculta para usuarios'}</Text>
+                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{visibility[item.key] ? APP_MESSAGES.community.visibleInCommunities : APP_MESSAGES.community.hiddenForUsers}</Text>
                 </View>
                 <Switch
                   value={visibility[item.key]}
@@ -137,12 +138,12 @@ export function CommunityAdminPanel({
         </View>
       ) : null}
       {canAdministrateCommunities && selectedAdminProvince ? (
-        <AppButton label={showAdminCommunityCreate ? 'Cerrar creacion' : 'Crear Comunidad'} icon={showAdminCommunityCreate ? 'chevron-up-outline' : 'add-circle-outline'} onPress={onToggleCreateCommunity} />
+        <AppButton label={showAdminCommunityCreate ? APP_MESSAGES.community.closeCreation : APP_MESSAGES.community.createCommunity} icon={showAdminCommunityCreate ? 'chevron-up-outline' : 'add-circle-outline'} onPress={onToggleCreateCommunity} />
       ) : null}
       {canAdministrateCommunities && selectedAdminProvince && showAdminCommunityCreate ? (
         <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Crear comunidad</Text>
-          <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre de comunidad" value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { onResetSelectedCommunity(); setAdminCommunityName(value); }}  placeholderTextColor={inputPlaceholderColor} />
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.createCommunity}</Text>
+          <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder={APP_MESSAGES.community.communityNamePlaceholder} value={adminCommunityId ? '' : adminCommunityName} onChangeText={(value) => { onResetSelectedCommunity(); setAdminCommunityName(value); }}  placeholderTextColor={inputPlaceholderColor} />
           <View style={styles.filterRow}>
             {communitySectionOptions.map((item) => (
               <TouchableOpacity key={item.key} style={[styles.filterChip, isDark && styles.surfaceRowDark, adminCommunityGroupType === item.key && styles.filterChipActive]} onPress={() => setAdminCommunityGroupType(item.key)}>
@@ -164,18 +165,18 @@ export function CommunityAdminPanel({
           </View>
           <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="descripcion" value={adminCommunityId ? '' : adminCommunityDescription} onChangeText={(value) => { onResetSelectedCommunity(); setAdminCommunityDescription(value); }} multiline  placeholderTextColor={inputPlaceholderColor} />
           <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Imagen</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Opcional. Podes guardar la comunidad sin imagen.</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.optionalImageHelp}</Text>
           {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
           <AppButton label={adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'} icon="image-outline" variant="secondary" onPress={onPickImage} />
           <TouchableOpacity style={[styles.filterChip, adminCommunityIsActive && styles.filterChipActive]} onPress={() => setAdminCommunityIsActive(!adminCommunityIsActive)}>
             <Text style={[styles.filterChipText, adminCommunityIsActive && styles.filterChipTextActive]}>{adminCommunityIsActive ? 'Activa' : 'Inactiva'}</Text>
           </TouchableOpacity>
-          <AppButton label="Crear comunidad" icon="save-outline" loading={adminCommunityImageUploading} onPress={onCreateCommunity} />
+          <AppButton label={APP_MESSAGES.community.createCommunity} icon="save-outline" loading={adminCommunityImageUploading} onPress={onCreateCommunity} />
         </View>
       ) : null}
       {selectedAdminProvince ? (
         <>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Comunidades existentes</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.existingCommunities}</Text>
           <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
             {selectedAdminProvince.locations.map((item) => {
               const itemKey = item.id ?? item.name;
@@ -210,8 +211,8 @@ export function CommunityAdminPanel({
                         <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
                       </View>
                       <View style={[styles.profileCommunityPanel, isDark && styles.surfaceRowDark]}>
-                        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Ubicacion</Text>
-                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Cargar coordenadas habilita "Buscar Comunidad Cercana". Podes copiarlas desde Google Maps.</Text>
+                        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.locationTitle}</Text>
+                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.coordinatesHelp}</Text>
                         <View style={styles.filterRow}>
                           <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Latitud. Ej: -31.4167" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
                           <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Longitud. Ej: -64.1833" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
@@ -219,11 +220,11 @@ export function CommunityAdminPanel({
                         <AppButton label="Ver direccion en Maps" icon="map-outline" variant="secondary" size="compact" onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityAddress}, ${adminCommunityProvince}, Argentina`)}`)} />
                       </View>
                       <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Imagen de comunidad</Text>
-                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Imagen recomendada: 1200x600 px. La app abre recorte 2:1 para encuadrar antes de guardar.</Text>
+                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.imageTitle}</Text>
+                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.imageHelp}</Text>
                       {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
                       <AppButton label={adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'} icon="image-outline" variant="secondary" onPress={onPickImage} />
-                      {adminCommunityImageAsset ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Vista previa lista. Toca Guardar comunidad para subirla y asociarla.</Text> : null}
+                      {adminCommunityImageAsset ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.imagePreviewReady}</Text> : null}
                       <ButtonGroup>
                         {canAdministrateCommunities ? (
                           <AppButton label={isActive ? 'Deshabilitar' : 'Habilitar'} icon={isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'} variant="secondary" size="compact" onPress={() => onToggleCommunityStatus(itemKey, !isActive)} />
@@ -232,7 +233,7 @@ export function CommunityAdminPanel({
                           <AppButton label="Eliminar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => onArchiveCommunity(itemKey)} />
                         ) : null}
                       </ButtonGroup>
-                      <AppButton label="Guardar comunidad" icon="save-outline" loading={adminCommunityImageUploading} onPress={onSaveCommunity} />
+                      <AppButton label={APP_MESSAGES.community.saveCommunity} icon="save-outline" loading={adminCommunityImageUploading} onPress={onSaveCommunity} />
                     </View>
                   ) : null}
                 </View>

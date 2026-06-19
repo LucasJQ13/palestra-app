@@ -3205,15 +3205,15 @@ export function ProfileScreen({
   async function pickAdminCommunityImage() {
     const isCreatingCommunity = showAdminCommunityCreate && !selectedAdminCommunity?.id;
     if (!isCreatingCommunity && !selectedAdminCommunity?.id) {
-      setAuthMessage('Elegir una comunidad antes de cargar imagen.');
+      setAuthMessage(APP_MESSAGES.community.chooseCommunityForImage);
       return;
     }
     if (isCreatingCommunity && !canAdministrateCommunities) {
-      setAuthMessage('Tu rango no puede cargar imagen al crear comunidades.');
+      setAuthMessage(APP_MESSAGES.community.cannotUploadCommunityImage);
       return;
     }
     if (!isCreatingCommunity && selectedAdminCommunity && !canEditCommunity(session, adminCommunityProvince, selectedAdminCommunity.name)) {
-      setAuthMessage('Tu rango no puede cambiar la imagen de esta comunidad.');
+      setAuthMessage(APP_MESSAGES.community.cannotChangeCommunityImage);
       return;
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -3309,7 +3309,7 @@ export function ProfileScreen({
 
   async function adminSaveCommunity() {
     if (!selectedAdminCommunity?.id) {
-      setAuthMessage('Elegir una comunidad cargada desde Supabase para editar.');
+      setAuthMessage(APP_MESSAGES.community.chooseCommunityForEdit);
       return;
     }
     if (!canEditCommunity(session, adminCommunityProvince, selectedAdminCommunity.name)) {
@@ -3317,7 +3317,7 @@ export function ProfileScreen({
       return;
     }
 
-    setAuthMessage('Guardando comunidad...');
+    setAuthMessage(APP_MESSAGES.community.savingCommunity);
     let imageUrl = adminCommunityImageUrl;
     const latitude = adminCommunityLatitude.trim() ? Number(adminCommunityLatitude.replace(',', '.')) : null;
     const longitude = adminCommunityLongitude.trim() ? Number(adminCommunityLongitude.replace(',', '.')) : null;
@@ -3328,7 +3328,7 @@ export function ProfileScreen({
     try {
       imageUrl = await uploadAdminCommunityImage();
     } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : 'No se pudo subir la imagen de comunidad.');
+      setAuthMessage(error instanceof Error ? error.message : APP_MESSAGES.community.communityImageFailed);
       return;
     }
     const { error } = await updateCommunity(selectedAdminCommunity.id, {
@@ -3363,7 +3363,7 @@ export function ProfileScreen({
 
   async function adminCreateCommunity() {
     if (!canAdministrateCommunities) {
-      setAuthMessage('Tu rango no puede crear comunidades.');
+      setAuthMessage(APP_MESSAGES.community.cannotCreateCommunity);
       return;
     }
     if (!adminCommunityProvince || !adminCommunityName.trim()) {
@@ -3375,7 +3375,7 @@ export function ProfileScreen({
       return;
     }
 
-    setAuthMessage('Creando comunidad...');
+    setAuthMessage(APP_MESSAGES.community.creatingCommunity);
     const latitude = adminCommunityLatitude.trim() ? Number(adminCommunityLatitude.replace(',', '.')) : null;
     const longitude = adminCommunityLongitude.trim() ? Number(adminCommunityLongitude.replace(',', '.')) : null;
     if ((latitude != null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) || (longitude != null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180))) {
@@ -3408,7 +3408,7 @@ export function ProfileScreen({
           return;
         }
       } catch (uploadError) {
-        setAuthMessage(uploadError instanceof Error ? uploadError.message : 'Comunidad creada, pero no se pudo subir la imagen.');
+        setAuthMessage(uploadError instanceof Error ? uploadError.message : APP_MESSAGES.community.communityCreatedImageFailed);
         return;
       }
     }
@@ -3426,7 +3426,7 @@ export function ProfileScreen({
     setAdminCommunityImageUrl('');
     setAdminCommunityImagePreview('');
     setShowAdminCommunityCreate(false);
-    setAuthMessage(changeDone('Comunidad creada.'));
+    setAuthMessage(changeDone(APP_MESSAGES.community.communityCreated));
     await onContentChanged();
   }
 
@@ -3826,7 +3826,7 @@ export function ProfileScreen({
 
   async function publishCommunityPost() {
     if (!session || !communityCapabilities.canPublishNotices) {
-      setAuthMessage('No tenés permiso para publicar avisos en esta comunidad.');
+      setAuthMessage(APP_MESSAGES.community.cannotPublishNotice);
       return;
     }
     const validationMessage = validateCommunityNoticeDraft(communityNoticeDraft);
@@ -3924,7 +3924,7 @@ export function ProfileScreen({
   async function saveCommunityPublicationEdit(status: 'activo' | 'cerrado' = 'activo') {
     if (!communityCapabilities.canOpenPanel || !editingCommunityPublicationId) {
       if (!communityCapabilities.canOpenPanel) {
-        setAuthMessage('No tenés permiso para editar avisos de esta comunidad.');
+        setAuthMessage(APP_MESSAGES.community.cannotEditNotice);
       }
       return;
     }
@@ -3969,7 +3969,7 @@ export function ProfileScreen({
 
   async function removeCommunityPublication(publicationId: string) {
     if (!communityCapabilities.canOpenPanel) {
-      setAuthMessage('No tenés permiso para eliminar avisos de esta comunidad.');
+      setAuthMessage(APP_MESSAGES.community.cannotDeleteNotice);
       return;
     }
     const { error } = await archiveCommunityPublication(publicationId);
@@ -3987,12 +3987,12 @@ export function ProfileScreen({
     imageUrl: string | null;
   }) {
     if (!session || !communityCapabilities.canEditCommunityDetails || !currentCommunity?.id) {
-      setAuthMessage('No tenés permiso para editar esta comunidad.');
+      setAuthMessage(APP_MESSAGES.community.cannotEditCommunity);
       return;
     }
 
     setCommunityDetailsSaving(true);
-    setAuthMessage('Guardando datos de la comunidad...');
+    setAuthMessage(APP_MESSAGES.community.savingCommunity);
     try {
       let imageUrl = values.imageUrl;
       if (values.imageAsset) {
@@ -4012,10 +4012,10 @@ export function ProfileScreen({
       }
       setRegistrationCommunities(await fetchCommunities());
       await onContentChanged();
-      setAuthMessage(changeDone('Datos de la comunidad actualizados.'));
+      setAuthMessage(changeDone(APP_MESSAGES.community.communityUpdated));
       showFeedbackMessage('Cambios guardados');
     } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : 'No se pudieron guardar los datos de la comunidad.');
+      setAuthMessage(error instanceof Error ? error.message : APP_MESSAGES.community.communitySaveFailed);
     } finally {
       setCommunityDetailsSaving(false);
     }
