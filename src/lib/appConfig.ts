@@ -89,8 +89,8 @@ export const defaultAdminConfig: AppAdminConfig = {
     designerCreditUrl: defaultDesignerCreditUrl
   },
   home: {
-    heroTitle: 'Una app para caminar juntos.',
-    heroText: 'Noticias, agenda, materiales y comunicacion interna para las comunidades de Palestra.',
+    heroTitle: 'Un espacio para caminar juntos.',
+    heroText: 'Noticias, agenda, materiales y comunicacion para vivir Palestra en comunidad.',
     featuredBanner: 'Agenda comunitaria',
     visibleModules: ['noticias', 'comunidades', 'materiales', 'foro', 'perfil', 'agenda'],
     quickAccessLabels: {
@@ -100,9 +100,9 @@ export const defaultAdminConfig: AppAdminConfig = {
       foro: 'Foro',
       perfil: 'Perfil'
     },
-    greetingTemplateMale: 'Bienvenido {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
-    greetingTemplateFemale: 'Bienvenida {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
-    greetingTemplateNeutral: 'Bienvenido/a a Palestra, {nombre}. Oh Bella Ciao!'
+    greetingTemplateMale: 'Bienvenido {tratamiento} {nombre}. Caminemos juntos en Cristo.',
+    greetingTemplateFemale: 'Bienvenida {tratamiento} {nombre}. Caminemos juntas en Cristo.',
+    greetingTemplateNeutral: 'Bienvenido/a {nombre}. Caminemos juntos en Cristo.'
   },
   contact: {
     email: contactInfo.email,

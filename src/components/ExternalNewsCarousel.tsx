@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { APP_MESSAGES } from '../lib/appMessages';
 import { palette } from '../theme/palette';
 import { ExternalCatholicNewsItem } from '../lib/externalNews';
 
@@ -27,7 +28,7 @@ export function ExternalNewsCarousel({ items, loading, error, dark = false }: Pr
     return (
       <View style={[styles.card, dark && styles.cardDark]}>
         <Text style={[styles.eyebrow, dark && styles.accentDark]}>Noticias de la Iglesia</Text>
-        <Text style={[styles.title, dark && styles.textDark]}>Cargando noticias externas...</Text>
+        <Text style={[styles.title, dark && styles.textDark]}>{APP_MESSAGES.home.externalNewsLoading}</Text>
       </View>
     );
   }
@@ -36,7 +37,7 @@ export function ExternalNewsCarousel({ items, loading, error, dark = false }: Pr
     return (
       <View style={[styles.card, dark && styles.cardDark]}>
         <Text style={[styles.eyebrow, dark && styles.accentDark]}>Noticias de la Iglesia</Text>
-        <Text style={[styles.body, dark && styles.bodyDark]}>{error || 'No pudimos cargar noticias externas en este momento.'}</Text>
+        <Text style={[styles.body, dark && styles.bodyDark]}>{error || APP_MESSAGES.home.externalNewsUnavailable}</Text>
       </View>
     );
   }

@@ -70,11 +70,11 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
   const homeModuleEnabled = (moduleKey: string) => enabledHomeModules.has(moduleKey);
   const quickLabel = (moduleKey: string, fallback: string) => adminConfig.home.quickAccessLabels?.[moduleKey]?.trim() || fallback;
   const homeTiles = ([
-    { module: 'noticias', tab: 'notilestra', title: quickLabel('noticias', 'Noticias'), meta: 'Agenda y avisos', icon: 'newspaper-outline', color: palette.red },
-    { module: 'comunidades', tab: 'comunidades', title: quickLabel('comunidades', 'Comunidad'), meta: 'Provincias y contactos', icon: 'people-outline', color: '#7DB9E2' },
-    { module: 'materiales', tab: 'materiales', title: quickLabel('materiales', 'Materiales'), meta: 'Archivos internos', icon: 'folder-open-outline', color: palette.gold },
-    { module: 'foro', tab: 'foro', title: quickLabel('foro', 'Foro'), meta: 'Nacional y provincias', icon: 'chatbubbles-outline', color: '#4AA06D' },
-    { module: 'perfil', tab: 'perfil', title: session ? quickLabel('perfil', 'Perfil') : 'Ingresar', meta: session ? roleLabel(session.role, session.genderPreference) : 'Cuenta personal', icon: 'person-circle-outline', color: palette.inkMuted }
+    { module: 'noticias', tab: 'notilestra', title: quickLabel('noticias', 'Noticias'), meta: APP_MESSAGES.home.newsMeta, icon: 'newspaper-outline', color: palette.red },
+    { module: 'comunidades', tab: 'comunidades', title: quickLabel('comunidades', 'Comunidad'), meta: APP_MESSAGES.home.communitiesMeta, icon: 'people-outline', color: '#7DB9E2' },
+    { module: 'materiales', tab: 'materiales', title: quickLabel('materiales', 'Materiales'), meta: APP_MESSAGES.home.materialsMeta, icon: 'folder-open-outline', color: palette.gold },
+    { module: 'foro', tab: 'foro', title: quickLabel('foro', 'Foro'), meta: APP_MESSAGES.home.forumMeta, icon: 'chatbubbles-outline', color: '#4AA06D' },
+    { module: 'perfil', tab: 'perfil', title: session ? quickLabel('perfil', 'Perfil') : APP_MESSAGES.home.profileGuestTitle, meta: session ? roleLabel(session.role, session.genderPreference) : APP_MESSAGES.home.profileGuestMeta, icon: 'person-circle-outline', color: palette.inkMuted }
   ] satisfies Array<{ module: string; tab: TabKey; title: string; meta: string; icon: keyof typeof Ionicons.glyphMap; color: string }>).filter((tile) => homeModuleEnabled(tile.module));
   const dashboardStats = [
     { module: 'comunidades', label: 'Provincias', value: String(homeCommunities.length), icon: 'map-outline' as keyof typeof Ionicons.glyphMap },
@@ -106,14 +106,14 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
 
   async function loadDailyGospel(forceRefresh: boolean) {
     setDailyGospelLoading(true);
-    setDailyGospelMessage(forceRefresh ? 'Actualizando Evangelio del dia...' : 'Cargando Evangelio del dia...');
+    setDailyGospelMessage(forceRefresh ? APP_MESSAGES.home.gospelRefreshing : APP_MESSAGES.home.gospelLoading);
     const { data, error } = await fetchDailyGospel({
       sourceUrl: adminConfig.gospel.sourceUrl || 'https://donbosco.org.ar/home/evangelio',
       reflectionSourceUrl: adminConfig.gospel.reflectionSourceUrl || adminConfig.gospel.sourceUrl,
       forceRefresh
     });
     if (error || !data) {
-      setDailyGospelMessage(error?.message ?? 'No pude cargar el Evangelio automatico.');
+      setDailyGospelMessage(error?.message ?? APP_MESSAGES.home.gospelAutoFailed);
       setDailyGospelLoading(false);
       return;
     }
@@ -240,7 +240,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
         <View style={styles.homeHeroFooter}>
           <View style={styles.homeHeroStatus}>
             <Ionicons name={session ? 'shield-checkmark-outline' : 'person-add-outline'} size={17} color={palette.red} />
-            <Text style={[styles.homeHeroStatusText, isDark && styles.textDarkStrong]}>{session ? roleLabel(session.role, session.genderPreference) : 'Ingresar a Palestra'}</Text>
+            <Text style={[styles.homeHeroStatusText, isDark && styles.textDarkStrong]}>{session ? roleLabel(session.role, session.genderPreference) : APP_MESSAGES.home.guestStatus}</Text>
           </View>
           {dashboardStats.length > 0 ? (
             <Text style={[styles.homeHeroMeta, isDark && styles.textDarkMuted]}>{dashboardStats.map((item) => `${item.value} ${item.label.toLowerCase()}`).join(' · ')}</Text>
@@ -250,7 +250,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
 
       <EditableIntro content={content} editor={editor} />
 
-      {homeTiles.length > 0 ? <SectionTitle title="Accesos rápidos" /> : null}
+      {homeTiles.length > 0 ? <SectionTitle title={APP_MESSAGES.home.quickAccessTitle} /> : null}
       {homeTiles.length > 0 ? <View style={[styles.homeQuickPanel, isDark && styles.surfacePanelDark]}>
         <View style={styles.homeTileGrid}>
           {homeTiles.map((tile) => (
@@ -268,7 +268,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
         </View>
       </View> : null}
 
-      {dashboardStats.length > 0 ? <SectionTitle title="Resumen" /> : null}
+      {dashboardStats.length > 0 ? <SectionTitle title={APP_MESSAGES.home.summaryTitle} /> : null}
       {dashboardStats.length > 0 ? <View style={styles.dashboardStrip}>
         {dashboardStats.map((item) => (
           <View key={item.label} style={[styles.dashboardStat, isDark && styles.surfaceCardDark]}>
@@ -283,8 +283,8 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
         <TouchableOpacity style={[styles.gospelButton, { backgroundColor: identityButtonColor, shadowColor: identityButtonColor }]} activeOpacity={0.88} onPress={() => setGospelModalVisible(true)}>
           <Ionicons name="book-outline" size={22} color={palette.white} />
           <View style={styles.instagramButtonText}>
-            <Text style={styles.instagramButtonTitle}>Evangelio del Dia</Text>
-            <Text style={styles.instagramButtonMeta}>{adminConfig.gospel.title || 'Lectura diaria'}</Text>
+            <Text style={styles.instagramButtonTitle}>{APP_MESSAGES.home.gospelTitle}</Text>
+            <Text style={styles.instagramButtonMeta}>{adminConfig.gospel.title || APP_MESSAGES.home.gospelMeta}</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={palette.white} />
         </TouchableOpacity>
@@ -293,7 +293,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
       <TouchableOpacity style={styles.instagramButton} activeOpacity={0.88} onPress={() => Linking.openURL(instagramUrl)}>
         <Ionicons name="logo-instagram" size={22} color={palette.white} />
         <View style={styles.instagramButtonText}>
-          <Text style={styles.instagramButtonTitle}>Instagram Palestrista</Text>
+          <Text style={styles.instagramButtonTitle}>{APP_MESSAGES.home.instagramTitle}</Text>
           <Text style={styles.instagramButtonMeta}>{instagramLabel}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={palette.white} />
@@ -302,23 +302,23 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
       <Modal visible={gospelModalVisible} transparent animationType="fade" onRequestClose={() => setGospelModalVisible(false)} statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalPanel, styles.gospelModalPanel, isDark && styles.surfacePanelDark]}>
-            <IconButton icon="close-outline" accessibilityLabel="Cerrar Evangelio del Dia" onPress={() => setGospelModalVisible(false)} />
+            <IconButton icon="close-outline" accessibilityLabel={`Cerrar ${APP_MESSAGES.home.gospelTitle}`} onPress={() => setGospelModalVisible(false)} />
             <ScrollView style={styles.gospelModalScroll} contentContainerStyle={styles.gospelModalContent} nestedScrollEnabled>
-              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Evangelio del Dia</Text>
-              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{dailyGospel?.title || adminConfig.gospel.title || 'Evangelio del Dia'}</Text>
+              <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.home.gospelTitle}</Text>
+              <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{dailyGospel?.title || adminConfig.gospel.title || APP_MESSAGES.home.gospelTitle}</Text>
               {dailyGospel?.citation ? <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{dailyGospel.citation}</Text> : null}
               {dailyGospel?.gospel_text ? (
                 <LinkedSelectableText text={dailyGospel.gospel_text} style={[styles.cardText, styles.gospelText, isDark && styles.textDarkBody]} linkStyle={styles.linkText} />
               ) : adminConfig.gospel.body ? (
                 <LinkedSelectableText text={adminConfig.gospel.body} style={[styles.cardText, styles.gospelText, isDark && styles.textDarkBody]} linkStyle={styles.linkText} />
               ) : (
-                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{dailyGospelLoading ? 'Cargando Evangelio automatico...' : 'No hay evangelio cargado todavia.'}</Text>
+                <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{dailyGospelLoading ? APP_MESSAGES.home.gospelLoadingAutomatic : APP_MESSAGES.home.gospelUnavailable}</Text>
               )}
               {dailyGospelMessage ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{dailyGospelMessage}</Text> : null}
               {dailyGospel?.reflection_text ? (
                 <>
                   <AppButton
-                    label={gospelReflectionOpen ? 'Ocultar reflexion' : 'Reflexion'}
+                    label={gospelReflectionOpen ? APP_MESSAGES.home.gospelReflectionHide : APP_MESSAGES.home.gospelReflectionShow}
                     icon={gospelReflectionOpen ? 'chevron-up-outline' : 'sparkles-outline'}
                     variant="secondary"
                     size="compact"
@@ -326,16 +326,16 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
                   />
                   {gospelReflectionOpen ? (
                     <View style={[styles.gospelReflectionPanel, isDark && styles.surfaceRowDark]}>
-                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{dailyGospel.reflection_title || 'Reflexion'}</Text>
+                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{dailyGospel.reflection_title || APP_MESSAGES.home.gospelReflectionShow}</Text>
                       <LinkedSelectableText text={dailyGospel.reflection_text} style={[styles.cardText, isDark && styles.textDarkBody]} linkStyle={styles.linkText} />
                     </View>
                   ) : null}
                 </>
               ) : null}
               <ButtonGroup>
-                <AppButton label="Actualizar" icon="refresh-outline" variant="secondary" size="compact" loading={dailyGospelLoading} onPress={() => loadDailyGospel(true)} />
+                <AppButton label={APP_MESSAGES.home.gospelUpdate} icon="refresh-outline" variant="secondary" size="compact" loading={dailyGospelLoading} onPress={() => loadDailyGospel(true)} />
                 {(dailyGospel?.source_url || adminConfig.gospel.sourceUrl) ? (
-                  <AppButton label="Fuente" icon="open-outline" variant="ghost" size="compact" onPress={() => Linking.openURL(dailyGospel?.source_url || adminConfig.gospel.sourceUrl)} />
+                  <AppButton label={APP_MESSAGES.home.gospelSource} icon="open-outline" variant="ghost" size="compact" onPress={() => Linking.openURL(dailyGospel?.source_url || adminConfig.gospel.sourceUrl)} />
                 ) : null}
               </ButtonGroup>
               <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Fuente: {dailyGospel?.source_name || 'Don Bosco Argentina'}</Text>
@@ -344,12 +344,12 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
         </View>
       </Modal>
 
-      {homeModuleEnabled('agenda') ? <SectionTitle title="Agenda comunitaria" /> : null}
+      {homeModuleEnabled('agenda') ? <SectionTitle title={APP_MESSAGES.home.agendaTitle} /> : null}
       {homeModuleEnabled('agenda') ? <View style={[styles.featurePanel, isDark && styles.surfacePanelDark]}>
         <View style={styles.featurePanelHeader}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Proximamente</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.home.upcomingEyebrow}</Text>
           <TouchableOpacity style={[styles.iconButton, styles.viewAllButton]} activeOpacity={0.8} onPress={() => onNavigate('notilestra')}>
-            <Text style={styles.linkText}>Ver todas</Text>
+            <Text style={styles.linkText}>{APP_MESSAGES.home.viewAll}</Text>
           </TouchableOpacity>
         </View>
         {communityAgenda.slice(0, 3).map((item, index) => (
@@ -364,10 +364,10 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
             </View>
           </View>
         ))}
-        {communityAgenda.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay fechas comunitarias cargadas en Supabase.</Text> : null}
+        {communityAgenda.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.home.agendaEmpty}</Text> : null}
       </View> : null}
 
-      {homeModuleEnabled('noticias') ? <SectionTitle title="Info Palestrista" /> : null}
+      {homeModuleEnabled('noticias') ? <SectionTitle title={APP_MESSAGES.home.infoTitle} /> : null}
       {homeModuleEnabled('noticias') && homeActionMessage ? <Text style={styles.noticeText}>{homeActionMessage}</Text> : null}
       {homeModuleEnabled('noticias') ? visibleHomeNews.map((item, index) => (
         <TouchableOpacity key={`${item.title}-${index}`} style={[styles.card, styles.feedCard, isDark && styles.feedCardDark]} activeOpacity={0.86} onPress={() => {
@@ -427,7 +427,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
       {!canAccessPrivate(session) ? (
         <View style={styles.notice}>
           <Ionicons name="lock-closed-outline" size={20} color={palette.red} />
-          <Text style={styles.noticeText}>Algunas secciones requieren registro y aprobación de un coordinador.</Text>
+          <Text style={styles.noticeText}>{APP_MESSAGES.home.privateNotice}</Text>
         </View>
       ) : null}
       <TouchableOpacity style={styles.designerCreditHome} activeOpacity={0.72} onPress={openDesignerCredit}>

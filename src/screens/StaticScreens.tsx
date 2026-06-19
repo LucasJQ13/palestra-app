@@ -132,7 +132,7 @@ export function EmptyRemoteContent({ title }: { title: string }) {
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardText}>No hay contenido publicado en Supabase para esta sección todavía.</Text>
+      <Text style={styles.cardText}>{APP_MESSAGES.home.remoteContentEmpty}</Text>
     </View>
   );
 }
@@ -144,7 +144,7 @@ export function GenericPageScreen({ title, content, editor }: { title: string; c
       <EditableIntro content={content} editor={editor} />
       {!content ? (
         <View style={styles.card}>
-          <Text style={styles.cardText}>Esta página todavía no tiene contenido cargado.</Text>
+          <Text style={styles.cardText}>{APP_MESSAGES.home.genericPageEmpty}</Text>
         </View>
       ) : null}
     </View>

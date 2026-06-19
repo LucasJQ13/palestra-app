@@ -7,7 +7,7 @@ import { PageEditorProps } from '../lib/navigationConstants';
 import { AppLibraryItem, LibrarySection, archiveLibraryItem, debugLibraryPermission, fetchLibraryItems, saveLibraryItem } from '../lib/library';
 import { canManagePublishedContent } from '../lib/sessionAccess';
 import { roleRank } from '../lib/roles';
-import { changeDone } from '../lib/appMessages';
+import { APP_MESSAGES, changeDone } from '../lib/appMessages';
 import { inputPlaceholderColor } from '../lib/constants';
 import { supabase } from '../lib/supabase';
 import { Session } from '../types/auth';
@@ -111,7 +111,7 @@ export function LibrarySectionScreen({
     }
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) {
-      setMessage('Para publicar contenido tenés que iniciar sesión con una cuenta real de Supabase. El acceso de prueba interno no puede guardar publicaciones.');
+      setMessage('Para publicar contenido tenes que iniciar sesion con una cuenta real.');
       return;
     }
     const { error } = await saveLibraryItem({
@@ -130,7 +130,7 @@ export function LibrarySectionScreen({
     if (error) {
       const debug = await debugLibraryPermission();
       if (debug) {
-        setMessage(`${error.message} Supabase ve: ${debug.email ?? 'sin mail'} / ${debug.role ?? 'sin rol'} / ${debug.status ?? 'sin estado'}.`);
+        setMessage(`${error.message} Diagnostico: ${debug.email ?? 'sin mail'} / ${debug.role ?? 'sin rol'} / ${debug.status ?? 'sin estado'}.`);
       } else {
         setMessage(error.message);
       }
@@ -221,7 +221,7 @@ export function LibrarySectionScreen({
         {items.length === 0 && (section !== 'himno' || session?.role === 'administrador') ? (
           <View style={styles.emptyLibraryState}>
             <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{emptyTitle}</Text>
-            {section !== 'himno' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Cuando se cargue contenido en Supabase, aparecera aca sin actualizar la APK.</Text> : null}
+            {section !== 'himno' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.home.libraryEmptyHelp}</Text> : null}
           </View>
         ) : null}
         {items.map((item) => (
