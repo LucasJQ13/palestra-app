@@ -184,7 +184,7 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
             <Text style={styles.authHeroText}>{APP_MESSAGES.auth.recoveryHelp}</Text>
             <AuthTextInput label={APP_MESSAGES.auth.emailLabel} placeholder={APP_MESSAGES.auth.emailPlaceholder} value={recoveryEmail} onChangeText={setRecoveryEmail} keyboardType="email-address" autoCapitalize="none" />
             <TouchableOpacity style={styles.authPrimaryButton} onPress={recoverPassword} disabled={recoveryLoading} activeOpacity={0.86}>
-              <Text style={styles.authPrimaryText}>{recoveryLoading ? 'Enviando...' : APP_MESSAGES.auth.recoverySubmit}</Text>
+              <Text style={styles.authPrimaryText}>{recoveryLoading ? APP_MESSAGES.auth.recoverySendingShort : APP_MESSAGES.auth.recoverySubmit}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.authGhostButton}
@@ -256,7 +256,7 @@ function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: {
       communityName: profile.community,
       contact: profile.contact
     });
-    onMessage(error ? error.message : APP_MESSAGES.auth.requestLeaderHelpDone);
+    onMessage(error ? APP_MESSAGES.auth.requestLeaderHelpFailed : APP_MESSAGES.auth.requestLeaderHelpDone);
   }
 
   return (

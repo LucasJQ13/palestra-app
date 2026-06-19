@@ -10,7 +10,7 @@ import { AppButton, ButtonGroup, IconButton } from '../components/ui';
 import { PasswordInput } from '../components/auth';
 import { communities, communityNews, materials, roleDefinitions } from '../data/content';
 import { AppAdminConfig } from '../lib/appConfig';
-import { APP_MESSAGES, changeDone, communityDowngradesRole, friendlyUploadError, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError } from '../lib/appMessages';
+import { APP_MESSAGES, blockedProfileMessage, changeDone, communityDowngradesRole, friendlyUploadError, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError } from '../lib/appMessages';
 import { argentinaProvinceDefinitions, provinceDefinitionFor } from '../lib/argentinaProvinces';
 import { getMyProfileSession } from '../lib/authProfile';
 import { CommunityAdvisorAssignment, canManageCommunityAdvisors, fetchMyCommunityAdvisors } from '../lib/community/advisors';
@@ -1874,14 +1874,14 @@ export function ProfileScreen({
   async function loadRealProfile(userId: string, fallbackEmail: string) {
     const result = await getMyProfileSession(fallbackEmail);
     if (result.error) {
-      setAuthMessage(`No pude leer tu perfil: ${result.error}`);
+      setAuthMessage(APP_MESSAGES.profileReadFailed);
       return;
     }
     if (result.session) {
       if (result.session.status === 'bloqueado') {
         await supabase.auth.signOut();
         onSessionChange(null);
-        setAuthMessage('Este usuario esta bloqueado o eliminado. Contacta a un administrador.');
+        setAuthMessage(blockedProfileMessage(result.session.genderPreference, 'pastoral'));
         return;
       }
       onSessionChange(session ? {
@@ -1929,29 +1929,29 @@ export function ProfileScreen({
   function validateAuthForm() {
     const nextErrors: Record<string, string> = {};
     if (!isValidEmail(authEmail)) {
-      nextErrors.email = 'Ingresa un correo valido';
+      nextErrors.email = APP_MESSAGES.auth.invalidEmail;
     }
     if (!authPassword) {
-      nextErrors.password = 'La contraseña es obligatoria';
+      nextErrors.password = APP_MESSAGES.auth.passwordRequired;
     }
     if (authMode === 'register') {
       if (!registerFullName.trim()) {
-        nextErrors.fullName = 'Ingresa tu nombre completo';
+        nextErrors.fullName = APP_MESSAGES.auth.fullNameRequired;
       }
       if (!registerProvince) {
-        nextErrors.province = 'Selecciona tu provincia';
+        nextErrors.province = APP_MESSAGES.auth.provinceRequired;
       }
       if (!registerCommunity) {
-        nextErrors.community = 'Selecciona tu comunidad';
+        nextErrors.community = APP_MESSAGES.auth.registrationCommunityRequired;
       }
       if (!registerPerseveranceStartYear) {
-        nextErrors.perseverance = 'Selecciona el año de inicio';
+        nextErrors.perseverance = APP_MESSAGES.auth.startYearRequired;
       }
       if (authPassword.length < 6) {
-        nextErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+        nextErrors.password = APP_MESSAGES.auth.shortPassword;
       }
       if (authPasswordConfirm !== authPassword) {
-        nextErrors.confirm = 'Las contraseñas no coinciden';
+        nextErrors.confirm = APP_MESSAGES.auth.passwordMismatch;
       }
     }
     setAuthErrors(nextErrors);
@@ -1986,14 +1986,14 @@ export function ProfileScreen({
     if (!validateAuthForm()) {
       return;
     }
-    setAuthMessage('Ingresando...');
+    setAuthMessage(APP_MESSAGES.auth.loginLoadingShort);
     const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
     if (error || !data.user) {
       setAuthMessage(safeAuthError(error?.message));
       return;
     }
     await loadRealProfile(data.user.id, authEmail.trim());
-    setAuthMessage('Sesión iniciada.');
+    setAuthMessage(APP_MESSAGES.auth.loginSuccess);
   }
 
   async function registerReal() {
@@ -2001,7 +2001,7 @@ export function ProfileScreen({
       return;
     }
 
-    setAuthMessage('Registrando...');
+    setAuthMessage(APP_MESSAGES.auth.registerLoadingShort);
     const { data, error } = await supabase.auth.signUp({
       email: authEmail.trim(),
       password: authPassword,
@@ -2023,11 +2023,11 @@ export function ProfileScreen({
 
     if (data.session) {
       await loadRealProfile(data.user.id, authEmail.trim());
-      setAuthMessage('Registro creado. Queda pendiente de aprobación.');
+      setAuthMessage(APP_MESSAGES.auth.registrationCreatedPending);
       return;
     }
 
-    setAuthMessage('Registro creado como Palestrista pendiente. Iniciá sesión cuando el email esté confirmado o un administrador lo habilite.');
+    setAuthMessage(APP_MESSAGES.auth.registrationCreatedEmailPending);
   }
 
   async function signOutReal() {
@@ -2039,12 +2039,12 @@ export function ProfileScreen({
   async function refreshRealProfile() {
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
-      setAuthMessage('No hay una sesión real activa. Cerrá e iniciá sesión otra vez.');
+      setAuthMessage(APP_MESSAGES.auth.noActiveSession);
       return;
     }
 
     await loadRealProfile(data.user.id, data.user.email ?? 'Usuario');
-    setAuthMessage('Estado actualizado desde Supabase.');
+    setAuthMessage(APP_MESSAGES.auth.profileRefreshed);
   }
 
   async function saveProfile() {
