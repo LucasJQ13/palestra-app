@@ -5,6 +5,7 @@ import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig } from '../../lib/appConfig';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { PrayerIntentionRecord } from '../../lib/profiles';
 import { AppButton, ButtonGroup } from '../../components/ui';
 
@@ -44,7 +45,7 @@ export function IntentionsAdminPanel({
         placeholderTextColor={inputPlaceholderColor}
       />
       <ButtonGroup>
-        <AppButton label="Guardar configuracion" icon="save-outline" onPress={onSave} />
+        <AppButton label={APP_MESSAGES.adminPanels.settings.save} icon="save-outline" onPress={onSave} />
         <AppButton label="Intenciones cargadas" icon="list-outline" variant="secondary" onPress={onLoad} />
       </ButtonGroup>
       {message ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{message}</Text> : null}

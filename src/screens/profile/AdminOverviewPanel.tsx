@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AdminUser, ProvinceRoleLabelRecord } from '../../lib/profiles';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { displayRoleLabel } from '../../lib/profileDisplay';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { AdminModule, PublicProfilePreview } from '../../types/appUi';
 import { Role, Session } from '../../types/auth';
 import { internalTestSessions } from '../../lib/internalTestSessions';
@@ -64,7 +65,7 @@ export function AdminOverviewPanel({
       </View>
       {showLeadershipUsersSummary && canManageUsers ? (
         <ScrollView style={styles.leadershipUsersList} nestedScrollEnabled showsVerticalScrollIndicator>
-          {leadershipSummaryUsers.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay usuarios cargados para visualizar.</Text> : null}
+          {leadershipSummaryUsers.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.overview.noUsers}</Text> : null}
           {leadershipSummaryUsers.map((user) => {
             const role = (user.role || 'palestrista') as Role;
             return (
@@ -105,14 +106,14 @@ export function AdminOverviewPanel({
           })}
         </ScrollView>
       ) : null}
-      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Accesos rapidos</Text>
+      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.overview.quickAccess}</Text>
       <View style={styles.adminQuickGrid}>
         {[
-          { label: isCommunityLeader ? 'Nuevo aviso comunitario' : 'Nueva noticia', module: isCommunityLeader ? 'muro_comunitario' : 'noticias', icon: 'add-circle-outline' },
-          { label: 'Coordinaciones Activas', module: 'coordinaciones_activas', icon: 'people-circle-outline' },
-          { label: canAdministrateCommunities ? 'Crear comunidad' : 'Comunidades', module: 'comunidades', icon: 'location-outline' },
-          { label: 'Moderacion', module: 'moderacion', icon: 'shield-checkmark-outline' },
-          { label: 'Revisar usuarios', module: 'usuarios', icon: 'people-outline' }
+          { label: isCommunityLeader ? APP_MESSAGES.adminPanels.overview.quickNewsCommunity : APP_MESSAGES.adminPanels.overview.quickNews, module: isCommunityLeader ? 'muro_comunitario' : 'noticias', icon: 'add-circle-outline' },
+          { label: APP_MESSAGES.adminPanels.overview.quickCoordinations, module: 'coordinaciones_activas', icon: 'people-circle-outline' },
+          { label: canAdministrateCommunities ? APP_MESSAGES.adminPanels.overview.quickCommunitiesCreate : APP_MESSAGES.adminPanels.overview.quickCommunities, module: 'comunidades', icon: 'location-outline' },
+          { label: APP_MESSAGES.adminPanels.overview.quickModeration, module: 'moderacion', icon: 'shield-checkmark-outline' },
+          { label: APP_MESSAGES.adminPanels.overview.quickUsers, module: 'usuarios', icon: 'people-outline' }
         ].filter((item) => (
           (item.module !== 'usuarios' || canManageUsers)
           && (item.module !== 'comunidades' || canOpenCommunityAdmin)
@@ -126,8 +127,8 @@ export function AdminOverviewPanel({
       </View>
       {session.role === 'administrador' ? (
         <View style={[styles.profileCommunityPanel, isDark && styles.surfacePanelDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Ver como</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Simulacion temporal para revisar la app con otros rangos. No cambia permisos reales ni guarda cambios en Supabase.</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.overview.viewAsTitle}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.overview.viewAsHelp}</Text>
           <View style={styles.adminQuickGrid}>
             {([
               { key: 'palestrista', label: 'Palestrista' },

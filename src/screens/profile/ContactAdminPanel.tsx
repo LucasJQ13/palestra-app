@@ -5,6 +5,7 @@ import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig, ContactBlock, defaultAdminConfig } from '../../lib/appConfig';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { Session } from '../../types/auth';
 import { AppButton, ButtonGroup } from '../../components/ui';
 
@@ -49,8 +50,8 @@ export function ContactAdminPanel({
 
   return (
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Contacto modular</Text>
-      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Configura canales nacionales, Instagram por provincia y bloques dinamicos visibles en Contacto.</Text>
+      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.adminPanels.contact.title}</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.contact.help}</Text>
 
       {canManageFullContact ? (
         <>
@@ -71,7 +72,7 @@ export function ContactAdminPanel({
         </>
       ) : null}
 
-      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Instagram nacional</Text>
+      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.contact.nationalInstagram}</Text>
       <TextInput
         style={[styles.input, isDark && styles.inputDark]}
         placeholder="URL o usuario de Instagram nacional"
@@ -79,11 +80,11 @@ export function ContactAdminPanel({
         onChangeText={(value) => onPatch({ instagram: value })}
         placeholderTextColor={inputPlaceholderColor}
       />
-      <AppButton label="Guardar Instagram" icon="save-outline" onPress={onSaveInstagram} />
+      <AppButton label={APP_MESSAGES.adminPanels.contact.saveInstagram} icon="save-outline" onPress={onSaveInstagram} />
 
       {canManageFullContact ? (
         <>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Instagram por provincia</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.contact.provinceInstagram}</Text>
           {Object.keys(defaultAdminConfig.contact.provinceInstagram).map((province) => (
             <TextInput
               key={province}
@@ -113,7 +114,7 @@ export function ContactAdminPanel({
             multiline
             placeholderTextColor={inputPlaceholderColor}
           />
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Bloques dinamicos</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.contact.dynamicBlocks}</Text>
           {(config.contact.blocks ?? []).map((block, index) => (
             <View key={block.id} style={[styles.innerNewsCard, isDark && styles.surfaceRowDark]}>
               <TextInput
@@ -138,12 +139,12 @@ export function ContactAdminPanel({
                 multiline
                 placeholderTextColor={inputPlaceholderColor}
               />
-              <AppButton label="Eliminar bloque" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => removeBlock(block.id)} />
+              <AppButton label={APP_MESSAGES.adminPanels.contact.deleteBlock} icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => removeBlock(block.id)} />
             </View>
           ))}
           <ButtonGroup>
-            <AppButton label="Agregar bloque" icon="add-circle-outline" variant="secondary" onPress={addBlock} />
-            <AppButton label="Guardar contacto completo" icon="save-outline" onPress={onSaveFullContact} />
+            <AppButton label={APP_MESSAGES.adminPanels.contact.addBlock} icon="add-circle-outline" variant="secondary" onPress={addBlock} />
+            <AppButton label={APP_MESSAGES.adminPanels.contact.saveFull} icon="save-outline" onPress={onSaveFullContact} />
           </ButtonGroup>
         </>
       ) : null}

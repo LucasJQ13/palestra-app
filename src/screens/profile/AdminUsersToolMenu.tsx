@@ -3,20 +3,21 @@ import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Role } from '../../types/auth';
 import { AdminUsersTool } from '../../types/appUi';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 
 function adminUsersToolLabel(tool: AdminUsersTool) {
   if (tool === 'crear') {
-    return 'Crear usuario';
+    return APP_MESSAGES.adminPanels.users.createLabel;
   }
   if (tool === 'pendientes') {
-    return 'Pendientes de aprobacion';
+    return APP_MESSAGES.adminPanels.users.pendingFullLabel;
   }
   if (tool === 'diagnostico') {
-    return 'Diagnostico y liberacion';
+    return APP_MESSAGES.adminPanels.users.diagnosticFullLabel;
   }
-  return 'Lista de usuarios';
+  return APP_MESSAGES.adminPanels.users.listLabel;
 }
 
 export function AdminUsersToolMenu({
@@ -35,17 +36,17 @@ export function AdminUsersToolMenu({
   onSelect: (tool: AdminUsersTool) => void;
 }) {
   const options: { key: AdminUsersTool; label: string; detail: string }[] = [
-    { key: 'listado', label: 'Lista de usuarios', detail: 'Buscar, filtrar y editar desde cada fila' },
-    ...(role === 'administrador' ? [{ key: 'crear' as const, label: 'Crear usuario', detail: 'Alta basica con mail y clave' }] : []),
-    { key: 'pendientes', label: 'Pendientes', detail: 'Aprobar registrados recientes' },
-    ...(role === 'administrador' ? [{ key: 'diagnostico' as const, label: 'Diagnostico', detail: 'Reparar o liberar un correo' }] : [])
+    { key: 'listado', label: APP_MESSAGES.adminPanels.users.listLabel, detail: APP_MESSAGES.adminPanels.users.listDetail },
+    ...(role === 'administrador' ? [{ key: 'crear' as const, label: APP_MESSAGES.adminPanels.users.createLabel, detail: APP_MESSAGES.adminPanels.users.createDetail }] : []),
+    { key: 'pendientes', label: APP_MESSAGES.adminPanels.users.pendingLabel, detail: APP_MESSAGES.adminPanels.users.pendingDetail },
+    ...(role === 'administrador' ? [{ key: 'diagnostico' as const, label: APP_MESSAGES.adminPanels.users.diagnosticLabel, detail: APP_MESSAGES.adminPanels.users.diagnosticDetail }] : [])
   ];
 
   return (
     <>
       <TouchableOpacity style={[styles.dropdownButton, isDark && styles.dropdownButtonDark]} onPress={onToggle} activeOpacity={0.86}>
         <View style={styles.adminUserHeaderText}>
-          <Text style={styles.cardEyebrow}>Herramienta</Text>
+          <Text style={styles.cardEyebrow}>{APP_MESSAGES.adminPanels.users.toolEyebrow}</Text>
           <Text style={[styles.dropdownButtonText, isDark && styles.dropdownButtonTextDark]}>{adminUsersToolLabel(tool)}</Text>
         </View>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={palette.red} />

@@ -3,6 +3,7 @@ import { Image, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppMaterialRecord, ChurchDocumentButtonRecord } from '../../lib/profiles';
 import { inputPlaceholderColor } from '../../lib/constants';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { Role } from '../../types/auth';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
@@ -116,13 +117,13 @@ export function DownloadsAdminPanel({
 
   return (
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
-      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Descargas y materiales</Text>
-      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Biblioteca editable persistida en Supabase. Se puede guardar URL o ruta de archivo y definir visibilidad por rol.</Text>
-      <AppButton label="Cargar materiales" icon="refresh-outline" variant="secondary" onPress={onLoadMaterials} />
+      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.adminPanels.downloads.title}</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.downloads.help}</Text>
+      <AppButton label={APP_MESSAGES.adminPanels.downloads.load} icon="refresh-outline" variant="secondary" onPress={onLoadMaterials} />
       {sessionRole === 'administrador' ? (
         <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Documentos de la Iglesia</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Botones externos visibles primero en Descargas. Maximo 6.</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.downloads.churchDocuments}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.downloads.churchDocumentsHelp}</Text>
           <View style={styles.adminQuickGrid}>
             {adminChurchDocuments.map((document) => (
               <View key={document.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark, !document.enabled && styles.lockedCard]}>
@@ -141,9 +142,9 @@ export function DownloadsAdminPanel({
                 </ButtonGroup>
               </View>
             ))}
-            {adminChurchDocuments.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Carga el listado para ver botones existentes.</Text> : null}
+            {adminChurchDocuments.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.downloads.emptyChurchDocuments}</Text> : null}
           </View>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{churchDocumentEditingId ? 'Editar boton' : 'Agregar boton'}</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{churchDocumentEditingId ? APP_MESSAGES.adminPanels.downloads.editButton : APP_MESSAGES.adminPanels.downloads.addButton}</Text>
           <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Titulo visible" value={churchDocumentTitle} onChangeText={setChurchDocumentTitle} placeholderTextColor={inputPlaceholderColor} />
           <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Link destino https://..." value={churchDocumentTargetUrl} onChangeText={setChurchDocumentTargetUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
           <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Logo URL o subir imagen" value={churchDocumentLogoUrl} onChangeText={setChurchDocumentLogoUrl} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
@@ -155,12 +156,13 @@ export function DownloadsAdminPanel({
             </TouchableOpacity>
           </View>
           <ButtonGroup>
-            <AppButton label={churchDocumentEditingId ? 'Guardar boton' : 'Agregar boton'} icon="save-outline" onPress={onSaveChurchDocumentDraft} />
-            <AppButton label="Limpiar" icon="close-outline" variant="ghost" onPress={onResetChurchDocumentForm} />
+            <AppButton label={churchDocumentEditingId ? APP_MESSAGES.adminPanels.downloads.saveButton : APP_MESSAGES.adminPanels.downloads.addButton} icon="save-outline" onPress={onSaveChurchDocumentDraft} />
+            <AppButton label={APP_MESSAGES.adminPanels.downloads.clear} icon="close-outline" variant="ghost" onPress={onResetChurchDocumentForm} />
           </ButtonGroup>
         </View>
       ) : null}
-      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Materiales actuales</Text>
+      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.downloads.currentMaterials}</Text>
+      {materialRows.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.downloads.materialEmpty}</Text> : null}
       {materialRows.map((material) => (
         <View key={material.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
           <Ionicons name="document-text-outline" size={19} color={palette.red} />
@@ -173,7 +175,7 @@ export function DownloadsAdminPanel({
           ) : <Text style={styles.adminStateDraft}>Base</Text>}
         </View>
       ))}
-      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Nuevo material</Text>
+      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.downloads.newMaterial}</Text>
       <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre del archivo" value={materialTitle} onChangeText={setMaterialTitle}  placeholderTextColor={inputPlaceholderColor} />
       <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Categoria" value={materialCategory} onChangeText={setMaterialCategory} placeholderTextColor={inputPlaceholderColor} />
       <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="URL del archivo o PDF" value={materialFileUrl} onChangeText={setMaterialFileUrl}  placeholderTextColor={inputPlaceholderColor} />
@@ -186,7 +188,7 @@ export function DownloadsAdminPanel({
         ))}
       </View>
       <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Permiso requerido opcional. Ej: ver_materiales_internos" value={materialPermission} onChangeText={setMaterialPermission}  placeholderTextColor={inputPlaceholderColor} />
-      <AppButton label="Guardar material" icon="save-outline" onPress={onSaveMaterial} />
+      <AppButton label={APP_MESSAGES.adminPanels.downloads.saveMaterial} icon="save-outline" onPress={onSaveMaterial} />
     </View>
   );
 }

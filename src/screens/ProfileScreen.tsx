@@ -964,7 +964,7 @@ export function ProfileScreen({
       return;
     }
     onRuntimeConfigChange(runtimeConfigDraft);
-    setAuthMessage(changeDone('Configuracion remota guardada en Supabase.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.settings.saved));
   }
 
   function toggleAdminConfigList(section: 'home', key: string) {
@@ -987,7 +987,7 @@ export function ProfileScreen({
       return;
     }
     onAdminConfigChange(adminConfigDraft);
-    setAuthMessage(changeDone(`${scope} guardado en Supabase.`));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.settings.sectionSaved(scope)));
   }
 
   async function setFallbackContentHidden(key: string, hidden: boolean) {
@@ -1075,7 +1075,7 @@ export function ProfileScreen({
     }
     setAdminConfigDraft(nextConfig);
     onAdminConfigChange(nextConfig);
-    setAuthMessage(changeDone('Instagram guardado en Supabase.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.contact.instagramSaved));
   }
 
   function formatPmDate(date: string) {
@@ -1153,11 +1153,11 @@ export function ProfileScreen({
 
   async function submitMotivadorPeriod() {
     if (!canManageMotivadorPanel(session)) {
-      setAuthMessage('No tenes permisos para gestionar PM.');
+      setAuthMessage(APP_MESSAGES.adminPanels.pm.cannotManage);
       return;
     }
     if (!pmProvince || !pmNumber.trim() || pmSelectedDates.length === 0 || !pmRetreatHouse.trim() || !pmAddress.trim() || !pmOpeningTime.trim() || !pmClosingTime.trim()) {
-      setAuthMessage('Completá tipo, número, provincia, fechas, casa, dirección y horarios.');
+      setAuthMessage(APP_MESSAGES.adminPanels.pm.requiredFields);
       return;
     }
     const { error } = await saveMotivadorPeriod({
@@ -1180,7 +1180,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone('PM guardado.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.pm.saved));
     resetMotivadorForm();
     await loadMotivadorAdminPeriods();
   }
@@ -1191,7 +1191,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone(status === 'archivado' ? 'PM archivado.' : `Estado actualizado a ${status}.`));
+    setAuthMessage(changeDone(status === 'archivado' ? APP_MESSAGES.adminPanels.pm.archived : APP_MESSAGES.adminPanels.pm.statusUpdated(status)));
     await loadMotivadorAdminPeriods();
   }
 
@@ -1363,10 +1363,10 @@ export function ProfileScreen({
       setCredentialQrPayload('');
       return;
     }
-    setCredentialQrMessage('Generando credencial verificable...');
+    setCredentialQrMessage(APP_MESSAGES.adminPanels.qr.generatingCredential);
     const { data, error } = await issueMyCredentialQr();
     if (error || !data?.token) {
-      setCredentialQrMessage(error?.message ?? 'No pude generar la credencial QR. Ejecuta el patch SQL de credenciales en Supabase.');
+      setCredentialQrMessage(error?.message ?? APP_MESSAGES.adminPanels.qr.credentialFailed);
       return;
     }
     setCredentialQr(data);
@@ -1376,26 +1376,26 @@ export function ProfileScreen({
       issuedAt: data.issued_at
     });
     setCredentialQrPayload(payload);
-    setCredentialQrMessage('Credencial verificable activa.');
+    setCredentialQrMessage(APP_MESSAGES.adminPanels.qr.credentialReady);
   }
 
   async function openQrScanner(mode: 'credential' | 'activity' = 'credential') {
     if (!canScanCredentialQr(session)) {
-      setAuthMessage('Tu rango no tiene acceso a Escanear QR.');
+      setAuthMessage(APP_MESSAGES.adminPanels.qr.cannotScan);
       return;
     }
     if (mode === 'activity' && !selectedQrActivityListId) {
-      setAuthMessage('Selecciona una lista QR antes de escanear.');
+      setAuthMessage(APP_MESSAGES.adminPanels.qr.chooseListBeforeScan);
       return;
     }
     const permission = await Camera.requestCameraPermissionsAsync();
     if (permission.status !== 'granted') {
-      setAuthMessage('Necesito permiso de camara para escanear credenciales.');
+      setAuthMessage(APP_MESSAGES.adminPanels.qr.cameraPermission);
       return;
     }
     setQrValidationResult(null);
     setQrScannerMode(mode);
-    setQrValidationMessage(mode === 'activity' ? 'Apunta la camara al QR para validar la lista.' : 'Apunta la camara al QR de la credencial.');
+    setQrValidationMessage(mode === 'activity' ? APP_MESSAGES.adminPanels.qr.scanActivityHelp : APP_MESSAGES.adminPanels.qr.scanCredentialHelp);
     setQrScannerActive(true);
     setQrScannerVisible(true);
   }
@@ -1404,14 +1404,14 @@ export function ProfileScreen({
     const payload = parseCredentialQrPayload(data);
     if (!payload) {
       setQrValidationResult({ status: 'invalid', message: 'Credencial no valida', credential_id: null, user_id: null, full_name: null, role: null, province: null, community_name: null, user_status: null, issued_at: null, expires_at: null });
-      setQrValidationMessage('Credencial no valida.');
+      setQrValidationMessage(APP_MESSAGES.adminPanels.qr.invalidCredential);
       return;
     }
-    setQrValidationMessage('Validando credencial en Supabase...');
+    setQrValidationMessage(APP_MESSAGES.adminPanels.qr.validatingCredential);
     const { data: validation, error } = await validateCredentialQrToken(payload.token);
     if (error || !validation) {
       setQrValidationResult({ status: 'invalid', message: error?.message ?? 'Credencial no valida', credential_id: payload.credentialId, user_id: null, full_name: null, role: null, province: null, community_name: null, user_status: null, issued_at: null, expires_at: null });
-      setQrValidationMessage(error?.message ?? 'Credencial no valida.');
+      setQrValidationMessage(error?.message ?? APP_MESSAGES.adminPanels.qr.invalidCredential);
       return;
     }
     setQrValidationResult(validation);
@@ -1445,17 +1445,17 @@ export function ProfileScreen({
 
   async function saveQrActivityList() {
     if (!session || !['vocal', 'coordinador_diocesano', 'vocal_nacional', 'coordinador_nacional', 'administrador'].includes(session.role)) {
-      setAuthMessage('Tu rango no puede crear listas QR.');
+      setAuthMessage(APP_MESSAGES.adminPanels.qr.cannotCreateLists);
       return;
     }
     const title = qrActivityTitle.trim();
     const province = qrActivityProvince || (['administrador', 'vocal_nacional', 'coordinador_nacional'].includes(session.role) ? null : session.province);
     if (!title) {
-      setAuthMessage('Completa el nombre de la lista.');
+      setAuthMessage(APP_MESSAGES.adminPanels.qr.listNameRequired);
       return;
     }
     if (qrActivityCreateSelectedUserIds.length === 0) {
-      setAuthMessage('Selecciona al menos un usuario para crear la lista.');
+      setAuthMessage(APP_MESSAGES.adminPanels.qr.usersRequired);
       return;
     }
     const { data, error } = await createQrActivityList({ title, province, communityName: qrActivityCommunity || null });
@@ -1496,7 +1496,7 @@ export function ProfileScreen({
     }
     setShowQrActivityCreateMenu(false);
     setShowQrActivityListsMenu(true);
-    setAuthMessage(changeDone('Lista QR creada.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.qr.listCreated));
     await loadQrActivityLists();
     if (listId) {
       await loadQrActivityDetails(listId);
@@ -1540,7 +1540,7 @@ export function ProfileScreen({
     }
     setQrActivityEditShareUserIds([]);
     setQrActivityEditShareRoles([]);
-    setAuthMessage(changeDone('Lista compartida.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.qr.listShared));
     await loadQrActivityDetails(selectedQrActivityList.id);
   }
 
@@ -1551,7 +1551,7 @@ export function ProfileScreen({
     }
     const title = qrActivityEditTitle.trim();
     if (!title) {
-      setAuthMessage('El nombre de la lista no puede quedar vacio.');
+      setAuthMessage(APP_MESSAGES.adminPanels.qr.listEmptyName);
       return;
     }
     const { error } = await updateQrActivityList({
@@ -1564,7 +1564,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone('Lista QR actualizada.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.qr.listUpdated));
     await loadQrActivityLists();
     await loadQrActivityDetails(selectedQrActivityList.id);
   }
@@ -1579,7 +1579,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone('Usuario agregado a la lista.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.qr.userAdded));
     await loadQrActivityDetails(selectedQrActivityListId);
   }
 
@@ -1593,7 +1593,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone('Usuarios agregados a la lista.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.qr.usersAdded));
     await loadQrActivityDetails(selectedQrActivityList.id);
   }
 
@@ -1606,7 +1606,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone('Usuario quitado de la lista.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.qr.userRemoved));
     await loadQrActivityDetails(selectedQrActivityList.id);
   }
 
@@ -1628,7 +1628,7 @@ export function ProfileScreen({
     setSelectedQrActivityListId('');
     setQrActivityMembers([]);
     setQrActivityAttendance([]);
-    setAuthMessage(changeDone('Lista QR eliminada.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.qr.listDeleted));
     await loadQrActivityLists();
   }
 
@@ -1636,14 +1636,14 @@ export function ProfileScreen({
     const payload = parseCredentialQrPayload(data);
     if (!payload || !selectedQrActivityListId) {
       setQrValidationResult({ status: 'invalid', message: 'Credencial no valida', credential_id: null, user_id: null, full_name: null, role: null, province: null, community_name: null, user_status: null, issued_at: null, expires_at: null });
-      setQrValidationMessage('Credencial no valida.');
+      setQrValidationMessage(APP_MESSAGES.adminPanels.qr.invalidCredential);
       return;
     }
-    setQrValidationMessage('Validando credencial contra la lista...');
+    setQrValidationMessage(APP_MESSAGES.adminPanels.qr.validatingList);
     const { data: validation, error } = await validateQrActivityAttendance(selectedQrActivityListId, payload.token);
     if (error || !validation) {
-      setQrValidationResult({ status: 'invalid', message: error?.message ?? 'Usuario no Registrado para esta actividad', credential_id: payload.credentialId, user_id: null, full_name: null, role: null, province: null, community_name: null, user_status: null, issued_at: null, expires_at: null });
-      setQrValidationMessage(error?.message ?? 'Usuario no Registrado para esta actividad');
+      setQrValidationResult({ status: 'invalid', message: error?.message ?? APP_MESSAGES.adminPanels.qr.userNotRegistered, credential_id: payload.credentialId, user_id: null, full_name: null, role: null, province: null, community_name: null, user_status: null, issued_at: null, expires_at: null });
+      setQrValidationMessage(error?.message ?? APP_MESSAGES.adminPanels.qr.userNotRegistered);
       return;
     }
     const row = Array.isArray(validation) ? validation[0] : validation;
@@ -1654,7 +1654,7 @@ export function ProfileScreen({
 
   function exportQrActivityAttendanceDoc() {
     if (!selectedQrActivityList) {
-      setAuthMessage('Selecciona una lista para exportar.');
+      setAuthMessage(APP_MESSAGES.adminPanels.qr.chooseListToExport);
       return;
     }
     const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] ?? char));
@@ -2251,16 +2251,16 @@ export function ProfileScreen({
 
   async function loadAdminUsers() {
     if (!canManageUsersPanel(session)) {
-      setAuthMessage('Tu rango no tiene acceso a la herramienta Usuarios.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.cannotAccess);
       return;
     }
-    setAuthMessage('Cargando usuarios...');
+    setAuthMessage(APP_MESSAGES.adminPanels.users.loading);
     const items = await fetchAdminUsers();
     setAdminUsers(items);
     if (!selectedUsersProvince && items.length > 0) {
       setSelectedUsersProvince(defaultUsersProvinceFor(session, items));
     }
-    setAuthMessage(items.length > 0 ? 'Usuarios cargados.' : 'No se encontraron usuarios visibles para tu rango.');
+    setAuthMessage(items.length > 0 ? APP_MESSAGES.adminPanels.users.loaded : APP_MESSAGES.adminPanels.users.noVisibleUsers);
   }
 
   async function createBasicAdminUser() {
@@ -2269,15 +2269,15 @@ export function ProfileScreen({
       return;
     }
     if (!isValidEmail(adminCreateEmail)) {
-      setAuthMessage('Ingresa un correo valido.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.invalidEmail);
       return;
     }
     if (adminCreatePassword.length < 6) {
-      setAuthMessage('La contraseña debe tener al menos 6 caracteres.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.shortPassword);
       return;
     }
 
-    setAuthMessage('Creando usuario...');
+    setAuthMessage(APP_MESSAGES.adminPanels.users.creating);
     const { error } = await createAdminBasicUser(adminCreateEmail.trim(), adminCreatePassword);
     if (error) {
       setAuthMessage(safeAuthError(error.message));
@@ -2286,22 +2286,22 @@ export function ProfileScreen({
     setAdminCreateEmail('');
     setAdminCreatePassword('');
     await loadAdminUsers();
-    setAuthMessage(changeDone('Usuario creado y habilitado. Debera completar provincia y comunidad al ingresar.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.users.created));
   }
 
   async function approvePendingProfile(id: string, role: Role) {
     const { error } = await approveProfile(id, role);
-    setAuthMessage(error ? error.message : changeDone('Usuario aprobado.'));
+    setAuthMessage(error ? error.message : changeDone(APP_MESSAGES.adminPanels.users.approved));
     await loadPendingProfiles();
   }
 
   async function saveAdminUser() {
     if (!selectedAdminUser) {
-      setAuthMessage('Elegir un usuario para editar.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.chooseUserToEdit);
       return;
     }
     if (!canEditAdminUser(session, selectedAdminUser)) {
-      setAuthMessage('No podes editar administradores, usuarios superiores o usuarios fuera de tu alcance.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.cannotEditReach);
       return;
     }
     const preserveText = (draft: string, current?: string | null) => {
@@ -2358,7 +2358,7 @@ export function ProfileScreen({
       finalRole = 'administrador';
     }
     if (!canAccessProvince(session, nextProvince)) {
-      setAuthMessage('No podes editar usuarios de otra provincia.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.cannotEditOtherProvince);
       return;
     }
     if (!canApproveRole(session, finalRole)) {
@@ -2396,7 +2396,7 @@ export function ProfileScreen({
       }
     }
 
-    setAuthMessage('Guardando usuario...');
+    setAuthMessage(APP_MESSAGES.adminPanels.users.saving);
     const { error } = await updateAdminUser({
       id: selectedAdminUser.id,
       email: nextEmail,
@@ -2420,12 +2420,12 @@ export function ProfileScreen({
       pmMotto: hasAdminPersonalPm ? nextPmMotto : null
     });
     if (error) {
-      setAuthMessage(error.message || 'No se pudo guardar el usuario. Revisa permisos y datos.');
+      setAuthMessage(error.message || APP_MESSAGES.adminPanels.users.saveFailed);
       return;
     }
     await loadAdminUsers();
     setSelectedAdminUserId('');
-    setAuthMessage(changeDone(finalRole !== requestedRole ? `Usuario actualizado. Rango ajustado a ${roleLabel(finalRole)}.` : 'Usuario actualizado.'));
+    setAuthMessage(changeDone(finalRole !== requestedRole ? `Usuario actualizado. Rango ajustado a ${roleLabel(finalRole)}.` : APP_MESSAGES.adminPanels.users.saved));
   }
 
   async function confirmSelectedUserEmail() {
@@ -2434,11 +2434,11 @@ export function ProfileScreen({
       return;
     }
     if (!selectedAdminUser) {
-      setAuthMessage('Elegir un usuario para aprobar email.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.chooseUserToConfirmEmail);
       return;
     }
     if (selectedAdminUser.email_confirmed_at) {
-      setAuthMessage('Este usuario ya confirmo el mail. Si corresponde, aprobalo como usuario desde Estado/Rol.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.emailAlreadyConfirmed);
       return;
     }
 
@@ -2448,7 +2448,7 @@ export function ProfileScreen({
       return;
     }
     await loadAdminUsers();
-    setAuthMessage(changeDone('Mail confirmado correctamente.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.users.emailConfirmed));
   }
 
   async function deleteSelectedAdminUser() {
@@ -2457,11 +2457,11 @@ export function ProfileScreen({
       return;
     }
     if (!selectedAdminUser) {
-      setAuthMessage('Elegir un usuario para eliminar.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.chooseUserToDelete);
       return;
     }
     if (!canEditAdminUser(session, selectedAdminUser)) {
-      setAuthMessage('No podes eliminar administradores, usuarios superiores o usuarios fuera de tu alcance.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.cannotDeleteReach);
       return;
     }
 
@@ -2478,7 +2478,7 @@ export function ProfileScreen({
       return;
     }
 
-    setAuthMessage('Eliminando usuario...');
+    setAuthMessage(APP_MESSAGES.adminPanels.users.deleting);
     const { error } = await softDeleteAdminUser(selectedAdminUser.id);
     if (error) {
       setAuthMessage(error.message);
@@ -2486,46 +2486,46 @@ export function ProfileScreen({
     }
     setSelectedAdminUserId('');
     await loadAdminUsers();
-    setAuthMessage(changeDone('Usuario eliminado y correo liberado correctamente.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.users.deletedAndReleased));
   }
 
   async function diagnoseUserLogin() {
     const email = adminDiagnosticEmail.trim();
     if (!isValidEmail(email)) {
-      setAuthMessage('Ingresa un mail valido para diagnosticar.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.invalidDiagnosticEmail);
       return;
     }
-    setAuthMessage('Diagnosticando usuario...');
+    setAuthMessage(APP_MESSAGES.adminPanels.users.diagnosing);
     const { data, error } = await diagnoseAdminUserLogin(email);
     if (error) {
-      setAuthMessage(error.message || 'No pude diagnosticar el usuario.');
+      setAuthMessage(error.message || APP_MESSAGES.adminPanels.users.diagnosticFailed);
       return;
     }
     setAdminLoginDiagnostic(data);
-    setAuthMessage(data ? 'Diagnostico listo.' : 'No hubo respuesta de diagnostico.');
+    setAuthMessage(data ? APP_MESSAGES.adminPanels.users.diagnosticReady : APP_MESSAGES.adminPanels.users.diagnosticEmpty);
   }
 
   async function repairUserLogin() {
     const email = adminDiagnosticEmail.trim();
     if (!isValidEmail(email)) {
-      setAuthMessage('Ingresa un mail valido para reparar.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.invalidRepairEmail);
       return;
     }
-    setAuthMessage('Reparando usuario...');
+    setAuthMessage(APP_MESSAGES.adminPanels.users.repairing);
     const { error } = await repairAdminUserLogin(email);
     if (error) {
-      setAuthMessage(error.message || 'No pude reparar el usuario.');
+      setAuthMessage(error.message || APP_MESSAGES.adminPanels.users.repairFailed);
       return;
     }
     await diagnoseUserLogin();
     await loadAdminUsers();
-    setAuthMessage(changeDone('Usuario reparado. Probalo iniciando sesión nuevamente.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.users.repaired));
   }
 
   async function deleteUserByDiagnosticEmail() {
     const email = adminDiagnosticEmail.trim();
     if (!isValidEmail(email)) {
-      setAuthMessage('Ingresa un mail valido para liberar.');
+      setAuthMessage(APP_MESSAGES.adminPanels.users.invalidReleaseEmail);
       return;
     }
     const message = `Esta acción eliminará Auth/Profile/datos vinculados de ${email} y liberará el correo. Se guardará backup interno antes de eliminar.`;
@@ -2541,24 +2541,24 @@ export function ProfileScreen({
       return;
     }
 
-    setAuthMessage('Liberando correo...');
+    setAuthMessage(APP_MESSAGES.adminPanels.users.releasing);
     const { error } = await deleteAdminUserByEmail(email, 'Liberacion manual de correo desde panel administrador');
     if (error) {
-      setAuthMessage(error.message || 'No pude liberar el correo.');
+      setAuthMessage(error.message || APP_MESSAGES.adminPanels.users.releaseFailed);
       return;
     }
     setSelectedAdminUserId('');
     setAdminLoginDiagnostic(null);
     await loadAdminUsers();
-    setAuthMessage(changeDone('Usuario eliminado y correo liberado correctamente.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.users.deletedAndReleased));
   }
 
   async function loadRolePermissionDraft(role: Role = permissionRole) {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede gestionar permisos de rangos.');
+      setAuthMessage(APP_MESSAGES.adminPanels.permissions.adminOnlyLoad);
       return;
     }
-    setAuthMessage('Cargando permisos del rango...');
+    setAuthMessage(APP_MESSAGES.adminPanels.permissions.loading);
     const rows = await fetchRolePermissions(role);
     setRolePermissionRows(rows);
     if (rows.length > 0) {
@@ -2566,7 +2566,7 @@ export function ProfileScreen({
     } else {
       setRolePermissionDraft(rolePermissions[role] ?? []);
     }
-    setAuthMessage(rows.length > 0 ? 'Permisos cargados.' : 'No hay permisos remotos cargados; se muestra base local.');
+    setAuthMessage(rows.length > 0 ? APP_MESSAGES.adminPanels.permissions.loaded : APP_MESSAGES.adminPanels.permissions.localBase);
   }
 
   function toggleRolePermission(permission: Permission) {
@@ -2579,7 +2579,7 @@ export function ProfileScreen({
 
   async function saveRolePermissionDraft() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede guardar permisos de rangos.');
+      setAuthMessage(APP_MESSAGES.adminPanels.permissions.adminOnlySave);
       return;
     }
     const { error } = await saveRolePermissions(permissionRole, rolePermissionDraft);
@@ -2591,27 +2591,27 @@ export function ProfileScreen({
     if (session?.role === permissionRole) {
       onSessionChange({ ...session, permissions: rolePermissionDraft });
     }
-    setAuthMessage(changeDone('Permisos del rango actualizados.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.permissions.saved));
   }
 
   async function loadProvinceRoleLabels() {
-    setAuthMessage('Cargando etiquetas de rangos...');
+    setAuthMessage(APP_MESSAGES.adminPanels.permissions.labelsLoading);
     const rows = await fetchProvinceRoleLabels();
     setProvinceRoleLabels(rows);
-    setAuthMessage(rows.length > 0 ? 'Etiquetas cargadas.' : 'No hay etiquetas personalizadas cargadas.');
+    setAuthMessage(rows.length > 0 ? APP_MESSAGES.adminPanels.permissions.labelsLoaded : APP_MESSAGES.adminPanels.permissions.labelsEmpty);
   }
 
   async function saveProvinceRoleLabelDraft() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede editar nombres visibles de rangos.');
+      setAuthMessage(APP_MESSAGES.adminPanels.permissions.labelsAdminOnly);
       return;
     }
     if (!roleLabelProvince) {
-      setAuthMessage('Elegir provincia.');
+      setAuthMessage(APP_MESSAGES.adminPanels.permissions.provinceRequired);
       return;
     }
     if (!roleLabelDraft.trim()) {
-      setAuthMessage('Escribir el nombre visible del rango.');
+      setAuthMessage(APP_MESSAGES.adminPanels.permissions.labelRequired);
       return;
     }
 
@@ -2627,17 +2627,17 @@ export function ProfileScreen({
       return;
     }
     await loadProvinceRoleLabels();
-    setAuthMessage(changeDone('Etiqueta de rango actualizada.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.permissions.labelSaved));
   }
 
   async function loadRoleAliases(showMessage = true) {
     if (showMessage) {
-      setAuthMessage('Cargando alias de rangos...');
+      setAuthMessage(APP_MESSAGES.adminPanels.permissions.aliasesLoading);
     }
     const rows = await fetchAssignableRoleAliases();
     setRoleAliases(rows);
     if (showMessage) {
-      setAuthMessage(rows.length > 0 ? 'Alias cargados.' : 'No hay alias asignables cargados.');
+      setAuthMessage(rows.length > 0 ? APP_MESSAGES.adminPanels.permissions.aliasesLoaded : APP_MESSAGES.adminPanels.permissions.aliasesEmpty);
     }
   }
 
@@ -2684,22 +2684,22 @@ export function ProfileScreen({
 
   async function adminCreateNews() {
     if (!canManageNewsContent(session)) {
-      setAuthMessage('Tu rango no puede publicar noticias.');
+      setAuthMessage(APP_MESSAGES.adminPanels.news.cannotPublish);
       return;
     }
     if (!adminNewsTitle.trim() || !adminNewsBody.trim()) {
-      setAuthMessage('Completa titulo y texto antes de publicar la noticia.');
+      setAuthMessage(APP_MESSAGES.adminPanels.news.titleAndBodyRequired);
       return;
     }
     const forcedProvincial = session && ['vocal', 'coordinador_diocesano'].includes(session.role);
     const finalScope = forcedProvincial ? 'provincial' : adminNewsScope;
     const finalProvince = finalScope === 'provincial' ? (forcedProvincial ? session?.province : adminNewsProvince) : null;
     if (finalScope === 'provincial' && !finalProvince) {
-      setAuthMessage('Elegí provincia para publicar la noticia provincial.');
+      setAuthMessage(APP_MESSAGES.adminPanels.news.provinceRequired);
       return;
     }
 
-    setAuthMessage('Publicando noticia...');
+    setAuthMessage(APP_MESSAGES.adminPanels.news.publishing);
     const { data: newsId, error } = await createNews(adminNewsTitle.trim(), adminNewsBody.trim(), true, finalProvince, adminNewsImage.trim() || null);
     const newsTargetKind = finalScope === 'provincial' ? 'provincia' : 'nacional';
     const notificationWarning = !error ? await queueNotificationIfRequested(adminNewsNotify, {
@@ -2715,7 +2715,7 @@ export function ProfileScreen({
       sourceType: 'news',
       sourceId: typeof newsId === 'string' ? newsId : null
     }) : null;
-    setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminNewsNotify ? 'Noticia creada y notificacion preparada.' : 'Noticia creada.'));
+    setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminNewsNotify ? APP_MESSAGES.adminPanels.news.createdWithNotification : APP_MESSAGES.adminPanels.news.created));
     if (!error) {
       setAdminNewsTitle('');
       setAdminNewsBody('');
@@ -2731,12 +2731,12 @@ export function ProfileScreen({
   async function loadNewsDrafts() {
     const items = await fetchNewsDrafts();
     setNewsDrafts(items);
-    setAuthMessage(items.length > 0 ? 'Borradores cargados.' : 'No hay borradores guardados.');
+    setAuthMessage(items.length > 0 ? APP_MESSAGES.adminPanels.news.draftsLoaded : APP_MESSAGES.adminPanels.news.draftsEmpty);
   }
 
   async function uploadAdminNewsImage() {
     if (!canManageNewsContent(session)) {
-      setAuthMessage('Tu rango no puede cargar imagenes de noticias.');
+      setAuthMessage(APP_MESSAGES.adminPanels.news.cannotUploadImage);
       return;
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -2754,22 +2754,22 @@ export function ProfileScreen({
       return;
     }
     try {
-      setAuthMessage('Subiendo imagen...');
+      setAuthMessage(APP_MESSAGES.adminPanels.news.uploadingImage);
       const publicUrl = await uploadPickedImageToPublicUrl(result.assets[0], 'news');
       setAdminNewsImage(publicUrl);
-      setAuthMessage('Imagen cargada. La noticia se publica recien al tocar Publicar noticia.');
+      setAuthMessage(APP_MESSAGES.adminPanels.news.imageUploaded);
     } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : 'No se pudo subir la imagen.');
+      setAuthMessage(error instanceof Error ? error.message : APP_MESSAGES.adminPanels.news.imageFailed);
     }
   }
 
   async function adminSaveNewsDraft(status = 'borrador') {
     if (!adminNewsTitle.trim() || !adminNewsBody.trim()) {
-      setAuthMessage('Completa titulo y texto antes de guardar el borrador.');
+      setAuthMessage(APP_MESSAGES.adminPanels.news.draftRequired);
       return;
     }
 
-    setAuthMessage('Guardando borrador...');
+    setAuthMessage(APP_MESSAGES.adminPanels.news.savingDraft);
     const { error } = await saveNewsDraft({
       title: adminNewsTitle.trim(),
       body: adminNewsBody.trim(),
@@ -2788,27 +2788,27 @@ export function ProfileScreen({
     setAdminNewsDraft(false);
     setAdminNewsFeatured(false);
     await loadNewsDrafts();
-    setAuthMessage(changeDone(status === 'borrador' ? 'Borrador guardado.' : 'Borrador actualizado.'));
+    setAuthMessage(changeDone(status === 'borrador' ? APP_MESSAGES.adminPanels.news.draftSaved : APP_MESSAGES.adminPanels.news.draftUpdated));
   }
 
   async function loadAdminMaterials() {
     const [items, documents] = await Promise.all([fetchAppMaterials(session?.role === 'administrador'), fetchChurchDocumentButtons(true)]);
     setAdminMaterials(items);
     setAdminChurchDocuments(documents);
-    setAuthMessage(items.length > 0 || documents.length > 0 ? 'Descargas cargadas.' : 'No hay descargas guardadas.');
+    setAuthMessage(items.length > 0 || documents.length > 0 ? APP_MESSAGES.adminPanels.materials.loaded : APP_MESSAGES.adminPanels.materials.empty);
   }
 
   async function adminSaveMaterial() {
     if (!canManagePublishedContent(session)) {
-      setAuthMessage('Solo Vocal Diocesano en adelante puede guardar materiales.');
+      setAuthMessage(APP_MESSAGES.adminPanels.materials.cannotSave);
       return;
     }
     if (!materialTitle.trim() || !materialDescription.trim()) {
-      setAuthMessage('Completa nombre y descripcion del material.');
+      setAuthMessage(APP_MESSAGES.adminPanels.materials.titleAndDescriptionRequired);
       return;
     }
 
-    setAuthMessage('Guardando material...');
+    setAuthMessage(APP_MESSAGES.adminPanels.materials.saving);
     const { error } = await saveAppMaterial({
       title: materialTitle.trim(),
       description: materialDescription.trim(),
@@ -2861,7 +2861,7 @@ export function ProfileScreen({
 
   async function uploadChurchDocumentLogo() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo Administrador puede subir logos de documentos.');
+      setAuthMessage(APP_MESSAGES.adminPanels.downloads.logoAdminOnly);
       return;
     }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -2879,7 +2879,7 @@ export function ProfileScreen({
       return;
     }
     try {
-      setAuthMessage('Subiendo logo...');
+      setAuthMessage(APP_MESSAGES.adminPanels.downloads.uploadingLogo);
       const asset = result.assets[0];
       const response = await fetch(asset.uri);
       const bytes = await response.arrayBuffer();
@@ -2894,9 +2894,9 @@ export function ProfileScreen({
       }
       const { data } = supabase.storage.from('materials').getPublicUrl(path);
       setChurchDocumentLogoUrl(data.publicUrl);
-      setAuthMessage('Logo cargado.');
+      setAuthMessage(APP_MESSAGES.adminPanels.downloads.logoUploaded);
     } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : 'No se pudo subir el logo.');
+      setAuthMessage(error instanceof Error ? error.message : APP_MESSAGES.adminPanels.downloads.logoFailed);
     }
   }
 
@@ -2906,16 +2906,16 @@ export function ProfileScreen({
       return;
     }
     if (!churchDocumentTitle.trim() || !churchDocumentTargetUrl.trim()) {
-      setAuthMessage('Completa titulo y link destino.');
+      setAuthMessage(APP_MESSAGES.adminPanels.downloads.titleAndLinkRequired);
       return;
     }
     if (!/^https?:\/\//i.test(churchDocumentTargetUrl.trim())) {
-      setAuthMessage('El link debe empezar con https://');
+      setAuthMessage(APP_MESSAGES.adminPanels.downloads.linkMustUseHttps);
       return;
     }
     const maxReached = !churchDocumentEditingId && adminChurchDocuments.filter((item) => !item.archived_at).length >= 6;
     if (maxReached) {
-      setAuthMessage('Solo se permiten hasta 6 botones.');
+      setAuthMessage(APP_MESSAGES.adminPanels.downloads.maxButtons);
       return;
     }
     const { error } = await saveChurchDocumentButton({
@@ -2932,7 +2932,7 @@ export function ProfileScreen({
     }
     resetChurchDocumentForm();
     await loadAdminMaterials();
-    setAuthMessage(changeDone('Documento de la Iglesia guardado.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.downloads.churchDocumentSaved));
   }
 
   async function duplicateChurchDocument(document: ChurchDocumentButtonRecord) {
@@ -2990,7 +2990,7 @@ export function ProfileScreen({
 
   async function adminCreateEvent() {
     if (!adminEventTitle.trim() || !adminEventBody.trim() || !adminEventDate.trim()) {
-      setAuthMessage('Completa titulo, descripcion y fecha antes de publicar el evento.');
+      setAuthMessage(APP_MESSAGES.adminPanels.news.eventRequired);
       return;
     }
     if (Number.isNaN(Date.parse(adminEventDate))) {
@@ -2998,7 +2998,7 @@ export function ProfileScreen({
       return;
     }
 
-    setAuthMessage('Publicando evento...');
+    setAuthMessage(APP_MESSAGES.adminPanels.news.eventPublishing);
     const { data: eventId, error } = await createEvent(adminEventTitle.trim(), adminEventBody.trim(), adminEventDate.trim(), true);
     const eventTargetKind = session && ['vocal', 'asesor', 'coordinador_diocesano'].includes(session.role) ? 'provincia' : 'nacional';
     const notificationWarning = !error ? await queueNotificationIfRequested(adminEventNotify, {
@@ -3014,7 +3014,7 @@ export function ProfileScreen({
       sourceType: 'event',
       sourceId: typeof eventId === 'string' ? eventId : null
     }) : null;
-    setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminEventNotify ? 'Evento creado y notificacion preparada.' : 'Evento creado.'));
+    setAuthMessage(error ? error.message : notificationWarning ?? changeDone(adminEventNotify ? APP_MESSAGES.adminPanels.news.eventCreatedWithNotification : APP_MESSAGES.adminPanels.news.eventCreated));
     if (!error) {
       setAdminEventTitle('');
       setAdminEventBody('');
@@ -3026,44 +3026,44 @@ export function ProfileScreen({
 
   async function adminSaveTab(key: string, fallbackLabel: string) {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo el administrador puede modificar los accesos.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.adminOnlyModify);
       return;
     }
     const tab = editableTabs.find((item) => item.key === key);
     const draft = editingTabs[key] ?? { label: fallbackLabel, iconName: tab?.icon ?? 'document-text-outline', sectionType: tab?.sectionType ?? 'simple', isVisible: true, visibleRoles: tab?.visibleRoles ?? null };
     if (!draft.label.trim()) {
-      setAuthMessage('El nombre visible no puede quedar vacio.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.visibleNameRequired);
       return;
     }
     if (!isIoniconName(draft.iconName)) {
-      setAuthMessage(`El icono "${draft.iconName}" no existe en Ionicons.`);
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.missingIcon(draft.iconName));
       return;
     }
     const { error } = await updateAppTab(key, draft.label.trim() || fallbackLabel, draft.isVisible, draft.visibleRoles, draft.iconName, draft.sectionType);
-    setAuthMessage(error ? error.message : changeDone('Pestana actualizada.'));
+    setAuthMessage(error ? error.message : changeDone(APP_MESSAGES.adminPanels.navigation.tabSaved));
     await onTabsChanged();
   }
 
   async function adminCreatePage() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo el administrador puede crear paginas nuevas.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.adminOnlyCreate);
       return;
     }
     if (!newTabLabel.trim()) {
-      setAuthMessage('Escribir un nombre para la nueva pagina.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.pageNameRequired);
       return;
     }
     const key = normalizeTabKey(newTabKey || newTabLabel);
     if (!key) {
-      setAuthMessage('La clave interna no puede quedar vacia.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.keyRequired);
       return;
     }
     if (editableTabs.some((item) => item.key === key)) {
-      setAuthMessage('Ya existe una sección con esa clave interna.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.duplicateKey);
       return;
     }
     if (!isIoniconName(newTabIcon)) {
-      setAuthMessage(`El icono "${newTabIcon}" no existe en Ionicons.`);
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.missingIcon(newTabIcon));
       return;
     }
     const { error } = await createAppTab(key, newTabLabel.trim(), newTabRoles, newTabIcon, newTabSectionType);
@@ -3078,12 +3078,12 @@ export function ProfileScreen({
     setNewTabSectionType('simple');
     await onTabsChanged();
     await onContentChanged();
-    setAuthMessage(changeDone('Pagina creada con visibilidad por rol.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.navigation.pageCreated));
   }
 
   async function adminMoveTab(key: string, direction: -1 | 1) {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo el administrador puede ordenar los accesos.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.adminOnlyOrder);
       return;
     }
     const sorted = editableTabs.map((tab, index) => ({ ...tab, sortOrder: Number.isFinite(tab.sortOrder) ? tab.sortOrder : index * 10 })).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -3096,7 +3096,7 @@ export function ProfileScreen({
     const [moved] = nextOrder.splice(index, 1);
     nextOrder.splice(targetIndex, 0, moved);
 
-    setAuthMessage('Actualizando orden de accesos...');
+    setAuthMessage(APP_MESSAGES.adminPanels.navigation.updatingOrder);
     for (const [orderIndex, tab] of nextOrder.entries()) {
       const draft = editingTabs[tab.key] ?? { label: tab.label, iconName: tab.icon, sectionType: tab.sectionType, isVisible: tab.visible, visibleRoles: tab.visibleRoles };
       const { error } = await updateAppTabPosition({
@@ -3114,7 +3114,7 @@ export function ProfileScreen({
       }
     }
     await onTabsChanged();
-    setAuthMessage(changeDone('Orden de accesos actualizado.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.navigation.orderSaved));
   }
 
   function updateTabRole(key: string, role: Role, checked: boolean) {
@@ -3131,17 +3131,17 @@ export function ProfileScreen({
 
   async function adminDeleteTab(key: string) {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo el administrador puede eliminar secciones.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.adminOnlyDelete);
       return;
     }
     if (protectedTabKeys.has(key) || defaultTabByKey.has(key)) {
-      setAuthMessage('Esta sección es crítica o propia de la app. Podés ocultarla, pero no eliminarla.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.protectedDelete);
       return;
     }
     const confirmed = Platform.OS === 'web'
-      ? (typeof window === 'undefined' ? true : window.confirm('¿Seguro que deseas eliminar esta sección? También se puede perder contenido asociado.'))
+      ? (typeof window === 'undefined' ? true : window.confirm(APP_MESSAGES.adminPanels.navigation.deleteConfirm))
       : await new Promise<boolean>((resolve) => {
-        Alert.alert('Eliminar sección', '¿Seguro que deseas eliminar esta sección? También se puede perder contenido asociado.', [
+        Alert.alert('Eliminar seccion', APP_MESSAGES.adminPanels.navigation.deleteConfirm, [
           { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
           { text: 'Eliminar', style: 'destructive', onPress: () => resolve(true) }
         ]);
@@ -3156,18 +3156,18 @@ export function ProfileScreen({
     }
     await onTabsChanged();
     await onContentChanged();
-    setAuthMessage(changeDone('Sección eliminada.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.navigation.sectionDeleted));
   }
 
   async function adminRestoreDefaultNavigation() {
     if (session?.role !== 'administrador') {
-      setAuthMessage('Solo el administrador puede restaurar navegación.');
+      setAuthMessage(APP_MESSAGES.adminPanels.navigation.adminOnlyRestore);
       return;
     }
     const confirmed = Platform.OS === 'web'
-      ? (typeof window === 'undefined' ? true : window.confirm('¿Restaurar la navegación predeterminada? Se reemplazarán nombres, iconos, orden y visibilidad base.'))
+      ? (typeof window === 'undefined' ? true : window.confirm(APP_MESSAGES.adminPanels.navigation.restoreConfirm))
       : await new Promise<boolean>((resolve) => {
-        Alert.alert('Restaurar navegación', '¿Restaurar la navegación predeterminada? Se reemplazarán nombres, iconos, orden y visibilidad base.', [
+        Alert.alert('Restaurar navegacion', APP_MESSAGES.adminPanels.navigation.restoreConfirm, [
           { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
           { text: 'Restaurar', style: 'destructive', onPress: () => resolve(true) }
         ]);
@@ -3182,21 +3182,21 @@ export function ProfileScreen({
     }
     setEditingTabs({});
     await onTabsChanged();
-    setAuthMessage(changeDone('Navegación predeterminada restaurada.'));
+    setAuthMessage(changeDone(APP_MESSAGES.adminPanels.navigation.restored));
   }
 
   async function adminSaveContent() {
     if (!contentTitle.trim() || !contentBody.trim()) {
-      setAuthMessage('Completa titulo y texto antes de guardar el contenido.');
+      setAuthMessage(APP_MESSAGES.adminPanels.content.titleAndBodyRequired);
       return;
     }
 
-    setAuthMessage('Guardando contenido...');
+    setAuthMessage(APP_MESSAGES.adminPanels.content.saving);
     const normalizedBlocks = contentBlocks
       .map((block) => ({ ...block, value: block.value.trim() }))
       .filter((block) => block.value.length > 0);
     const { error } = await updateAppContent(selectedContentTab, contentTitle.trim(), contentBody.trim(), normalizedBlocks);
-    setAuthMessage(error ? error.message : changeDone('Contenido actualizado.'));
+    setAuthMessage(error ? error.message : changeDone(APP_MESSAGES.adminPanels.content.saved));
     if (!error) {
       await onContentChanged();
     }
@@ -5373,7 +5373,7 @@ export function ProfileScreen({
               {adminModule === 'permisos_roles' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Permisos de Rangos</Text>
-                  <Text style={styles.cardText}>Activa o desactiva permisos reales por rango. Los cambios se guardan en Supabase, se leen al iniciar sesion y actualizan la sesion actual si corresponde.</Text>
+                  <Text style={styles.cardText}>{APP_MESSAGES.adminPanels.permissions.rolesHelp}</Text>
                   <Text style={styles.cardEyebrow}>Rango</Text>
                   <TouchableOpacity style={styles.dropdownButton} onPress={() => setPermissionRoleDropdownOpen(!permissionRoleDropdownOpen)}>
                     <Text style={styles.dropdownButtonText}>{roleLabel(permissionRole)}</Text>
@@ -5498,7 +5498,7 @@ export function ProfileScreen({
               {adminModule === 'rangos_alias' ? (
                 <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
                   <Text style={styles.cardTitle}>Duplicar / renombrar rangos</Text>
-                  <Text style={styles.cardText}>Crea alias asignables que heredan permisos y jerarquia del rango base. Se guardan en Supabase y se aplican al usuario como nombre visible persistente.</Text>
+                  <Text style={styles.cardText}>{APP_MESSAGES.adminPanels.permissions.aliasesHelp}</Text>
                   <Text style={styles.cardEyebrow}>Rango base</Text>
                   <TouchableOpacity style={styles.dropdownButton} onPress={() => setRoleAliasRoleDropdownOpen(!roleAliasRoleDropdownOpen)}>
                     <Text style={styles.dropdownButtonText}>{roleLabel(roleAliasBaseRole)}</Text>
@@ -5770,7 +5770,7 @@ export function ProfileScreen({
                       ) : null}
                     </View>
                   ) : null}
-                  {adminUsersTool === 'listado' && adminUsers.length === 0 ? <Text style={styles.cardText}>No hay usuarios cargados.</Text> : null}
+                  {adminUsersTool === 'listado' && adminUsers.length === 0 ? <Text style={styles.cardText}>{APP_MESSAGES.adminPanels.users.noVisibleUsers}</Text> : null}
                   {adminUsersTool === 'listado' && userProvinceOptions.length > 0 ? (
                     <>
                       <Text style={styles.cardEyebrow}>Provincia</Text>

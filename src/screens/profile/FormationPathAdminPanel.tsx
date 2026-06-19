@@ -138,22 +138,22 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
       return;
     }
     try {
-      setMessage('Subiendo imagen...');
+      setMessage(APP_MESSAGES.adminPanels.formation.uploadImage);
       const publicUrl = await uploadPickedImageToPublicUrl(result.assets[0], 'formation-path');
       patch({ imageUrl: publicUrl });
-      setMessage('Imagen cargada.');
+      setMessage(APP_MESSAGES.adminPanels.formation.imageUploaded);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'No pude subir la imagen.');
+      setMessage(error instanceof Error ? error.message : APP_MESSAGES.adminPanels.formation.imageFailed);
     }
   }
 
   async function save() {
     if (!canManage) {
-      setMessage('No tenes permisos para administrar el Proceso Educativo.');
+      setMessage(APP_MESSAGES.adminPanels.formation.cannotManage);
       return;
     }
     if (!draft.title.trim()) {
-      setMessage('La estacion necesita un titulo.');
+      setMessage(APP_MESSAGES.adminPanels.formation.titleRequired);
       return;
     }
     const result = await saveFormationPathStation({
@@ -175,7 +175,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
       setMessage(result.error.message);
       return;
     }
-    setMessage('Estacion guardada.');
+    setMessage(APP_MESSAGES.adminPanels.formation.saved);
     setShowEditor(false);
     await load();
   }
@@ -186,7 +186,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
       setMessage(result.error.message);
       return;
     }
-    setMessage(station.is_active ? 'Estacion desactivada.' : 'Estacion activada.');
+    setMessage(station.is_active ? APP_MESSAGES.adminPanels.formation.deactivated : APP_MESSAGES.adminPanels.formation.activated);
     await load();
   }
 
@@ -196,7 +196,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
       setMessage(result.error.message);
       return;
     }
-    setMessage('Estacion eliminada.');
+    setMessage(APP_MESSAGES.adminPanels.formation.deleted);
     if (draft.id === station.id) {
       setDraft(emptyDraft(stations.length + 1));
       setShowEditor(false);
@@ -208,8 +208,8 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
       <View style={styles.adminHeaderRow}>
         <View style={styles.adminUserHeaderText}>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Proceso Educativo</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Crea y ordena estaciones del camino formativo. El contenido queda guardado en Supabase.</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.adminPanels.formation.title}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.formation.help}</Text>
         </View>
         <IconButton icon="refresh-outline" accessibilityLabel="Actualizar estaciones" variant="ghost" onPress={load} />
       </View>
@@ -217,25 +217,25 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
       {!canManage ? (
         <View style={styles.notice}>
           <Ionicons name="lock-closed-outline" size={20} color={palette.red} />
-          <Text style={styles.noticeText}>Disponible solo para Administrador.</Text>
+          <Text style={styles.noticeText}>{APP_MESSAGES.adminPanels.formation.noPermission}</Text>
         </View>
       ) : null}
 
       <ButtonGroup>
         <AppButton
-          label="Crear estacion"
+          label={APP_MESSAGES.adminPanels.formation.create}
           icon="add-circle-outline"
           onPress={() => {
             setDraft(emptyDraft(stations.length + 1));
             setShowEditor(true);
           }}
         />
-        <AppButton label={showEditor ? 'Cerrar editor' : 'Editar seleccion'} icon={showEditor ? 'chevron-up-outline' : 'create-outline'} variant="secondary" onPress={() => setShowEditor((current) => !current)} />
+        <AppButton label={showEditor ? APP_MESSAGES.adminPanels.formation.closeEditor : APP_MESSAGES.adminPanels.formation.editSelected} icon={showEditor ? 'chevron-up-outline' : 'create-outline'} variant="secondary" onPress={() => setShowEditor((current) => !current)} />
       </ButtonGroup>
 
       {showEditor ? (
         <View style={[styles.inlineEditorPanel, isDark && styles.surfacePanelDark]}>
-          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{draft.id ? 'Editar estacion' : 'Nueva estacion'}</Text>
+          <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{draft.id ? APP_MESSAGES.adminPanels.formation.editStation : APP_MESSAGES.adminPanels.formation.newStation}</Text>
           <TextInput style={styles.input} placeholder="Titulo" value={draft.title} onChangeText={(value) => patch({ title: value })} placeholderTextColor={inputPlaceholderColor} />
           <TextInput style={styles.input} placeholder="Subtitulo" value={draft.subtitle} onChangeText={(value) => patch({ subtitle: value })} placeholderTextColor={inputPlaceholderColor} />
           <TextInput style={[styles.input, styles.textArea]} placeholder="Descripcion breve" value={draft.shortDescription} onChangeText={(value) => patch({ shortDescription: value })} multiline placeholderTextColor={inputPlaceholderColor} />
@@ -283,7 +283,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
           </View>
 
           <Text style={[styles.inputLabel, isDark && styles.textDarkStrong]}>Visibilidad por rango</Text>
-          <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Si no seleccionas rangos, queda visible para todos.</Text>
+          <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{APP_MESSAGES.adminPanels.formation.visibleForAll}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
             {roleOptions.map((role) => (
               <TouchableOpacity key={role} style={[styles.filterChip, draft.visibleRoles.includes(role) && styles.filterChipActive]} onPress={() => toggleRole(role)}>
@@ -292,10 +292,10 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
             ))}
           </ScrollView>
 
-          <AppButton label={`Materiales vinculados (${draft.materialIds.length})`} icon={showMaterials ? 'chevron-up-outline' : 'folder-open-outline'} variant="secondary" onPress={() => setShowMaterials((current) => !current)} />
+          <AppButton label={APP_MESSAGES.adminPanels.formation.linkedMaterials(draft.materialIds.length)} icon={showMaterials ? 'chevron-up-outline' : 'folder-open-outline'} variant="secondary" onPress={() => setShowMaterials((current) => !current)} />
           {showMaterials ? (
             <View style={styles.profileCommunityPanel}>
-              {materials.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay materiales cargados.</Text> : null}
+              {materials.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.formation.noMaterials}</Text> : null}
               {materials.map((material) => {
                 const selected = draft.materialIds.includes(material.id);
                 return (
@@ -311,14 +311,14 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
             </View>
           ) : null}
 
-          <AppButton label="Guardar estacion" icon="save-outline" onPress={save} />
+          <AppButton label={APP_MESSAGES.adminPanels.formation.save} icon="save-outline" onPress={save} />
         </View>
       ) : null}
 
       {message ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{message}</Text> : null}
 
-      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Estaciones cargadas</Text>
-      {stations.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>No hay estaciones cargadas.</Text> : null}
+      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.formation.loadedStations}</Text>
+      {stations.length === 0 ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.adminPanels.formation.noStations}</Text> : null}
       {stations.map((station) => (
         <View key={station.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark, !station.is_active && styles.lockedCard]}>
           <View style={[styles.formationStationNode, { backgroundColor: station.color || palette.red }]}>
