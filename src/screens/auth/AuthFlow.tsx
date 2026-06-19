@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { communities } from '../../data/content';
@@ -8,10 +8,12 @@ import { AppCommunity, fetchCommunities } from '../../lib/remoteData';
 import { getMyProfileSession } from '../../lib/authProfile';
 import { supabase } from '../../lib/supabase';
 import { APP_MESSAGES, hasPlausibleEmailDomain, isValidEmail, safeAuthError, verifyEmailDomainExists } from '../../lib/appMessages';
+import { fraternalMessages } from '../../lib/fraternalMessages';
 import { genderNarratives } from '../../lib/profileDisplay';
 import { authDeepLinkBaseUrl, authPasswordResetUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames } from '../../lib/constants';
 import { Session } from '../../types/auth';
 import { AuthSelect, AuthTextInput, BirthDatePicker } from '../../components/AuthInputs';
+import { PasswordInput } from '../../components/auth';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 
@@ -48,7 +50,7 @@ export function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; 
     }
     if (result.session.status === 'bloqueado') {
       await supabase.auth.signOut();
-      setAuthMessage('Este usuario está bloqueado. Contactá a un dirigente.');
+      setAuthMessage(fraternalMessages.profileBlocked(result.session));
       return;
     }
     onAuthenticated(result.session);
@@ -104,7 +106,7 @@ export function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; 
           onRegistered={resolveSession}
           onPendingRegistration={(profile) => {
             setPendingRegistration(profile);
-            setAuthMessage('Mail de confirmación enviado. Revisá tu correo para confirmar tu cuenta.');
+            setAuthMessage(fraternalMessages.registrationReceived(profile.genderPreference));
           }}
         />
       )}
@@ -116,7 +118,6 @@ export function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; 
 function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { message: string; onMessage: (message: string) => void; onAuthenticated: (email: string) => Promise<void>; onRegister: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showRecoveryForm, setShowRecoveryForm] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -174,8 +175,8 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
         <Text style={styles.authBrandTitle}>Palestra</Text>
         <Text style={styles.authBrandSubtitle}>Movimiento Católico</Text>
       </View>
-      <Text style={styles.authHeroTitle}>Bienvenido/a, ¿iniciamos sesión?</Text>
-      <Text style={styles.authHeroText}>Qué alegría volver a encontrarte en este camino.</Text>
+      <Text style={styles.authHeroTitle}>{fraternalMessages.loginWelcome()}</Text>
+      <Text style={styles.authHeroText}>Sigamos compartiendo este camino.</Text>
 
       <View style={styles.authFormPanel}>
         {showRecoveryForm ? (
@@ -201,23 +202,14 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
         ) : (
           <>
         <AuthTextInput label="Mail" placeholder="tu.mail@email.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <View>
-          <Text style={styles.authInputLabel}>Contraseña</Text>
-          <View style={styles.authPasswordWrap}>
-            <TextInput
-              style={styles.authInputPassword}
-              placeholder="Ingresá tu contraseña"
-              placeholderTextColor="rgba(230,243,245,0.62)"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!passwordVisible}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity style={styles.authEyeButton} onPress={() => setPasswordVisible(!passwordVisible)}>
-              <Ionicons name={passwordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.white} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <PasswordInput
+          variant="auth"
+          label="Contraseña"
+          placeholder="Ingresá tu contraseña"
+          value={password}
+          onChangeText={setPassword}
+          textContentType="password"
+        />
         <TouchableOpacity style={styles.authPrimaryButton} onPress={submitLogin} disabled={loading} activeOpacity={0.86}>
           <Text style={styles.authPrimaryText}>{loading ? 'Ingresando...' : 'Iniciar sesión'}</Text>
         </TouchableOpacity>
@@ -242,8 +234,8 @@ export function MailConfirmedScreen({ onEnter, message, isError = false }: { onE
         <View style={styles.authConfirmLogo}>
           <Image source={palestraLogo} style={styles.brandLogoImage} />
         </View>
-        <Text style={styles.authConfirmTitle}>{isError ? 'No pudimos confirmar el mail' : 'Mail confirmado'}</Text>
-        <Text style={styles.authConfirmText}>{message ?? 'Tu correo fue confirmado correctamente. Ya podés ingresar a Palestra APP.'}</Text>
+        <Text style={styles.authConfirmTitle}>{isError ? 'No pudimos confirmar el correo' : '¡Tu correo ya está confirmado!'}</Text>
+        <Text style={styles.authConfirmText}>{message ?? (isError ? fraternalMessages.mailConfirmationFailed() : fraternalMessages.mailConfirmed())}</Text>
         <TouchableOpacity style={styles.primaryButton} onPress={onEnter} activeOpacity={0.86}>
           <Text style={styles.primaryButtonText}>Ingresar</Text>
         </TouchableOpacity>
@@ -272,8 +264,8 @@ function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: {
     <ScrollView contentContainerStyle={styles.authScrollContent} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} overScrollMode="always">
       <View style={styles.authBrandHeader}>
         <Image source={palestraLogo} style={styles.authLogo} />
-        <Text style={styles.authBrandTitle}>Perfil pendiente</Text>
-        <Text style={styles.authBrandSubtitle}>Revisá tu correo para confirmar tu cuenta</Text>
+        <Text style={styles.authBrandTitle}>{fraternalMessages.profilePendingTitle()}</Text>
+        <Text style={styles.authBrandSubtitle}>{fraternalMessages.profilePending(profile.genderPreference)}</Text>
       </View>
       <View style={styles.authFormPanel}>
         <Text style={styles.authInputLabel}>Nombre</Text>
@@ -525,7 +517,13 @@ function RegisterStepCommunity({ draft, onChange, provinces, selectedProvince }:
         ))}
       </AuthSelect>
       <AuthTextInput label="Mail" value={draft.email} onChangeText={(value) => onChange({ email: value })} keyboardType="email-address" autoCapitalize="none" />
-      <AuthTextInput label="Contraseña" value={draft.password} onChangeText={(value) => onChange({ password: value })} secureTextEntry autoCapitalize="none" />
+      <PasswordInput
+        variant="auth"
+        label="Contraseña"
+        value={draft.password}
+        onChangeText={(value) => onChange({ password: value })}
+        textContentType="newPassword"
+      />
     </View>
   );
 }

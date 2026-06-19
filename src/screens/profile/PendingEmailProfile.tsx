@@ -3,6 +3,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Session } from '../../types/auth';
 import { SectionTitle } from '../../components/SectionTitle';
+import { fraternalMessages } from '../../lib/fraternalMessages';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 
@@ -29,11 +30,12 @@ export function PendingEmailProfile({
 
   return (
     <View style={styles.stack}>
-      <SectionTitle title="Perfil pendiente" />
+      <SectionTitle title={fraternalMessages.profilePendingTitle()} />
       <View style={[styles.profileShell, isDark && styles.surfacePanelDark]}>
-        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Mail pendiente de confirmacion</Text>
+        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{fraternalMessages.profilePendingTitle()}</Text>
         <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{session.fullName}</Text>
-        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Revisa tu correo para confirmar tu cuenta. Mientras tanto solo esta disponible esta vista limitada.</Text>
+        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{fraternalMessages.registrationReceived(session)}</Text>
+        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Mientras tanto, cuidamos tus datos y te mostramos solo esta información.</Text>
         {authMessage ? <Text style={styles.authMessage}>{authMessage}</Text> : null}
         <View style={styles.profileMetaGrid}>
           {items.map((item) => (

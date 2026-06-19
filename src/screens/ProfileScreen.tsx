@@ -7,6 +7,7 @@ import { Alert, Image, Linking, Modal, Platform, ScrollView, Switch, Text, TextI
 import { CredentialQrCode } from '../components/CredentialQrCode';
 import { SectionTitle } from '../components/SectionTitle';
 import { AppButton, ButtonGroup, IconButton } from '../components/ui';
+import { PasswordInput } from '../components/auth';
 import { communities, communityNews, materials, roleDefinitions } from '../data/content';
 import { AppAdminConfig } from '../lib/appConfig';
 import { APP_MESSAGES, changeDone, communityDowngradesRole, friendlyUploadError, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError } from '../lib/appMessages';
@@ -16,9 +17,10 @@ import { CommunityAdvisorAssignment, canManageCommunityAdvisors, fetchMyCommunit
 import { CommunityNoticeDraft, emptyCommunityNoticeDraft, normalizeCommunityNoticeFormat, normalizeCommunityNoticeLink, validateCommunityNoticeDraft } from '../lib/community/notices';
 import { canManageCommunityNotice, getCommunityCapabilities } from '../lib/community/permissions';
 import { CommunityGroupType } from '../lib/communitySections';
-import { appRuntimeOwner, authDeepLinkBaseUrl, easProjectId, inputPlaceholderColor, perseveranceStartYears } from '../lib/constants';
+import { appRuntimeOwner, authDeepLinkBaseUrl, COMMUNITY_IMAGE_PICKER_ASPECT, easProjectId, inputPlaceholderColor, perseveranceStartYears } from '../lib/constants';
 import { buildInitialBlocksForSection } from '../lib/contentBlocks';
 import { buildCredentialQrPayload, parseCredentialQrPayload } from '../lib/credentialQr';
+import { fraternalMessages } from '../lib/fraternalMessages';
 import { AppTabDisplay, adminModuleCatalog, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, protectedTabKeys } from '../lib/navigationConstants';
 import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, requestAndRegisterPushToken, showFeedbackMessage } from '../lib/notificationHelpers';
 import { permissionOptions } from '../lib/permissionLabels';
@@ -240,7 +242,6 @@ export function ProfileScreen({
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
-  const [authPasswordVisible, setAuthPasswordVisible] = useState(false);
   const [authFocusedField, setAuthFocusedField] = useState('');
   const [authErrors, setAuthErrors] = useState<Record<string, string>>({});
   const [authMessage, setAuthMessage] = useState('');
@@ -350,7 +351,6 @@ export function ProfileScreen({
   const [adminUserPmMotto, setAdminUserPmMotto] = useState('');
   const [adminCreateEmail, setAdminCreateEmail] = useState('');
   const [adminCreatePassword, setAdminCreatePassword] = useState('');
-  const [adminCreatePasswordVisible, setAdminCreatePasswordVisible] = useState(false);
   const [adminDiagnosticEmail, setAdminDiagnosticEmail] = useState('lucas.lsd.13@gmail.com');
   const [adminLoginDiagnostic, setAdminLoginDiagnostic] = useState<AdminUserLoginDiagnostic | null>(null);
   const [permissionRole, setPermissionRole] = useState<Role>('palestrista');
@@ -430,6 +430,7 @@ export function ProfileScreen({
   const [showPmForm, setShowPmForm] = useState(false);
   const [adminModule, setAdminModule] = useState<AdminModule>('resumen');
   const [adminConfigDraft, setAdminConfigDraft] = useState<AppAdminConfig>(adminConfig);
+  const [identityPartnerLogoUploading, setIdentityPartnerLogoUploading] = useState(false);
   const [runtimeConfigDraft, setRuntimeConfigDraft] = useState<AppRuntimeConfig>(runtimeConfig);
   const [adminCommunityProvince, setAdminCommunityProvince] = useState('');
   const [adminCommunityId, setAdminCommunityId] = useState('');
@@ -1881,7 +1882,7 @@ export function ProfileScreen({
       if (result.session.status === 'bloqueado') {
         await supabase.auth.signOut();
         onSessionChange(null);
-        setAuthMessage('Este usuario esta bloqueado o eliminado. Contacta a un administrador.');
+        setAuthMessage(fraternalMessages.profileBlocked(result.session));
         return;
       }
       onSessionChange(session ? {
@@ -2290,8 +2291,11 @@ export function ProfileScreen({
   }
 
   async function approvePendingProfile(id: string, role: Role) {
+    const approvedUser = adminUsers.find((user) => user.id === id);
     const { error } = await approveProfile(id, role);
-    setAuthMessage(error ? error.message : changeDone('Usuario aprobado.'));
+    setAuthMessage(error
+      ? 'No pudimos aprobar el perfil. Revisá la conexión e intentá nuevamente.'
+      : fraternalMessages.approvalConfirmed(approvedUser?.gender_preference));
     await loadPendingProfiles();
   }
 
@@ -3224,7 +3228,7 @@ export function ProfileScreen({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [2, 1],
+      aspect: COMMUNITY_IMAGE_PICKER_ASPECT,
       quality: 0.85
     });
     if (result.canceled || !result.assets[0]) {
@@ -3275,6 +3279,39 @@ export function ProfileScreen({
       setAuthMessage(error instanceof Error ? error.message : 'No pude subir el logo de la provincia.');
     } finally {
       setProvinceLogoUploading('');
+    }
+  }
+
+  async function pickIdentityPartnerLogo() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede cambiar el logo de partner.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage(APP_MESSAGES.chooseImagePermission);
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.9
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    setIdentityPartnerLogoUploading(true);
+    try {
+      const publicUrl = await uploadPickedImageToPublicUrl(result.assets[0], 'identity/partner-logo');
+      updateAdminConfigSection('identity', {
+        partnerLogoUrl: publicUrl,
+        partnerLogoVisible: true
+      });
+      setAuthMessage('Logo listo. Guardá Identidad para publicarlo.');
+    } catch (error) {
+      setAuthMessage(friendlyUploadError(error instanceof Error ? error.message : 'No se pudo subir el logo.'));
+    } finally {
+      setIdentityPartnerLogoUploading(false);
     }
   }
 
@@ -5089,6 +5126,8 @@ export function ProfileScreen({
                   config={adminConfigDraft}
                   isDark={isDark}
                   onPatch={(patch) => updateAdminConfigSection('identity', patch)}
+                  onUploadPartnerLogo={pickIdentityPartnerLogo}
+                  partnerLogoUploading={identityPartnerLogoUploading}
                   onSave={() => saveAdminConfigDraft('Identidad')}
                 />
               ) : null}
@@ -5699,22 +5738,14 @@ export function ProfileScreen({
                       <Text style={styles.cardText}>Crea una cuenta habilitada con mail y contraseña. Al ingresar, el usuario deberá completar provincia y comunidad.</Text>
                       <Text style={styles.inputLabel}>Mail</Text>
                       <TextInput style={styles.input} placeholder="Ingresá el correo electrónico" value={adminCreateEmail} onChangeText={setAdminCreateEmail} autoCapitalize="none" keyboardType="email-address"  placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={styles.inputLabel}>Contraseña</Text>
-                      <View style={styles.passwordInputWrap}>
-                        <TextInput
-                          style={[styles.input, styles.inputWithIcon]}
-                          placeholder="Mínimo 6 caracteres"
-                          value={adminCreatePassword}
-                          onChangeText={setAdminCreatePassword}
-                          secureTextEntry={!adminCreatePasswordVisible}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          returnKeyType="done"
-                         placeholderTextColor={inputPlaceholderColor} />
-                        <TouchableOpacity style={styles.passwordEyeButton} onPress={() => setAdminCreatePasswordVisible(!adminCreatePasswordVisible)} activeOpacity={0.82}>
-                          <Ionicons name={adminCreatePasswordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
-                        </TouchableOpacity>
-                      </View>
+                      <PasswordInput
+                        label="Contraseña"
+                        placeholder="Mínimo 6 caracteres"
+                        value={adminCreatePassword}
+                        onChangeText={setAdminCreatePassword}
+                        returnKeyType="done"
+                        textContentType="newPassword"
+                      />
                       <TouchableOpacity style={styles.primaryButton} onPress={createBasicAdminUser}>
                         <Text style={styles.primaryButtonText}>Crear usuario</Text>
                       </TouchableOpacity>
@@ -5846,7 +5877,7 @@ export function ProfileScreen({
                                 {session.role === 'administrador' ? (
                                   <>
                                     <TextInput style={styles.input} placeholder="Email" value={adminUserEmail} onChangeText={setAdminUserEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
-                                    <TextInput style={styles.input} placeholder="Nueva contraseña opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
+                                    <PasswordInput placeholder="Nueva contraseña opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} textContentType="newPassword" />
                                   </>
                                 ) : (
                                   null
@@ -6375,11 +6406,15 @@ export function ProfileScreen({
                   adminCommunityIsActive={adminCommunityIsActive}
                   canAdministrateCommunities={canAdministrateCommunities}
                   showAdminCommunityCreate={showAdminCommunityCreate}
+                  feedback={authMessage}
                   onSelectProvince={(province) => {
                     setAdminCommunityProvince(province);
                     setAdminCommunityId('');
                   }}
-                  onSelectCommunity={setAdminCommunityId}
+                  onSelectCommunity={(communityId) => {
+                    setAuthMessage('');
+                    setAdminCommunityId(communityId);
+                  }}
                   onResetSelectedCommunity={() => setAdminCommunityId('')}
                   onToggleCreateCommunity={() => {
                     setShowAdminCommunityCreate((current) => !current);
@@ -7067,8 +7102,6 @@ export function ProfileScreen({
           setAuthPassword={setAuthPassword}
           authPasswordConfirm={authPasswordConfirm}
           setAuthPasswordConfirm={setAuthPasswordConfirm}
-          authPasswordVisible={authPasswordVisible}
-          setAuthPasswordVisible={setAuthPasswordVisible}
           registerFullName={registerFullName}
           setRegisterFullName={setRegisterFullName}
           registerContact={registerContact}

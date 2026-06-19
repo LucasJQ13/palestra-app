@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { COMMUNITY_IMAGE_ASPECT_RATIO } from '../../../lib/constants';
 import { palette } from '../../../theme/palette';
 
 export const communityPanelStyles = StyleSheet.create({
@@ -88,8 +89,9 @@ export const communityPanelStyles = StyleSheet.create({
   },
   image: {
     borderRadius: 14,
-    height: 150,
-    width: '100%'
+    width: '100%',
+    aspectRatio: COMMUNITY_IMAGE_ASPECT_RATIO,
+    backgroundColor: '#DDEBF0'
   },
   primaryButton: {
     alignItems: 'center',

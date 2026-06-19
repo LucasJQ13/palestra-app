@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { AppButton } from '../../../components/ui';
-import { inputPlaceholderColor } from '../../../lib/constants';
+import { COMMUNITY_IMAGE_PICKER_ASPECT, COMMUNITY_IMAGE_RECOMMENDATION, inputPlaceholderColor } from '../../../lib/constants';
 import { communityPanelStyles as styles } from './communityPanelStyles';
 
 export function CommunityDetailsEditor({
@@ -32,7 +32,7 @@ export function CommunityDetailsEditor({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
-      aspect: [2, 1],
+      aspect: COMMUNITY_IMAGE_PICKER_ASPECT,
       quality: 0.86
     });
     if (!result.canceled && result.assets[0]) {
@@ -45,6 +45,7 @@ export function CommunityDetailsEditor({
     <View style={[styles.panel, isDark && styles.panelDark]}>
       <Text style={[styles.sectionTitle, isDark && styles.titleDark]}>Identidad de la comunidad</Text>
       <Text style={[styles.body, isDark && styles.bodyDark]}>Actualizá la presentación y el banner de tu comunidad.</Text>
+      <Text style={[styles.body, isDark && styles.bodyDark]}>Imagen recomendada: {COMMUNITY_IMAGE_RECOMMENDATION}. El recorte mantiene esa proporción.</Text>
       {draftImageUrl ? <Image source={{ uri: draftImageUrl }} style={styles.image} resizeMode="cover" /> : null}
       <AppButton
         label={draftImageUrl ? 'Cambiar banner' : 'Agregar banner'}

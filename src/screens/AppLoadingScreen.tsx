@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Image, Text, View } from 'react-native';
 import { palestraLogo } from '../lib/constants';
+import { AppAdminConfig } from '../lib/appConfig';
+import { PartnerLogo } from '../components/branding';
 import { styles } from '../theme/appStyles';
 
-export function AppLoadingScreen() {
+export function AppLoadingScreen({ identity, isDark = false }: { identity: AppAdminConfig['identity']; isDark?: boolean }) {
   const flash = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.82)).current;
   const barTravel = useRef(new Animated.Value(0)).current;
@@ -69,7 +71,14 @@ export function AppLoadingScreen() {
       <View style={styles.loadingBarTrack}>
         <Animated.View style={[styles.loadingBarPulse, { transform: [{ translateX }] }]} />
       </View>
-      <Text style={styles.designerCreditLoading}>Diseñado por A-Tec Soluciones Integrales</Text>
+      <PartnerLogo
+        logoUrl={identity.partnerLogoUrl}
+        linkUrl={identity.partnerLinkUrl}
+        visible={identity.partnerLogoVisible}
+        accessibilityLabel={identity.partnerLogoAlt}
+        variant="loading"
+        isDark={isDark}
+      />
     </View>
   );
 }

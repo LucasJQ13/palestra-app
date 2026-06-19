@@ -5,6 +5,7 @@ import { Role } from '../../types/auth';
 import { ProvinceRoleLabelRecord } from '../../lib/profiles';
 import { RoleAliasConfig } from '../../lib/appConfig';
 import { roleLabelForProvince } from '../../lib/profileDisplay';
+import { fraternalMessages } from '../../lib/fraternalMessages';
 import { palette } from '../../theme/palette';
 import { communityStyles } from './communityStyles';
 import { CommunityNoticeCard } from './notices/CommunityNoticeCard';
@@ -57,7 +58,7 @@ export function CommunityNoticesPreview({
       {notices.length === 0 ? (
         <View style={communityStyles.emptyState}>
           <Ionicons name="megaphone-outline" size={26} color={palette.red} />
-          <Text style={[communityStyles.emptyText, isDark && communityStyles.emptyTextDark]}>No hay avisos para tu comunidad actualmente.</Text>
+          <Text style={[communityStyles.emptyText, isDark && communityStyles.emptyTextDark]}>{fraternalMessages.communityEmpty()}</Text>
         </View>
       ) : (
         <View style={communityStyles.noticeList}>

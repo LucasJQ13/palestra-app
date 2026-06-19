@@ -138,11 +138,11 @@ export function homeGreeting(session: Session | null, homeConfig: AppAdminConfig
       rango: role
     }, fallback);
   }
-  const fallback = `Bienvenido/a a Palestra, ${name}. Oh Bella Ciao!`;
+  const fallback = `Te damos la bienvenida a Palestra, ${name}. Oh Bella Ciao!`;
   return renderGreetingTemplate(homeConfig.greetingTemplateNeutral, {
     nombre: name,
     tratamiento: 'hno./hna.',
-    genero_bienvenida: 'Bienvenido/a',
+    genero_bienvenida: 'Te damos la bienvenida',
     rango: role
   }, fallback);
 }

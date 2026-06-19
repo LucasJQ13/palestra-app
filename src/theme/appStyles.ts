@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import { palette } from './palette';
 import { themePresets } from './themes';
 import { designTokens as ui } from './designTokens';
+import { COMMUNITY_IMAGE_ASPECT_RATIO } from '../lib/constants';
 
 export const styles = StyleSheet.create({
   safeArea: {
@@ -449,28 +450,6 @@ export const styles = StyleSheet.create({
     height: 5,
     borderRadius: ui.radius.pill,
     backgroundColor: palette.red
-  },
-  designerCreditLoading: {
-    position: 'absolute',
-    left: 24,
-    right: 24,
-    bottom: 26,
-    color: palette.inkMuted,
-    fontSize: 12,
-    fontWeight: '800',
-    textAlign: 'center'
-  },
-  designerCreditHome: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 10,
-    paddingBottom: 4
-  },
-  designerCreditHomeText: {
-    color: palette.inkMuted,
-    fontSize: 12,
-    fontWeight: '800',
-    textAlign: 'center'
   },
   tapCircle: {
     position: 'absolute',
@@ -1969,7 +1948,7 @@ export const styles = StyleSheet.create({
   },
   communityModalImage: {
     width: '100%',
-    height: 176,
+    aspectRatio: COMMUNITY_IMAGE_ASPECT_RATIO,
     borderRadius: 24,
     marginBottom: 12,
     backgroundColor: palette.whiteSoft,

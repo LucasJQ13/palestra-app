@@ -15,6 +15,8 @@ import { useGlobalSearch } from './src/hooks/useGlobalSearch';
 import { useTouchPointer } from './src/hooks/useTouchPointer';
 import { APP_MESSAGES, isMissingProfileScope } from './src/lib/appMessages';
 import { appBetaVersion, appStageLabel, inputPlaceholderColor, palestraLogo } from './src/lib/constants';
+import { fetchDailyGospel } from './src/lib/dailyGospel';
+import { cancelDailyGospelNotification, ensureDailyGospelNotification } from './src/lib/dailyGospelNotifications';
 import { AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, PageEditorProps } from './src/lib/navigationConstants';
 import { requestAndRegisterPushToken } from './src/lib/notificationHelpers';
 import { displayRoleLabel, roleLabel } from './src/lib/profileDisplay';
@@ -96,8 +98,10 @@ export default function App() {
   const [appMessage, setAppMessage] = useState('');
   const [successToastVisible, setSuccessToastVisible] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
+  const [gospelOpenRequested, setGospelOpenRequested] = useState(false);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydrateSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const handledNotificationResponseIdsRef = useRef(new Set<string>());
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const {
     hideTouchPointer,
@@ -475,37 +479,94 @@ export default function App() {
   }, [session?.id, session?.role, activeTab, profileInitialPanel, dismissedMailboxMessageId]);
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const tabKey = response.notification.request.content.data?.tabKey;
+    let alive = true;
+
+    function handleNotificationResponse(response: Notifications.NotificationResponse) {
+      const requestId = response.notification.request.identifier;
+      const responseKey = `${requestId}:${response.notification.date}`;
+      if (handledNotificationResponseIdsRef.current.has(responseKey)) {
+        return;
+      }
+      handledNotificationResponseIdsRef.current.add(responseKey);
+
+      const data = response.notification.request.content.data;
+      if (data?.action === 'open-daily-gospel') {
+        setDrawerOpen(false);
+        setProfileInitialPanel('vista');
+        setTabHistory(['inicio']);
+        setActiveTab('inicio');
+        setGospelOpenRequested(true);
+        return;
+      }
+
+      const tabKey = data?.tabKey;
       if (typeof tabKey === 'string') {
         navigateToTab(tabKey);
       }
-    });
-    return () => subscription.remove();
-  }, [session?.id, activeTab]);
+    }
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+    Notifications.getLastNotificationResponseAsync().then(async (response) => {
+      if (!alive || !response) {
+        return;
+      }
+      handleNotificationResponse(response);
+      await Notifications.clearLastNotificationResponseAsync();
+    }).catch((error) => console.error('last notification response', error));
+
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, [navigateToTab, setActiveTab, setTabHistory]);
 
   useEffect(() => {
     let alive = true;
 
-    async function registerDeviceForPushNotifications() {
+    async function initializeDeviceNotifications() {
       if (!session?.id) {
         return;
       }
       try {
-        const result = await requestAndRegisterPushToken(session, true);
-        if (!alive || result.status !== 'granted') {
-          return;
-        }
+        await requestAndRegisterPushToken(session, true);
       } catch (error) {
         console.error('register push token', error);
       }
+
+      if (!alive) {
+        return;
+      }
+
+      try {
+        if (adminConfig.gospel.enabled === false) {
+          await cancelDailyGospelNotification();
+          return;
+        }
+        const gospelResult = adminConfig.gospel.autoUpdate === false
+          ? { data: null }
+          : await fetchDailyGospel({
+            sourceUrl: adminConfig.gospel.sourceUrl || 'https://donbosco.org.ar/home/evangelio',
+            reflectionSourceUrl: adminConfig.gospel.reflectionSourceUrl || adminConfig.gospel.sourceUrl
+          });
+        if (alive) {
+          await ensureDailyGospelNotification(gospelResult.data);
+        }
+      } catch (error) {
+        console.error('daily gospel notification', error);
+      }
     }
 
-    registerDeviceForPushNotifications();
+    initializeDeviceNotifications();
     return () => {
       alive = false;
     };
-  }, [session?.id]);
+  }, [
+    session?.id,
+    adminConfig.gospel.enabled,
+    adminConfig.gospel.autoUpdate,
+    adminConfig.gospel.sourceUrl,
+    adminConfig.gospel.reflectionSourceUrl
+  ]);
 
   useEffect(() => {
     screenOpacity.setValue(0.88);
@@ -522,7 +583,7 @@ export default function App() {
       return <MaintenanceScreen adminConfig={adminConfig} onNavigate={navigateToTab} />;
     }
     if (activeTab === 'inicio') {
-      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={navigateToTab} adminConfig={adminConfig} />;
+      return <HomeScreen session={session} title={tabLabel('inicio')} content={appContent.find((item) => item.tab_key === 'inicio')} refreshKey={contentVersion} editor={pageEditorProps('inicio')} onNavigate={navigateToTab} adminConfig={adminConfig} gospelOpenRequested={gospelOpenRequested} onGospelOpenRequestHandled={() => setGospelOpenRequested(false)} />;
     }
     if (activeTab === 'notilestra') {
       return <NotilestraScreen session={session} title={tabLabel('notilestra')} content={appContent.find((item) => item.tab_key === 'notilestra')} refreshKey={contentVersion} editor={pageEditorProps('notilestra')} adminConfig={adminConfig} runtimeConfig={runtimeConfig} />;
@@ -561,7 +622,7 @@ export default function App() {
       return <DynamicNavigationSectionScreen session={session} tab={resolvedTabs.find((tab) => tab.key === activeTab)} title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} refreshKey={contentVersion} onNavigate={navigateToTab} />;
     }
     return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} runtimeConfig={runtimeConfig} onRuntimeConfigChange={setRuntimeConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} initialPublicProfile={globalSearchProfile} onInitialPublicProfileHandled={() => setGlobalSearchProfile(null)} />;
-  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, runtimeConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel, globalSearchProfile]);
+  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, runtimeConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel, globalSearchProfile, gospelOpenRequested]);
 
   return (
     <SafeAreaProvider>
@@ -585,7 +646,7 @@ export default function App() {
           }
         }}
       >
-        {isBooting ? <AppLoadingScreen /> : null}
+        {isBooting ? <AppLoadingScreen identity={adminConfig.identity} isDark={isDarkTheme} /> : null}
         {authScreenOpen && !session ? (
           <AuthScreen
             onClose={() => setAuthScreenOpen(false)}

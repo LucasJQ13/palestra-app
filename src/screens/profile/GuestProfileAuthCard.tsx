@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppCommunity } from '../../lib/remoteData';
 import { inputPlaceholderColor, perseveranceStartYears } from '../../lib/constants';
 import { ActionButton } from '../../components/ActionButton';
+import { PasswordInput } from '../../components/auth';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 
@@ -23,8 +24,6 @@ export function GuestProfileAuthCard({
   setAuthPassword,
   authPasswordConfirm,
   setAuthPasswordConfirm,
-  authPasswordVisible,
-  setAuthPasswordVisible,
   registerFullName,
   setRegisterFullName,
   registerContact,
@@ -59,8 +58,6 @@ export function GuestProfileAuthCard({
   setAuthPassword: (value: string) => void;
   authPasswordConfirm: string;
   setAuthPasswordConfirm: (value: string) => void;
-  authPasswordVisible: boolean;
-  setAuthPasswordVisible: (value: boolean) => void;
   registerFullName: string;
   setRegisterFullName: (value: string) => void;
   registerContact: string;
@@ -157,18 +154,30 @@ export function GuestProfileAuthCard({
       <Text style={styles.inputLabel}>Mail</Text>
       <TextInput style={[styles.input, authFocusedField === 'email' && styles.inputFocused, authErrors.email && styles.inputError]} placeholder={authMode === 'register' ? '' : 'Ingresa tu correo electronico'} value={authEmail} onChangeText={(value) => { setAuthEmail(value); setAuthErrors((current) => ({ ...current, email: '' })); }} autoCapitalize="none" keyboardType="email-address" onFocus={() => setAuthFocusedField('email')} onBlur={() => setAuthFocusedField('')} placeholderTextColor={inputPlaceholderColor} />
       {authErrors.email ? <Text style={styles.formErrorText}>{authErrors.email}</Text> : null}
-      <Text style={styles.inputLabel}>Contraseña</Text>
-      <View style={styles.passwordInputWrap}>
-        <TextInput style={[styles.input, styles.inputWithIcon, authFocusedField === 'password' && styles.inputFocused, authErrors.password && styles.inputError]} placeholder={authMode === 'register' ? 'Mínimo 6 caracteres' : 'Ingresá tu contraseña'} value={authPassword} onChangeText={(value) => { setAuthPassword(value); setAuthErrors((current) => ({ ...current, password: '', confirm: '' })); }} secureTextEntry={!authPasswordVisible} onFocus={() => setAuthFocusedField('password')} autoCapitalize="none" autoCorrect={false} returnKeyType="done" placeholderTextColor={inputPlaceholderColor} />
-        <TouchableOpacity style={styles.passwordEyeButton} onPress={() => setAuthPasswordVisible(!authPasswordVisible)} activeOpacity={0.82}>
-          <Ionicons name={authPasswordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
-        </TouchableOpacity>
-      </View>
+      <PasswordInput
+        label="Contraseña"
+        style={[authFocusedField === 'password' && styles.inputFocused, authErrors.password && styles.inputError]}
+        placeholder={authMode === 'register' ? 'Mínimo 6 caracteres' : 'Ingresá tu contraseña'}
+        value={authPassword}
+        onChangeText={(value) => { setAuthPassword(value); setAuthErrors((current) => ({ ...current, password: '', confirm: '' })); }}
+        onFocus={() => setAuthFocusedField('password')}
+        onBlur={() => setAuthFocusedField('')}
+        returnKeyType="done"
+        textContentType={authMode === 'register' ? 'newPassword' : 'password'}
+      />
       {authErrors.password ? <Text style={styles.formErrorText}>{authErrors.password}</Text> : null}
       {authMode === 'register' ? (
         <>
-          <Text style={styles.inputLabel}>Confirmar contraseña</Text>
-          <TextInput style={[styles.input, authFocusedField === 'confirm' && styles.inputFocused, authErrors.confirm && styles.inputError]} placeholder="Repetí tu contraseña" value={authPasswordConfirm} onChangeText={(value) => { setAuthPasswordConfirm(value); setAuthErrors((current) => ({ ...current, confirm: '' })); }} secureTextEntry={!authPasswordVisible} onFocus={() => setAuthFocusedField('confirm')} onBlur={() => setAuthFocusedField('')} placeholderTextColor={inputPlaceholderColor} />
+          <PasswordInput
+            label="Confirmar contraseña"
+            style={[authFocusedField === 'confirm' && styles.inputFocused, authErrors.confirm && styles.inputError]}
+            placeholder="Repetí tu contraseña"
+            value={authPasswordConfirm}
+            onChangeText={(value) => { setAuthPasswordConfirm(value); setAuthErrors((current) => ({ ...current, confirm: '' })); }}
+            onFocus={() => setAuthFocusedField('confirm')}
+            onBlur={() => setAuthFocusedField('')}
+            textContentType="newPassword"
+          />
           {authErrors.confirm ? <Text style={styles.formErrorText}>{authErrors.confirm}</Text> : null}
         </>
       ) : null}

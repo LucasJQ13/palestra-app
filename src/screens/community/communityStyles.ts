@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { COMMUNITY_IMAGE_ASPECT_RATIO } from '../../lib/constants';
 import { palette } from '../../theme/palette';
 
 export const communityStyles = StyleSheet.create({
@@ -37,6 +38,8 @@ export const communityStyles = StyleSheet.create({
     borderColor: 'rgba(168, 221, 243, 0.22)'
   },
   hero: {
+    width: '100%',
+    aspectRatio: COMMUNITY_IMAGE_ASPECT_RATIO,
     minHeight: 220,
     borderRadius: 8,
     overflow: 'hidden',

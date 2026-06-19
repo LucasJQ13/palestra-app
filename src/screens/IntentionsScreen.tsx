@@ -6,6 +6,7 @@ import { AppContentBlock, ContentEditorBlock, PrayerIntentionRecord, createPraye
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor } from '../lib/constants';
 import { APP_MESSAGES, changeDone } from '../lib/appMessages';
+import { fraternalMessages } from '../lib/fraternalMessages';
 import { normalizeContentCards, prepareContentCardsForSave } from '../lib/contentBlocks';
 import { supabase } from '../lib/supabase';
 import { Session } from '../types/auth';
@@ -80,7 +81,7 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
 
   async function saveIntention() {
     if (!session?.id || session.status !== 'aprobado') {
-      setMessage('Necesitas iniciar sesion con un usuario aprobado para crear intenciones.');
+      setMessage(fraternalMessages.privateAccessRequired('compartir una intención'));
       return;
     }
     if (!intentionText.trim()) {
@@ -183,7 +184,7 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
 
   async function startPrayer(resetSeen = false) {
     if (!session?.id || session.status !== 'aprobado') {
-      setMessage('Necesitas iniciar sesion con un usuario aprobado para rezar por intenciones.');
+      setMessage(fraternalMessages.privateAccessRequired('acompañar una intención'));
       return;
     }
     const excludeIds = resetSeen ? [] : prayedIds;
@@ -272,8 +273,8 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
 
       {!session?.id ? (
         <View style={[styles.card, styles.intentionsPanel, isDark && styles.intentionsPanelDark]}>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Inicia sesion</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Necesitas estar registrado para crear o rezar por una intencion.</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Sumate a la oración</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{fraternalMessages.privateAccessRequired('compartir o acompañar intenciones')}</Text>
         </View>
       ) : null}
 

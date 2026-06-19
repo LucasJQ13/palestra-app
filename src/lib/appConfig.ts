@@ -1,6 +1,6 @@
 import { Role } from '../types/auth';
 import { contactInfo } from '../data/content';
-import { defaultDesignerCreditUrl, defaultProvinceInstagram, officialInstagramUrl } from './constants';
+import { defaultProvinceInstagram, officialInstagramUrl } from './constants';
 
 export type ContactBlock = { id: string; type: 'texto' | 'telefono' | 'email' | 'imagen' | 'direccion' | 'enlace' | 'boton' | 'red_social'; label: string; value: string };
 export type RoleAliasConfig = {
@@ -24,7 +24,10 @@ export type AppAdminConfig = {
     greetingNameColor?: string;
     releaseLabel?: string;
     releaseVersion?: string;
-    designerCreditUrl?: string;
+    partnerLogoUrl?: string;
+    partnerLinkUrl?: string;
+    partnerLogoVisible?: boolean;
+    partnerLogoAlt?: string;
   };
   home: {
     heroTitle: string;
@@ -86,7 +89,10 @@ export const defaultAdminConfig: AppAdminConfig = {
     greetingNameColor: '#2fb66d',
     releaseLabel: 'BETA',
     releaseVersion: '0.1.38',
-    designerCreditUrl: defaultDesignerCreditUrl
+    partnerLogoUrl: '',
+    partnerLinkUrl: '',
+    partnerLogoVisible: false,
+    partnerLogoAlt: ''
   },
   home: {
     heroTitle: 'Una app para caminar juntos.',
@@ -102,7 +108,7 @@ export const defaultAdminConfig: AppAdminConfig = {
     },
     greetingTemplateMale: 'Bienvenido {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
     greetingTemplateFemale: 'Bienvenida {tratamiento} en Cristo {nombre}, Oh Bella Ciao!',
-    greetingTemplateNeutral: 'Bienvenido/a a Palestra, {nombre}. Oh Bella Ciao!'
+    greetingTemplateNeutral: 'Te damos la bienvenida a Palestra, {nombre}. Oh Bella Ciao!'
   },
   contact: {
     email: contactInfo.email,
@@ -163,9 +169,6 @@ export function normalizeAdminConfig(config?: Partial<AppAdminConfig> | null): A
 
   if (!merged.contact.instagram || merged.contact.instagram === contactInfo.instagram || merged.contact.instagram === '@palestra.argentina') {
     merged.contact.instagram = officialInstagramUrl;
-  }
-  if (!merged.identity.designerCreditUrl?.trim()) {
-    merged.identity.designerCreditUrl = defaultDesignerCreditUrl;
   }
   merged.contact.provinceInstagram = { ...defaultProvinceInstagram, ...(config?.contact?.provinceInstagram ?? {}) };
   merged.contact.blocks = Array.isArray(config?.contact?.blocks) ? config.contact.blocks : [];

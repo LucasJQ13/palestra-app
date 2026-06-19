@@ -11,17 +11,18 @@ import { AppAdminConfig, defaultAdminConfig } from '../lib/appConfig';
 import { canAccessPrivate, canManageNationalPublishedContent } from '../lib/sessionAccess';
 import { fallbackContentKey } from '../lib/contentBlocks';
 import { APP_MESSAGES, changeDone } from '../lib/appMessages';
-import { defaultDesignerCreditUrl, inputPlaceholderColor } from '../lib/constants';
+import { inputPlaceholderColor } from '../lib/constants';
 import { DailyGospelRecord, fetchDailyGospel } from '../lib/dailyGospel';
+import { ensureDailyGospelNotification } from '../lib/dailyGospelNotifications';
 import { homeGreeting, homeGreetingName, roleLabel } from '../lib/profileDisplay';
 import { uploadPickedImageToPublicUrl } from '../lib/uploads';
-import { normalizeExternalUrl } from '../lib/urls';
 import { Session } from '../types/auth';
 import { EditableIntro } from '../components/EditableIntro';
 import { ExternalNewsCarousel } from '../components/ExternalNewsCarousel';
 import { LinkedSelectableText } from '../components/LinkedSelectableText';
 import { SectionTitle } from '../components/SectionTitle';
 import { AppButton, ButtonGroup, IconButton } from '../components/ui';
+import { PartnerLogo } from '../components/branding';
 import { useIsDarkTheme } from '../theme/ThemeContext';
 import { palette } from '../theme/palette';
 import { styles } from '../theme/appStyles';
@@ -39,7 +40,7 @@ function validHexColor(value?: string | null, fallback = palette.red) {
   return /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
 }
 
-export function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, adminConfig }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void; adminConfig: AppAdminConfig }) {
+export function HomeScreen({ session, title, content, refreshKey, editor, onNavigate, adminConfig, gospelOpenRequested = false, onGospelOpenRequestHandled }: { session: Session | null; title: string; content?: AppContentBlock; refreshKey: number; editor?: PageEditorProps; onNavigate: (tab: TabKey) => void; adminConfig: AppAdminConfig; gospelOpenRequested?: boolean; onGospelOpenRequestHandled?: () => void }) {
   const isDark = useIsDarkTheme();
   const [expandedNews, setExpandedNews] = useState<string | null>(null);
   const [homeNews, setHomeNews] = useState<HomeFeedItem[]>([]);
@@ -65,7 +66,6 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
   const greetingName = homeGreetingName(session);
   const identityButtonColor = validHexColor(adminConfig.identity.buttonColor, adminConfig.identity.primaryColor || palette.red);
   const greetingNameColor = validHexColor(session?.personalGreetingColor, validHexColor(adminConfig.identity.greetingNameColor, '#2fb66d'));
-  const designerCreditUrl = normalizeExternalUrl(adminConfig.identity.designerCreditUrl || defaultDesignerCreditUrl);
   const enabledHomeModules = new Set(adminConfig.home.visibleModules?.length ? adminConfig.home.visibleModules : defaultAdminConfig.home.visibleModules);
   const homeModuleEnabled = (moduleKey: string) => enabledHomeModules.has(moduleKey);
   const quickLabel = (moduleKey: string, fallback: string) => adminConfig.home.quickAccessLabels?.[moduleKey]?.trim() || fallback;
@@ -104,6 +104,14 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
     }
   }, [gospelModalVisible, adminConfig.gospel.sourceUrl, adminConfig.gospel.reflectionSourceUrl]);
 
+  useEffect(() => {
+    if (!gospelOpenRequested) {
+      return;
+    }
+    setGospelModalVisible(true);
+    onGospelOpenRequestHandled?.();
+  }, [gospelOpenRequested, onGospelOpenRequestHandled]);
+
   async function loadDailyGospel(forceRefresh: boolean) {
     setDailyGospelLoading(true);
     setDailyGospelMessage(forceRefresh ? 'Actualizando Evangelio del dia...' : 'Cargando Evangelio del dia...');
@@ -118,6 +126,7 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
       return;
     }
     setDailyGospel(data);
+    ensureDailyGospelNotification(data).catch((notificationError) => console.error('daily gospel notification', notificationError));
     setDailyGospelMessage('');
     setDailyGospelLoading(false);
   }
@@ -209,17 +218,6 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
     }
     setHomeActionMessage(changeDone('Cambios realizados'));
     setHomeRefreshKey((current) => current + 1);
-  }
-
-  async function openDesignerCredit() {
-    try {
-      const supported = await Linking.canOpenURL(designerCreditUrl);
-      if (supported) {
-        await Linking.openURL(designerCreditUrl);
-      }
-    } catch (error) {
-      console.error('designer credit link', error);
-    }
   }
 
   return (
@@ -430,9 +428,13 @@ export function HomeScreen({ session, title, content, refreshKey, editor, onNavi
           <Text style={styles.noticeText}>Algunas secciones requieren registro y aprobación de un coordinador.</Text>
         </View>
       ) : null}
-      <TouchableOpacity style={styles.designerCreditHome} activeOpacity={0.72} onPress={openDesignerCredit}>
-        <Text style={[styles.designerCreditHomeText, isDark && styles.textDarkMuted]}>Diseñado por A-Tec Soluciones Integrales</Text>
-      </TouchableOpacity>
+      <PartnerLogo
+        logoUrl={adminConfig.identity.partnerLogoUrl}
+        linkUrl={adminConfig.identity.partnerLinkUrl}
+        visible={adminConfig.identity.partnerLogoVisible}
+        accessibilityLabel={adminConfig.identity.partnerLogoAlt}
+        isDark={isDark}
+      />
     </View>
   );
 }

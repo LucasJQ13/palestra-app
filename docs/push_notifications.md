@@ -15,6 +15,20 @@ La app ya puede pedir permisos, obtener Expo Push Token y guardar el token asoci
 4. El token se registra con usuario, plataforma, device id local, version y estado activo.
 5. Cuando un dirigente publica con `Notificar usuarios` activo, se crea una fila en `notification_intents`.
 
+## Recordatorio local del Evangelio
+
+El recordatorio diario del Evangelio no usa la cola push ni requiere un job de backend:
+
+- se programa localmente con `expo-notifications` a las 09:00;
+- usa el canal Android `daily-gospel`;
+- mantiene una única programación y elimina duplicados anteriores;
+- toma una frase completa y breve del `gospel_text` cargado para la fecha;
+- usa un mensaje fallback si todavía no hay un fragmento confiable;
+- al tocarlo abre Inicio y muestra el modal del Evangelio;
+- si el permiso no está concedido, no programa la notificación.
+
+La hora se define en `src/lib/constants.ts`. La selección del fragmento y la reconciliación de la programación están en `src/lib/dailyGospelNotifications.ts`.
+
 ## Envio real
 
 El envio real no debe hacerse desde el cliente porque requiere una clave/entorno seguro y control de segmentacion. La siguiente etapa debe ser una Supabase Edge Function o backend seguro que:
