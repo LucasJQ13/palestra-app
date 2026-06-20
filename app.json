@@ -13,7 +13,7 @@
       "backgroundColor": "#E6F3F5"
     },
     "notification": {
-      "icon": "./assets/notification-icon.png",
+      "icon": "./assets/notification-small-icon.png",
       "color": "#2d8dc8",
       "androidMode": "default",
       "androidCollapsedTitle": "Palestra"
