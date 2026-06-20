@@ -129,7 +129,7 @@ export function DownloadsAdminPanel({
               <View key={document.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark, !document.enabled && styles.lockedCard]}>
                 {document.logo_url ? <Image source={{ uri: document.logo_url }} style={styles.adminDocumentThumb} /> : <View style={styles.adminDocumentThumb}><Ionicons name="key-outline" size={18} color={palette.red} /></View>}
                 <View style={styles.adminUserHeaderText}>
-                  <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{document.title}</Text>
+                  <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{document.title?.trim() || APP_MESSAGES.adminPanels.downloads.unnamedDocument}</Text>
                   <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Orden {document.sort_order} - {document.enabled ? 'activo' : 'inactivo'}</Text>
                 </View>
                 <ButtonGroup>
@@ -167,7 +167,7 @@ export function DownloadsAdminPanel({
         <View key={material.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
           <Ionicons name="document-text-outline" size={19} color={palette.red} />
           <View style={styles.adminUserHeaderText}>
-            <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{material.title}</Text>
+            <Text numberOfLines={2} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{material.title?.trim() || APP_MESSAGES.adminPanels.downloads.unnamedMaterial}</Text>
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{material.category ?? 'General'} - {material.visibility ?? 'interno'}{material.required_permission ? ` - ${material.required_permission}` : ''}</Text>
           </View>
           {!material.id.startsWith('fallback-') ? (

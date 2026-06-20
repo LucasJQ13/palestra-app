@@ -56,6 +56,8 @@ type FetchCommunitiesOptions = {
 export type AppCommunityLocation = (typeof fallbackCommunities)[number]['locations'][number] & {
   latitude?: number | null;
   longitude?: number | null;
+  isActive?: boolean;
+  archivedAt?: string | null;
 };
 export type AppCommunity = Omit<(typeof fallbackCommunities)[number], 'locations'> & {
   id?: string;
@@ -111,6 +113,16 @@ function isVisibleProvince(row: Pick<RemoteProvinceRow, 'is_active' | 'archived_
 function isVisibleCommunity(row: Pick<RemoteCommunityRow, 'is_active' | 'archived_at'>, options: FetchCommunitiesOptions) {
   return (options.includeInactiveCommunities || isActiveFlag(row.is_active))
     && (options.includeArchivedCommunities || !row.archived_at);
+}
+
+export function activeCommunityData(items: readonly AppCommunity[]): AppCommunity[] {
+  return items
+    .filter((province) => province.isActive !== false && !province.archivedAt)
+    .map((province) => ({
+      ...province,
+      locations: province.locations.filter((community) => community.isActive !== false && !community.archivedAt)
+    }))
+    .filter((province) => province.locations.length > 0);
 }
 
 export async function fetchCommunities(options: FetchCommunitiesOptions = {}): Promise<AppCommunity[]> {
@@ -221,17 +233,20 @@ export async function fetchCommunities(options: FetchCommunitiesOptions = {}): P
     if (!isVisibleCommunity(row, options)) {
       return;
     }
+    if (!row.provinces) {
+      return;
+    }
     if (row.provinces && !isVisibleProvince(row.provinces, options)) {
       return;
     }
-    const province = row.provinces?.name ?? 'Sin provincia';
-    const region = row.provinces?.region ?? 'Sin region';
+    const province = row.provinces.name;
+    const region = row.provinces.region ?? 'Sin region';
     const current = grouped.get(province) ?? {
       province,
       region,
-      logoUrl: row.provinces?.logo_url ?? null,
-      isActive: row.provinces?.is_active ?? true,
-      archivedAt: row.provinces?.archived_at ?? null,
+      logoUrl: row.provinces.logo_url ?? null,
+      isActive: row.provinces.is_active ?? true,
+      archivedAt: row.provinces.archived_at ?? null,
       sectionVisibility: sectionVisibilityByProvince.get(province) ?? defaultCommunitySectionVisibility(province),
       description: 'Comunidades cargadas desde Supabase.',
       locations: []
@@ -249,7 +264,8 @@ export async function fetchCommunities(options: FetchCommunitiesOptions = {}): P
       group: normalizeCommunityGroup(row.group_type),
       latitude: row.latitude ?? null,
       longitude: row.longitude ?? null,
-      isActive: row.is_active ?? true
+      isActive: row.is_active ?? true,
+      archivedAt: row.archived_at ?? null
     });
 
     current.description = `${current.locations.length} comunidades activas.`;

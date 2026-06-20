@@ -6,6 +6,7 @@ import { AppTheme, ThemeName } from '../../theme/themes';
 import { styles } from '../../theme/appStyles';
 import { appRuntimeOwner, easProjectId, inputPlaceholderColor } from '../../lib/constants';
 import { Session } from '../../types/auth';
+import { PasswordInput } from '../../components/auth';
 
 export function ProfileSettingsPanel({
   session,
@@ -122,7 +123,7 @@ export function ProfileSettingsPanel({
         </View>
       ) : null}
       <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nuevo mail" value={newEmail} onChangeText={onNewEmailChange} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
-      <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nueva contrasena" value={newPassword} onChangeText={onNewPasswordChange} secureTextEntry placeholderTextColor={inputPlaceholderColor} />
+      <PasswordInput placeholder="Nueva contrasena" value={newPassword} onChangeText={onNewPasswordChange} textContentType="newPassword" />
       <TouchableOpacity style={styles.primaryButton} onPress={onSaveAccountSettings}>
         <Text style={styles.primaryButtonText}>Guardar ajustes</Text>
       </TouchableOpacity>

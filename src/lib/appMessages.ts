@@ -35,83 +35,111 @@ export const APP_MESSAGES = {
   imageSelectionPermission: 'Necesitamos permiso para seleccionar imagen.',
   imageSelectionPermissionWithArticle: 'Necesitamos permiso para seleccionar una imagen.',
   chooseImagePermission: 'Necesitamos permiso para elegir una imagen.',
-  profileReadFailed: 'No pudimos preparar tu perfil. Intenta nuevamente en unos minutos.',
+  profileReadFailed: 'No pudimos preparar tu perfil. Volvé a intentarlo en unos minutos.',
   auth: {
-    brandSubtitle: 'Movimiento Catolico',
-    loginTitle: 'Bienvenido/a, volvemos a encontrarnos?',
-    loginHelp: 'Que alegria seguir caminando juntos en Palestra.',
+    brandSubtitle: 'Movimiento Católico',
+    loginTitle: 'Qué alegría encontrarte de nuevo',
+    loginHelp: 'Ingresá para seguir caminando junto a tu comunidad.',
+    guestTitle: 'Estás visitando Palestra',
+    guestHelp: 'Podés conocer el inicio, las noticias, las comunidades, nuestra historia y los espacios de contacto.',
+    guestLoginTab: 'Iniciar sesión',
+    guestRegisterTab: 'Quiero sumarme',
+    guestRegisterTitle: '¿Querés sumarte a Palestra?',
+    guestRegisterHelp: 'Sumate a Palestra. Un dirigente de tu comunidad revisará el perfil para darte la bienvenida.',
+    guestRegisterSubmit: 'Sumarme a Palestra',
     emailLabel: 'Mail',
     emailPlaceholder: 'tu.mail@email.com',
-    passwordLabel: 'Contrasena',
-    passwordPlaceholder: 'Ingresa tu contrasena',
-    invalidEmail: 'Revisa el mail: necesitamos una direccion valida para seguir.',
-    passwordRequired: 'Ingresa tu contrasena para continuar.',
+    signInEmailPlaceholder: 'Ingresá tu correo',
+    passwordLabel: 'Contraseña',
+    passwordPlaceholder: 'Ingresá tu contraseña',
+    passwordMinimumPlaceholder: 'Mínimo 6 caracteres',
+    passwordConfirmLabel: 'Confirmar contraseña',
+    passwordConfirmPlaceholder: 'Repetí tu contraseña',
+    invalidEmail: 'Revisá el mail: necesitamos una dirección válida para seguir.',
+    passwordRequired: 'Ingresá tu contraseña para continuar.',
+    fullNameRequired: 'Ingresá tu nombre completo.',
+    provinceRequired: 'Elegí tu provincia.',
+    registrationCommunityRequired: 'Elegí tu comunidad.',
+    startYearRequired: 'Elegí el año de inicio.',
+    passwordMismatch: 'Las contraseñas no coinciden.',
     loginLoading: 'Estamos preparando tu ingreso...',
-    recoveryTitle: 'Recuperar contrasena',
-    recoveryHelp: 'Ingresa tu mail y te enviaremos un enlace para crear una nueva contrasena.',
-    recoveryInvalidEmail: 'Escribi un mail valido para enviarte el enlace de recuperacion.',
+    loginSuccess: 'Sesión iniciada.',
+    recoveryTitle: 'Recuperar contraseña',
+    recoveryHelp: 'Ingresá tu mail. Si encontramos tu cuenta, te enviaremos un enlace para crear una nueva contraseña.',
+    recoveryInvalidEmail: 'Escribí un mail válido para enviarte el enlace de recuperación.',
     recoverySending: 'Estamos enviando las instrucciones a tu correo...',
-    recoveryFailed: 'No pudimos enviar el enlace ahora. Revisa el mail y volve a intentar en unos minutos.',
-    recoverySent: 'Si ese correo pertenece a una cuenta, te enviaremos los pasos para recuperar el acceso.',
+    recoverySendingShort: 'Enviando...',
+    recoveryFailed: 'No pudimos enviar el enlace. Revisá el mail y volvé a intentarlo en unos minutos.',
+    recoverySent: 'Si encontramos tu cuenta, vas a recibir los pasos para recuperar el acceso.',
     recoverySubmit: 'Enviar enlace',
-    recoveryBack: 'Volver al inicio de sesion',
-    loginSubmit: 'Iniciar sesion',
+    recoveryBack: 'Volver al inicio de sesión',
+    loginSubmit: 'Iniciar sesión',
     loginLoadingShort: 'Ingresando...',
     registerLink: 'Quiero registrarme',
-    forgotPassword: 'Olvide mi contrasena',
+    forgotPassword: 'Olvidé mi contraseña',
     enterButton: 'Ingresar',
     sendingHelpRequest: 'Estamos avisando a un dirigente...',
-    backToLogin: 'Volver al inicio de sesion',
+    backToLogin: 'Volver al inicio de sesión',
     registerSubmit: 'Unirme a Palestra',
     registerLoading: 'Estamos preparando tu registro...',
     registerLoadingShort: 'Registrando...',
     continueButton: 'Continuar',
-    emailConfirmationSent: 'Correo de confirmacion enviado. Revisa tu bandeja para activar tu cuenta.',
-    emailConfirmationErrorTitle: 'No pudimos confirmar tu correo todavia',
-    emailConfirmationSuccessTitle: 'Correo confirmado',
-    emailConfirmationSuccessText: 'Tu correo fue confirmado. Ya podes ingresar a Palestra APP.',
-    emailConfirmationFailed: 'No pudimos confirmar tu correo. Pedi un nuevo mail de confirmacion e intenta nuevamente.',
-    emailConfirmationLinkFailed: 'No pudimos procesar el link de confirmacion. Abri Palestra APP e intenta iniciar sesion.',
-    emailConfirmationSuccessToast: 'Correo confirmado correctamente.',
-    pendingProfileTitle: 'Tu perfil esta en camino',
-    pendingProfileSubtitle: 'Revisa tu correo para confirmar tu cuenta',
-    pendingEmailEyebrow: 'Correo pendiente de confirmacion',
-    pendingEmailHelp: 'Revisa tu correo para confirmar tu cuenta. Mientras tanto, esta vista queda disponible para pedir ayuda si la necesitas.',
+    registrationCreatedPending: 'Tu registro está en camino. Un dirigente lo revisará para darte la bienvenida.',
+    registrationCreatedEmailPending: 'Tu registro está en camino. Confirmá el correo y después vas a poder ingresar.',
+    emailConfirmationSent: 'Te enviamos un correo de confirmación. Revisá tu bandeja para activar la cuenta.',
+    emailConfirmationErrorTitle: 'Todavía no pudimos confirmar tu correo',
+    emailConfirmationSuccessTitle: '¡Tu correo ya está confirmado!',
+    emailConfirmationSuccessText: 'Todo listo. Ya podés entrar y encontrarte con tu comunidad en Palestra.',
+    emailConfirmationFailed: 'No pudimos confirmar tu correo. Pedí un nuevo mail e intentá nuevamente.',
+    emailConfirmationLinkFailed: 'No pudimos abrir ese enlace de confirmación. Volvé a Palestra e intentá iniciar sesión.',
+    emailConfirmationSuccessToast: 'Tu correo ya está confirmado.',
+    pendingProfileTitle: 'Tu perfil está en camino',
+    pendingProfileSubtitle: 'Revisá tu correo para confirmar la cuenta',
+    pendingEmailEyebrow: 'Correo pendiente de confirmación',
+    pendingEmailHelp: 'Revisá tu correo para confirmar la cuenta. Si necesitás ayuda, desde acá podés avisarle a un dirigente.',
     requestLeaderHelp: 'Si no llega el correo, avisale a un dirigente',
-    requestLeaderHelpDone: 'Mensaje enviado. Un dirigente podra revisar tu confirmacion.',
-    passwordRecoveryReceived: 'Recibimos tu link de recuperacion. Inicia sesion o actualiza tu contrasena desde Mi Perfil.',
-    signOut: 'Cerrar sesion',
-    back: 'Atras',
-    pageLabel: 'Pagina',
+    requestLeaderHelpDone: 'Listo. Un dirigente podrá acompañarte con la confirmación.',
+    requestLeaderHelpFailed: 'No pudimos avisarle a un dirigente. Volvé a intentarlo en unos minutos.',
+    passwordRecoveryReceived: 'Recibimos tu enlace de recuperación. Iniciá sesión o actualizá tu contraseña desde Mi Perfil.',
+    signOut: 'Cerrar sesión',
+    back: 'Atrás',
+    pageLabel: 'Página',
     firstNameLabel: 'Nombre',
     lastNameLabel: 'Apellido',
+    fullNameLabel: 'Nombre completo',
     lastNamePending: 'Pendiente',
     provinceLabel: 'Provincia',
     contactLabel: 'Contacto',
     communityLabel: 'Comunidad',
     nicknameLabel: 'Apodo',
-    startYearLabel: 'Ano de inicio en el Movimiento',
-    selectProvince: 'Selecciona tu provincia',
-    selectCommunity: 'Selecciona tu comunidad',
-    selectStartYear: 'Seleccionar ano',
+    startYearLabel: 'Año de inicio en el Movimiento',
+    selectProvince: 'Elegí tu provincia',
+    selectCommunity: 'Elegí tu comunidad',
+    selectStartYear: 'Elegí el año',
     nameRequired: 'Necesitamos tu nombre y apellido para crear tu perfil.',
-    aboutRequired: 'Agrega tu fecha de nacimiento y un contacto para que tu comunidad pueda acompanarte.',
-    communityRequired: 'Elegi provincia, comunidad y ano de inicio para ubicarte dentro de Palestra.',
+    aboutRequired: 'Agregá tu fecha de nacimiento y un contacto para que tu comunidad pueda acompañarte.',
+    communityRequired: 'Elegí provincia, comunidad y año de inicio para ubicarte dentro de Palestra.',
     invalidEmailDomain: 'El dominio del mail no parece recibir correos. Revisalo antes de seguir.',
     unavailableEmailDomain: 'El dominio del mail no existe o no recibe correo.',
-    domainValidationFailed: 'No pudimos validar el dominio del mail. Revisa tu conexion e intenta nuevamente.',
-    emailAlreadyRegistered: 'Ese mail ya tiene una cuenta. Ingresa o recupera tu contrasena.',
-    shortPassword: 'La contrasena debe tener al menos 6 caracteres.',
-    narrativeRequired: 'Elegi una opcion narrativa para personalizar el saludo.',
+    domainValidationFailed: 'No pudimos validar el dominio del mail. Revisá tu conexión e intentá nuevamente.',
+    emailAlreadyRegistered: 'Ese mail ya tiene una cuenta. Ingresá o recuperá tu contraseña.',
+    shortPassword: 'La contraseña debe tener al menos 6 caracteres.',
+    narrativeRequired: 'Elegí cómo querés que te acompañemos en los saludos.',
     validatingEmail: 'Validando mail...',
-    wizardNameTitle: 'Como te llamas?',
-    wizardNameHelp: 'Antes de comenzar esta aventura, nos gustaria saber quien sos y conocer un poco mas de vos.',
+    wizardNameTitle: '¿Cómo te llamás?',
+    wizardNameHelp: 'Queremos conocerte un poco más para acompañar tu camino en Palestra.',
     wizardAboutTitle: 'Contanos un poco de vos',
-    wizardAboutHelp: 'Esto nos permitira conocerte mejor y preparar esta aventura para vos.',
+    wizardAboutHelp: 'Estos datos nos ayudan a acompañarte y vincularte con tu comunidad.',
     wizardCommunityTitle: 'Comunidad y acceso',
-    wizardCommunityHelp: 'Elegi la provincia donde perseveras o participas actualmente en Palestra y prepara tus datos de ingreso.',
-    wizardNarrativeTitle: 'Narrativa',
-    wizardNarrativeHelp: 'Esto nos ayuda a hablarte con una cercania mas personal dentro de la app.'
+    wizardCommunityHelp: 'Elegí dónde participás actualmente y prepará tus datos de ingreso.',
+    wizardNarrativeTitle: 'Cómo acompañarte',
+    wizardNarrativeHelp: 'Elegí el trato que preferís para recibir saludos más personales.',
+    profileRefreshed: 'Tu perfil está actualizado.',
+    noActiveSession: 'No encontramos una sesión activa. Cerrá e iniciá sesión nuevamente.',
+    invalidCredentials: 'El mail o la contraseña no coinciden. Revisalos y volvé a intentarlo.',
+    emailNotConfirmed: 'Tu correo todavía no está confirmado. Revisá tu bandeja o pedí ayuda a un dirigente.',
+    passwordReview: 'Revisá la contraseña indicada.',
+    genericError: 'Algo no salió como esperábamos. Revisá los datos y volvé a intentarlo.'
   },
   home: {
     quickAccessTitle: 'Accesos para caminar',
@@ -203,12 +231,13 @@ export const APP_MESSAGES = {
     createCommunity: 'Crear comunidad',
     closeCreation: 'Cerrar creacion',
     communityNamePlaceholder: 'Nombre de comunidad',
-    optionalImageHelp: 'La imagen es opcional. Podes guardar la comunidad sin cargar una foto.',
+    unnamedCommunity: 'Comunidad sin nombre',
+    optionalImageHelp: 'La imagen es opcional. Recomendamos 1200x800 px en proporcion 3:2.',
     existingCommunities: 'Comunidades existentes',
     locationTitle: 'Ubicacion',
     coordinatesHelp: 'Cargar coordenadas ayuda a encontrar la comunidad cercana. Podes copiarlas desde Google Maps.',
     imageTitle: 'Imagen de comunidad',
-    imageHelp: 'Imagen recomendada: 1200x600 px. La app abre recorte 2:1 para encuadrar antes de guardar.',
+    imageHelp: 'Imagen recomendada: 1200x800 px. La app conserva la proporcion 3:2 antes de guardar.',
     imagePreviewReady: 'Vista previa lista. Guarda la comunidad para subirla y asociarla.',
     saveCommunity: 'Guardar comunidad',
     savingCommunity: 'Guardando comunidad...',
@@ -243,19 +272,23 @@ export const APP_MESSAGES = {
     nationalSecretariatHelp: 'Referentes nacionales del Movimiento.',
     secretariatLoading: 'Cargando secretariado...',
     secretariatEmpty: 'Todavia no hay integrantes cargados para este secretariado.',
-    nameAndContactRequired: 'Dejanos tu nombre y un contacto para poder responderte.',
-    messageRequired: 'Escribi tu consulta antes de enviarla.',
-    secretariatSent: 'Consulta enviada al Secretariado.',
-    contactSent: 'Consulta enviada a la comunidad.',
+    nameAndContactRequired: 'Dejanos tu nombre y un medio de contacto para que podamos acompanarte.',
+    messageRequired: 'Contanos brevemente en que podemos acompanarte.',
+    secretariatSent: 'Tu consulta llego al Secretariado. Gracias por escribirnos.',
+    contactSent: 'Tu consulta llego a la comunidad. Gracias por acercarte.',
     selectedCommunityMissing: 'No encontramos la comunidad seleccionada.',
     closeCommunity: 'Cerrar comunidad',
     openLocation: 'Abrir ubicacion',
-    sendMessage: 'Enviar mensaje',
-    messageToLeaders: 'Mensaje a animacion/coordinacion',
+    sendMessage: 'Escribir a la comunidad',
+    messageToLeaders: 'Conversemos con la comunidad',
+    contactNameLabel: 'Tu nombre',
+    contactNamePlaceholder: 'Nombre y apellido',
+    contactMethodLabel: 'Como podemos responderte?',
     contactPlaceholder: 'Ej: nombre@email.com o telefono',
-    communityMessagePlaceholder: 'Escribi tu consulta para la comunidad',
-    secretariatMessagePlaceholder: 'Escribi tu consulta para el Secretariado',
-    sendQuery: 'Enviar consulta',
+    queryMessageLabel: 'Tu consulta',
+    communityMessagePlaceholder: 'Contanos como podemos acompanarte',
+    secretariatMessagePlaceholder: 'Contanos como puede acompanarte el Secretariado',
+    sendQuery: 'Acercar consulta',
     closeQuery: 'Cerrar consulta',
     presentationHint: 'Tocar para ver presentacion',
     activeCommunities: (count: number) => `${count} comunidades activas`,
@@ -270,6 +303,112 @@ export const APP_MESSAGES = {
     advisorEmpty: 'Todavia no hay asesores vinculados a esta comunidad.',
     advisorAssigned: 'Asesor asignado a la comunidad.',
     advisorRemoved: 'Asignacion de asesor eliminada.'
+  },
+  communications: {
+    mailbox: {
+      title: 'Conversaciones',
+      help: 'Un espacio privado para encontrarnos y acompanarnos entre quienes formamos Palestra.',
+      newAction: 'Escribir mensaje',
+      closeComposer: 'Cerrar',
+      refresh: 'Actualizar',
+      composerTitle: 'Nuevo mensaje',
+      conductHelp: 'Escribamos con respeto y cuidado. Si algo vulnera este espacio, puede reportarse para que lo revise el equipo autorizado.',
+      destinationLabel: 'A quien queres escribirle?',
+      targetUser: 'Una persona',
+      targetRole: 'Un rango',
+      targetProvince: 'Una provincia',
+      targetRoleProvince: 'Rango y provincia',
+      targetAll: 'Toda Palestra',
+      targetDiocesanLeadership: 'Dirigencia diocesana',
+      targetCommunity: 'Una comunidad',
+      targetProvinceCommunities: 'Responsables de mi provincia',
+      targetMyCommunity: 'Responsables de mi comunidad',
+      provinceLabel: 'Provincia destinataria',
+      allProvinces: 'Todas las provincias',
+      selectProvince: 'Elegi una provincia',
+      roleLabel: 'Rango destinatario',
+      userSearchLabel: 'Buscar a una persona',
+      userSearchPlaceholder: 'Nombre, provincia, comunidad o rango',
+      selectedUsers: (count: number) => count === 1 ? '1 persona seleccionada' : `${count} personas seleccionadas`,
+      noUserResults: 'No encontramos personas con esa busqueda.',
+      unnamedUser: 'Palestrista sin nombre visible',
+      userFallback: 'Palestrista',
+      noCommunity: 'Comunidad pendiente',
+      noProvince: 'Provincia pendiente',
+      moreSelected: (count: number) => `+${count} mas`,
+      estimatedRecipients: (count: number) => count === 1 ? 'Este mensaje llegara a 1 persona.' : `Este mensaje llegara a ${count} personas.`,
+      messageLabel: 'Tu mensaje',
+      messagePlaceholder: 'Escribi un mensaje breve y claro',
+      send: 'Enviar mensaje',
+      saveDraft: 'Guardar borrador',
+      folders: {
+        entrada: 'Recibidos',
+        enviados: 'Enviados',
+        eliminados: 'Eliminados'
+      },
+      empty: 'Todavia no hay conversaciones en esta bandeja. Cuando llegue un mensaje, lo vas a encontrar aca.',
+      statusNew: 'Sin leer',
+      statusSent: 'Enviado',
+      statusConversation: 'En conversacion',
+      statusReceived: 'Recibido',
+      sentPrefix: 'Enviaste: ',
+      receivedPrefix: 'Recibiste: ',
+      replyPlaceholder: 'Escribi tu respuesta',
+      replyUnavailable: 'Esta conversacion no admite respuesta directa',
+      actionsTitle: 'Opciones de la conversacion',
+      actionsHelp: 'Elegi que queres hacer con esta conversacion.',
+      reportConversation: 'Reportar conversacion',
+      deleteConversation: 'Eliminar conversacion',
+      deleteConversationHelp: 'La conversacion se quitara solo de tu vista. Queres continuar?',
+      confirmSendTitle: 'Confirmar envio',
+      confirmSend: (count: number) => `Este mensaje llegara a ${count} personas. Queres enviarlo?`,
+      loginToSend: 'Inicia sesion para enviar mensajes.',
+      messageBeforeSend: 'Escribi un mensaje antes de enviarlo.',
+      noCommunityLeaders: 'Todavia no hay responsables asignados a tu comunidad.',
+      chooseRecipient: 'Elegi al menos una persona destinataria.',
+      noRecipients: 'No encontramos destinatarios con el criterio elegido.',
+      loginToSaveDraft: 'Inicia sesion para guardar borradores.',
+      messageBeforeDraft: 'Escribi un mensaje antes de guardar el borrador.',
+      draftSaved: 'Borrador guardado en este dispositivo.',
+      responseBeforeSend: 'Escribi una respuesta antes de enviarla.',
+      chooseConversation: 'Elegi una conversacion para responder.',
+      directReplyUnavailable: 'Esta conversacion no tiene una persona disponible para responder directamente.',
+      receivedReportsOnly: 'Solo podes reportar mensajes recibidos.',
+      directMessageUnavailable: 'Este mensaje no permite responder directamente a quien lo envio.',
+      directReplyReady: 'La respuesta quedo preparada para la persona que envio el mensaje.',
+      messageRestored: 'Mensaje restaurado.'
+    },
+    publicQueries: {
+      title: 'Consultas de la comunidad',
+      help: 'Aca acompanamos las consultas publicas e institucionales, separadas de las conversaciones privadas.',
+      refresh: 'Actualizar consultas',
+      loading: 'Estamos actualizando las consultas...',
+      empty: 'No hay consultas para este filtro. Cuando llegue una, la vas a encontrar aca.',
+      filters: {
+        all: 'Todas',
+        new: 'Nuevas',
+        read: 'Leidas',
+        answered: 'Respondidas',
+        archived: 'Archivadas'
+      },
+      statusLabels: {
+        nueva: 'Nueva',
+        leida: 'Leida',
+        respondida: 'Respondida',
+        archivada: 'Archivada'
+      },
+      statusChanged: (status: string) => `Consulta actualizada: ${status}.`,
+      responseRequired: 'Escribi una respuesta o seguimiento antes de guardar.',
+      responseSaved: 'Respuesta guardada en la consulta.',
+      originLabel: 'De donde llega',
+      contactLabel: 'Como responder',
+      queryLabel: 'Consulta',
+      followUpLabel: 'Respuesta o seguimiento',
+      followUpPlaceholder: 'Escribi la respuesta o el seguimiento realizado',
+      saveResponse: 'Guardar respuesta',
+      archive: 'Archivar',
+      restore: 'Volver a recibidas'
+    }
   },
   adminPanels: {
     users: {
@@ -353,7 +492,21 @@ export const APP_MESSAGES = {
       textAndButton: (text: string, button: string) => `Texto ${text} / Boton ${button}`,
       greetingColor: (value: string) => `Nombre del saludo ${value}`,
       versionLegend: 'Leyenda de version',
-      designerLink: 'Link A-Tec',
+      partnerTitle: 'Logo de partner o desarrollador',
+      partnerHelp: 'Logo opcional y sutil para la carga y el final de Inicio.',
+      partnerFileHelp: 'Recomendado: 560 x 112 px (proporción 5:1), PNG o WebP con fondo transparente y hasta 500 KB. Máximo permitido: 1 MB.',
+      partnerFileTooLarge: 'El logo supera 1 MB. Reducilo antes de volver a cargarlo.',
+      partnerLogoPlaceholder: 'URL HTTPS del logo',
+      partnerUpload: 'Subir logo',
+      partnerRemove: 'Quitar logo',
+      partnerReady: 'Logo listo. Guardá Identidad para publicarlo.',
+      saveVerificationFailed: 'No pudimos verificar los cambios guardados. Ejecutá la migración de persistencia de Identidad y volvé a intentar.',
+      partnerLinkPlaceholder: 'Link HTTPS opcional al tocar el logo',
+      partnerAltPlaceholder: 'Texto accesible. Ej: Sitio del partner',
+      partnerVisible: 'Mostrar logo sutil',
+      partnerVisibleHelp: 'Si falta el logo o falla la imagen, no se reserva espacio.',
+      partnerInvalidLogo: 'La URL del logo debe usar HTTP o HTTPS.',
+      partnerInvalidLink: 'El link debe usar HTTP o HTTPS. No se abrira mientras sea invalido.',
       preview: 'Previsualizacion',
       save: 'Guardar identidad'
     },
@@ -407,6 +560,8 @@ export const APP_MESSAGES = {
       newMaterial: 'Nuevo material',
       saveMaterial: 'Guardar material',
       materialEmpty: 'Todavia no hay materiales cargados.',
+      unnamedDocument: 'Documento sin titulo',
+      unnamedMaterial: 'Material sin nombre',
       logoAdminOnly: 'Solo Administrador puede subir logos de documentos.',
       uploadingLogo: 'Subiendo logo...',
       logoUploaded: 'Logo cargado.',
@@ -439,6 +594,7 @@ export const APP_MESSAGES = {
       save: 'Guardar estacion',
       loadedStations: 'Estaciones cargadas',
       noStations: 'Todavia no hay estaciones cargadas.',
+      unnamedStation: 'Estacion sin titulo',
       visibleForAll: 'Si no seleccionas rangos, queda visible para todos.'
     },
     content: {
@@ -450,6 +606,7 @@ export const APP_MESSAGES = {
       fallbackTitle: 'Contenido base / fallback',
       visible: 'visible',
       hidden: 'oculto',
+      unnamedPage: 'Contenido sin titulo',
       titleAndBodyRequired: 'Completa titulo y texto antes de guardar el contenido.',
       saving: 'Guardando contenido...',
       saved: 'Contenido actualizado.'
@@ -463,6 +620,7 @@ export const APP_MESSAGES = {
       createdWithNotification: 'Noticia creada y notificacion preparada.',
       draftsLoaded: 'Borradores cargados.',
       draftsEmpty: 'No hay borradores guardados.',
+      unnamedDraft: 'Noticia sin titulo',
       cannotUploadImage: 'Tu rango no puede cargar imagenes de noticias.',
       uploadingImage: 'Subiendo imagen...',
       imageUploaded: 'Imagen cargada. La noticia se publica al tocar Publicar noticia.',
@@ -503,6 +661,7 @@ export const APP_MESSAGES = {
       validatingCredential: 'Validando credencial...',
       cannotCreateLists: 'Tu rango no puede crear listas QR.',
       listNameRequired: 'Completa el nombre de la lista.',
+      unnamedList: 'Lista QR sin nombre',
       usersRequired: 'Selecciona al menos un usuario para crear la lista.',
       listCreated: 'Lista QR creada.',
       listShared: 'Lista compartida.',
@@ -613,30 +772,35 @@ export function fraternalWelcomeMessage(session: Session | null, tone: MessageTo
 
 export function pendingProfileMessage(genderPreference?: MessageGenderPreference, tone: MessageTone = 'pastoral') {
   const treatment = fraternalTreatment(genderPreference);
+  const sibling = genderPreference ? `, ${treatment.sibling}` : '';
   if (tone === 'functional') {
-    return 'Tu registro quedo pendiente de revision.';
+    return 'Tu registro quedó pendiente de revisión.';
   }
   if (tone === 'fraternal') {
-    return `Tu registro ya esta en camino, ${treatment.sibling}.`;
+    return `Tu registro ya está en camino${sibling}.`;
   }
-  return `Tu registro ya esta en camino, ${treatment.sibling}. Te avisaremos cuando un dirigente lo revise.`;
+  return `Tu registro ya está en camino${sibling}. Te avisaremos cuando un dirigente lo revise.`;
 }
 
 export function blockedProfileMessage(genderPreference?: MessageGenderPreference, tone: MessageTone = 'functional') {
   const treatment = fraternalTreatment(genderPreference);
+  const sibling = genderPreference ? `, ${treatment.sibling}` : '';
   if (tone === 'pastoral') {
-    return `Tu cuenta esta detenida por ahora, ${treatment.sibling}. Escribi a un dirigente para que podamos acompanarte.`;
+    return `Tu acceso está pausado por ahora${sibling}. Escribí a un dirigente para que podamos acompañarte.`;
   }
-  return 'Tu cuenta esta detenida por ahora. Escribi a un dirigente para que podamos acompanarte.';
+  return 'Tu acceso está pausado por ahora. Escribí a un dirigente para que podamos acompañarte.';
 }
 
 export function accountStatusMessage(status: UserStatus, genderPreference?: MessageGenderPreference, tone: MessageTone = 'fraternal') {
   if (status === 'aprobado') {
     const treatment = fraternalTreatment(genderPreference);
     if (tone === 'functional') {
-      return 'Cuenta aprobada.';
+      return 'Perfil aprobado.';
     }
-    return `Cuenta aprobada. ${treatment.welcome} a Palestra APP.`;
+    if (!genderPreference) {
+      return 'Tu perfil fue aprobado. Te damos la bienvenida a Palestra APP.';
+    }
+    return `Tu perfil fue aprobado. ${treatment.welcome} a Palestra APP.`;
   }
   if (status === 'bloqueado') {
     return blockedProfileMessage(genderPreference, tone === 'pastoral' ? 'pastoral' : 'functional');
@@ -667,8 +831,23 @@ export function emptyStateMessage(context: EmptyStateContext = 'generic', gender
   return messages[context];
 }
 
-export function accessRequiredMessage(context: EmptyStateContext = 'generic', genderPreference?: MessageGenderPreference, tone: MessageTone = 'functional') {
+export function accessRequiredMessage(
+  context: EmptyStateContext = 'generic',
+  genderPreference?: MessageGenderPreference,
+  tone: MessageTone = 'functional',
+  action?: string
+) {
   const treatment = fraternalTreatment(genderPreference);
+  const purpose = action?.trim();
+  if (purpose) {
+    if (tone === 'pastoral') {
+      return `Para cuidar este espacio comunitario, necesitas ingresar con una cuenta aprobada para ${purpose}.`;
+    }
+    if (tone === 'fraternal') {
+      return `Para ${purpose}, ${treatment.sibling}, necesitas ingresar con una cuenta aprobada.`;
+    }
+    return `Necesitas ingresar con una cuenta aprobada para ${purpose}.`;
+  }
   if (tone === 'fraternal') {
     return `Para continuar, ${treatment.sibling}, necesitas ingresar con una cuenta aprobada.`;
   }
@@ -789,16 +968,16 @@ export function friendlyUploadError(message?: string | null) {
 export function safeAuthError(message?: string) {
   const text = (message ?? '').toLowerCase();
   if (text.includes('invalid login') || text.includes('invalid credentials')) {
-    return 'El mail o la contrasena no coinciden. Revisalos y volve a intentar.';
+    return APP_MESSAGES.auth.invalidCredentials;
   }
   if (text.includes('email not confirmed')) {
-    return 'Tu correo todavia no esta confirmado. Revisa tu bandeja o pedi ayuda a un dirigente.';
+    return APP_MESSAGES.auth.emailNotConfirmed;
   }
   if (text.includes('already') || text.includes('existe')) {
     return APP_MESSAGES.auth.emailAlreadyRegistered;
   }
   if (text.includes('password') || text.includes('contrasena')) {
-    return 'Revisa la contrasena indicada.';
+    return APP_MESSAGES.auth.passwordReview;
   }
-  return 'No pudimos completar la accion. Revisa los datos e intenta nuevamente.';
+  return APP_MESSAGES.auth.genericError;
 }

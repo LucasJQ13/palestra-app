@@ -1,6 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from './supabase';
 
+export const PARTNER_BRANDING_BUCKET = 'partner-branding';
+export const PARTNER_LOGO_MAX_UPLOAD_BYTES = 1024 * 1024;
+
 export async function uploadPickedImageToPublicUrl(
   asset: ImagePicker.ImagePickerAsset,
   folder: string,

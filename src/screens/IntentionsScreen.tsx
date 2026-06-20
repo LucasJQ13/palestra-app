@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppContentBlock, ContentEditorBlock, PrayerIntentionRecord, createPrayerIntention, deliverNotificationIntent, fetchRandomPrayerIntention, recordPrayerForIntention, updateAppContent, updateAppTab } from '../lib/profiles';
 import { PageEditorProps } from '../lib/navigationConstants';
 import { inputPlaceholderColor } from '../lib/constants';
-import { APP_MESSAGES, changeDone } from '../lib/appMessages';
+import { APP_MESSAGES, accessRequiredMessage, changeDone } from '../lib/appMessages';
 import { normalizeContentCards, prepareContentCardsForSave } from '../lib/contentBlocks';
 import { supabase } from '../lib/supabase';
 import { Session } from '../types/auth';
@@ -80,7 +80,7 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
 
   async function saveIntention() {
     if (!session?.id || session.status !== 'aprobado') {
-      setMessage('Necesitas iniciar sesion con un usuario aprobado para crear intenciones.');
+      setMessage(accessRequiredMessage('generic', session?.genderPreference, 'pastoral', 'compartir una intencion'));
       return;
     }
     if (!intentionText.trim()) {
@@ -183,7 +183,7 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
 
   async function startPrayer(resetSeen = false) {
     if (!session?.id || session.status !== 'aprobado') {
-      setMessage('Necesitas iniciar sesion con un usuario aprobado para rezar por intenciones.');
+      setMessage(accessRequiredMessage('generic', session?.genderPreference, 'pastoral', 'acompanar una intencion'));
       return;
     }
     const excludeIds = resetSeen ? [] : prayedIds;
@@ -272,8 +272,8 @@ export function IntentionsScreen({ session, title, content, editor, prayerSecond
 
       {!session?.id ? (
         <View style={[styles.card, styles.intentionsPanel, isDark && styles.intentionsPanelDark]}>
-          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Inicia sesion</Text>
-          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Necesitas estar registrado para crear o rezar por una intencion.</Text>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>Sumate a la oración</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{accessRequiredMessage('generic', session?.genderPreference, 'pastoral', 'compartir o acompanar intenciones')}</Text>
         </View>
       ) : null}
 

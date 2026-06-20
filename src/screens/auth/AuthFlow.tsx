@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { communities } from '../../data/content';
 import { checkRegistrationEmailAvailable, createEmailConfirmationRequest } from '../../lib/profiles';
 import { AppCommunity, fetchCommunities } from '../../lib/remoteData';
 import { getMyProfileSession } from '../../lib/authProfile';
@@ -12,6 +11,7 @@ import { genderNarratives } from '../../lib/profileDisplay';
 import { authDeepLinkBaseUrl, authPasswordResetUrl, palestraLogo, perseveranceStartYears, provinceDisplayNames } from '../../lib/constants';
 import { Session } from '../../types/auth';
 import { AuthSelect, AuthTextInput, BirthDatePicker } from '../../components/AuthInputs';
+import { PasswordInput } from '../../components/auth';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 
@@ -116,7 +116,6 @@ export function AuthScreen({ onClose, onAuthenticated }: { onClose: () => void; 
 function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { message: string; onMessage: (message: string) => void; onAuthenticated: (email: string) => Promise<void>; onRegister: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showRecoveryForm, setShowRecoveryForm] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -184,7 +183,7 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
             <Text style={styles.authHeroText}>{APP_MESSAGES.auth.recoveryHelp}</Text>
             <AuthTextInput label={APP_MESSAGES.auth.emailLabel} placeholder={APP_MESSAGES.auth.emailPlaceholder} value={recoveryEmail} onChangeText={setRecoveryEmail} keyboardType="email-address" autoCapitalize="none" />
             <TouchableOpacity style={styles.authPrimaryButton} onPress={recoverPassword} disabled={recoveryLoading} activeOpacity={0.86}>
-              <Text style={styles.authPrimaryText}>{recoveryLoading ? 'Enviando...' : APP_MESSAGES.auth.recoverySubmit}</Text>
+              <Text style={styles.authPrimaryText}>{recoveryLoading ? APP_MESSAGES.auth.recoverySendingShort : APP_MESSAGES.auth.recoverySubmit}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.authGhostButton}
@@ -201,23 +200,14 @@ function LoginScreen({ message, onMessage, onAuthenticated, onRegister }: { mess
         ) : (
           <>
         <AuthTextInput label={APP_MESSAGES.auth.emailLabel} placeholder={APP_MESSAGES.auth.emailPlaceholder} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <View>
-          <Text style={styles.authInputLabel}>{APP_MESSAGES.auth.passwordLabel}</Text>
-          <View style={styles.authPasswordWrap}>
-            <TextInput
-              style={styles.authInputPassword}
-              placeholder={APP_MESSAGES.auth.passwordPlaceholder}
-              placeholderTextColor="rgba(230,243,245,0.62)"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!passwordVisible}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity style={styles.authEyeButton} onPress={() => setPasswordVisible(!passwordVisible)}>
-              <Ionicons name={passwordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.white} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <PasswordInput
+          variant="auth"
+          label={APP_MESSAGES.auth.passwordLabel}
+          placeholder={APP_MESSAGES.auth.passwordPlaceholder}
+          value={password}
+          onChangeText={setPassword}
+          textContentType="password"
+        />
         <TouchableOpacity style={styles.authPrimaryButton} onPress={submitLogin} disabled={loading} activeOpacity={0.86}>
           <Text style={styles.authPrimaryText}>{loading ? APP_MESSAGES.auth.loginLoadingShort : APP_MESSAGES.auth.loginSubmit}</Text>
         </TouchableOpacity>
@@ -265,7 +255,7 @@ function LimitedPendingProfile({ profile, message, onMessage, onBackToLogin }: {
       communityName: profile.community,
       contact: profile.contact
     });
-    onMessage(error ? error.message : APP_MESSAGES.auth.requestLeaderHelpDone);
+    onMessage(error ? APP_MESSAGES.auth.requestLeaderHelpFailed : APP_MESSAGES.auth.requestLeaderHelpDone);
   }
 
   return (
@@ -314,16 +304,14 @@ function RegisterWizard({ message, onMessage, onBackToLogin, onRegistered, onPen
     password: '',
     genderPreference: null
   });
-  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>(communities);
+  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>([]);
   const [loading, setLoading] = useState(false);
   const fade = useRef(new Animated.Value(1)).current;
   const selectedProvince = registrationCommunities.find((item) => item.province === draft.province);
 
   useEffect(() => {
     fetchCommunities().then((items) => {
-      if (items.length > 0) {
-        setRegistrationCommunities(items);
-      }
+      setRegistrationCommunities(items);
     });
   }, []);
 
@@ -526,7 +514,13 @@ function RegisterStepCommunity({ draft, onChange, provinces, selectedProvince }:
         ))}
       </AuthSelect>
       <AuthTextInput label={APP_MESSAGES.auth.emailLabel} value={draft.email} onChangeText={(value) => onChange({ email: value })} keyboardType="email-address" autoCapitalize="none" />
-      <AuthTextInput label={APP_MESSAGES.auth.passwordLabel} value={draft.password} onChangeText={(value) => onChange({ password: value })} secureTextEntry autoCapitalize="none" />
+      <PasswordInput
+        variant="auth"
+        label={APP_MESSAGES.auth.passwordLabel}
+        value={draft.password}
+        onChangeText={(value) => onChange({ password: value })}
+        textContentType="newPassword"
+      />
     </View>
   );
 }
