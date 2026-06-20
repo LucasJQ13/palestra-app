@@ -15,12 +15,14 @@ import {
   deleteMailboxMessageForMe,
   fetchMailboxMessages,
   markMailboxMessageAsRead,
+  notifyDirectMailboxMessage,
   reportMailboxMessage,
   respondMailboxMessage,
   restoreMailboxMessageForMe,
   sendDirectMailboxMessage,
   setMailboxMessageStatus
 } from '../../lib/profiles';
+import { MailboxNotificationTarget } from '../../lib/notificationNavigation';
 import { roleRank } from '../../lib/roles';
 import { findCommunityMemberConversation } from '../../lib/community/memberMessages';
 import { resolveMailboxRecipientIds } from '../../lib/mailbox/recipientSelection';
@@ -33,6 +35,8 @@ type UseMailboxControllerParams = {
   roleAliases: RoleAliasConfig[];
   setAuthMessage: (message: string) => void;
   onEnsureAdminUsers: () => void;
+  initialTarget?: MailboxNotificationTarget | null;
+  onInitialTargetHandled?: () => void;
 };
 
 const guestMailboxSession: Session = {
@@ -76,7 +80,9 @@ export function useMailboxController({
   provinceRoleLabels,
   roleAliases,
   setAuthMessage,
-  onEnsureAdminUsers
+  onEnsureAdminUsers,
+  initialTarget,
+  onInitialTargetHandled
 }: UseMailboxControllerParams) {
   const activeSession = session ?? guestMailboxSession;
   const [messages, setMessages] = useState<MailboxMessageRecord[]>([]);
@@ -100,6 +106,8 @@ export function useMailboxController({
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [pendingNotificationTarget, setPendingNotificationTarget] = useState<MailboxNotificationTarget | null>(null);
+  const [pendingNotificationRefreshDone, setPendingNotificationRefreshDone] = useState(false);
 
   const communityOptions = useMemo(() => registrationCommunities
     .flatMap((province) => province.locations.map((community) => ({ ...community, province: province.province })))
@@ -283,6 +291,27 @@ export function useMailboxController({
 
   const selectedConversation = useMemo(() => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null, [conversations, selectedConversationId]);
 
+  function messageIdFromRpcData(data: unknown) {
+    if (typeof data === 'string') {
+      return data;
+    }
+    if (Array.isArray(data)) {
+      const firstString = data.find((item) => typeof item === 'string');
+      return typeof firstString === 'string' ? firstString : null;
+    }
+    return null;
+  }
+
+  async function notifyMessageIfPossible(messageId: string | null) {
+    if (!messageId) {
+      return;
+    }
+    const { error } = await notifyDirectMailboxMessage(messageId);
+    if (error) {
+      setAuthMessage(`Mensaje enviado. No pude enviar la notificacion push: ${error.message}`);
+    }
+  }
+
   async function refresh() {
     if (activeSession.role === 'invitado') {
       setMessages([]);
@@ -350,7 +379,7 @@ export function useMailboxController({
       return;
     }
 
-    const { error } = await sendDirectMailboxMessage({
+    const { data, error } = await sendDirectMailboxMessage({
       recipientIds: resolvedRecipientIds,
       message: draft.trim()
     });
@@ -364,6 +393,7 @@ export function useMailboxController({
     setSelectedUserIds([]);
     setShowComposer(false);
     await AsyncStorage.removeItem(`palestra.mailboxDraft.${activeSession.id}`);
+    await notifyMessageIfPossible(messageIdFromRpcData(data));
     await refresh();
   }
 
@@ -453,7 +483,7 @@ export function useMailboxController({
       return;
     }
     setConversationSending(true);
-    const { error } = await sendDirectMailboxMessage({
+    const { data, error } = await sendDirectMailboxMessage({
       recipientIds: [selectedConversation.counterpartUserId],
       message: body
     });
@@ -463,6 +493,7 @@ export function useMailboxController({
       return;
     }
     setConversationDraft('');
+    await notifyMessageIfPossible(messageIdFromRpcData(data));
     await refresh();
   }
 
@@ -580,6 +611,47 @@ export function useMailboxController({
       onEnsureAdminUsers();
     }
   }, [activeSession.email, activeSession.communityOfOrigin, activeSession.role]);
+
+  useEffect(() => {
+    if (!initialTarget) {
+      return;
+    }
+    setFilter('entrada');
+    setPendingNotificationTarget(initialTarget);
+    setPendingNotificationRefreshDone(false);
+    refresh().finally(() => setPendingNotificationRefreshDone(true));
+  }, [initialTarget?.messageId, initialTarget?.conversationId, initialTarget?.senderId]);
+
+  useEffect(() => {
+    if (!pendingNotificationTarget) {
+      return;
+    }
+    const targetConversation = conversations.find((conversation) => {
+      if (pendingNotificationTarget.conversationId && conversation.id === pendingNotificationTarget.conversationId) {
+        return true;
+      }
+      if (pendingNotificationTarget.messageId && conversation.messages.some((message) => message.id === pendingNotificationTarget.messageId)) {
+        return true;
+      }
+      if (pendingNotificationTarget.senderId && conversation.counterpartUserId === pendingNotificationTarget.senderId) {
+        return true;
+      }
+      return false;
+    });
+    if (targetConversation) {
+      setSelectedConversationId(targetConversation.id);
+      setPendingNotificationTarget(null);
+      setPendingNotificationRefreshDone(false);
+      onInitialTargetHandled?.();
+      return;
+    }
+    if (!pendingNotificationRefreshDone) {
+      return;
+    }
+    setPendingNotificationTarget(null);
+    setPendingNotificationRefreshDone(false);
+    onInitialTargetHandled?.();
+  }, [conversations, pendingNotificationTarget, pendingNotificationRefreshDone, onInitialTargetHandled]);
 
   return {
     session: activeSession,

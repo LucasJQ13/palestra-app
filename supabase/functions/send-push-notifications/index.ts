@@ -7,23 +7,70 @@ type PushTicket = {
   details?: Record<string, unknown>;
 };
 
+function payloadString(intent: any, key: string) {
+  const value = intent.payload?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function isPrivateMessageIntent(intent: any) {
+  return String(intent.notification_type ?? '').includes('privado')
+    || payloadString(intent, 'action') === 'open-conversation'
+    || payloadString(intent, 'action') === 'open-mailbox-message';
+}
+
+function messageSenderName(intent: any) {
+  return payloadString(intent, 'senderName') || intent.title || 'Palestrista';
+}
+
 function notificationTitle(intent: any) {
   if (String(intent.notification_type ?? '').includes('intencion')) {
     return 'Intenciones';
   }
-  if (String(intent.notification_type ?? '').includes('privado')) {
-    return 'Mensaje privado';
+  if (isPrivateMessageIntent(intent)) {
+    return messageSenderName(intent);
   }
   if (String(intent.notification_type ?? '').includes('recordatorio') || intent.source_type === 'event') {
     return 'Recordatorio';
   }
   if (intent.target_kind === 'comunidad') {
-    return `Aviso comunitario · ${intent.community || intent.target_value || 'Comunidad'}`;
+    return `Aviso comunitario - ${intent.community || intent.target_value || 'Comunidad'}`;
   }
   if (intent.target_kind === 'provincia') {
-    return `Aviso provincial · ${intent.province || intent.target_value || 'Provincia'}`;
+    return `Aviso provincial - ${intent.province || intent.target_value || 'Provincia'}`;
   }
-  return 'Aviso nacional · Palestra';
+  return 'Aviso nacional - Palestra';
+}
+
+function notificationSubtitle(intent: any) {
+  if (isPrivateMessageIntent(intent)) {
+    return 'Buzon de mensajes';
+  }
+  return intent.title;
+}
+
+function notificationBody(intent: any) {
+  const body = String(intent.body ?? '').trim();
+  return body.length > 220 ? `${body.slice(0, 217)}...` : body;
+}
+
+function notificationData(intent: any) {
+  const payload = intent.payload ?? {};
+  return {
+    ...payload,
+    notification_type: intent.notification_type,
+    intent_id: intent.id,
+    tab: payload.tab ?? intent.tab_key,
+    tabKey: payload.tabKey ?? intent.tab_key,
+    source_type: intent.source_type,
+    source_id: intent.source_id,
+    province_id: intent.province ?? null,
+    community_id: intent.community ?? null,
+    scope: intent.target_scope ?? intent.target_kind,
+    target_kind: intent.target_kind,
+    target_value: intent.target_value,
+    min_role: intent.min_role,
+    created_by: intent.created_by
+  };
 }
 
 const corsHeaders = {
@@ -106,25 +153,11 @@ Deno.serve(async (request) => {
         to: token,
         sound: 'default',
         title: notificationTitle(intent),
-        subtitle: intent.title,
-        body: intent.body,
+        subtitle: notificationSubtitle(intent),
+        body: notificationBody(intent),
         priority: 'high',
         channelId: 'default',
-        data: {
-          ...(intent.payload ?? {}),
-          notification_type: intent.notification_type,
-          intent_id: intent.id,
-          tab: intent.tab_key,
-          source_type: intent.source_type,
-          source_id: intent.source_id,
-          province_id: intent.province ?? null,
-          community_id: intent.community ?? null,
-          scope: intent.target_scope ?? intent.target_kind,
-          target_kind: intent.target_kind,
-          target_value: intent.target_value,
-          min_role: intent.min_role,
-          created_by: intent.created_by
-        }
+        data: notificationData(intent)
       }));
 
       const response = await fetch('https://exp.host/--/api/v2/push/send', {

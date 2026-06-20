@@ -856,6 +856,40 @@ export async function sendDirectMailboxMessage(values: {
   }
 }
 
+export async function notifyDirectMailboxMessage(messageId: string): Promise<{
+  data: { intentIds: string[]; sent: number; failed: number };
+  error: Error | null;
+}> {
+  try {
+    const { data, error } = await supabase.rpc('create_direct_message_notification_intents', {
+      p_message_id: messageId
+    });
+    if (error) {
+      return { data: { intentIds: [], sent: 0, failed: 0 }, error };
+    }
+    const intentIds = (Array.isArray(data) ? data : [])
+      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+    let sent = 0;
+    let failed = 0;
+    let firstError: Error | null = null;
+    for (const intentId of intentIds) {
+      const delivery = await deliverNotificationIntent(intentId);
+      if (delivery.error) {
+        failed += 1;
+        firstError = firstError ?? new Error(delivery.error.message);
+      } else {
+        sent += 1;
+      }
+    }
+    return { data: { intentIds, sent, failed }, error: firstError };
+  } catch (error) {
+    return {
+      data: { intentIds: [], sent: 0, failed: 0 },
+      error: error instanceof Error ? error : new Error('No se pudo enviar la notificacion del mensaje.')
+    };
+  }
+}
+
 export async function reportMailboxMessage(values: {
   messageId: string;
   source?: MailboxMessageRecord['source'];

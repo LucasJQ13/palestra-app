@@ -16,6 +16,7 @@ import { useTouchPointer } from './src/hooks/useTouchPointer';
 import { APP_MESSAGES, isMissingProfileScope } from './src/lib/appMessages';
 import { appBetaVersion, appStageLabel, inputPlaceholderColor, palestraLogo } from './src/lib/constants';
 import { AppTabDisplay, defaultTabByKey, defaultTabs, isIoniconName, PageEditorProps } from './src/lib/navigationConstants';
+import { MailboxNotificationTarget, mailboxTargetFromNotificationData, profilePanelFromNotificationData, tabFromNotificationData } from './src/lib/notificationNavigation';
 import { requestAndRegisterPushToken } from './src/lib/notificationHelpers';
 import { displayRoleLabel, roleLabel } from './src/lib/profileDisplay';
 import { fetchMailboxMessages, MailboxMessageRecord } from './src/lib/profiles';
@@ -89,6 +90,7 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [authScreenOpen, setAuthScreenOpen] = useState(false);
   const [profileInitialPanel, setProfileInitialPanel] = useState<ProfilePanel>('vista');
+  const [mailboxNotificationTarget, setMailboxNotificationTarget] = useState<MailboxNotificationTarget | null>(null);
   const [floatingMailboxMessage, setFloatingMailboxMessage] = useState<MailboxMessageRecord | null>(null);
   const [dismissedMailboxMessageId, setDismissedMailboxMessageId] = useState<string | null>(null);
   const [authConfirmationOpen, setAuthConfirmationOpen] = useState(false);
@@ -98,6 +100,7 @@ export default function App() {
   const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydrateSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const handledNotificationIdsRef = useRef<Set<string>>(new Set());
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const {
     hideTouchPointer,
@@ -475,14 +478,44 @@ export default function App() {
   }, [session?.id, session?.role, activeTab, profileInitialPanel, dismissedMailboxMessageId]);
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const tabKey = response.notification.request.content.data?.tabKey;
-      if (typeof tabKey === 'string') {
+    let alive = true;
+    const handleNotificationResponse = (response: Notifications.NotificationResponse | null | undefined) => {
+      if (!response || !alive) {
+        return;
+      }
+      const requestId = response.notification.request.identifier;
+      if (handledNotificationIdsRef.current.has(requestId)) {
+        return;
+      }
+      handledNotificationIdsRef.current.add(requestId);
+      const data = response.notification.request.content.data ?? {};
+      const mailboxTarget = mailboxTargetFromNotificationData(data);
+      if (mailboxTarget) {
+        setMailboxNotificationTarget(mailboxTarget);
+        setProfileInitialPanel('buzon');
+        navigateToTab('perfil');
+        return;
+      }
+      const panel = profilePanelFromNotificationData(data);
+      const tabKey = tabFromNotificationData(data);
+      if (panel) {
+        setProfileInitialPanel(panel);
+        navigateToTab('perfil');
+        return;
+      }
+      if (tabKey) {
         navigateToTab(tabKey);
       }
-    });
-    return () => subscription.remove();
-  }, [session?.id, activeTab]);
+    };
+    Notifications.getLastNotificationResponseAsync()
+      .then(handleNotificationResponse)
+      .catch(() => undefined);
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, [session?.id, activeTab, navigateToTab]);
 
   useEffect(() => {
     let alive = true;
@@ -560,8 +593,8 @@ export default function App() {
     if (activeTab !== 'perfil') {
       return <DynamicNavigationSectionScreen session={session} tab={resolvedTabs.find((tab) => tab.key === activeTab)} title={tabLabel(activeTab)} content={appContent.find((item) => item.tab_key === activeTab)} editor={pageEditorProps(activeTab)} refreshKey={contentVersion} onNavigate={navigateToTab} />;
     }
-    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} runtimeConfig={runtimeConfig} onRuntimeConfigChange={setRuntimeConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} initialPublicProfile={globalSearchProfile} onInitialPublicProfileHandled={() => setGlobalSearchProfile(null)} />;
-  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, runtimeConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel, globalSearchProfile]);
+    return <ProfileScreen session={session} onSessionChange={setSession} tabs={resolvedTabs} appContent={appContent} adminConfig={adminConfig} runtimeConfig={runtimeConfig} onRuntimeConfigChange={setRuntimeConfig} touchPointerEnabled={touchPointerEnabled} onTouchPointerEnabledChange={updateTouchPointerPreference} themeName={themeName} appTheme={appTheme} onThemeChange={updateThemePreference} onAdminConfigChange={setAdminConfig} onTabsChanged={reloadTabSettings} onContentChanged={refreshPublishedContent} onNavigate={navigateToTab} onSavedFeedback={showToastSuccess} onErrorFeedback={showToastError} onViewAsSession={startAdminViewAs} initialPanel={profileInitialPanel} initialPublicProfile={globalSearchProfile} onInitialPublicProfileHandled={() => setGlobalSearchProfile(null)} initialMailboxTarget={mailboxNotificationTarget} onInitialMailboxTargetHandled={() => setMailboxNotificationTarget(null)} />;
+  }, [activeTab, session, resolvedTabs, appContent, contentVersion, adminConfig, runtimeConfig, touchPointerEnabled, themeName, appTheme, profileInitialPanel, globalSearchProfile, mailboxNotificationTarget]);
 
   return (
     <SafeAreaProvider>

@@ -20,6 +20,7 @@ import { appRuntimeOwner, authDeepLinkBaseUrl, easProjectId, inputPlaceholderCol
 import { buildInitialBlocksForSection } from '../lib/contentBlocks';
 import { buildCredentialQrPayload, parseCredentialQrPayload } from '../lib/credentialQr';
 import { AppTabDisplay, adminModuleCatalog, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, protectedTabKeys } from '../lib/navigationConstants';
+import { MailboxNotificationTarget } from '../lib/notificationNavigation';
 import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, requestAndRegisterPushToken, showFeedbackMessage } from '../lib/notificationHelpers';
 import { permissionOptions } from '../lib/permissionLabels';
 import { rolePermissions } from '../lib/permissions';
@@ -200,7 +201,9 @@ export function ProfileScreen({
   onViewAsSession,
   initialPanel = 'vista',
   initialPublicProfile,
-  onInitialPublicProfileHandled
+  onInitialPublicProfileHandled,
+  initialMailboxTarget,
+  onInitialMailboxTargetHandled
 }: {
   session: Session | null;
   onSessionChange: (session: Session | null) => void;
@@ -224,6 +227,8 @@ export function ProfileScreen({
   initialPanel?: ProfilePanel;
   initialPublicProfile?: PublicProfilePreview | null;
   onInitialPublicProfileHandled?: () => void;
+  initialMailboxTarget?: MailboxNotificationTarget | null;
+  onInitialMailboxTargetHandled?: () => void;
 }) {
   const isDark = appTheme.mode === 'dark';
   const [showLeadershipUsersSummary, setShowLeadershipUsersSummary] = useState(false);
@@ -787,7 +792,9 @@ export function ProfileScreen({
     provinceRoleLabels,
     roleAliases: adminConfig.settings.roleAliases,
     setAuthMessage,
-    onEnsureAdminUsers: loadAdminUsers
+    onEnsureAdminUsers: loadAdminUsers,
+    initialTarget: initialMailboxTarget,
+    onInitialTargetHandled: onInitialMailboxTargetHandled
   });
   const institutionalGreetingColor = isValidHexColor(adminConfig.identity.greetingNameColor) ? adminConfig.identity.greetingNameColor!.trim() : '#2fb66d';
   const normalizedEditGreetingColor = normalizeOptionalHexColor(editPersonalGreetingColor);

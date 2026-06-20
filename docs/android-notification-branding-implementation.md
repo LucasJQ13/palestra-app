@@ -10,7 +10,7 @@ Se reemplazo el icono de notificacion Android por un small icon dedicado:
 assets/notification-small-icon.png
 ```
 
-El asset se genero desde `assets/1.png`, que ya era una marca blanca sobre fondo transparente. El archivo anterior `assets/notification-icon.png` queda disponible como logo a color, pero ya no se usa como small icon porque Android no renderiza ese recurso como imagen a color en la barra de notificaciones.
+El asset se genero como variante tecnica monocromatica desde la fuente institucional `assets/notification-icon.png`. El archivo `assets/notification-icon.png` queda disponible como logo a color, pero no se usa directamente como small icon porque Android no renderiza ese recurso como imagen a color en la barra de notificaciones.
 
 ## Configuracion Expo
 
@@ -64,4 +64,3 @@ El small icon debe ser monocromatico. No corresponde usar el logo a color comple
 ## Validacion pendiente
 
 Este cambio no se puede validar correctamente en Expo Go ni con solo refrescar Metro. La validacion visual debe hacerse con dev build o APK real nuevo, como queda previsto para la issue de validacion posterior.
-
