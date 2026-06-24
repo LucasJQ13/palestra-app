@@ -69,4 +69,3 @@ Ese asset queda como fuente oficial para identidad visual a color en una futura 
 ## Validacion pendiente
 
 La apariencia final debe validarse en dev build o APK real. Expo Go no sirve para validar el small icon, canal, large icon ni render final de Android.
-

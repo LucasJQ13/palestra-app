@@ -51,4 +51,3 @@ Para identidad visual real en Android conviene separar tres niveles:
 4. Conservar canales `default` y `reminders` si se quiere separar push general de recordatorios.
 5. Evaluar large icon, imagen o avatar para notificaciones donde sea importante mostrar identidad a color.
 6. Validar en dev build o APK real, no en Expo Go.
-
