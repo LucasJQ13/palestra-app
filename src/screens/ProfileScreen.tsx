@@ -7,16 +7,17 @@ import { Alert, Image, Linking, Modal, Platform, ScrollView, Switch, Text, TextI
 import { CredentialQrCode } from '../components/CredentialQrCode';
 import { SectionTitle } from '../components/SectionTitle';
 import { AppButton, ButtonGroup, IconButton } from '../components/ui';
-import { communities, communityNews, materials, roleDefinitions } from '../data/content';
-import { AppAdminConfig } from '../lib/appConfig';
-import { APP_MESSAGES, changeDone, communityDowngradesRole, friendlyUploadError, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError } from '../lib/appMessages';
+import { PasswordInput } from '../components/auth';
+import { communityNews, materials, roleDefinitions } from '../data/content';
+import { AppAdminConfig, normalizeAdminConfig } from '../lib/appConfig';
+import { APP_MESSAGES, blockedProfileMessage, changeDone, communityDowngradesRole, friendlyUploadError, isMissingProfileScope, isValidEmail, provinceDowngradesRole, roleAfterScopeChange, safeAuthError } from '../lib/appMessages';
 import { argentinaProvinceDefinitions, provinceDefinitionFor } from '../lib/argentinaProvinces';
 import { getMyProfileSession } from '../lib/authProfile';
 import { CommunityAdvisorAssignment, canManageCommunityAdvisors, fetchMyCommunityAdvisors } from '../lib/community/advisors';
 import { CommunityNoticeDraft, emptyCommunityNoticeDraft, normalizeCommunityNoticeFormat, normalizeCommunityNoticeLink, validateCommunityNoticeDraft } from '../lib/community/notices';
 import { canManageCommunityNotice, getCommunityCapabilities } from '../lib/community/permissions';
 import { CommunityGroupType } from '../lib/communitySections';
-import { appRuntimeOwner, authDeepLinkBaseUrl, easProjectId, inputPlaceholderColor, perseveranceStartYears } from '../lib/constants';
+import { appRuntimeOwner, authDeepLinkBaseUrl, COMMUNITY_IMAGE_PICKER_ASPECT, easProjectId, inputPlaceholderColor, perseveranceStartYears } from '../lib/constants';
 import { buildInitialBlocksForSection } from '../lib/contentBlocks';
 import { buildCredentialQrPayload, parseCredentialQrPayload } from '../lib/credentialQr';
 import { AppTabDisplay, adminModuleCatalog, defaultTabByKey, defaultTabs, isIoniconName, navigationIconSuggestions, navigationSectionTypes, normalizeTabKey, protectedTabKeys } from '../lib/navigationConstants';
@@ -25,15 +26,15 @@ import { getAndroidChannelDebug, getFriendlyPushError, notificationTitleFor, req
 import { permissionOptions } from '../lib/permissionLabels';
 import { rolePermissions } from '../lib/permissions';
 import { credentialDisplayName, displayRoleLabel, genderNarratives, homeGreetingName, perseveranceLabel, personalPmSummary, personalPmTypeLabel, roleLabel, roleLabelForProvince, roleShortLabel } from '../lib/profileDisplay';
-import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MotivadorPeriodRecord, NewsDraftRecord, PendingProfile, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, PublicUserDirectoryRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createEmailConfirmationRequest, createEvent, createLeadershipChangeRequest, createNews, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppMaterials, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchPublicUserDirectory, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, issueMyCredentialQr, markPrayerRemovalNoticesSeen, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyCommunityDetails, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
+import { AdminUser, AdminUserLoginDiagnostic, AppContentBlock, AppMaterialRecord, AppTabSectionType, ChurchDocumentButtonRecord, CommunityMember, ContentEditorBlock, CredentialQrRecord, CredentialValidationRecord, MotivadorPeriodRecord, NewsDraftRecord, PendingProfile, PrayerIntentionRecord, PrayerRemovalNoticeRecord, ProvinceRoleLabelRecord, PublicUserDirectoryRecord, QrActivityAttendanceRecord, QrActivityListRecord, QrActivityListShareRecord, QrActivityMemberRecord, RoleAliasRecord, RolePermissionRecord, UserRequestRecord, acceptDiocesanCoordinatorRequest, addQrActivityMember, addQrActivityMembersByScope, approveProfile, archiveAppMaterial, archiveChurchDocumentButton, archiveCommunity, archivePrayerIntention, archiveProvince, archiveQrActivityList, confirmAdminUserEmail, createAdminBasicUser, createAppTab, createCommunity, createEmailConfirmationRequest, createEvent, createLeadershipChangeRequest, createNews, createNotificationIntent, createProvince, createQrActivityList, createUserRequest, debugPushToDevice, deleteAdminUserByEmail, deleteAppTab, deliverNotificationIntent, diagnoseAdminUserLogin, fetchAdminConfig, fetchAdminMotivadorPeriods, fetchAdminPrayerIntentions, fetchAdminRequests, fetchAdminUsers, fetchAppMaterials, fetchAssignableRoleAliases, fetchChurchDocumentButtons, fetchMyCommunityMembers, fetchMyPrayerIntentions, fetchMyPrayerRemovalNotices, fetchMyRequests, fetchNewsDrafts, fetchPendingProfiles, fetchProvinceRoleLabels, fetchPublicProfile, fetchPublicUserDirectory, fetchQrActivityAttendance, fetchQrActivityListShares, fetchQrActivityLists, fetchQrActivityMembers, fetchRolePermissions, issueMyCredentialQr, markPrayerRemovalNoticesSeen, removeQrActivityMember, repairAdminUserLogin, resolveUserRequest, restoreDefaultAppTabs, saveAdminConfig, saveAdminInstagram, saveAppMaterial, saveChurchDocumentButton, saveMotivadorPeriod, saveNewsDraft, saveProvinceRoleLabel, saveRoleAlias, saveRolePermissions, setCommunityStatus, setMotivadorPeriodStatus, setProvinceCommunitySectionVisibility, setProvinceStatus, setRoleAliasStatus, shareQrActivityList, softDeleteAdminUser, updateAdminUser, updateAppContent, updateAppTab, updateAppTabPosition, updateCommunity, updateMyAvatar, updateMyCommunityDetails, updateMyProfile, updateMyProfileDetails, updateProvinceLogo, updateQrActivityList, validateCredentialQrToken, validateQrActivityAttendance } from '../lib/profiles';
 import { canAccessPublicQueries } from '../lib/queries/publicQueries';
-import { AppCommunity, PublicationComment, adminCommunitiesFetchOptions, archiveCommunityPublication, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchPublicationComments, reactToPublication, reportPublication, updateCommunityPublication, voteCommunityPoll } from '../lib/remoteData';
+import { AppCommunity, PublicationComment, activeCommunityData, adminCommunitiesFetchOptions, archiveCommunityPublication, createCommunityPublication, createPublicationComment, fetchCommunities, fetchCommunityPublications, fetchPublicationComments, reactToPublication, reportPublication, updateCommunityPublication, voteCommunityPoll } from '../lib/remoteData';
 import { assignableRolesFor, canAccessProvince, canApproveRole, canEditCommunity, canManageProvince, canSeeAllProvinces, roleRank, visibleHierarchyFor } from '../lib/roles';
 import { AppRuntimeConfig, CatholicNewsSourceKey, saveAppRuntimeConfig } from '../lib/runtimeConfig';
 import { canCreateOrAdministrateCommunities, canEditAdminUser, canEditStaticInstitutionalPage, canManageFormationPathAdmin, canManageGlobalInstagram, canManageMotivadorPanel, canManageNewsContent, canManagePublishedContent, canManageRequestsPanel, canManageUsersPanel, canUseCommunityAdmin, hasPermission, isCommunityLeaderRole, leadershipPanelTitle } from '../lib/sessionAccess';
 import { subroleLabel, subrolesForRole } from '../lib/subroles';
 import { supabase } from '../lib/supabase';
-import { uploadPickedImageToPublicUrl } from '../lib/uploads';
+import { PARTNER_BRANDING_BUCKET, PARTNER_LOGO_MAX_UPLOAD_BYTES, uploadPickedImageToPublicUrl } from '../lib/uploads';
 import { styles } from '../theme/appStyles';
 import { palette } from '../theme/palette';
 import { AppTheme, ThemeName } from '../theme/themes';
@@ -245,7 +246,6 @@ export function ProfileScreen({
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
-  const [authPasswordVisible, setAuthPasswordVisible] = useState(false);
   const [authFocusedField, setAuthFocusedField] = useState('');
   const [authErrors, setAuthErrors] = useState<Record<string, string>>({});
   const [authMessage, setAuthMessage] = useState('');
@@ -295,7 +295,8 @@ export function ProfileScreen({
   const [registerProvince, setRegisterProvince] = useState('');
   const [registerCommunity, setRegisterCommunity] = useState('');
   const [registerPerseveranceStartYear, setRegisterPerseveranceStartYear] = useState('');
-  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>(communities);
+  const [registrationCommunities, setRegistrationCommunities] = useState<AppCommunity[]>([]);
+  const [adminCommunityInventory, setAdminCommunityInventory] = useState<AppCommunity[]>([]);
   const [provinceDropdownOpen, setProvinceDropdownOpen] = useState(false);
   const [communityDropdownOpen, setCommunityDropdownOpen] = useState(false);
   const [registerPerseveranceYearDropdownOpen, setRegisterPerseveranceYearDropdownOpen] = useState(false);
@@ -355,7 +356,6 @@ export function ProfileScreen({
   const [adminUserPmMotto, setAdminUserPmMotto] = useState('');
   const [adminCreateEmail, setAdminCreateEmail] = useState('');
   const [adminCreatePassword, setAdminCreatePassword] = useState('');
-  const [adminCreatePasswordVisible, setAdminCreatePasswordVisible] = useState(false);
   const [adminDiagnosticEmail, setAdminDiagnosticEmail] = useState('lucas.lsd.13@gmail.com');
   const [adminLoginDiagnostic, setAdminLoginDiagnostic] = useState<AdminUserLoginDiagnostic | null>(null);
   const [permissionRole, setPermissionRole] = useState<Role>('palestrista');
@@ -435,6 +435,7 @@ export function ProfileScreen({
   const [showPmForm, setShowPmForm] = useState(false);
   const [adminModule, setAdminModule] = useState<AdminModule>('resumen');
   const [adminConfigDraft, setAdminConfigDraft] = useState<AppAdminConfig>(adminConfig);
+  const [identityPartnerLogoUploading, setIdentityPartnerLogoUploading] = useState(false);
   const [runtimeConfigDraft, setRuntimeConfigDraft] = useState<AppRuntimeConfig>(runtimeConfig);
   const [adminCommunityProvince, setAdminCommunityProvince] = useState('');
   const [adminCommunityId, setAdminCommunityId] = useState('');
@@ -519,12 +520,13 @@ export function ProfileScreen({
   const selectedRegistrationProvince = registrationCommunities.find((item) => item.province === registerProvince);
   const selectedEditProvince = registrationCommunities.find((item) => item.province === editProvince);
   const visibleRegistrationCommunities = useMemo(() => registrationCommunities.filter((item) => item.isActive !== false && !item.archivedAt && canAccessProvince(session, item.province)), [registrationCommunities, session?.province, session?.role]);
-  const manageableCommunities = useMemo(() => registrationCommunities
+  const manageableCommunities = useMemo(() => adminCommunityInventory
+    .filter((province) => province.isActive !== false && !province.archivedAt)
     .map((province) => ({
       ...province,
       locations: province.locations.filter((community) => canEditCommunity(session, province.province, community.name))
     }))
-    .filter((province) => province.locations.length > 0 || canManageProvince(session, province.province) || canSeeAllProvinces(session)), [registrationCommunities, session?.province, session?.role, session?.communityOfOrigin]);
+    .filter((province) => province.locations.length > 0 || canManageProvince(session, province.province) || canSeeAllProvinces(session)), [adminCommunityInventory, session?.province, session?.role, session?.communityOfOrigin]);
   const motivadorProvinceOptions = useMemo(() => {
     if (session?.role === 'administrador') {
       return registrationCommunities.map((item) => item.province);
@@ -689,7 +691,7 @@ export function ProfileScreen({
   const leadershipSummaryUsers = (session?.role === 'administrador' || canSeeAllProvinces(session))
     ? scopedAdminUsers
     : editableProvinceUsers;
-  const existingProvinceNames = new Set(registrationCommunities.filter((item) => !item.archivedAt).map((item) => item.province));
+  const existingProvinceNames = new Set(adminCommunityInventory.filter((item) => !item.archivedAt).map((item) => item.province));
   const missingArgentinaProvinces = argentinaProvinceDefinitions.filter((item) => !existingProvinceNames.has(item.name));
   const selectedNewProvinceDefinition = provinceDefinitionFor(newProvinceName) ?? missingArgentinaProvinces[0] ?? null;
   const motivadorYearOptions = Array.from(new Set(adminMotivadorPeriods.map((period) => String(new Date(`${period.starts_on}T00:00:00`).getFullYear()))))
@@ -988,12 +990,24 @@ export function ProfileScreen({
       return;
     }
     setAuthMessage(`Guardando ${scope}...`);
-    const { error } = await saveAdminConfig(adminConfigDraft);
+    const requestedConfig = normalizeAdminConfig(adminConfigDraft);
+    const { error } = await saveAdminConfig(requestedConfig);
     if (error) {
       setAuthMessage(error.message);
       return;
     }
-    onAdminConfigChange(adminConfigDraft);
+    const persistedRecord = await fetchAdminConfig();
+    if (!persistedRecord) {
+      setAuthMessage(APP_MESSAGES.adminPanels.identity.saveVerificationFailed);
+      return;
+    }
+    const persistedConfig = normalizeAdminConfig(persistedRecord as Partial<AppAdminConfig>);
+    setAdminConfigDraft(persistedConfig);
+    onAdminConfigChange(persistedConfig);
+    if (scope === 'Identidad' && JSON.stringify(persistedConfig.identity) !== JSON.stringify(requestedConfig.identity)) {
+      setAuthMessage(APP_MESSAGES.adminPanels.identity.saveVerificationFailed);
+      return;
+    }
     setAuthMessage(changeDone(APP_MESSAGES.adminPanels.settings.sectionSaved(scope)));
   }
 
@@ -1216,13 +1230,24 @@ export function ProfileScreen({
     let alive = true;
     fetchCommunities().then((items) => {
       if (alive) {
-        setRegistrationCommunities(items);
+        setRegistrationCommunities(activeCommunityData(items));
       }
     });
     return () => {
       alive = false;
     };
   }, []);
+
+  function applyAdminCommunityInventory(items: AppCommunity[]) {
+    setAdminCommunityInventory(items);
+    setRegistrationCommunities(activeCommunityData(items));
+  }
+
+  async function refreshCommunityInventory() {
+    const items = await fetchCommunities(adminCommunitiesFetchOptions);
+    applyAdminCommunityInventory(items);
+    return items;
+  }
 
   useEffect(() => {
     if (adminModule === 'periodo_motivador') {
@@ -1245,17 +1270,19 @@ export function ProfileScreen({
 
   useEffect(() => {
     let alive = true;
-    if (adminModule === 'comunidades' && canOpenCommunityAdmin) {
+    const shouldLoadInventory = (adminModule === 'comunidades' && canOpenCommunityAdmin)
+      || (adminModule === 'crear_provincia' && session?.role === 'administrador');
+    if (shouldLoadInventory) {
       fetchCommunities(adminCommunitiesFetchOptions).then((items) => {
         if (alive) {
-          setRegistrationCommunities(items);
+          applyAdminCommunityInventory(items);
         }
       });
     }
     return () => {
       alive = false;
     };
-  }, [adminModule, canOpenCommunityAdmin]);
+  }, [adminModule, canOpenCommunityAdmin, session?.role]);
 
   useEffect(() => {
     if (!canManageNewsContent(session)) {
@@ -1881,14 +1908,14 @@ export function ProfileScreen({
   async function loadRealProfile(userId: string, fallbackEmail: string) {
     const result = await getMyProfileSession(fallbackEmail);
     if (result.error) {
-      setAuthMessage(`No pude leer tu perfil: ${result.error}`);
+      setAuthMessage(APP_MESSAGES.profileReadFailed);
       return;
     }
     if (result.session) {
       if (result.session.status === 'bloqueado') {
         await supabase.auth.signOut();
         onSessionChange(null);
-        setAuthMessage('Este usuario esta bloqueado o eliminado. Contacta a un administrador.');
+        setAuthMessage(blockedProfileMessage(result.session.genderPreference, 'pastoral'));
         return;
       }
       onSessionChange(session ? {
@@ -1936,29 +1963,29 @@ export function ProfileScreen({
   function validateAuthForm() {
     const nextErrors: Record<string, string> = {};
     if (!isValidEmail(authEmail)) {
-      nextErrors.email = 'Ingresa un correo valido';
+      nextErrors.email = APP_MESSAGES.auth.invalidEmail;
     }
     if (!authPassword) {
-      nextErrors.password = 'La contraseña es obligatoria';
+      nextErrors.password = APP_MESSAGES.auth.passwordRequired;
     }
     if (authMode === 'register') {
       if (!registerFullName.trim()) {
-        nextErrors.fullName = 'Ingresa tu nombre completo';
+        nextErrors.fullName = APP_MESSAGES.auth.fullNameRequired;
       }
       if (!registerProvince) {
-        nextErrors.province = 'Selecciona tu provincia';
+        nextErrors.province = APP_MESSAGES.auth.provinceRequired;
       }
       if (!registerCommunity) {
-        nextErrors.community = 'Selecciona tu comunidad';
+        nextErrors.community = APP_MESSAGES.auth.registrationCommunityRequired;
       }
       if (!registerPerseveranceStartYear) {
-        nextErrors.perseverance = 'Selecciona el año de inicio';
+        nextErrors.perseverance = APP_MESSAGES.auth.startYearRequired;
       }
       if (authPassword.length < 6) {
-        nextErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+        nextErrors.password = APP_MESSAGES.auth.shortPassword;
       }
       if (authPasswordConfirm !== authPassword) {
-        nextErrors.confirm = 'Las contraseñas no coinciden';
+        nextErrors.confirm = APP_MESSAGES.auth.passwordMismatch;
       }
     }
     setAuthErrors(nextErrors);
@@ -1993,14 +2020,14 @@ export function ProfileScreen({
     if (!validateAuthForm()) {
       return;
     }
-    setAuthMessage('Ingresando...');
+    setAuthMessage(APP_MESSAGES.auth.loginLoadingShort);
     const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
     if (error || !data.user) {
       setAuthMessage(safeAuthError(error?.message));
       return;
     }
     await loadRealProfile(data.user.id, authEmail.trim());
-    setAuthMessage('Sesión iniciada.');
+    setAuthMessage(APP_MESSAGES.auth.loginSuccess);
   }
 
   async function registerReal() {
@@ -2008,7 +2035,7 @@ export function ProfileScreen({
       return;
     }
 
-    setAuthMessage('Registrando...');
+    setAuthMessage(APP_MESSAGES.auth.registerLoadingShort);
     const { data, error } = await supabase.auth.signUp({
       email: authEmail.trim(),
       password: authPassword,
@@ -2030,11 +2057,11 @@ export function ProfileScreen({
 
     if (data.session) {
       await loadRealProfile(data.user.id, authEmail.trim());
-      setAuthMessage('Registro creado. Queda pendiente de aprobación.');
+      setAuthMessage(APP_MESSAGES.auth.registrationCreatedPending);
       return;
     }
 
-    setAuthMessage('Registro creado como Palestrista pendiente. Iniciá sesión cuando el email esté confirmado o un administrador lo habilite.');
+    setAuthMessage(APP_MESSAGES.auth.registrationCreatedEmailPending);
   }
 
   async function signOutReal() {
@@ -2046,12 +2073,12 @@ export function ProfileScreen({
   async function refreshRealProfile() {
     const { data } = await supabase.auth.getUser();
     if (!data.user) {
-      setAuthMessage('No hay una sesión real activa. Cerrá e iniciá sesión otra vez.');
+      setAuthMessage(APP_MESSAGES.auth.noActiveSession);
       return;
     }
 
     await loadRealProfile(data.user.id, data.user.email ?? 'Usuario');
-    setAuthMessage('Estado actualizado desde Supabase.');
+    setAuthMessage(APP_MESSAGES.auth.profileRefreshed);
   }
 
   async function saveProfile() {
@@ -3231,7 +3258,7 @@ export function ProfileScreen({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [2, 1],
+      aspect: COMMUNITY_IMAGE_PICKER_ASPECT,
       quality: 0.85
     });
     if (result.canceled || !result.assets[0]) {
@@ -3272,7 +3299,7 @@ export function ProfileScreen({
           setAuthMessage(error.message);
           return;
         }
-        setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+        await refreshCommunityInventory();
         await onContentChanged();
         setAuthMessage(changeDone('Logo de provincia actualizado.'));
         return;
@@ -3282,6 +3309,41 @@ export function ProfileScreen({
       setAuthMessage(error instanceof Error ? error.message : 'No pude subir el logo de la provincia.');
     } finally {
       setProvinceLogoUploading('');
+    }
+  }
+
+  async function pickIdentityPartnerLogo() {
+    if (session?.role !== 'administrador') {
+      setAuthMessage('Solo Administrador puede cambiar el logo de partner.');
+      return;
+    }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setAuthMessage(APP_MESSAGES.chooseImagePermission);
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.9
+    });
+    if (result.canceled || !result.assets[0]) {
+      return;
+    }
+    const asset = result.assets[0];
+    if (asset.fileSize && asset.fileSize > PARTNER_LOGO_MAX_UPLOAD_BYTES) {
+      setAuthMessage(APP_MESSAGES.adminPanels.identity.partnerFileTooLarge);
+      return;
+    }
+    setIdentityPartnerLogoUploading(true);
+    try {
+      const publicUrl = await uploadPickedImageToPublicUrl(asset, 'partner-logo', PARTNER_BRANDING_BUCKET);
+      updateAdminConfigSection('identity', { partnerLogoUrl: publicUrl, partnerLogoVisible: true });
+      setAuthMessage(APP_MESSAGES.adminPanels.identity.partnerReady);
+    } catch (error) {
+      setAuthMessage(friendlyUploadError(error instanceof Error ? error.message : 'No se pudo subir el logo.'));
+    } finally {
+      setIdentityPartnerLogoUploading(false);
     }
   }
 
@@ -3355,8 +3417,7 @@ export function ProfileScreen({
       return;
     }
 
-    const items = await fetchCommunities(adminCommunitiesFetchOptions);
-    setRegistrationCommunities(items);
+    await refreshCommunityInventory();
     setAdminCommunityId('');
     setAdminCommunityImageAsset(null);
     setAdminCommunityImageUrl(imageUrl);
@@ -3419,8 +3480,7 @@ export function ProfileScreen({
         return;
       }
     }
-    const items = await fetchCommunities(adminCommunitiesFetchOptions);
-    setRegistrationCommunities(items);
+    await refreshCommunityInventory();
     setAdminCommunityName('');
     setAdminCommunityAddress('');
     setAdminCommunityPhone('');
@@ -3456,8 +3516,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    const items = await fetchCommunities(adminCommunitiesFetchOptions);
-    setRegistrationCommunities(items);
+    await refreshCommunityInventory();
     setAuthMessage(changeDone('Cambios guardados.'));
     await onContentChanged();
   }
@@ -3482,8 +3541,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    const items = await fetchCommunities(adminCommunitiesFetchOptions);
-    setRegistrationCommunities(items);
+    await refreshCommunityInventory();
     setAdminCommunityProvince(definition.name);
     setAdminCommunityId('');
     setNewProvinceName('');
@@ -3497,7 +3555,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+    await refreshCommunityInventory();
     setAuthMessage(changeDone(isActive ? 'Provincia habilitada.' : 'Provincia deshabilitada.'));
     await onContentChanged();
   }
@@ -3518,7 +3576,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+    await refreshCommunityInventory();
     setAuthMessage(changeDone('Provincia eliminada.'));
     await onContentChanged();
   }
@@ -3529,7 +3587,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+    await refreshCommunityInventory();
     setAuthMessage(changeDone(isActive ? 'Comunidad habilitada.' : 'Comunidad deshabilitada.'));
   }
 
@@ -3549,7 +3607,7 @@ export function ProfileScreen({
       setAuthMessage(error.message);
       return;
     }
-    setRegistrationCommunities(await fetchCommunities(adminCommunitiesFetchOptions));
+    await refreshCommunityInventory();
     setAdminCommunityId('');
     setAuthMessage(changeDone('Comunidad eliminada.'));
   }
@@ -4819,7 +4877,7 @@ export function ProfileScreen({
                           return (
                             <TouchableOpacity key={`preview-dedicated-${tab.key}`} style={[styles.navPreviewItem, !draft.isVisible && styles.navPreviewItemHidden, selected && styles.navPreviewItemSelected]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
                               <Ionicons name={iconName} size={18} color={selected ? palette.white : draft.isVisible ? palette.red : palette.inkMuted} />
-                              <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label || tab.label}</Text>
+                              <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label?.trim() || tab.label?.trim() || 'Seccion sin nombre'}</Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -4834,7 +4892,7 @@ export function ProfileScreen({
                         return (
                           <TouchableOpacity key={`rail-dedicated-${tab.key}`} style={[styles.navigationRailItem, selected && styles.navigationRailItemActive]} onPress={() => { setSelectedNavigationTabKey(tab.key); setNavigationRolesDropdownOpen(false); }} activeOpacity={0.85}>
                             <Ionicons name={iconName} size={20} color={selected ? palette.white : palette.red} />
-                            <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label || tab.label}</Text>
+                            <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label?.trim() || tab.label?.trim() || 'Seccion sin nombre'}</Text>
                             <Text style={[styles.navigationRailMeta, selected && styles.navigationRailTextActive]}>#{index + 1}</Text>
                           </TouchableOpacity>
                         );
@@ -4848,7 +4906,7 @@ export function ProfileScreen({
                             <Ionicons name={isIoniconName(selectedNavigationDraft.iconName) ? selectedNavigationDraft.iconName : 'help-circle-outline'} size={28} color={palette.red} />
                           </View>
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.navigationFocusTitle}>{selectedNavigationDraft.label || selectedNavigationTab.label}</Text>
+                            <Text numberOfLines={2} style={styles.navigationFocusTitle}>{selectedNavigationDraft.label?.trim() || selectedNavigationTab.label?.trim() || 'Seccion sin nombre'}</Text>
                             <Text style={styles.feedMeta}>Clave interna: {selectedNavigationTab.key}</Text>
                             <Text style={styles.feedMeta}>Orden actual: {selectedNavigationTab.sortOrder}</Text>
                           </View>
@@ -5096,6 +5154,8 @@ export function ProfileScreen({
                   config={adminConfigDraft}
                   isDark={isDark}
                   onPatch={(patch) => updateAdminConfigSection('identity', patch)}
+                  onUploadPartnerLogo={pickIdentityPartnerLogo}
+                  partnerLogoUploading={identityPartnerLogoUploading}
                   onSave={() => saveAdminConfigDraft('Identidad')}
                 />
               ) : null}
@@ -5356,14 +5416,14 @@ export function ProfileScreen({
                       </View>
                       {filteredMotivadorPeriods.length === 0 ? <Text style={styles.cardText}>No hay PM cargados para los filtros seleccionados.</Text> : null}
                       {filteredMotivadorPeriods.map((period) => (
-                        <View key={period.id} style={styles.adminListRow}>
+                        <View key={period.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                           <Ionicons name="flame-outline" size={20} color={palette.red} />
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.cardTitle}>PM {period.gender === 'femenino' ? 'Femenino' : 'Masculino'} {period.pm_number} - {period.province}</Text>
-                            <Text style={styles.cardText}>Fechas: {selectedDatesSummary(period.selected_dates?.map((date) => String(date).slice(0, 10)) ?? [period.starts_on, period.ends_on])}</Text>
-                            <Text style={styles.cardText}>Casa: {period.retreat_house}. Dirección: {period.address}</Text>
-                            <Text style={styles.cardText}>Apertura: {period.opening_time ?? 'Sin horario'} - Clausura: {period.closing_time ?? 'Sin horario'}</Text>
-                            <Text style={styles.cardText}>Estado: {period.status}. Última edición: {period.updated_by_name ?? 'Sin registro'}</Text>
+                            <Text numberOfLines={2} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>PM {period.gender === 'femenino' ? 'Femenino' : 'Masculino'} {period.pm_number || 'sin numero'} - {period.province?.trim() || 'Sin provincia'}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Fechas: {selectedDatesSummary(period.selected_dates?.map((date) => String(date).slice(0, 10)) ?? [period.starts_on, period.ends_on])}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Casa: {period.retreat_house?.trim() || 'Sin casa'}. Dirección: {period.address?.trim() || 'Sin direccion'}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Apertura: {period.opening_time ?? 'Sin horario'} - Clausura: {period.closing_time ?? 'Sin horario'}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Estado: {period.status}. Última edición: {period.updated_by_name ?? 'Sin registro'}</Text>
                             <ButtonGroup>
                               <AppButton label="Editar" icon="create-outline" variant="ghost" size="compact" onPress={() => editMotivadorPeriod(period)} />
                               <AppButton label={period.status === 'activo' ? 'Inhabilitar' : 'Habilitar'} icon={period.status === 'activo' ? 'pause-circle-outline' : 'checkmark-circle-outline'} variant="secondary" size="compact" onPress={() => updateMotivadorStatus(period.id, period.status === 'activo' ? 'inactivo' : 'activo')} />
@@ -5489,11 +5549,11 @@ export function ProfileScreen({
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>Etiquetas cargadas</Text>
                       {provinceRoleLabels.map((item) => (
-                        <View key={item.id} style={styles.adminListRow}>
+                        <View key={item.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                           <Ionicons name={item.is_active ? 'pricetag-outline' : 'eye-off-outline'} size={20} color={palette.red} />
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{item.province} - {roleLabel(item.role_key as Role)}</Text>
-                            <Text style={styles.cardText}>{item.display_label}{item.is_active ? '' : ' (inactiva)'}</Text>
+                            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{item.province?.trim() || 'Sin provincia'} - {roleLabel(item.role_key as Role)}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.display_label?.trim() || 'Etiqueta sin nombre'}{item.is_active ? '' : ' (inactiva)'}</Text>
                           </View>
                         </View>
                       ))}
@@ -5563,11 +5623,11 @@ export function ProfileScreen({
                   <Text style={styles.cardEyebrow}>Alias guardados</Text>
                   {roleAliases.length === 0 ? <Text style={styles.cardText}>No hay alias cargados.</Text> : null}
                   {roleAliases.map((alias) => (
-                    <View key={alias.id} style={[styles.adminListRow, !alias.is_active && styles.lockedCard]}>
+                    <View key={alias.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark, !alias.is_active && styles.lockedCard]}>
                       <Ionicons name="copy-outline" size={20} color={palette.red} />
                       <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.adminQuickText}>{alias.display_label}</Text>
-                        <Text style={styles.cardText}>Base: {roleLabel(alias.base_role as Role)} - {alias.province ?? 'Global'} - {alias.is_active ? 'activo' : 'inactivo'}</Text>
+                        <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{alias.display_label?.trim() || 'Alias sin nombre'}</Text>
+                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Base: {roleLabel(alias.base_role as Role)} - {alias.province ?? 'Global'} - {alias.is_active ? 'activo' : 'inactivo'}</Text>
                       </View>
                       <TouchableOpacity style={styles.actionPill} onPress={() => toggleSavedRoleAlias(alias.id, !alias.is_active)}>
                         <Text style={styles.actionPillText}>{alias.is_active ? 'Desactivar' : 'Activar'}</Text>
@@ -5706,22 +5766,14 @@ export function ProfileScreen({
                       <Text style={styles.cardText}>Crea una cuenta habilitada con mail y contraseña. Al ingresar, el usuario deberá completar provincia y comunidad.</Text>
                       <Text style={styles.inputLabel}>Mail</Text>
                       <TextInput style={styles.input} placeholder="Ingresá el correo electrónico" value={adminCreateEmail} onChangeText={setAdminCreateEmail} autoCapitalize="none" keyboardType="email-address"  placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={styles.inputLabel}>Contraseña</Text>
-                      <View style={styles.passwordInputWrap}>
-                        <TextInput
-                          style={[styles.input, styles.inputWithIcon]}
-                          placeholder="Mínimo 6 caracteres"
-                          value={adminCreatePassword}
-                          onChangeText={setAdminCreatePassword}
-                          secureTextEntry={!adminCreatePasswordVisible}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          returnKeyType="done"
-                         placeholderTextColor={inputPlaceholderColor} />
-                        <TouchableOpacity style={styles.passwordEyeButton} onPress={() => setAdminCreatePasswordVisible(!adminCreatePasswordVisible)} activeOpacity={0.82}>
-                          <Ionicons name={adminCreatePasswordVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={palette.red} />
-                        </TouchableOpacity>
-                      </View>
+                      <PasswordInput
+                        label="Contraseña"
+                        placeholder="Mínimo 6 caracteres"
+                        value={adminCreatePassword}
+                        onChangeText={setAdminCreatePassword}
+                        returnKeyType="done"
+                        textContentType="newPassword"
+                      />
                       <TouchableOpacity style={styles.primaryButton} onPress={createBasicAdminUser}>
                         <Text style={styles.primaryButtonText}>Crear usuario</Text>
                       </TouchableOpacity>
@@ -5799,25 +5851,25 @@ export function ProfileScreen({
                         const canEditThisUser = canEditAdminUser(session, user);
                         return (
                           <View key={user.id}>
-                            <View style={[styles.innerNewsCard, !canEditThisUser && styles.lockedCard]}>
+                            <View style={[styles.innerNewsCard, isDark && styles.surfaceCardDark, !canEditThisUser && styles.lockedCard]}>
                               <View style={styles.adminUserHeader}>
                                 <View style={styles.adminUserAvatar}>
                                   {user.avatar_url ? <Image source={{ uri: user.avatar_url }} style={styles.adminUserAvatarImage} /> : <Ionicons name="person-outline" size={20} color={palette.red} />}
                                 </View>
                                 <View style={styles.adminUserHeaderText}>
-                                  <Text style={styles.cardTitle}>{user.full_name ?? 'Usuario sin nombre'}</Text>
-                                  <Text style={styles.cardText}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - {user.community_name ?? 'Sin comunidad'}</Text>
-                                  {user.subrole_key ? <Text style={styles.feedMeta}>Subrango: {subroleLabel(user.subrole_key, user.gender_preference ?? null)}</Text> : null}
-                                  {perseveranceLabel(user.perseverance_start_year) ? <Text style={styles.feedMeta}>{perseveranceLabel(user.perseverance_start_year)}</Text> : null}
-                                  {session.role === 'administrador' ? <Text style={styles.cardText}>{user.email ?? 'Sin email'}</Text> : null}
+                                  <Text numberOfLines={2} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{userListDisplayName(user)}</Text>
+                                  <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{user.status} - {displayRoleLabel((user.role || 'palestrista') as Role, user.province, provinceRoleLabels, adminConfig.settings.roleAliases, user.display_role_label, user.gender_preference ?? null)} - {user.community_name ?? 'Sin comunidad'}</Text>
+                                  {user.subrole_key ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>Subrango: {subroleLabel(user.subrole_key, user.gender_preference ?? null)}</Text> : null}
+                                  {perseveranceLabel(user.perseverance_start_year) ? <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{perseveranceLabel(user.perseverance_start_year)}</Text> : null}
+                                  {session.role === 'administrador' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{user.email ?? 'Sin email'}</Text> : null}
                                 </View>
                               </View>
-                              {session.role === 'administrador' ? <Text style={styles.cardText}>Email: {user.email_confirmed_at ? 'confirmado' : 'sin confirmar'}</Text> : null}
+                              {session.role === 'administrador' ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Email: {user.email_confirmed_at ? 'confirmado' : 'sin confirmar'}</Text> : null}
                               <TouchableOpacity
                                 style={styles.actionPill}
                                 onPress={() => openPublicProfile({
                                   id: user.id,
-                                  fullName: user.full_name ?? 'Usuario sin nombre',
+                                  fullName: userListDisplayName(user),
                                   role: (user.role || 'palestrista') as Role,
                                   province: user.province,
                                   communityName: user.community_name,
@@ -5853,7 +5905,7 @@ export function ProfileScreen({
                                 {session.role === 'administrador' ? (
                                   <>
                                     <TextInput style={styles.input} placeholder="Email" value={adminUserEmail} onChangeText={setAdminUserEmail} autoCapitalize="none"  placeholderTextColor={inputPlaceholderColor} />
-                                    <TextInput style={styles.input} placeholder="Nueva contraseña opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} secureTextEntry  placeholderTextColor={inputPlaceholderColor} />
+                                    <PasswordInput placeholder="Nueva contraseña opcional" value={adminUserPassword} onChangeText={setAdminUserPassword} textContentType="newPassword" />
                                   </>
                                 ) : (
                                   null
@@ -6018,7 +6070,7 @@ export function ProfileScreen({
                                           setAdminUserDisplayRoleLabel(alias.display_label);
                                           setAdminUserRoleAliasDropdownOpen(false);
                                         }}>
-                                          <Text style={styles.dropdownItemText}>{alias.display_label} ({roleLabel(alias.base_role as Role)})</Text>
+                                          <Text style={styles.dropdownItemText}>{alias.display_label?.trim() || 'Alias sin nombre'} ({roleLabel(alias.base_role as Role)})</Text>
                                         </TouchableOpacity>
                                       ))}
                                   </ScrollView>
@@ -6222,11 +6274,11 @@ export function ProfileScreen({
                     <Text style={styles.secondaryButtonText}>Cargar borradores</Text>
                   </TouchableOpacity>
                   {newsDrafts.map((draft) => (
-                    <View key={draft.id} style={styles.adminListRow}>
+                    <View key={draft.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                       <Ionicons name={draft.status === 'borrador' ? 'document-outline' : 'checkmark-circle-outline'} size={19} color={palette.red} />
                       <View style={styles.adminUserHeaderText}>
-                        <Text style={styles.cardTitle}>{draft.title}</Text>
-                        <Text style={styles.cardText}>{draft.category} - {draft.status}{draft.is_featured ? ' - destacada' : ''}</Text>
+                        <Text numberOfLines={2} style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{draft.title?.trim() || APP_MESSAGES.adminPanels.news.unnamedDraft}</Text>
+                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{draft.category} - {draft.status}{draft.is_featured ? ' - destacada' : ''}</Text>
                       </View>
                     </View>
                   ))}
@@ -6327,7 +6379,7 @@ export function ProfileScreen({
                     <Text style={styles.cardText}>Todas las provincias argentinas ya están cargadas.</Text>
                   )}
                   <Text style={styles.cardEyebrow}>Provincias cargadas</Text>
-                  {registrationCommunities.filter((item) => !item.archivedAt).map((item) => {
+                  {adminCommunityInventory.filter((item) => !item.archivedAt).map((item) => {
                     const active = item.isActive !== false;
                     const logoUrl = provinceLogoDrafts[item.province] ?? item.logoUrl ?? null;
                     return (
@@ -6386,7 +6438,11 @@ export function ProfileScreen({
                     setAdminCommunityProvince(province);
                     setAdminCommunityId('');
                   }}
-                  onSelectCommunity={setAdminCommunityId}
+                  feedback={authMessage}
+                  onSelectCommunity={(communityId) => {
+                    setAuthMessage('');
+                    setAdminCommunityId(communityId);
+                  }}
                   onResetSelectedCommunity={() => setAdminCommunityId('')}
                   onToggleCreateCommunity={() => {
                     setShowAdminCommunityCreate((current) => !current);
@@ -6539,10 +6595,10 @@ export function ProfileScreen({
                       </View>
                       {qrActivityLists.length === 0 ? <Text style={styles.cardText}>No hay listas QR visibles para tu rango.</Text> : null}
                       {qrActivityLists.map((list) => (
-                        <TouchableOpacity key={list.id} style={[styles.qrActivityListRow, selectedQrActivityListId === list.id && styles.qrActivityListRowActive]} onPress={() => setSelectedQrActivityListId(selectedQrActivityListId === list.id ? '' : list.id)}>
+                        <TouchableOpacity key={list.id} style={[styles.qrActivityListRow, selectedQrActivityListId === list.id && styles.qrActivityListRowActive, isDark && styles.surfaceRowDark]} onPress={() => setSelectedQrActivityListId(selectedQrActivityListId === list.id ? '' : list.id)}>
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{list.title}</Text>
-                            <Text style={styles.cardText}>{list.province ?? 'Todas las provincias'} - {list.community_name ?? 'Todas las comunidades'}</Text>
+                            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{list.title?.trim() || APP_MESSAGES.adminPanels.qr.unnamedList}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{list.province ?? 'Todas las provincias'} - {list.community_name ?? 'Todas las comunidades'}</Text>
                           </View>
                           <View style={styles.inlineActions}>
                             <TouchableOpacity style={styles.actionPill} onPress={() => setSelectedQrActivityListId(list.id)}>
@@ -6559,7 +6615,7 @@ export function ProfileScreen({
                   {showQrActivityListsMenu && selectedQrActivityList ? (
                     <View style={styles.profileCommunityPanel}>
                       <Text style={styles.cardEyebrow}>{selectedQrActivityList.province ?? 'Todas las provincias'} - {selectedQrActivityList.community_name ?? 'Todas las comunidades'}</Text>
-                      <Text style={styles.cardTitle}>{selectedQrActivityList.title}</Text>
+                      <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{selectedQrActivityList.title?.trim() || APP_MESSAGES.adminPanels.qr.unnamedList}</Text>
                       <Text style={styles.cardEyebrow}>Editar lista</Text>
                       <TextInput style={styles.input} placeholder="Nombre de la lista" value={qrActivityEditTitle} onChangeText={setQrActivityEditTitle} placeholderTextColor={inputPlaceholderColor} />
                       <View style={styles.inlineActions}>
@@ -6664,10 +6720,10 @@ export function ProfileScreen({
                       </View>
                       <Text style={styles.cardEyebrow}>Miembros cargados ({qrActivityMembers.length})</Text>
                       {qrActivityMembers.map((member) => (
-                        <View key={member.id} style={styles.adminListRow}>
+                        <View key={member.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{userListDisplayName(member)}</Text>
-                            <Text style={styles.cardText}>{member.community_name ?? 'Sin comunidad'}</Text>
+                            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{userListDisplayName(member)}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{member.community_name ?? 'Sin comunidad'}</Text>
                           </View>
                           <TouchableOpacity style={styles.actionPill} onPress={() => removeUserFromQrActivity(member.user_id)}>
                             <Ionicons name="trash-outline" size={16} color={palette.red} />
@@ -6677,11 +6733,11 @@ export function ProfileScreen({
                       ))}
                       <Text style={styles.cardEyebrow}>Validados por QR ({qrActivityAttendance.length})</Text>
                       {qrActivityAttendance.map((item) => (
-                        <View key={item.id} style={styles.adminListRow}>
+                        <View key={item.id} style={[styles.adminListRow, isDark && styles.surfaceRowDark]}>
                           <Ionicons name="checkmark-circle-outline" size={20} color={palette.green} />
                           <View style={styles.adminUserHeaderText}>
-                            <Text style={styles.adminQuickText}>{userListDisplayName(item)}</Text>
-                            <Text style={styles.cardText}>{item.community_name ?? 'Sin comunidad'} - {item.validated_at ? new Date(item.validated_at).toLocaleString('es-AR') : ''}</Text>
+                            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{userListDisplayName(item)}</Text>
+                            <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{item.community_name ?? 'Sin comunidad'} - {item.validated_at ? new Date(item.validated_at).toLocaleString('es-AR') : ''}</Text>
                           </View>
                         </View>
                       ))}
@@ -6738,7 +6794,7 @@ export function ProfileScreen({
                         return (
                           <TouchableOpacity key={`preview-${tab.key}`} style={[styles.navPreviewItem, !draft.isVisible && styles.navPreviewItemHidden, selected && styles.navPreviewItemSelected]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
                             <Ionicons name={iconName} size={18} color={selected ? palette.white : draft.isVisible ? palette.red : palette.inkMuted} />
-                            <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label || tab.label}</Text>
+                            <Text numberOfLines={1} style={[styles.navPreviewText, selected && styles.navPreviewTextSelected]}>{draft.label?.trim() || tab.label?.trim() || 'Seccion sin nombre'}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -6753,7 +6809,7 @@ export function ProfileScreen({
                       return (
                         <TouchableOpacity key={`rail-${tab.key}`} style={[styles.navigationRailItem, selected && styles.navigationRailItemActive]} onPress={() => setSelectedNavigationTabKey(tab.key)} activeOpacity={0.85}>
                           <Ionicons name={iconName} size={20} color={selected ? palette.white : palette.red} />
-                          <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label || tab.label}</Text>
+                          <Text numberOfLines={1} style={[styles.navigationRailText, selected && styles.navigationRailTextActive]}>{draft.label?.trim() || tab.label?.trim() || 'Seccion sin nombre'}</Text>
                           <Text style={[styles.navigationRailMeta, selected && styles.navigationRailTextActive]}>#{index + 1}</Text>
                         </TouchableOpacity>
                       );
@@ -6767,7 +6823,7 @@ export function ProfileScreen({
                           <Ionicons name={isIoniconName(selectedNavigationDraft.iconName) ? selectedNavigationDraft.iconName : 'help-circle-outline'} size={28} color={palette.red} />
                         </View>
                         <View style={styles.adminUserHeaderText}>
-                          <Text style={styles.navigationFocusTitle}>{selectedNavigationDraft.label || selectedNavigationTab.label}</Text>
+                          <Text numberOfLines={2} style={styles.navigationFocusTitle}>{selectedNavigationDraft.label?.trim() || selectedNavigationTab.label?.trim() || 'Seccion sin nombre'}</Text>
                           <Text style={styles.feedMeta}>Clave interna: {selectedNavigationTab.key}</Text>
                           <Text style={styles.feedMeta}>Orden actual: {selectedNavigationTab.sortOrder}</Text>
                         </View>
@@ -7074,8 +7130,6 @@ export function ProfileScreen({
           setAuthPassword={setAuthPassword}
           authPasswordConfirm={authPasswordConfirm}
           setAuthPasswordConfirm={setAuthPasswordConfirm}
-          authPasswordVisible={authPasswordVisible}
-          setAuthPasswordVisible={setAuthPasswordVisible}
           registerFullName={registerFullName}
           setRegisterFullName={setRegisterFullName}
           registerContact={registerContact}

@@ -2,15 +2,9 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PublicQueryRecord } from '../../lib/queries/types';
+import { APP_MESSAGES } from '../../lib/appMessages';
 import { palette } from '../../theme/palette';
 import { queryStyles } from './queryStyles';
-
-const statusLabels = {
-  nueva: 'Nueva',
-  leida: 'Leida',
-  respondida: 'Respondida',
-  archivada: 'Archivada'
-} as const;
 
 export function PublicQueryCard({ query, isDark, onOpen }: { query: PublicQueryRecord; isDark: boolean; onOpen: () => void }) {
   return (
@@ -21,7 +15,7 @@ export function PublicQueryCard({ query, isDark, onOpen }: { query: PublicQueryR
           <Text numberOfLines={1} style={[queryStyles.destination, isDark && queryStyles.textMutedDark]}>{query.destination_name}</Text>
         </View>
         <View style={[queryStyles.status, query.status === 'nueva' && queryStyles.statusNew]}>
-          <Text style={[queryStyles.statusText, query.status === 'nueva' && queryStyles.statusTextNew]}>{statusLabels[query.status]}</Text>
+          <Text style={[queryStyles.statusText, query.status === 'nueva' && queryStyles.statusTextNew]}>{APP_MESSAGES.communications.publicQueries.statusLabels[query.status]}</Text>
         </View>
       </View>
       <Text numberOfLines={2} style={[queryStyles.preview, isDark && queryStyles.textBodyDark]}>{query.message}</Text>

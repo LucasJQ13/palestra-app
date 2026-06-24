@@ -39,4 +39,3 @@ export function mailboxTargetFromNotificationData(data?: Record<string, unknown>
     senderId: stringValue(data.senderId)
   };
 }
-

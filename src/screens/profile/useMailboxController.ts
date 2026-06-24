@@ -61,12 +61,12 @@ async function confirmMailboxSend(total: number) {
   if (total <= 10) {
     return true;
   }
-  const message = `Vas a enviar este mensaje a ${total} destinatarios. Confirmas el envio?`;
+  const message = APP_MESSAGES.communications.mailbox.confirmSend(total);
   if (Platform.OS === 'web') {
     return typeof window === 'undefined' ? true : window.confirm(message);
   }
   return new Promise<boolean>((resolve) => {
-    Alert.alert('Confirmar envio', message, [
+    Alert.alert(APP_MESSAGES.communications.mailbox.confirmSendTitle, message, [
       { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
       { text: 'Enviar', onPress: () => resolve(true) }
     ]);
@@ -349,11 +349,11 @@ export function useMailboxController({
 
   async function submitNewMessage() {
     if (activeSession.role === 'invitado') {
-      setAuthMessage('Iniciá sesión para enviar mensajes.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.loginToSend);
       return;
     }
     if (!draft.trim()) {
-      setAuthMessage('Escribe un mensaje antes de enviar.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.messageBeforeSend);
       return;
     }
 
@@ -362,15 +362,15 @@ export function useMailboxController({
     const communityId = mode === 'my_community' ? fallbackCommunity?.id : targetCommunityId || fallbackCommunity?.id;
 
     if (['my_community', 'community'].includes(mode) && !communityId) {
-      setAuthMessage('No hay responsables asignados para tu comunidad actualmente.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.noCommunityLeaders);
       return;
     }
     if (mode === 'user' && selectedUserIds.length === 0) {
-      setAuthMessage('Selecciona al menos un usuario destinatario.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.chooseRecipient);
       return;
     }
     if (estimatedRecipients === 0) {
-      setAuthMessage('No hay destinatarios para el criterio seleccionado.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.noRecipients);
       return;
     }
 
@@ -399,11 +399,11 @@ export function useMailboxController({
 
   async function saveDraft() {
     if (activeSession.role === 'invitado') {
-      setAuthMessage('Inicia sesion para guardar borradores.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.loginToSaveDraft);
       return;
     }
     if (!draft.trim()) {
-      setAuthMessage('Escribe un mensaje antes de guardar el borrador.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.messageBeforeDraft);
       return;
     }
     await AsyncStorage.setItem(`palestra.mailboxDraft.${activeSession.id}`, JSON.stringify({
@@ -415,13 +415,13 @@ export function useMailboxController({
       selectedUserIds,
       savedAt: new Date().toISOString()
     }));
-    setAuthMessage(changeDone('Borrador guardado en este dispositivo.'));
+    setAuthMessage(changeDone(APP_MESSAGES.communications.mailbox.draftSaved));
   }
 
   async function submitResponse(messageId: string) {
     const response = (responses[messageId] ?? '').trim();
     if (!response) {
-      setAuthMessage('Escribi una respuesta antes de enviarla.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.responseBeforeSend);
       return;
     }
     const { error } = await respondMailboxMessage(messageId, response);
@@ -471,15 +471,15 @@ export function useMailboxController({
   async function sendConversationReply() {
     const body = conversationDraft.trim();
     if (!selectedConversation) {
-      setAuthMessage('Selecciona una conversacion para responder.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.chooseConversation);
       return;
     }
     if (!selectedConversation.counterpartUserId) {
-      setAuthMessage('Esta conversacion no tiene un usuario directo para responder.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.directReplyUnavailable);
       return;
     }
     if (!body) {
-      setAuthMessage('Escribe una respuesta antes de enviar.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.responseBeforeSend);
       return;
     }
     setConversationSending(true);
@@ -499,7 +499,7 @@ export function useMailboxController({
 
   async function submitMessageReport(message: MailboxMessageRecord) {
     if ((message.mailbox_folder ?? 'entrada') !== 'entrada') {
-      setAuthMessage('Solo puedes reportar mensajes recibidos.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.receivedReportsOnly);
       return;
     }
     const { error } = await reportMailboxMessage({
@@ -556,7 +556,7 @@ export function useMailboxController({
 
   function startDirectReply(message: MailboxMessageRecord) {
     if ((message.mailbox_folder ?? 'entrada') !== 'entrada' || message.source !== 'direct' || !message.sender_id || message.sender_id === activeSession.id) {
-      setAuthMessage('Este mensaje no permite respuesta directa al remitente.');
+      setAuthMessage(APP_MESSAGES.communications.mailbox.directMessageUnavailable);
       return;
     }
     setFilter('entrada');
@@ -566,7 +566,7 @@ export function useMailboxController({
     setDraft((current) => current.trim() ? current : `Re: ${message.subject || 'Mensaje'}\n\n`);
     setShowComposer(true);
     setUserDropdownOpen(false);
-    setAuthMessage('Respuesta preparada para el remitente original.');
+    setAuthMessage(APP_MESSAGES.communications.mailbox.directReplyReady);
   }
 
   async function restoreForMe(message: MailboxMessageRecord) {
@@ -575,7 +575,7 @@ export function useMailboxController({
       setAuthMessage(error.message);
       return;
     }
-    setAuthMessage(changeDone('Mensaje restaurado.'));
+    setAuthMessage(changeDone(APP_MESSAGES.communications.mailbox.messageRestored));
     await refresh();
   }
 

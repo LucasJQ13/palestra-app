@@ -1,23 +1,33 @@
 import React from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Switch, Text, TextInput, View } from 'react-native';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { AppAdminConfig } from '../../lib/appConfig';
 import { APP_MESSAGES } from '../../lib/appMessages';
 import { AppButton } from '../../components/ui';
+import { PartnerLogo } from '../../components/branding';
+import { normalizeOptionalExternalUrl } from '../../lib/urls';
 
 export function IdentityAdminPanel({
   config,
   isDark,
   onPatch,
+  onUploadPartnerLogo,
+  partnerLogoUploading,
   onSave
 }: {
   config: AppAdminConfig;
   isDark: boolean;
   onPatch: (patch: Partial<AppAdminConfig['identity']>) => void;
+  onUploadPartnerLogo: () => void;
+  partnerLogoUploading: boolean;
   onSave: () => void;
 }) {
+  const copy = APP_MESSAGES.adminPanels.identity;
+  const partnerLogoInvalid = Boolean(config.identity.partnerLogoUrl?.trim() && !normalizeOptionalExternalUrl(config.identity.partnerLogoUrl));
+  const partnerLinkInvalid = Boolean(config.identity.partnerLinkUrl?.trim() && !normalizeOptionalExternalUrl(config.identity.partnerLinkUrl));
+
   return (
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
       <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.adminPanels.identity.title}</Text>
@@ -43,8 +53,58 @@ export function IdentityAdminPanel({
         <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Texto. Ej: BETA" value={config.identity.releaseLabel ?? ''} onChangeText={(value) => onPatch({ releaseLabel: value })} autoCapitalize="characters" placeholderTextColor={inputPlaceholderColor} />
         <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Numero. Ej: 0.1.38" value={config.identity.releaseVersion ?? ''} onChangeText={(value) => onPatch({ releaseVersion: value })} placeholderTextColor={inputPlaceholderColor} />
       </View>
-      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.identity.designerLink}</Text>
-      <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Instagram o web de A-Tec" value={config.identity.designerCreditUrl ?? ''} onChangeText={(value) => onPatch({ designerCreditUrl: value })} autoCapitalize="none" placeholderTextColor={inputPlaceholderColor} />
+      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{copy.partnerTitle}</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{copy.partnerHelp}</Text>
+      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{copy.partnerFileHelp}</Text>
+      <TextInput
+        style={[styles.input, isDark && styles.inputDark]}
+        placeholder={copy.partnerLogoPlaceholder}
+        value={config.identity.partnerLogoUrl ?? ''}
+        onChangeText={(value) => onPatch({ partnerLogoUrl: value })}
+        autoCapitalize="none"
+        placeholderTextColor={inputPlaceholderColor}
+      />
+      <View style={styles.inlineActions}>
+        <AppButton label={copy.partnerUpload} icon="image-outline" variant="secondary" size="compact" loading={partnerLogoUploading} onPress={onUploadPartnerLogo} />
+        <AppButton
+          label={copy.partnerRemove}
+          icon="trash-outline"
+          variant="ghost"
+          size="compact"
+          disabled={!config.identity.partnerLogoUrl}
+          onPress={() => onPatch({ partnerLogoUrl: '', partnerLogoVisible: false })}
+        />
+      </View>
+      <TextInput
+        style={[styles.input, isDark && styles.inputDark]}
+        placeholder={copy.partnerLinkPlaceholder}
+        value={config.identity.partnerLinkUrl ?? ''}
+        onChangeText={(value) => onPatch({ partnerLinkUrl: value })}
+        autoCapitalize="none"
+        keyboardType="url"
+        placeholderTextColor={inputPlaceholderColor}
+      />
+      <TextInput
+        style={[styles.input, isDark && styles.inputDark]}
+        placeholder={copy.partnerAltPlaceholder}
+        value={config.identity.partnerLogoAlt ?? ''}
+        onChangeText={(value) => onPatch({ partnerLogoAlt: value })}
+        placeholderTextColor={inputPlaceholderColor}
+      />
+      <View style={styles.settingRow}>
+        <View style={styles.settingRowText}>
+          <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{copy.partnerVisible}</Text>
+          <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{copy.partnerVisibleHelp}</Text>
+        </View>
+        <Switch
+          value={Boolean(config.identity.partnerLogoVisible)}
+          onValueChange={(partnerLogoVisible) => onPatch({ partnerLogoVisible })}
+          trackColor={{ false: 'rgba(94, 131, 150, 0.22)', true: 'rgba(45, 141, 200, 0.36)' }}
+          thumbColor={config.identity.partnerLogoVisible ? palette.red : palette.white}
+        />
+      </View>
+      {partnerLogoInvalid ? <Text style={[styles.cardText, { color: palette.red }]}>{copy.partnerInvalidLogo}</Text> : null}
+      {partnerLinkInvalid ? <Text style={[styles.cardText, { color: palette.red }]}>{copy.partnerInvalidLink}</Text> : null}
       <View style={[styles.adminPreviewPane, isDark && styles.surfaceRowDark, { borderColor: config.identity.primaryColor || palette.red }]}>
         <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.adminPanels.identity.preview}</Text>
         <Text style={[styles.cardTitle, isDark && styles.textDarkStrong, { color: config.identity.primaryColor || palette.red }]}>{config.identity.appName}</Text>
@@ -52,7 +112,14 @@ export function IdentityAdminPanel({
         <Text style={styles.versionBadge}>{`${config.identity.releaseLabel || 'BETA'} ${config.identity.releaseVersion || '0.1.38'}`}</Text>
         <Text style={[styles.cardText, isDark && styles.textDarkBody, { color: config.identity.textColor || palette.ink }]}>Texto de ejemplo</Text>
         <Text style={[styles.cardTitle, { color: config.identity.greetingNameColor || '#2fb66d' }]}>Lucas</Text>
-        <Text style={[styles.designerCreditHomeText, isDark && styles.textDarkMuted]}>Diseñado por A-Tec Soluciones Integrales</Text>
+        <PartnerLogo
+          logoUrl={config.identity.partnerLogoUrl}
+          linkUrl={config.identity.partnerLinkUrl}
+          visible={config.identity.partnerLogoVisible}
+          accessibilityLabel={config.identity.partnerLogoAlt}
+          variant="preview"
+          isDark={isDark}
+        />
         <View style={[styles.previewButtonSwatch, { backgroundColor: config.identity.buttonColor || config.identity.primaryColor || palette.red }]}>
           <Text style={styles.primaryButtonText}>Boton</Text>
         </View>

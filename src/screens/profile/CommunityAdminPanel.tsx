@@ -1,14 +1,15 @@
 import React from 'react';
-import { Image, Linking, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppCommunity } from '../../lib/remoteData';
-import { CommunityGroupType, communityGroupLabel, communitySectionOptions, resolveCommunitySectionVisibility } from '../../lib/communitySections';
+import { CommunityGroupType, communitySectionOptions, resolveCommunitySectionVisibility } from '../../lib/communitySections';
 import { Role } from '../../types/auth';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { APP_MESSAGES } from '../../lib/appMessages';
 import { palette } from '../../theme/palette';
 import { styles } from '../../theme/appStyles';
-import { AppButton, ButtonGroup } from '../../components/ui';
+import { AppButton } from '../../components/ui';
+import { CommunityEditorFullScreen } from './community/CommunityEditorFullScreen';
 
 type CommunityAdminPanelProps = {
   isDark: boolean;
@@ -32,6 +33,7 @@ type CommunityAdminPanelProps = {
   adminCommunityIsActive: boolean;
   canAdministrateCommunities: boolean;
   showAdminCommunityCreate: boolean;
+  feedback?: string;
   onSelectProvince: (province: string) => void;
   onSelectCommunity: (communityId: string) => void;
   onResetSelectedCommunity: () => void;
@@ -76,6 +78,7 @@ export function CommunityAdminPanel({
   adminCommunityIsActive,
   canAdministrateCommunities,
   showAdminCommunityCreate,
+  feedback,
   onSelectProvince,
   onSelectCommunity,
   onResetSelectedCommunity,
@@ -97,6 +100,8 @@ export function CommunityAdminPanel({
   onArchiveCommunity,
   onSaveCommunity
 }: CommunityAdminPanelProps) {
+  const selectedAdminCommunity = selectedAdminProvince?.locations.find((item) => (item.id ?? item.name) === adminCommunityId);
+
   return (
     <View style={[styles.adminWorkspace, isDark && styles.adminWorkspaceDark]}>
       <Text style={[styles.cardTitle, isDark && styles.textDarkStrong]}>{APP_MESSAGES.community.adminTitle}</Text>
@@ -180,66 +185,61 @@ export function CommunityAdminPanel({
           <ScrollView style={[styles.dropdownList, isDark && styles.dropdownListDark]} nestedScrollEnabled>
             {selectedAdminProvince.locations.map((item) => {
               const itemKey = item.id ?? item.name;
+              const itemName = item.name?.trim() || APP_MESSAGES.community.unnamedCommunity;
               const selected = adminCommunityId === itemKey;
               const isActive = !('isActive' in item) || Boolean(item.isActive);
               return (
-                <View key={itemKey}>
-                  <TouchableOpacity
-                    style={[styles.dropdownItem, isDark && styles.dropdownItemDark, selected && styles.communityChoiceActive]}
-                    onPress={() => onSelectCommunity(selected ? '' : itemKey)}
-                  >
-                    <Text style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark, selected && styles.filterChipTextActive]}>{item.name}</Text>
-                  </TouchableOpacity>
-                  {selected ? (
-                    <View style={[styles.adminInlineEditor, isDark && styles.surfacePanelDark]}>
-                      <TextInput style={[styles.input, isDark && styles.inputDark]} placeholder="Nombre" value={adminCommunityName} onChangeText={setAdminCommunityName}  placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>Subseccion</Text>
-                      <View style={styles.filterRow}>
-                        {communitySectionOptions.map((groupOption) => (
-                          <TouchableOpacity key={groupOption.key} style={[styles.filterChip, isDark && styles.surfaceRowDark, adminCommunityGroupType === groupOption.key && styles.filterChipActive]} onPress={() => setAdminCommunityGroupType(groupOption.key)}>
-                            <Text style={[styles.filterChipText, isDark && styles.textDarkStrong, adminCommunityGroupType === groupOption.key && styles.filterChipTextActive]}>{groupOption.label}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>Actual: {communityGroupLabel(item.group)}</Text>
-                      <View style={styles.filterRow}>
-                        <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Direccion" value={adminCommunityAddress} onChangeText={setAdminCommunityAddress}  placeholderTextColor={inputPlaceholderColor} />
-                        <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Contacto" value={adminCommunityPhone} onChangeText={setAdminCommunityPhone}  placeholderTextColor={inputPlaceholderColor} />
-                      </View>
-                      <View style={styles.filterRow}>
-                        <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Dia de reunion" value={adminCommunityDay} onChangeText={setAdminCommunityDay}  placeholderTextColor={inputPlaceholderColor} />
-                        <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Horario" value={adminCommunityTime} onChangeText={setAdminCommunityTime}  placeholderTextColor={inputPlaceholderColor} />
-                      </View>
-                      <View style={[styles.profileCommunityPanel, isDark && styles.surfaceRowDark]}>
-                        <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.locationTitle}</Text>
-                        <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.coordinatesHelp}</Text>
-                        <View style={styles.filterRow}>
-                          <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Latitud. Ej: -31.4167" value={adminCommunityLatitude} onChangeText={setAdminCommunityLatitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
-                          <TextInput style={[styles.input, styles.colorInput, isDark && styles.inputDark]} placeholder="Longitud. Ej: -64.1833" value={adminCommunityLongitude} onChangeText={setAdminCommunityLongitude} keyboardType="decimal-pad" placeholderTextColor={inputPlaceholderColor} />
-                        </View>
-                        <AppButton label="Ver direccion en Maps" icon="map-outline" variant="secondary" size="compact" onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${adminCommunityAddress}, ${adminCommunityProvince}, Argentina`)}`)} />
-                      </View>
-                      <TextInput style={[styles.input, styles.textArea, isDark && styles.inputDark]} placeholder="descripcion e historia" value={adminCommunityDescription} onChangeText={setAdminCommunityDescription} multiline  placeholderTextColor={inputPlaceholderColor} />
-                      <Text style={[styles.cardEyebrow, isDark && styles.textDarkAccent]}>{APP_MESSAGES.community.imageTitle}</Text>
-                      <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.imageHelp}</Text>
-                      {adminCommunityImagePreview ? <Image source={{ uri: adminCommunityImagePreview }} style={styles.communityModalImage} /> : null}
-                      <AppButton label={adminCommunityImagePreview ? 'Cambiar imagen' : 'Subir imagen'} icon="image-outline" variant="secondary" onPress={onPickImage} />
-                      {adminCommunityImageAsset ? <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{APP_MESSAGES.community.imagePreviewReady}</Text> : null}
-                      <ButtonGroup>
-                        {canAdministrateCommunities ? (
-                          <AppButton label={isActive ? 'Deshabilitar' : 'Habilitar'} icon={isActive ? 'pause-circle-outline' : 'checkmark-circle-outline'} variant="secondary" size="compact" onPress={() => onToggleCommunityStatus(itemKey, !isActive)} />
-                        ) : null}
-                        {canAdministrateCommunities ? (
-                          <AppButton label="Eliminar" icon="trash-outline" variant="dangerGhost" size="compact" onPress={() => onArchiveCommunity(itemKey)} />
-                        ) : null}
-                      </ButtonGroup>
-                      <AppButton label={APP_MESSAGES.community.saveCommunity} icon="save-outline" loading={adminCommunityImageUploading} onPress={onSaveCommunity} />
-                    </View>
-                  ) : null}
-                </View>
+                <TouchableOpacity
+                  key={itemKey}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Editar comunidad ${itemName}`}
+                  style={[styles.dropdownItem, styles.adminEditableRow, isDark && styles.dropdownItemDark, selected && styles.communityChoiceActive]}
+                  onPress={() => onSelectCommunity(itemKey)}
+                >
+                  <View style={styles.adminUserHeaderText}>
+                    <Text numberOfLines={2} style={[styles.dropdownItemText, isDark && styles.dropdownItemTextDark, selected && styles.filterChipTextActive]}>{itemName}</Text>
+                    <Text style={[styles.feedMeta, isDark && styles.textDarkMuted, selected && styles.filterChipTextActive]}>{isActive ? 'Habilitada' : 'Deshabilitada'} · Editar</Text>
+                  </View>
+                  <Ionicons name="create-outline" size={18} color={selected ? palette.white : palette.red} />
+                </TouchableOpacity>
               );
             })}
           </ScrollView>
+
+          <CommunityEditorFullScreen
+            visible={Boolean(selectedAdminCommunity)}
+            community={selectedAdminCommunity}
+            province={adminCommunityProvince}
+            isDark={isDark}
+            name={adminCommunityName}
+            address={adminCommunityAddress}
+            phone={adminCommunityPhone}
+            meetingDay={adminCommunityDay}
+            meetingTime={adminCommunityTime}
+            description={adminCommunityDescription}
+            latitude={adminCommunityLatitude}
+            longitude={adminCommunityLongitude}
+            imagePreview={adminCommunityImagePreview}
+            imageAsset={adminCommunityImageAsset}
+            imageUploading={adminCommunityImageUploading}
+            groupType={adminCommunityGroupType}
+            canAdministrate={canAdministrateCommunities}
+            feedback={feedback}
+            setName={setAdminCommunityName}
+            setAddress={setAdminCommunityAddress}
+            setPhone={setAdminCommunityPhone}
+            setMeetingDay={setAdminCommunityDay}
+            setMeetingTime={setAdminCommunityTime}
+            setDescription={setAdminCommunityDescription}
+            setLatitude={setAdminCommunityLatitude}
+            setLongitude={setAdminCommunityLongitude}
+            setGroupType={setAdminCommunityGroupType}
+            onPickImage={onPickImage}
+            onToggleStatus={onToggleCommunityStatus}
+            onArchive={onArchiveCommunity}
+            onSave={onSaveCommunity}
+            onCancel={() => onSelectCommunity('')}
+          />
         </>
       ) : null}
     </View>

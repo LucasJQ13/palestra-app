@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { changeDone } from '../../lib/appMessages';
+import { APP_MESSAGES, changeDone } from '../../lib/appMessages';
 import { inputPlaceholderColor } from '../../lib/constants';
 import { fetchPublicQueries, markPublicQueryRead, respondPublicQuery, setPublicQueryStatus } from '../../lib/queries/publicQueries';
 import { PublicQueryRecord, PublicQueryStatus } from '../../lib/queries/types';
@@ -10,11 +10,11 @@ import { PublicQueryCard } from './PublicQueryCard';
 import { queryStyles } from './queryStyles';
 
 const filters: Array<{ key: 'todas' | PublicQueryStatus; label: string }> = [
-  { key: 'todas', label: 'Todas' },
-  { key: 'nueva', label: 'Nuevas' },
-  { key: 'leida', label: 'Leidas' },
-  { key: 'respondida', label: 'Respondidas' },
-  { key: 'archivada', label: 'Archivadas' }
+  { key: 'todas', label: APP_MESSAGES.communications.publicQueries.filters.all },
+  { key: 'nueva', label: APP_MESSAGES.communications.publicQueries.filters.new },
+  { key: 'leida', label: APP_MESSAGES.communications.publicQueries.filters.read },
+  { key: 'respondida', label: APP_MESSAGES.communications.publicQueries.filters.answered },
+  { key: 'archivada', label: APP_MESSAGES.communications.publicQueries.filters.archived }
 ];
 
 export function PublicQueriesInboxScreen({ isDark, onFeedback }: { isDark: boolean; onFeedback: (message: string) => void }) {
@@ -57,14 +57,14 @@ export function PublicQueriesInboxScreen({ isDark, onFeedback }: { isDark: boole
       onFeedback(error.message);
       return;
     }
-    onFeedback(changeDone(`Consulta marcada como ${status}.`));
+    onFeedback(changeDone(APP_MESSAGES.communications.publicQueries.statusChanged(APP_MESSAGES.communications.publicQueries.statusLabels[status])));
     setSelected(null);
     await refresh();
   }
 
   async function submitResponse() {
     if (!selected || !response.trim()) {
-      onFeedback('Escribe una respuesta antes de guardar.');
+      onFeedback(APP_MESSAGES.communications.publicQueries.responseRequired);
       return;
     }
     const { error } = await respondPublicQuery(selected.id, response.trim());
@@ -72,7 +72,7 @@ export function PublicQueriesInboxScreen({ isDark, onFeedback }: { isDark: boole
       onFeedback(error.message);
       return;
     }
-    onFeedback(changeDone('Respuesta registrada en la consulta.'));
+    onFeedback(changeDone(APP_MESSAGES.communications.publicQueries.responseSaved));
     setSelected(null);
     setResponse('');
     await refresh();
@@ -86,10 +86,10 @@ export function PublicQueriesInboxScreen({ isDark, onFeedback }: { isDark: boole
     <View style={queryStyles.shell}>
       <View style={queryStyles.header}>
         <View style={queryStyles.titleBlock}>
-          <Text style={[queryStyles.title, isDark && queryStyles.textStrongDark]}>Bandeja de consultas</Text>
-          <Text style={[queryStyles.subtitle, isDark && queryStyles.textBodyDark]}>Consultas publicas e institucionales, separadas de tus chats privados.</Text>
+          <Text style={[queryStyles.title, isDark && queryStyles.textStrongDark]}>{APP_MESSAGES.communications.publicQueries.title}</Text>
+          <Text style={[queryStyles.subtitle, isDark && queryStyles.textBodyDark]}>{APP_MESSAGES.communications.publicQueries.help}</Text>
         </View>
-        <TouchableOpacity style={queryStyles.closeButton} onPress={refresh} accessibilityLabel="Actualizar consultas">
+        <TouchableOpacity style={queryStyles.closeButton} onPress={refresh} accessibilityLabel={APP_MESSAGES.communications.publicQueries.refresh}>
           <Ionicons name="refresh-outline" size={19} color={palette.red} />
         </TouchableOpacity>
       </View>
@@ -106,11 +106,11 @@ export function PublicQueriesInboxScreen({ isDark, onFeedback }: { isDark: boole
         ))}
       </ScrollView>
 
-      {loading ? <Text style={[queryStyles.subtitle, isDark && queryStyles.textBodyDark]}>Actualizando consultas...</Text> : null}
+      {loading ? <Text style={[queryStyles.subtitle, isDark && queryStyles.textBodyDark]}>{APP_MESSAGES.communications.publicQueries.loading}</Text> : null}
       {!loading && visibleQueries.length === 0 ? (
         <View style={queryStyles.empty}>
           <Ionicons name="file-tray-outline" size={28} color={palette.red} />
-          <Text style={[queryStyles.sender, isDark && queryStyles.textStrongDark]}>No hay consultas en esta bandeja</Text>
+          <Text style={[queryStyles.sender, isDark && queryStyles.textStrongDark]}>{APP_MESSAGES.communications.publicQueries.empty}</Text>
         </View>
       ) : null}
       {visibleQueries.map((query) => (
@@ -131,42 +131,42 @@ export function PublicQueriesInboxScreen({ isDark, onFeedback }: { isDark: boole
             </View>
             <ScrollView showsVerticalScrollIndicator contentContainerStyle={{ gap: 12 }}>
               <View>
-                <Text style={queryStyles.detailLabel}>Origen</Text>
+                <Text style={queryStyles.detailLabel}>{APP_MESSAGES.communications.publicQueries.originLabel}</Text>
                 <Text style={[queryStyles.detailText, isDark && queryStyles.textBodyDark]}>{selected?.origin.replace(/_/g, ' ')}</Text>
               </View>
               {selected?.sender_contact ? (
                 <View>
-                  <Text style={queryStyles.detailLabel}>Contacto</Text>
+                  <Text style={queryStyles.detailLabel}>{APP_MESSAGES.communications.publicQueries.contactLabel}</Text>
                   <Text selectable style={[queryStyles.detailText, isDark && queryStyles.textBodyDark]}>{selected.sender_contact}</Text>
                 </View>
               ) : null}
               <View>
-                <Text style={queryStyles.detailLabel}>Consulta</Text>
+                <Text style={queryStyles.detailLabel}>{APP_MESSAGES.communications.publicQueries.queryLabel}</Text>
                 <Text selectable style={[queryStyles.detailText, isDark && queryStyles.textBodyDark]}>{selected?.message}</Text>
               </View>
-              <Text style={queryStyles.detailLabel}>Respuesta / seguimiento</Text>
+              <Text style={queryStyles.detailLabel}>{APP_MESSAGES.communications.publicQueries.followUpLabel}</Text>
               <TextInput
                 style={[queryStyles.responseInput, isDark && queryStyles.responseInputDark]}
                 value={response}
                 onChangeText={(value) => setResponse(value.slice(0, 1000))}
-                placeholder="Registra aqui la respuesta o seguimiento realizado"
+                placeholder={APP_MESSAGES.communications.publicQueries.followUpPlaceholder}
                 placeholderTextColor={inputPlaceholderColor}
                 multiline
               />
               <View style={queryStyles.actionRow}>
                 <TouchableOpacity style={queryStyles.actionButton} onPress={submitResponse}>
                   <Ionicons name="checkmark-outline" size={17} color={palette.white} />
-                  <Text style={queryStyles.actionText}>Guardar respuesta</Text>
+                  <Text style={queryStyles.actionText}>{APP_MESSAGES.communications.publicQueries.saveResponse}</Text>
                 </TouchableOpacity>
                 {selected?.status !== 'archivada' ? (
                   <TouchableOpacity style={[queryStyles.actionButton, queryStyles.secondaryButton]} onPress={() => updateStatus('archivada')}>
                     <Ionicons name="archive-outline" size={17} color={palette.red} />
-                    <Text style={[queryStyles.actionText, queryStyles.secondaryText]}>Archivar</Text>
+                    <Text style={[queryStyles.actionText, queryStyles.secondaryText]}>{APP_MESSAGES.communications.publicQueries.archive}</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity style={[queryStyles.actionButton, queryStyles.secondaryButton]} onPress={() => updateStatus('leida')}>
                     <Ionicons name="arrow-undo-outline" size={17} color={palette.red} />
-                    <Text style={[queryStyles.actionText, queryStyles.secondaryText]}>Restaurar</Text>
+                    <Text style={[queryStyles.actionText, queryStyles.secondaryText]}>{APP_MESSAGES.communications.publicQueries.restore}</Text>
                   </TouchableOpacity>
                 )}
               </View>

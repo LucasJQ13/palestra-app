@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ForumCategory, ForumComment, ForumTopic, archiveForumComment, archiveForumTopic, canUseForumCategory, createForumComment, createForumTopic, fetchForumCategories, fetchForumComments, fetchForumTopics, setForumTopicStatus, updateForumTopic, visibleForumRolesFor } from '../lib/forum';
-import { changeDone } from '../lib/appMessages';
+import { accessRequiredMessage, changeDone } from '../lib/appMessages';
 import { roleRank } from '../lib/roles';
 import { roleLabel } from '../lib/profileDisplay';
 import { Role, Session } from '../types/auth';
@@ -66,7 +66,7 @@ export function ForumScreen({ session, title }: { session: Session | null; title
 
   async function submitTopic() {
     if (!canCreate) {
-      setForumMessage('Iniciá sesión con un usuario aprobado para crear temas.');
+      setForumMessage(accessRequiredMessage('generic', session?.genderPreference, 'pastoral', 'crear temas'));
       return;
     }
     if (!selectedCategoryId || !topicTitle.trim() || !topicBody.trim()) {
@@ -132,7 +132,7 @@ export function ForumScreen({ session, title }: { session: Session | null; title
 
   async function submitComment() {
     if (!canCreate) {
-      setForumMessage('Iniciá sesión con un usuario aprobado para comentar.');
+      setForumMessage(accessRequiredMessage('generic', session?.genderPreference, 'pastoral', 'comentar'));
       return;
     }
     if (!selectedTopic || !commentDraft.trim()) {
@@ -189,7 +189,7 @@ export function ForumScreen({ session, title }: { session: Session | null; title
               <Ionicons name="add-circle-outline" size={17} color={palette.white} />
               <Text style={styles.primaryButtonText}>Crear tema</Text>
             </TouchableOpacity>
-          ) : <Text style={styles.cardText}>Iniciá sesión para crear temas o comentar.</Text>}
+          ) : <Text style={styles.cardText}>{accessRequiredMessage('generic', session?.genderPreference, 'pastoral', 'crear temas o comentar')}</Text>}
         </View>
       ) : null}
       {showComposer ? (

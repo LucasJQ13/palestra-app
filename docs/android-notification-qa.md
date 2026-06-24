@@ -64,4 +64,3 @@ No cerrar esta issue hasta adjuntar evidencia visual real en Android con build a
 
 - #111: small icon dedicado y branding Android.
 - #112: payload/navegacion de mensajes.
-

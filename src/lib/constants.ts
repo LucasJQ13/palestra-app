@@ -27,11 +27,16 @@ export const touchPointerPreferenceKey = 'palestra.showTouchPointer';
 export const themePreferenceKey = 'palestra.themePreference';
 export const pushDeviceIdKey = 'palestra.push.deviceId';
 export const localReminderNotificationKey = 'palestra.localReminderNotifications';
+export const DAILY_GOSPEL_NOTIFICATION_HOUR = 9;
+export const DAILY_GOSPEL_NOTIFICATION_MINUTE = 0;
+export const DAILY_GOSPEL_NOTIFICATION_CHANNEL_ID = 'daily-gospel';
+export const COMMUNITY_IMAGE_ASPECT_RATIO = 3 / 2;
+export const COMMUNITY_IMAGE_PICKER_ASPECT: [number, number] = [3, 2];
+export const COMMUNITY_IMAGE_RECOMMENDATION = '1200 × 800 px (proporción 3:2)';
 export const inputPlaceholderColor = '#5E8396';
 export const currentYear = new Date().getFullYear();
 export const perseveranceStartYears = Array.from({ length: currentYear - 1961 + 1 }, (_, index) => String(currentYear - index));
 export const officialInstagramUrl = 'https://www.instagram.com/infopalestra.argentina?igsh=MXB2aGcwZG9qeGpvOA==';
-export const defaultDesignerCreditUrl = 'https://www.instagram.com/ampertech.ar?igsh=MW5oZGRqZWZzaHBzNw==';
 export const easProjectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId ?? 'sin-project-id';
 export const appRuntimeOwner = String((Constants as any).appOwnership ?? (Constants as any).executionEnvironment ?? 'standalone');
 export const defaultProvinceInstagram: Record<string, string> = {

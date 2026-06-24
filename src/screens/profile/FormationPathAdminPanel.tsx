@@ -299,10 +299,10 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
               {materials.map((material) => {
                 const selected = draft.materialIds.includes(material.id);
                 return (
-                  <TouchableOpacity key={material.id} style={[styles.adminListRow, selected && styles.adminListRowActive]} onPress={() => toggleMaterial(material.id)}>
+                  <TouchableOpacity key={material.id} style={[styles.adminListRow, selected && styles.adminListRowActive, isDark && styles.surfaceRowDark]} onPress={() => toggleMaterial(material.id)}>
                     <Ionicons name={selected ? 'checkbox-outline' : 'square-outline'} size={20} color={selected ? palette.red : palette.inkMuted} />
                     <View style={styles.adminUserHeaderText}>
-                      <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{material.title}</Text>
+                      <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{material.title?.trim() || APP_MESSAGES.adminPanels.downloads.unnamedMaterial}</Text>
                       <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{material.category ?? 'Material'} - {material.visibility ?? 'publico'}</Text>
                     </View>
                   </TouchableOpacity>
@@ -325,7 +325,7 @@ export function FormationPathAdminPanel({ session, isDark }: { session: Session;
             <Ionicons name={(station.icon_name && station.icon_name in Ionicons.glyphMap ? station.icon_name : 'flag-outline') as keyof typeof Ionicons.glyphMap} size={17} color={palette.white} />
           </View>
           <View style={styles.adminUserHeaderText}>
-            <Text style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{station.sort_order}. {station.title}</Text>
+            <Text numberOfLines={2} style={[styles.adminQuickText, isDark && styles.textDarkStrong]}>{station.sort_order}. {station.title?.trim() || APP_MESSAGES.adminPanels.formation.unnamedStation}</Text>
             <Text style={[styles.cardText, isDark && styles.textDarkBody]}>{station.subtitle || station.short_description || 'Sin subtitulo'}</Text>
             <Text style={[styles.feedMeta, isDark && styles.textDarkMuted]}>{station.is_active ? 'Activa' : 'Inactiva'} - {(station.visible_roles ?? []).length || 'Todos'} roles - {(station.material_ids ?? []).length} materiales</Text>
           </View>
